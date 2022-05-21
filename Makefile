@@ -6,6 +6,10 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 help:
 	@echo "Try 'make Amsterdam'"
 	@echo "Docker must be installed"
+	@echo "'make list' for all available metro areas."
+
+list:
+	@echo ${CITIES}
 
 %.osm.pbf:
 	@echo "Downloading $@ from BBBike.";
