@@ -1,17 +1,11 @@
 services:
-  postgis:
-    image: postgis/postgis
+  mbtileserver:
     environment:
-      POSTGRES_DB: postgis
-      POSTGRES_USER: postgis
-      POSTGRES_PASSWORD: god
-  postgis_deploy:
-    image: headway_postgis_deploy
-  tileserver:
-    image: urbica/martin
+      PORT: 7777
+      TILE_DIR: "/mbtiles"
+      VERBOSE: true
+    entrypoint: mbtileserver
     ports:
-      - "8081:3000"
-    environment:
-      DATABASE_URL: postgres://postgis:god@postgis/postgis
+      - "8081:7777"
   photon:
     image: headway_photon
