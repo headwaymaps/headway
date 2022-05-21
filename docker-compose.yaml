@@ -1,10 +1,10 @@
 services:
   mbtileserver:
+    image: headway_tileserver
     environment:
       PORT: 7777
-      TILE_DIR: "/mbtiles"
-      VERBOSE: true
-    entrypoint: mbtileserver
+      TILE_DIR: "/tiles"
+      VERBOSE: "true"
     ports:
       - "8081:7777"
   photon:

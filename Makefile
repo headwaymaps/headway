@@ -61,10 +61,15 @@ list:
 	cp $(basename $@).nominatim.tgz ./geocoder/photon/data.nominatim.tgz
 	docker build ./geocoder/photon --tag headway_photon
 
-%.tag_images: %.postgis_deploy_image %.photon_image
+%.tileserver_image: %.mbtiles
+	@echo "Building tileserver image for $(basename $@)."
+	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
+	docker build ./tileserver --tag headway_tileserver
+
+%.tag_images: %.tileserver_image %.photon_image
 	@echo "Tagging images"
 
-$(filter %,$(CITIES)): %: docker %.osm.pbf %.pgsql.tgz %.nominatim.tgz %.tag_images
+$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images
 	@echo "Building $@"
 
 clean:
@@ -75,7 +80,3 @@ clean:
 
 clean_all: clean
 	rm -rf ./*.osm.pbf
-
-docker:
-	@echo "Building Osmosis docker image."
-	docker build ./osmosis --tag headway_osmosis
