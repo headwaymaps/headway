@@ -2,3 +2,4 @@
 *.osm.pbf
 *.nominatim.tgz
 *.pgsql.tgz
+**/.DS_Store

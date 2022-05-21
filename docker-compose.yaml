@@ -1,0 +1,17 @@
+services:
+  postgis:
+    image: postgis/postgis
+    environment:
+      POSTGRES_DB: postgis
+      POSTGRES_USER: postgis
+      POSTGRES_PASSWORD: god
+  postgis_deploy:
+    image: headway_postgis_deploy
+  tileserver:
+    image: urbica/martin
+    ports:
+      - "8081:3000"
+    environment:
+      DATABASE_URL: postgres://postgis:god@postgis/postgis
+  photon:
+    image: headway_photon
