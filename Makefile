@@ -67,7 +67,7 @@ list:
 	docker build ./tileserver --tag headway_tileserver
 
 %.valhalla.tar: %.osm.pbf
-	@echo "Building valhalla tiles for $(basename $@)."
+	@echo "Building valhalla tiles for $(basename $(basename $@))."
 	mkdir -p ./.tmp_valhalla
 	rm -rf ./.tmp_valhalla/*
 	cp $(basename $(basename $@)).osm.pbf ./.tmp_valhalla/data.osm.pbf
@@ -75,7 +75,12 @@ list:
 	docker run --rm --memory=8G -v ${PWD}/.tmp_valhalla:/vol headway_valhalla_build
 	cp ./.tmp_valhalla/valhalla_tiles.tar $@
 
-%.tag_images: %.tileserver_image %.photon_image
+%.valhalla_image: %.valhalla.tar
+	@echo "Building valhalla image for $(basename $@)."
+	cp $(basename $@).valhalla.tar ./valhalla/run/tiles.tar
+	docker build ./valhalla/run --tag headway_valhalla_run
+
+%.tag_images: %.tileserver_image %.photon_image %.valhalla_image
 	@echo "Tagging images"
 
 $(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images

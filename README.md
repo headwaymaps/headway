@@ -4,7 +4,15 @@ Headway is a maps stack in a box. Upon completion, you will be able to run `make
 
 ### Status
 
-Headway is currently capable of taking a given city from the list in the Makefile, and generating docker images preloaded with that city's data for a Photon geocoder and an mbtileserver tile server.
+Headway is currently capable of taking a given city from the list in the Makefile and generating docker images preloaded with that city's data for:
+* A photon geocoder
+* An mbtileserver tile server
+* A valhalla image
+
+Currently missing:
+* Frontend
+* Reverse proxy config for docker-compose
+* Kubernetes config for production use
 
 ### License
 

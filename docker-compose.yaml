@@ -1,3 +1,4 @@
+version: "3"
 services:
   mbtileserver:
     image: headway_tileserver
@@ -9,3 +10,9 @@ services:
       - "8081:7777"
   photon:
     image: headway_photon
+  valhalla:
+    image: headway_valhalla_run
+    ports:
+      - "8002:8002"
+    environment:
+      use_tiles_ignore_pbf: "True"
