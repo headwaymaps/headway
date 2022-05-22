@@ -97,9 +97,21 @@ list:
 	mkdir -p ./.tmp_valhalla
 	rm -rf ./.tmp_valhalla/*
 	cp $(basename $(basename $@)).osm.pbf ./.tmp_valhalla/data.osm.pbf
+	docker volume rm headway_valhalla_build || echo "Volume does not exist!"
+	docker volume create headway_valhalla_build
 	docker build ./valhalla/build --tag headway_valhalla_build
-	docker run --rm --memory=6G -v ${PWD}/.tmp_valhalla:/vol headway_valhalla_build
-	cp ./.tmp_valhalla/valhalla_tiles.tar $@
+	docker run --rm --memory=6G \
+		-v headway_valhalla_build:/tmp_vol \
+		-v ${PWD}/.tmp_valhalla:/data_vol \
+		headway_valhalla_build
+	docker ps -aqf "name=headway_valhalla_ephemeral_busybox" > .valhalla_cid
+	bash -c 'docker kill $$(<.valhalla_cid) || echo "container is not running"'
+	bash -c 'docker rm $$(<.valhalla_cid) || echo "container does not exist"'
+	docker run -d --name headway_valhalla_ephemeral_busybox -v headway_valhalla_build:/headway_valhalla_build busybox sleep 1000
+	docker ps -aqf "name=headway_valhalla_ephemeral_busybox" > .valhalla_cid
+	bash -c 'docker cp $$(<.valhalla_cid):/headway_valhalla_build/valhalla_tiles.tar $@'
+	bash -c 'docker kill $$(<.valhalla_cid) || echo "container is not running"'
+	bash -c 'docker rm $$(<.valhalla_cid) || echo "container does not exist"'
 
 %.valhalla_image: %.valhalla.tar
 	@echo "Building valhalla image for $(basename $@)."

@@ -25,10 +25,6 @@ RUN mkdir /build_tiles
 
 COPY build_tiles.sh /build_tiles
 
-RUN chown -R valhalla /build_tiles
-
-USER valhalla
-
 ENTRYPOINT [ "/bin/bash" ]
 
 CMD [ "/build_tiles/build_tiles.sh" ]
