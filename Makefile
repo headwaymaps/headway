@@ -53,9 +53,24 @@ list:
 	@echo "Building MBTiles $(basename $@)"
 	mkdir -p ./.tmp_mbtiles
 	cp $(basename $@).osm.pbf ./.tmp_mbtiles/data.osm.pbf
-	rm -f ./.tmp_mbtiles/output.mbtiles
-	docker run --memory=6G --rm -e JAVA_TOOL_OPTIONS="-Xmx8g" -v "${PWD}/.tmp_mbtiles":/data ghcr.io/onthegomap/planetiler:latest --osm-path=/data/data.osm.pbf --download
-	mv ./.tmp_mbtiles/output.mbtiles $(basename $@).mbtiles
+	docker volume create headway_mbtiles_build || echo "Volume already exists"
+	docker build ./mbtiles/bootstrap --tag headway_mbtiles_bootstrap
+	docker run --rm -v headway_mbtiles_build:/data headway_mbtiles_bootstrap
+	docker run --memory=6G --rm -e JAVA_TOOL_OPTIONS="-Xmx8g" \
+		-v headway_mbtiles_build:/data \
+		-v "${PWD}/.tmp_mbtiles":/input_volume \
+		ghcr.io/onthegomap/planetiler:latest \
+		--osm-path=/input_volume/data.osm.pbf \
+		--download \
+		--force
+	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
+	bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
+	bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
+	docker run -d --name headway_mbtiles_ephemeral_busybox -v headway_mbtiles_build:/headway_mbtiles_build busybox sleep 1000
+	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
+	bash -c 'docker cp $$(<.mbtiles_cid):/headway_mbtiles_build/output.mbtiles $@'
+	bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
+	bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
 
 %.nominatim.tgz: %.osm.pbf
 	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
