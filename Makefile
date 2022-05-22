@@ -52,6 +52,7 @@ list:
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(basename $@)"
 	mkdir -p ./.tmp_mbtiles
+	chmod 777 -R ./.tmp_mbtiles
 	cp $(basename $@).osm.pbf ./.tmp_mbtiles/data.osm.pbf
 	rm -f ./.tmp_mbtiles/output.mbtiles
 	docker run --memory=8G --rm -e JAVA_TOOL_OPTIONS="-Xmx8g" -v "${PWD}/.tmp_mbtiles":/data ghcr.io/onthegomap/planetiler:latest --osm-path=/data/data.osm.pbf --download
@@ -61,6 +62,7 @@ list:
 	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
 	mkdir -p ./.tmp_geocoder
 	rm -rf ./.tmp_geocoder/*
+	chmod 777 -R ./.tmp_geocoder
 	cp $(basename $(basename $@)).osm.pbf ./.tmp_geocoder/data.osm.pbf
 	docker build ./geocoder/nominatim --tag headway_nominatim
 	docker run --memory=8G -v ${PWD}/.tmp_geocoder:/tmp_volume -it --rm \
@@ -84,6 +86,7 @@ list:
 	@echo "Building valhalla tiles for $(basename $(basename $@))."
 	mkdir -p ./.tmp_valhalla
 	rm -rf ./.tmp_valhalla/*
+	chmod 777 -R ./.tmp_valhalla
 	cp $(basename $(basename $@)).osm.pbf ./.tmp_valhalla/data.osm.pbf
 	docker build ./valhalla/build --tag headway_valhalla_build
 	docker run --rm --memory=8G -v ${PWD}/.tmp_valhalla:/vol headway_valhalla_build
@@ -104,9 +107,11 @@ clean:
 	rm -rf ./*.valhalla.tar
 	rm -rf ./*.nominatim.tgz
 	rm -rf ./*.mbtiles
-	rm -rf ./.tmp_mbtiles/*
+	rm -rf ./.tmp_mbtiles/tmp
+	rm -rf ./.tmp_mbtiles/data.osm.pbf
 	rm -rf ./.tmp_valhalla/*
 	rm -rf ./.tmp_geocoder/*
 
 clean_all: clean
 	rm -rf ./*.osm.pbf
+	rm -rf ./.tmp_mbtiles/*
