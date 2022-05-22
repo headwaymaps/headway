@@ -10,8 +10,6 @@ RUN mkdir /build_tiles
 
 RUN chown valhalla /build_tiles
 
-USER valhalla
-
 COPY build_tiles.sh /build_tiles
 
 ENTRYPOINT [ "/bin/bash" ]
