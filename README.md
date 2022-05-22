@@ -16,4 +16,4 @@ Currently missing:
 
 ### License
 
-Headway is available freely under the terms of the AGPLv3. Please consider opening a PR for any enhancements! If you have commercial needs you're absolutely free to look through the build config of Headway to see which underlying software it uses for which parts of the build process. Most of the FOSS maps ecoystem is permissively licensed.
+Headway is available freely under the terms of the AGPLv3. Please consider opening a PR for any enhancements! If you have commercial needs you're absolutely free to look through the build config of Headway to see which underlying software it uses for which parts of the build process. Most of the FOSS maps ecosystem is permissively licensed.
