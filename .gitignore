@@ -4,3 +4,4 @@
 *.valhalla.tar
 *.mbtiles
 **/.DS_Store
+.*_cid

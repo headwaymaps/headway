@@ -23,6 +23,4 @@ useradd -m -p ${NOMINATIM_PASSWORD} nominatim
 
 service postgresql start
 
-sleep 5 # FIXME
-
-sudo -u nominatim sh -c 'pg_dump nominatim > /tmp_volume/nominatim'
+sudo -u nominatim pg_dump nominatim > /tmp_volume/nominatim
