@@ -82,9 +82,11 @@ $(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images
 	@echo "Building $@"
 
 clean:
-	rm -rf ./*.pgsql.tgz
+	rm -rf ./*.valhalla.tar
 	rm -rf ./*.nominatim.tgz
-	rm -rf ./.tmp_osm/*
+	rm -rf ./*.mbtiles
+	rm -rf ./.tmp_mbtiles/*
+	rm -rf ./.tmp_valhalla/*
 	rm -rf ./.tmp_geocoder/*
 
 clean_all: clean
