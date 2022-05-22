@@ -1,5 +1,6 @@
 .tmp_*
 *.osm.pbf
 *.nominatim.tgz
+*.valhalla.tar
 *.mbtiles
 **/.DS_Store

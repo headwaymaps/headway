@@ -40,7 +40,7 @@ list:
 	mkdir -p ./.tmp_mbtiles
 	cp $(basename $@).osm.pbf ./.tmp_mbtiles/data.osm.pbf
 	rm -f ./.tmp_mbtiles/output.mbtiles
-	docker run --memory=8G -e JAVA_TOOL_OPTIONS="-Xmx8g" -v "${PWD}/.tmp_mbtiles":/data ghcr.io/onthegomap/planetiler:latest --osm-path=/data/data.osm.pbf --download
+	docker run --memory=8G --rm -e JAVA_TOOL_OPTIONS="-Xmx8g" -v "${PWD}/.tmp_mbtiles":/data ghcr.io/onthegomap/planetiler:latest --osm-path=/data/data.osm.pbf --download
 	mv ./.tmp_mbtiles/output.mbtiles $(basename $@).mbtiles
 
 %.nominatim.tgz: %.osm.pbf
@@ -65,6 +65,15 @@ list:
 	@echo "Building tileserver image for $(basename $@)."
 	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
 	docker build ./tileserver --tag headway_tileserver
+
+%.valhalla.tar: %.osm.pbf
+	@echo "Building valhalla tiles for $(basename $@)."
+	mkdir -p ./.tmp_valhalla
+	rm -rf ./.tmp_valhalla/*
+	cp $(basename $(basename $@)).osm.pbf ./.tmp_valhalla/data.osm.pbf
+	docker build ./valhalla/build --tag headway_valhalla_build
+	docker run --rm --memory=8G -v ${PWD}/.tmp_valhalla:/vol headway_valhalla_build
+	cp ./.tmp_valhalla/valhalla_tiles.tar $@
 
 %.tag_images: %.tileserver_image %.photon_image
 	@echo "Tagging images"
