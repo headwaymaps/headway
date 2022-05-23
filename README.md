@@ -18,6 +18,12 @@ Currently missing:
 
 Headway is not currently usable as a replacement for Google or Apple maps, but ultimately that is the goal!
 
+### Known Issues
+
+There are a few issues I want to track specifically:
+* Headway requires an amd64 machine for building and will not work on ARM machines due to what appears to be a bug in Qemu that shows up regularly during the valhalla tile building step.
+* The build process can occasionally stall and require either a large amount of waiting or an explicit `docker kill`.
+
 ### Architecture
 
 Headway is designed to make it as easy as possible to bring up a full maps stack for a medium-sized metro area, so it generally eschews more complicated and scalable technologies and tries to do the simplest thing. For example, if you run `make Denver` you will end up with several enormous docker images pre-loaded with data for Denver. This is generally not a good way to do things, but it greatly simplifies zero-downtime data updates because you can just deploy a new set of containers instead of trying to update the volume that all the data lives on without causing issues to running containers.
