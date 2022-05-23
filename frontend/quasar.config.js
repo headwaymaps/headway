@@ -98,6 +98,10 @@ module.exports = configure(function (/* ctx */) {
         '/fonts': {
           target: 'http://localhost:8080',
           changeOrigin: true,
+        },
+        '/photon': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
         }
       }
     },
