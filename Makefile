@@ -136,7 +136,7 @@ list:
 %.tag_images: %.tileserver_image %.photon_image %.valhalla_image
 	@echo "Tagging images"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images
+$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.valhalla.tar %.tag_images
 	@echo "Building $@"
 
 clean:
