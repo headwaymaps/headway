@@ -13,4 +13,4 @@ services:
   nginx:
     image: headway_nginx
     ports:
-    - "8080:8080"
+    - "${NGINX_PORT}:${NGINX_PORT}"
