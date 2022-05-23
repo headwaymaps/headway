@@ -133,10 +133,13 @@ list:
 	cp $(basename $@).valhalla.tar ./valhalla/run/tiles.tar
 	docker build ./valhalla/run --tag headway_valhalla_run
 
-%.tag_images: %.tileserver_image %.photon_image %.valhalla_image
+nginx_image:
+	docker build ./web --tag headway_nginx
+
+%.tag_images: %.tileserver_image %.photon_image %.valhalla_image nginx_image
 	@echo "Tagging images"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.valhalla.tar %.tag_images
+$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.valhalla.tar %.tag_images nginx_image
 	@echo "Building $@"
 
 clean:

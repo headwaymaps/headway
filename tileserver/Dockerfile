@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see https://www.gnu.org/licenses/.
 
-FROM consbio/mbtileserver:0.8.2
+FROM maptiler/tileserver-gl
 
-RUN mkdir /tiles
-
-COPY tiles.mbtiles /tiles
+COPY tiles.mbtiles /data

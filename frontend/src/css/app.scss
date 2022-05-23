@@ -1,1 +1,10 @@
 // app global css in SCSS form
+
+.maplibregl-map {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+}
+
+html { height: 100%; }
+body {height: 100%; }
