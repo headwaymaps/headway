@@ -4,10 +4,6 @@ services:
     image: headway_tileserver
     environment:
       PORT: 8000
-      TILE_DIR: "/tiles"
-      ROOT_URL: "/tiles"
-    ports:
-    - "8000:8000"
   photon:
     image: headway_photon
   valhalla:

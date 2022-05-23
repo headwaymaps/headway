@@ -2,15 +2,6 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-        />
-
         <q-input
           class="mainSearchBar"
           label="Search"
@@ -32,23 +23,8 @@
             </q-item>
           </q-menu>
         </q-input>
-
-        <div>Quasar v{{ $q.version }}</div>
       </q-toolbar>
     </q-header>
-
-    <q-drawer
-      v-model="leftDrawerOpen"
-      bordered
-    >
-      <q-list>
-        <q-item-label
-          header
-        >
-          Essential Links
-        </q-item-label>
-      </q-list>
-    </q-drawer>
 
     <q-page-container>
       <router-view />
@@ -61,6 +37,7 @@ import { defineComponent, reactive, ref, Ref } from 'vue';
 import { AutocompleteResult } from 'components/models'
 
 const autocompleteOptions: Ref<AutocompleteResult[]> = ref([])
+const searchBarText = ref("")
 
 export default defineComponent({
   name: 'MainLayout',
@@ -69,7 +46,9 @@ export default defineComponent({
   },
 
   methods: {
-    async updateAutocomplete(value: string) {
+    async updateAutocomplete(value_raw: string | number | null) {
+      const value = `${value_raw}`
+      searchBarText.value = value;
       const response = await fetch(`/photon/api?q=${encodeURIComponent(value)}&limit=10`)
       if (response.status != 200) {
         autocompleteOptions.value = []
@@ -123,7 +102,6 @@ export default defineComponent({
 
   setup () {
     const leftDrawerOpen = ref(false)
-    const searchBarText = ref("")
 
     return {
       leftDrawerOpen,
