@@ -6,7 +6,7 @@ Headway is a maps stack in a box. Upon completion, you will be able to run `make
 
 Headway is currently capable of taking a given city from the list in the Makefile and generating docker images preloaded with that city's data for:
 * A photon geocoder
-* An mbtileserver tile server
+* A tileserver-gl tile server
 * A valhalla image
 
 Work-in-progress:
@@ -34,4 +34,4 @@ Processing GIS data is resource-intensive, even when you only care about a singl
 
 ### License
 
-Headway is available freely under the terms of the AGPLv3. Please consider opening a PR for any enhancements! If you have commercial needs you're absolutely free to look through the build config of Headway to see which underlying software it uses for which parts of the build process. Most of the FOSS maps ecosystem is permissively licensed.
+Headway is available freely under the terms of the Apache License, verion 2.0. Please consider opening a PR for any enhancements or bugfixes!
