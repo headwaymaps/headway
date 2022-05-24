@@ -9,11 +9,17 @@ Headway is currently capable of taking a given city from the list in the Makefil
 * A tileserver-gl tile server
 * A valhalla image
 
-Work-in-progress:
-* Frontend
+The frontend is a work in progress. It is currently capable of:
+* Showing base map tiles
+* Letting you search for a place or an address (with autocomplete)
 
-Currently missing:
-* Reverse proxy config for docker-compose
+It is not capable of:
+* Open-ended search (show all matches on the map or in a list)
+* Dropping a pin on a selected POI and surfacing info about it
+* Directions/routing
+
+The project is also missing:
+* A way to download GTFS feeds (maybe from [here](https://database.mobilitydata.org/)?)
 * Kubernetes config for production use
 
 Headway is not currently usable as a replacement for Google or Apple maps, but ultimately that is the goal!
@@ -21,7 +27,7 @@ Headway is not currently usable as a replacement for Google or Apple maps, but u
 ### Known Issues
 
 There are a few issues I want to track specifically:
-* Headway requires an amd64 machine for building and will not work on ARM machines due to what appears to be a bug in Qemu that shows up regularly during the valhalla tile building step.
+* Headway requires an amd64 machine for building and will not work on ARM machines like Raspberry Pis or machines running on Apple silicon. There appears to be a bug in Qemu that shows up regularly during the valhalla tile building step.
 * The build process can occasionally stall and require either a large amount of waiting or an explicit `docker kill`.
 
 ### Architecture
@@ -30,7 +36,7 @@ Headway is designed to make it as easy as possible to bring up a full maps stack
 
 ### System Requirements
 
-Processing GIS data is resource-intensive, even when you only care about a single metro-area. The machine used for generation of Docker images needs to be reasonably well-equipped. The main requirement is 8GB of memory, but you should also have plenty of free disk space. Even if the OpenStreetMap extract for your metro area is only a few hundred megabytes, the search index for the geocoder will be many times that, and Headway also needs to create basemap tiles and routing tiles since the raw .osm.pbf file is too compact a representation to be useful for running a server. Basemap tile generation also requires Headway to download a map of all of the water on the planet, which takes up about a gigabyte of storage. You can also expect intermediate data files and a few superfluous copies to sit around on your hard drive taking up space. Estimates are hard to give because the size of the OpenStreetMap database is constantly increasing but it would be inadvisable to run e.g. `make Paris` unless you're okay with Headway creating about 50GB of files. Plan ahead to avoid disk pressure.
+Processing GIS data is resource intensive, even when you only care about a single metro area. The machine used for generation of Docker images needs to be reasonably well equipped. The main requirement is 8GB of memory, but you should also have plenty of free disk space. Even if the OpenStreetMap extract for your metro area is only a few hundred megabytes, the search index for the geocoder will be many times that, and Headway also needs to create basemap tiles and routing tiles since the raw .osm.pbf file is too compact a representation to be useful for running a server. Basemap tile generation also requires Headway to download a map of all of the water on the planet, which takes up about a gigabyte of storage. You can also expect intermediate data files and a few superfluous copies to sit around on your hard drive taking up space. Estimates are hard to give because the size of the OpenStreetMap database is constantly increasing but it would be inadvisable to run e.g. `make Paris` unless you're okay with Headway creating about 50GB of files. Plan ahead to avoid disk pressure.
 
 ### License
 
