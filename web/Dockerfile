@@ -29,4 +29,7 @@ RUN quasar build
 RUN cp -r /frontend/dist/spa/* /usr/share/nginx/html
 
 COPY nginx.conf /etc/nginx/nginx.conf
-# COPY mime.types /etc/nginx/mime.types
+
+COPY .base_url /etc/nginx/
+
+RUN bash -c 'sed -i "s^__HEADWAY_BASE_URL__^$(</etc/nginx/.base_url)^" /etc/nginx/nginx.conf'

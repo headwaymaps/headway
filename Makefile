@@ -29,6 +29,10 @@ help:
 list:
 	@echo ${CITIES}
 
+.base_url:
+	@echo "Using default base URL, override this if you want to host this for the open internet!"
+	echo 'http://localhost:8080' > $@
+
 %.osm.pbf:
 	@echo "Downloading $@ from BBBike.";
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
@@ -118,7 +122,8 @@ list:
 	cp $(basename $@).valhalla.tar ./valhalla/run/tiles.tar
 	docker build ./valhalla/run --tag headway_valhalla_run
 
-nginx_image:
+nginx_image: .base_url
+	cp .base_url web/
 	docker build ./web --tag headway_nginx
 
 %.tag_images: %.tileserver_image %.photon_image %.valhalla_image nginx_image
@@ -135,12 +140,14 @@ clean:
 	rm -rf ./.tmp_mbtiles/data.osm.pbf
 	rm -rf ./.tmp_valhalla/*
 	rm -rf ./.tmp_geocoder/*
+	rm -rf ./.*_cid
 
 %.up: %
 	docker-compose kill;
 	docker-compose down;
 	docker-compose --env-file .env-80 up -d
 
+# Don't clean base URL because that's a user config option.
 clean_all: clean
 	rm -rf ./*.osm.pbf
 	rm -rf ./.tmp_mbtiles/*
