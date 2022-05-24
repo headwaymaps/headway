@@ -92,15 +92,15 @@ module.exports = configure(function (/* ctx */) {
       proxy: {
         // proxy all requests starting with /api to jsonplaceholder
         '/styles': {
-          target: 'http://localhost:8080',
+          target: 'http://maps.ellenhp.me',
           changeOrigin: true,
         },
         '/fonts': {
-          target: 'http://localhost:8080',
+          target: 'http://maps.ellenhp.me',
           changeOrigin: true,
         },
         '/photon': {
-          target: 'http://localhost:8080',
+          target: 'http://maps.ellenhp.me',
           changeOrigin: true,
         }
       }
