@@ -143,9 +143,9 @@ clean:
 	rm -rf ./.*_cid
 
 %.up: %
-	docker-compose kill;
-	docker-compose down;
-	docker-compose --env-file .env-80 up -d
+	docker-compose kill || echo "Containers not up"
+	docker-compose down || echo "Containers dont exist"
+	docker-compose up -d
 
 # Don't clean base URL because that's a user config option.
 clean_all: clean
