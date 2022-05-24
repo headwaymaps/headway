@@ -1,19 +1,24 @@
 // app global css in SCSS form
 
 .maplibregl-map {
-    position: fixed;
-    width: 100vw;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-    top: 0px !important;
-    left: 0px !important;
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  top: 0px !important;
+  left: 0px !important;
 }
 
 .mainSearchBar {
-    flex: 1;
-    padding: 8px;
+  flex: 1;
+  padding: 8px;
+  max-width: 500px;
 }
 
-html { height: 100%; }
-body {height: 100%; }
+html {
+  height: 100%;
+}
+body {
+  height: 100%;
+}

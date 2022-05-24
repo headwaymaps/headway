@@ -1,7 +1,6 @@
 <template>
   <q-page class="row items-center justify-evenly">
-    <base-map
-    ></base-map>
+    <base-map></base-map>
   </q-page>
 </template>
 
