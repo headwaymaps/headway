@@ -90,17 +90,20 @@ module.exports = configure(function (/* ctx */) {
       // https: true
       open: true, // opens browser window automatically
       proxy: {
-        // proxy all requests starting with /api to jsonplaceholder
         '/styles': {
-          target: 'http://maps.ellenhp.me',
+          target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },
         '/fonts': {
-          target: 'http://maps.ellenhp.me',
+          target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },
         '/photon': {
-          target: 'http://maps.ellenhp.me',
+          target: 'https://maps.ellenhp.me',
+          changeOrigin: true,
+        },
+        '/bbox.txt': {
+          target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         }
       }
