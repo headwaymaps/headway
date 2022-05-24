@@ -136,6 +136,11 @@ clean:
 	rm -rf ./.tmp_valhalla/*
 	rm -rf ./.tmp_geocoder/*
 
+%.up: %
+	docker-compose kill;
+	docker-compose down;
+	docker-compose --env-file .env-80 up -d
+
 clean_all: clean
 	rm -rf ./*.osm.pbf
 	rm -rf ./.tmp_mbtiles/*
