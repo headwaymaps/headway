@@ -20,6 +20,7 @@ It is not capable of:
 
 The project is also missing:
 * A way to download GTFS feeds (maybe from [here](https://database.mobilitydata.org/)?)
+* Steps to download/build elevation tiles for valhalla
 * Kubernetes config for production use
 
 Headway is not currently usable as a replacement for Google or Apple maps, but ultimately that is the goal!
