@@ -32,7 +32,7 @@ list:
 %.osm.pbf:
 	@echo "Downloading $@ from BBBike.";
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
-	wget -O $@ "https://download.bbbike.org/osm/bbbike/$(basename $(basename $@))/$@" || rm $@
+	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(basename $(basename $@))/$@" || rm $@
 
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(basename $@)"
