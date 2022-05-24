@@ -29,6 +29,8 @@
         v-for="item in autocompleteOptions"
         clickable
         v-on:click="() => updatePoi(item)"
+        v-on:mouseenter="() => updateHoveredPoi(item)"
+        v-on:mouseleave="() => updateHoveredPoi(undefined)"
       >
         <q-item-section>
           <q-item-label>{{ item.name }}</q-item-label>
@@ -114,6 +116,7 @@ const isAndroid = /(android)/i.test(navigator.userAgent);
 const autocompleteOptions: Ref<POI[]> = ref([]);
 
 var poi: POI | null | undefined = null;
+var poiHovered: POI | null | undefined = null;
 
 export default defineComponent({
   name: 'BaseMap',
@@ -137,16 +140,24 @@ export default defineComponent({
         poi = null;
         this.$emit('poi_selected', poi);
       }
+      if (null !== poiHovered) {
+        poiHovered = null;
+        this.$emit('poi_hovered', poiHovered);
+      }
       if (!isAndroid) {
         setTimeout(() => updateAutocomplete());
       }
     },
     clearAutocomplete() {
       this.$refs.autoCompleteMenu.hide();
+      inputText.value = '';
       if (null !== poi) {
         poi = null;
-        inputText.value = '';
         this.$emit('poi_selected', poi);
+      }
+      if (null !== poiHovered) {
+        poiHovered = null;
+        this.$emit('poi_selected', poiHovered);
       }
     },
     updatePoi(item?: POI) {
@@ -161,8 +172,14 @@ export default defineComponent({
         this.$emit('poi_selected', poi);
       }
     },
+    updateHoveredPoi(item?: POI) {
+      if (item !== poiHovered) {
+        poiHovered = item;
+        this.$emit('poi_hovered', poiHovered);
+      }
+    },
   },
-  emits: ['poi_selected'],
+  emits: ['poi_selected', 'poi_hovered'],
   mounted: function () {
     inputField.value = this.$refs.autoCompleteInput;
   },
