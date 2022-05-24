@@ -6,3 +6,4 @@
 **/.DS_Store
 .*_cid
 .base_url
+*.bbox

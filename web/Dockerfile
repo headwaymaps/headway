@@ -32,4 +32,6 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 COPY .base_url /etc/nginx/
 
+COPY bbox.txt /usr/share/nginx/html/bbox.txt
+
 RUN bash -c 'sed -i "s^__HEADWAY_BASE_URL__^$(</etc/nginx/.base_url)^" /etc/nginx/nginx.conf'

@@ -38,6 +38,11 @@ list:
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(basename $(basename $@))/$@" || rm $@
 
+%.bbox:
+	@echo "Extracting bounding box for $(basename $@)"
+	grep "$(basename $@):" bboxes.csv > $@
+	sed -i 's/$(basename $@)://' $@
+
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(basename $@)"
 	mkdir -p ./.tmp_mbtiles
@@ -122,14 +127,15 @@ list:
 	cp $(basename $@).valhalla.tar ./valhalla/run/tiles.tar
 	docker build ./valhalla/run --tag headway_valhalla_run
 
-nginx_image: .base_url
+%.nginx_image: .base_url %.bbox
 	cp .base_url web/
+	cp $(basename $@).bbox web/bbox.txt
 	docker build ./web --tag headway_nginx
 
-%.tag_images: %.tileserver_image %.photon_image %.valhalla_image nginx_image
+%.tag_images: %.tileserver_image %.photon_image %.valhalla_image %.nginx_image
 	@echo "Tagging images"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.valhalla.tar %.tag_images nginx_image
+$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.valhalla.tar %.tag_images
 	@echo "Building $@"
 
 clean:
