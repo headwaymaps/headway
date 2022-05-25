@@ -16,6 +16,19 @@
   max-width: 500px;
 }
 
+.mainContainer {
+  // display: flex;
+}
+
+.overMap {
+  z-index: 100;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 500px;
+  transform: translate(-50%);
+}
+
 html {
   height: 100%;
 }

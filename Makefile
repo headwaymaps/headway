@@ -78,8 +78,8 @@ list:
 		-v headway_geocoder_build:/tmp_volume \
 		-v "${PWD}/.tmp_geocoder":/data_volume \
 		-e PBF_PATH=/data_volume/data.osm.pbf \
-		--name nominatim \
-		headway_nominatim
+		headway_nominatim \
+		/app/import_wait_dump.sh
 	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
 	bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
 	bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'

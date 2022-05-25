@@ -8,9 +8,10 @@
         ></search-box>
       </q-toolbar>
     </q-header>
-    <q-page-container>
-      <base-map ref="baseMap"></base-map>
-    </q-page-container>
+    <div class="mainContainer">
+      <router-view></router-view>
+      <base-map></base-map>
+    </div>
   </q-layout>
 </template>
 
