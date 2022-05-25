@@ -4,11 +4,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import maplibregl, { Marker, Popup } from 'maplibre-gl';
+import maplibregl, { LngLatBoundsLike, Marker, Popup } from 'maplibre-gl';
 import { LongLat } from './models';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-var map: maplibregl.Map | null = null;
+export var map: maplibregl.Map | null = null;
 
 async function loadMap() {
   const response = await fetch('/bbox.txt');
@@ -27,7 +27,7 @@ async function loadMap() {
   const scaleFactor = 1.0 / Math.cos((3.14159 / 180) * center[1]);
   const extents = [bounds[2] - bounds[0], bounds[3] - bounds[1]];
   const maxExtent = Math.max(...extents) * scaleFactor;
-  const maxBounds = [
+  const maxBounds: LngLatBoundsLike = [
     center[0] - maxExtent,
     center[1] - maxExtent,
     center[0] + maxExtent,

@@ -18,7 +18,7 @@
 import { POI } from 'src/components/models';
 import { defineComponent, ref } from 'vue';
 import SearchBox from '../components/SearchBox.vue';
-import BaseMap from '../components/BaseMap.vue';
+import BaseMap, { map } from '../components/BaseMap.vue';
 import { Marker } from 'maplibre-gl';
 
 var markers: Marker[] = [];
@@ -35,30 +35,29 @@ export default defineComponent({
       hoverMarkers = [];
       markers.forEach((marker) => marker.remove());
       markers = [];
-      if (poi?.position) {
-        this.$refs.baseMap.flyTo(poi?.position, 16);
-        markers.push(
-          this.$refs.baseMap.addToMap(
-            new Marker({ color: '#111111' }).setLngLat([
-              poi.position.long,
-              poi.position.lat,
-            ])
-          )
-        );
+      if (poi?.position && map) {
+        map.flyTo({
+          center: [poi.position.long, poi.position.lat],
+          zoom: 16,
+        });
+        const marker = new Marker({ color: '#111111' }).setLngLat([
+          poi.position.long,
+          poi.position.lat,
+        ]);
+        marker.addTo(map);
+        markers.push(marker);
       }
     },
     poiHovered: function (poi?: POI) {
       hoverMarkers.forEach((marker) => marker.remove());
       hoverMarkers = [];
-      if (poi?.position) {
-        hoverMarkers.push(
-          this.$refs.baseMap.addToMap(
-            new Marker({ color: '#11111155' }).setLngLat([
-              poi.position.long,
-              poi.position.lat,
-            ])
-          )
-        );
+      if (poi?.position && map) {
+        const marker = new Marker({ color: '#11111155' }).setLngLat([
+          poi.position.long,
+          poi.position.lat,
+        ]);
+        marker.addTo(map);
+        hoverMarkers.push(marker);
       }
     },
   },

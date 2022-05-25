@@ -1,52 +1,51 @@
 <template>
-  <div>
-    <q-input
-      ref="autoCompleteInput"
-      id="autoCompleteInput"
-      class="mainSearchBar"
-      label="Search"
-      label-color="white"
-      v-model="inputText"
-      :clearable="true"
-      :input-style="{ color: 'white' }"
-      :outlined="true"
-      :debounce="0"
-      v-on:clear="clearAutocomplete"
-      v-on:beforeinput="updateAutocompleteEventBeforeInput"
-      v-on:update:model-value="updateAutocompleteEventRawString"
+  <q-input
+    ref="autoCompleteInput"
+    id="autoCompleteInput"
+    class="mainSearchBar"
+    label="Search"
+    label-color="white"
+    v-model="inputText"
+    :clearable="true"
+    :input-style="{ color: 'white' }"
+    :outlined="true"
+    :debounce="0"
+    v-on:clear="clearAutocomplete"
+    v-on:beforeinput="updateAutocompleteEventBeforeInput"
+    v-on:update:model-value="updateAutocompleteEventRawString"
+  >
+  </q-input>
+  <q-menu
+    persistent
+    ref="autoCompleteMenu"
+    :no-focus="true"
+    :no-refocus="true"
+    :target="inputField"
+    v-show="menuShowing"
+  >
+    <q-item
+      :key="item.key"
+      v-for="item in autocompleteOptions"
+      clickable
+      v-on:click="() => updatePoi(item)"
+      v-on:mouseenter="() => updateHoveredPoi(item)"
+      v-on:mouseleave="() => updateHoveredPoi(undefined)"
     >
-    </q-input>
-    <q-menu
-      persistent
-      ref="autoCompleteMenu"
-      :no-focus="true"
-      :no-refocus="true"
-      :target="inputField"
-      v-show="menuShowing"
-    >
-      <q-item
-        :key="item.key"
-        v-for="item in autocompleteOptions"
-        clickable
-        v-on:click="() => updatePoi(item)"
-        v-on:mouseenter="() => updateHoveredPoi(item)"
-        v-on:mouseleave="() => updateHoveredPoi(undefined)"
-      >
-        <q-item-section>
-          <q-item-label>{{ item.name }}</q-item-label>
-          <q-item-label v-if="item.caption" caption>{{
-            item.caption
-          }}</q-item-label>
-        </q-item-section>
-      </q-item>
-    </q-menu>
-  </div>
+      <q-item-section>
+        <q-item-label>{{ item.name }}</q-item-label>
+        <q-item-label v-if="item.caption" caption>{{
+          item.caption
+        }}</q-item-label>
+      </q-item-section>
+    </q-item>
+  </q-menu>
 </template>
 
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
 import { LongLat, POI } from 'components/models';
 import { Event } from 'maplibre-gl';
+import { QInput, QMenu } from 'quasar';
 
 const inputText = ref('');
 const inputField = ref(undefined);
@@ -117,13 +116,14 @@ const autocompleteOptions: Ref<POI[]> = ref([]);
 
 var poi: POI | null | undefined = null;
 var poiHovered: POI | null | undefined = null;
+var autoCompleteMenu: typeof QMenu | null = null;
 
 export default defineComponent({
   name: 'BaseMap',
   methods: {
     updateAutocompleteEventBeforeInput(event: Event) {
       const inputEvent = event as InputEvent;
-      this.$refs.autoCompleteMenu.show();
+      autoCompleteMenu?.show();
       if (null !== poi) {
         poi = null;
         this.$emit('poi_selected', poi);
@@ -135,7 +135,7 @@ export default defineComponent({
       }
     },
     async updateAutocompleteEventRawString() {
-      this.$refs.autoCompleteMenu.show();
+      autoCompleteMenu?.show();
       if (null !== poi) {
         poi = null;
         this.$emit('poi_selected', poi);
@@ -149,7 +149,7 @@ export default defineComponent({
       }
     },
     clearAutocomplete() {
-      this.$refs.autoCompleteMenu.hide();
+      autoCompleteMenu?.hide();
       inputText.value = '';
       if (null !== poi) {
         poi = null;
@@ -168,7 +168,7 @@ export default defineComponent({
         } else {
           inputText.value = '';
         }
-        this.$refs.autoCompleteMenu.hide();
+        autoCompleteMenu?.hide();
         this.$emit('poi_selected', poi);
       }
     },
@@ -181,7 +181,9 @@ export default defineComponent({
   },
   emits: ['poi_selected', 'poi_hovered'],
   mounted: function () {
-    inputField.value = this.$refs.autoCompleteInput;
+    autoCompleteMenu = this.$refs.autoCompleteMenu as typeof QMenu;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    inputField.value = this.$refs.autoCompleteInput as any;
   },
   setup: function () {
     return { inputText, inputField, autocompleteOptions, menuShowing };
