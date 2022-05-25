@@ -4,7 +4,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import maplibregl, { Marker } from 'maplibre-gl';
+import maplibregl, { Marker, Popup } from 'maplibre-gl';
 import { LongLat } from './models';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -48,12 +48,11 @@ export default defineComponent({
     flyTo(location: LongLat, zoom: number) {
       map?.flyTo({ center: [location.long, location.lat], zoom: zoom });
     },
-    addMarker(marker: Marker) {
+    addToMap(item: Marker | Popup) {
       if (map) {
-        console.log('add marker to map');
-        marker.addTo(map);
+        item.addTo(map);
       }
-      return marker;
+      return item;
     },
   },
   mounted: async function () {

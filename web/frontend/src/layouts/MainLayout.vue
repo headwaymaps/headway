@@ -38,23 +38,21 @@ export default defineComponent({
       if (poi?.position) {
         this.$refs.baseMap.flyTo(poi?.position, 16);
         markers.push(
-          this.$refs.baseMap.addMarker(
+          this.$refs.baseMap.addToMap(
             new Marker({ color: '#111111' }).setLngLat([
               poi.position.long,
               poi.position.lat,
             ])
           )
         );
-        console.log(markers);
       }
     },
     poiHovered: function (poi?: POI) {
-      console.log('hello!');
       hoverMarkers.forEach((marker) => marker.remove());
       hoverMarkers = [];
       if (poi?.position) {
         hoverMarkers.push(
-          this.$refs.baseMap.addMarker(
+          this.$refs.baseMap.addToMap(
             new Marker({ color: '#11111155' }).setLngLat([
               poi.position.long,
               poi.position.lat,
