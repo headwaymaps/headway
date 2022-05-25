@@ -45,7 +45,7 @@
 import { defineComponent, Ref, ref } from 'vue';
 import { LongLat, POI } from 'components/models';
 import { Event } from 'maplibre-gl';
-import { QInput, QMenu } from 'quasar';
+import { QMenu } from 'quasar';
 
 const inputText = ref('');
 const inputField = ref(undefined);
