@@ -8,7 +8,13 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/place/:osm_id',
     component: () => import('layouts/MainLayout.vue'),
-    children: [{ path: '', component: () => import('pages/PlacePage.vue') }],
+    children: [
+      {
+        path: '/place/:osm_id',
+        props: true,
+        component: () => import('pages/PlacePage.vue'),
+      },
+    ],
   },
 
   // Always leave this as last one,

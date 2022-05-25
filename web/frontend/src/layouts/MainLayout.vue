@@ -3,13 +3,14 @@
     <q-header elevated>
       <q-toolbar>
         <search-box
+          ref="searchBox"
           v-on:poi_selected="poiSelected"
           v-on:poi_hovered="poiHovered"
         ></search-box>
       </q-toolbar>
     </q-header>
     <div class="mainContainer">
-      <router-view></router-view>
+      <router-view v-on:loadedPoi="propagatePoiSelection"></router-view>
       <base-map></base-map>
     </div>
   </q-layout>
@@ -18,41 +19,43 @@
 <script lang="ts">
 import { POI } from 'src/components/models';
 import { defineComponent, ref } from 'vue';
-import SearchBox from '../components/SearchBox.vue';
-import BaseMap, { map } from '../components/BaseMap.vue';
+import SearchBox from 'src/components/SearchBox.vue';
+import BaseMap, { activeMarkers, map } from 'src/components/BaseMap.vue';
 import { Marker } from 'maplibre-gl';
 
-var markers: Marker[] = [];
 var hoverMarkers: Marker[] = [];
 
 export default defineComponent({
   name: 'MainLayout',
 
   components: { SearchBox, BaseMap },
-
+  props: {
+    osm_id: String,
+  },
   methods: {
+    propagatePoiSelection: function (poi?: POI) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this.$refs.searchBox as any).setPoi(poi);
+    },
     poiSelected: function (poi?: POI) {
+      activeMarkers.forEach((marker) => marker.remove());
+      activeMarkers.length = 0;
       hoverMarkers.forEach((marker) => marker.remove());
       hoverMarkers = [];
-      markers.forEach((marker) => marker.remove());
-      markers = [];
-      if (poi?.position && map) {
-        map.flyTo({
-          center: [poi.position.long, poi.position.lat],
-          zoom: 16,
-        });
-        const marker = new Marker({ color: '#111111' }).setLngLat([
-          poi.position.long,
-          poi.position.lat,
-        ]);
-        marker.addTo(map);
-        markers.push(marker);
+      if (poi?.id) {
+        this.$router.push(`/place/${poi?.id}`);
+      } else {
+        this.$router.push('/');
       }
+      setTimeout(() => {
+        hoverMarkers.forEach((marker) => marker.remove());
+        hoverMarkers = [];
+      }, 1000);
     },
     poiHovered: function (poi?: POI) {
       hoverMarkers.forEach((marker) => marker.remove());
       hoverMarkers = [];
-      if (poi?.position && map) {
+      if (poi?.position && map && !this.$props.osm_id) {
         const marker = new Marker({ color: '#11111155' }).setLngLat([
           poi.position.long,
           poi.position.lat,
