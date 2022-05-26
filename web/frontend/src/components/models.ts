@@ -29,7 +29,7 @@ export function localizeAddress(
     return `${houseNumber} ${road}`;
   }
   if (road) {
-    return `${houseNumber} ${road}`;
+    return `${road}`;
   }
   if (neighborhood && city) {
     return `${neighborhood}, ${city}`;
