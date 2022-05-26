@@ -95,6 +95,7 @@ async function updateAutocomplete(target?: HTMLInputElement) {
       key: feature.properties.osm_id,
       position: position,
       id: feature?.properties?.osm_id,
+      type: feature?.properties?.osm_type,
     });
   }
   autocompleteOptions.value = options;

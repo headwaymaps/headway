@@ -22,15 +22,17 @@ import { Router } from 'vue-router';
 
 var poi: Ref<POI | undefined> = ref(undefined);
 
-async function loadPlacePage(router: Router, osm_id: number) {
-  router.replace(`/place/${osm_id}`);
+async function loadPlacePage(router: Router, osm_id_with_type: string) {
+  router.replace(`/place/${osm_id_with_type}`);
 
   activeMarkers.forEach((marker) => marker.remove());
   activeMarkers.length = 0;
 
-  const response = await fetch(`/nominatim/lookup/N${osm_id}`);
+  const response = await fetch(`/nominatim/lookup/${osm_id_with_type}`);
   if (response.status != 200) {
-    console.error(`Could not fetch POI data for ${osm_id}. Is nominatim down?`);
+    console.error(
+      `Could not fetch POI data for ${osm_id_with_type}. Is nominatim down?`
+    );
     return;
   }
   const text = await response.text();
@@ -50,16 +52,18 @@ async function loadPlacePage(router: Router, osm_id: number) {
     .item(0)?.textContent;
   const road = xmlPoi.getElementsByTagName('road').item(0)?.textContent;
   const amenity = xmlPoi.getElementsByTagName('amenity').item(0)?.textContent;
+  const leisure = xmlPoi.getElementsByTagName('leisure').item(0)?.textContent;
   const suburb = xmlPoi.getElementsByTagName('suburb').item(0)?.textContent;
   const city = xmlPoi.getElementsByTagName('city').item(0)?.textContent;
 
   const address = localizeAddress(houseNumber, road, suburb, city);
 
   poi.value = {
-    name: amenity,
+    name: amenity ? amenity : leisure,
     address: address,
     position: position,
-    id: osm_id,
+    id: parseInt(osm_id_with_type.substring(1)),
+    type: osm_id_with_type.substring(0, 1),
   };
 
   map?.flyTo({
@@ -104,7 +108,7 @@ export default defineComponent({
   },
   mounted: async function () {
     setTimeout(async () => {
-      await loadPlacePage(this.$router, parseInt(this.$props.osm_id as string));
+      await loadPlacePage(this.$router, this.$props.osm_id as string);
       this.$emit('loadedPoi', poi.value);
     });
   },

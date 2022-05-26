@@ -43,7 +43,7 @@ export default defineComponent({
       hoverMarkers.forEach((marker) => marker.remove());
       hoverMarkers = [];
       if (poi?.id) {
-        this.$router.push(`/place/${poi?.id}`);
+        this.$router.push(`/place/${poi?.type}${poi?.id}`);
       } else {
         this.$router.push('/');
       }

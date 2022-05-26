@@ -4,6 +4,7 @@ export interface POI {
   address?: string | null;
   position?: LongLat;
   id?: number;
+  type?: string | null;
 }
 
 export interface LongLat {
