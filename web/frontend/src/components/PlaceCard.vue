@@ -17,18 +17,42 @@
           v-on:click="$emit('close')"
         />
       </div>
+      <div class="placeCardSection">
+        <q-chip
+          icon="directions_bus"
+          clickable
+          v-on:click="
+            $router.push(`/directions/transit/${canonicalizePoi($props.poi)}`)
+          "
+        >
+          Bus there
+        </q-chip>
+        <q-chip
+          icon="directions_bike"
+          clickable
+          v-on:click="
+            $router.push(`/directions/bicycle/${canonicalizePoi($props.poi)}`)
+          "
+        >
+          Bike there
+        </q-chip>
+      </div>
     </q-card-section>
   </q-card>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { canonicalizePoi } from './models';
 
 export default defineComponent({
   name: 'PlaceCard',
   emits: ['close'],
   props: {
     poi: Object,
+  },
+  methods: {
+    canonicalizePoi,
   },
   components: {},
 });

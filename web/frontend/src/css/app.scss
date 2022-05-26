@@ -12,9 +12,12 @@
 }
 
 .mainSearchBar {
-  flex: 1;
   padding: 8px;
   width: 300px;
+}
+
+.placeCardSection {
+  margin-top: 8px;
 }
 
 .placeCardCloseButton {
@@ -28,6 +31,18 @@
 }
 
 .overMap {
+  z-index: 100;
+  position: fixed;
+}
+
+.topLeftCard {
+  z-index: 101;
+  position: fixed;
+  margin-top: 12px;
+  margin-left: 12px;
+}
+
+.bottomCard {
   z-index: 100;
   position: fixed;
   bottom: 0;

@@ -1,5 +1,15 @@
 <template>
-  <div class="overMap">
+  <div class="topLeftCard">
+    <q-card>
+      <search-box
+        ref="searchBox"
+        v-on:poi_selected="poiSelected"
+        v-on:poi_hovered="poiHovered"
+      ></search-box>
+    </q-card>
+  </div>
+
+  <div class="bottomCard">
     <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
   </div>
 </template>
@@ -11,6 +21,7 @@ import { LongLat, POI } from 'src/components/models';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent, Ref, ref } from 'vue';
 import { Router } from 'vue-router';
+import SearchBox from 'src/components/SearchBox.vue';
 
 var poi: Ref<POI | undefined> = ref(undefined);
 
@@ -50,13 +61,15 @@ async function loadDroppedPinPage(
   }
 }
 
+var hoverMarkers: Marker[] = [];
+
 export default defineComponent({
-  name: 'PlacePage',
+  name: 'DroppedPinPage',
   props: {
     long: String,
     lat: String,
   },
-  components: { PlaceCard },
+  components: { PlaceCard, SearchBox },
   watch: {
     lat: {
       immediate: true,
@@ -85,6 +98,36 @@ export default defineComponent({
       },
     },
   },
+  methods: {
+    poiSelected: function (poi?: POI) {
+      activeMarkers.forEach((marker) => marker.remove());
+      activeMarkers.length = 0;
+      hoverMarkers.forEach((marker) => marker.remove());
+      hoverMarkers = [];
+      if (poi?.id) {
+        this.$router.push(`/place/${poi?.type}${poi?.id}`);
+      } else {
+        this.$router.push('/');
+      }
+      setTimeout(() => {
+        hoverMarkers.forEach((marker) => marker.remove());
+        hoverMarkers = [];
+      }, 1000);
+    },
+    poiHovered: function (poi?: POI) {
+      hoverMarkers.forEach((marker) => marker.remove());
+      hoverMarkers = [];
+      if (poi?.position && map) {
+        const marker = new Marker({ color: '#11111155' }).setLngLat([
+          poi.position.long,
+          poi.position.lat,
+        ]);
+        marker.addTo(map);
+        hoverMarkers.push(marker);
+      }
+    },
+  },
+
   mounted: async function () {
     setTimeout(async () => {
       const position: LongLat = {

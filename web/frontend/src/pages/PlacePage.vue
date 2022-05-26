@@ -1,5 +1,15 @@
 <template>
-  <div class="overMap">
+  <div class="topLeftCard">
+    <q-card>
+      <search-box
+        ref="searchBox"
+        :force-text="poiDisplayName(poi)"
+        v-model="poi"
+      ></search-box>
+    </q-card>
+  </div>
+
+  <div class="bottomCard">
     <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
   </div>
 </template>
@@ -7,22 +17,24 @@
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
 import { activeMarkers, map } from 'src/components/BaseMap.vue';
-import { localizeAddress, POI } from 'src/components/models';
+import {
+  canonicalizePoi,
+  localizeAddress,
+  POI,
+  poiDisplayName,
+} from 'src/components/models';
 import PlaceCard from 'src/components/PlaceCard.vue';
-import { defineComponent, Ref, ref } from 'vue';
+import { defineComponent } from 'vue';
 import { Router } from 'vue-router';
-
-var poi: Ref<POI | undefined> = ref(undefined);
+import SearchBox from 'src/components/SearchBox.vue';
 
 async function loadPlacePage(router: Router, osm_id_with_type: string) {
-  router.replace(`/place/${osm_id_with_type}`); // TODO: do we need to do this?
-
   const response = await fetch(`/nominatim/lookup/${osm_id_with_type}`);
   if (response.status != 200) {
     console.error(
       `Could not fetch POI data for ${osm_id_with_type}. Is nominatim down?`
     );
-    return;
+    return {};
   }
   const text = await response.text();
   const parser = new DOMParser();
@@ -42,21 +54,14 @@ async function loadPlacePage(router: Router, osm_id_with_type: string) {
   const clazz = placeTag?.attributes?.getNamedItem('class')
     ?.textContent as string;
   const road = xmlPoi.getElementsByTagName('road').item(0)?.textContent;
-  const name = xmlPoi
-    .getElementsByTagName(clazz as string)
-    .item(0)?.textContent;
+  const name =
+    clazz !== 'place'
+      ? xmlPoi.getElementsByTagName(clazz as string).item(0)?.textContent
+      : undefined;
   const suburb = xmlPoi.getElementsByTagName('suburb').item(0)?.textContent;
   const city = xmlPoi.getElementsByTagName('city').item(0)?.textContent;
 
   const address = localizeAddress(houseNumber, road, suburb, city);
-
-  poi.value = {
-    name: name,
-    address: address,
-    position: position,
-    id: parseInt(osm_id_with_type.substring(1)),
-    type: osm_id_with_type.substring(0, 1),
-  };
 
   map?.flyTo({
     center: [position.long, position.lat],
@@ -70,6 +75,13 @@ async function loadPlacePage(router: Router, osm_id_with_type: string) {
     marker.addTo(map);
     activeMarkers.push(marker);
   }
+  return {
+    name: name,
+    address: address,
+    position: position,
+    id: parseInt(osm_id_with_type.substring(1)),
+    type: osm_id_with_type.substring(0, 1),
+  };
 }
 
 export default defineComponent({
@@ -78,23 +90,44 @@ export default defineComponent({
     osm_id: String,
   },
   emits: ['loadedPoi'],
-  components: { PlaceCard },
+  components: { PlaceCard, SearchBox },
+  data: function () {
+    return {
+      poi: {},
+    };
+  },
   watch: {
-    osm_id: {
-      immediate: true,
-      deep: true,
-      handler(newValue) {
-        setTimeout(async () => {
-          await loadPlacePage(this.$router, newValue);
-          this.$emit('loadedPoi', poi.value);
-        });
-      },
+    poi(newValue) {
+      setTimeout(async () => {
+        if (newValue) {
+          await loadPlacePage(this.$router, canonicalizePoi(newValue));
+          this.$emit('loadedPoi', this.$data.poi);
+        } else {
+          this.$router.push('/');
+        }
+      });
+    },
+  },
+  methods: {
+    poiDisplayName,
+    poiSelected: function (poi?: POI) {
+      activeMarkers.forEach((marker) => marker.remove());
+      activeMarkers.length = 0;
+      if (poi?.id) {
+        this.$router.push(`/place/${poi?.type}${poi?.id}`);
+      } else {
+        this.$router.push('/');
+      }
     },
   },
   mounted: async function () {
     setTimeout(async () => {
-      await loadPlacePage(this.$router, this.$props.osm_id as string);
-      this.$emit('loadedPoi', poi.value);
+      this.$data.poi = (await loadPlacePage(
+        this.$router,
+        this.$props.osm_id as string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      )) as any;
+      this.$emit('loadedPoi', this.$data.poi);
     });
   },
   unmounted: function () {
@@ -102,7 +135,7 @@ export default defineComponent({
     activeMarkers.length = 0;
   },
   setup: function () {
-    return { poi };
+    return {};
   },
 });
 </script>

@@ -84,6 +84,7 @@ export default defineComponent({
     });
     map?.on('mouseup', () => clearAllTimeouts());
     map?.on('mousemove', () => clearAllTimeouts());
+    map?.on('move', () => clearAllTimeouts());
     this.$emit('load');
   },
 });
