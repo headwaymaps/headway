@@ -39,16 +39,19 @@ async function loadPlacePage(router: Router, osm_id_with_type: string) {
   const houseNumber = xmlPoi
     .getElementsByTagName('house_number')
     .item(0)?.textContent;
+  const clazz = placeTag?.attributes?.getNamedItem('class')
+    ?.textContent as string;
   const road = xmlPoi.getElementsByTagName('road').item(0)?.textContent;
-  const amenity = xmlPoi.getElementsByTagName('amenity').item(0)?.textContent;
-  const leisure = xmlPoi.getElementsByTagName('leisure').item(0)?.textContent;
+  const name = xmlPoi
+    .getElementsByTagName(clazz as string)
+    .item(0)?.textContent;
   const suburb = xmlPoi.getElementsByTagName('suburb').item(0)?.textContent;
   const city = xmlPoi.getElementsByTagName('city').item(0)?.textContent;
 
   const address = localizeAddress(houseNumber, road, suburb, city);
 
   poi.value = {
-    name: amenity ? amenity : leisure,
+    name: name,
     address: address,
     position: position,
     id: parseInt(osm_id_with_type.substring(1)),
