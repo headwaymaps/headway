@@ -7,6 +7,16 @@
       <div class="text" v-if="$props.poi?.name && $props.poi?.address">
         {{ $props.poi?.address }}
       </div>
+      <div>
+        <q-btn
+          flat
+          round
+          class="placeCardCloseButton"
+          color="white"
+          icon="close"
+          v-on:click="$emit('close')"
+        />
+      </div>
     </q-card-section>
   </q-card>
 </template>
@@ -16,6 +26,7 @@ import { defineComponent } from 'vue';
 
 export default defineComponent({
   name: 'PlaceCard',
+  emits: ['close'],
   props: {
     poi: Object,
   },

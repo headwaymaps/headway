@@ -11,7 +11,7 @@
     </q-header>
     <div class="mainContainer">
       <router-view v-on:loadedPoi="propagatePoiSelection"></router-view>
-      <base-map v-on:on-map-click="dropPin"></base-map>
+      <base-map v-on:on-map-long-press="dropPin"></base-map>
     </div>
   </q-layout>
 </template>
@@ -35,6 +35,8 @@ export default defineComponent({
   methods: {
     dropPin: function (event: MapMouseEvent) {
       this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this.$refs.searchBox as any).setPoi({});
     },
     propagatePoiSelection: function (poi?: POI) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

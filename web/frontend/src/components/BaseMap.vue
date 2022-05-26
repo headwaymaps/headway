@@ -49,6 +49,14 @@ async function loadMap() {
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mapTouchTimeouts: any[] = [];
+
+function clearAllTimeouts() {
+  mapTouchTimeouts.forEach((timeout) => clearTimeout(timeout));
+  mapTouchTimeouts.length = 0;
+}
+
 export default defineComponent({
   name: 'BaseMap',
   emits: ['onMapClick', 'onMapLongPress', 'load'],
@@ -68,9 +76,14 @@ export default defineComponent({
     map?.on('click', (event: MapMouseEvent) => {
       this.$emit('onMapClick', event);
     });
-    map?.on('contextmenu', (event: MapMouseEvent) => {
-      this.$emit('onMapLongPress', event);
+    map?.on('mousedown', (event: MapMouseEvent) => {
+      clearAllTimeouts();
+      mapTouchTimeouts.push(
+        setTimeout(() => this.$emit('onMapLongPress', event), 700)
+      );
     });
+    map?.on('mouseup', () => clearAllTimeouts());
+    map?.on('mousemove', () => clearAllTimeouts());
     this.$emit('load');
   },
 });

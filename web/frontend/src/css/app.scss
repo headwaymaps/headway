@@ -17,6 +17,16 @@
   width: 300px;
 }
 
+.placeCardCloseButton {
+  position: fixed;
+  top: 0px;
+  left: 100%;
+  transform: translate(-100%);
+  margin-left: -12px;
+  margin-top: 12px;
+  z-index: 101;
+}
+
 .overMap {
   z-index: 100;
   position: fixed;

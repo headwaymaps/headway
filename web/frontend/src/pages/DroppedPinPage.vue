@@ -1,6 +1,6 @@
 <template>
   <div class="overMap">
-    <place-card :poi="poi"></place-card>
+    <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
   </div>
 </template>
 
