@@ -4,7 +4,12 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import maplibregl, { LngLatBoundsLike, Marker, Popup } from 'maplibre-gl';
+import maplibregl, {
+  LngLatBoundsLike,
+  MapMouseEvent,
+  Marker,
+  Popup,
+} from 'maplibre-gl';
 import { LongLat } from './models';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -46,6 +51,7 @@ async function loadMap() {
 
 export default defineComponent({
   name: 'BaseMap',
+  emits: ['onMapClick', 'onMapLongPress', 'load'],
   methods: {
     flyTo(location: LongLat, zoom: number) {
       map?.flyTo({ center: [location.long, location.lat], zoom: zoom });
@@ -59,6 +65,13 @@ export default defineComponent({
   },
   mounted: async function () {
     await loadMap();
+    map?.on('click', (event: MapMouseEvent) => {
+      this.$emit('onMapClick', event);
+    });
+    map?.on('contextmenu', (event: MapMouseEvent) => {
+      this.$emit('onMapLongPress', event);
+    });
+    this.$emit('load');
   },
 });
 </script>

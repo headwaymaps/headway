@@ -1,15 +1,6 @@
 <template>
   <div class="overMap">
-    <q-card>
-      <q-card-section class="bg-primary text-white">
-        <div class="text-subtitle1">
-          {{ poi?.name ? poi?.name : poi?.address }}
-        </div>
-        <div class="text" v-if="poi?.name && poi?.address">
-          {{ poi?.address }}
-        </div>
-      </q-card-section>
-    </q-card>
+    <place-card :poi="poi"></place-card>
   </div>
 </template>
 
@@ -17,16 +8,14 @@
 import { Marker } from 'maplibre-gl';
 import { activeMarkers, map } from 'src/components/BaseMap.vue';
 import { localizeAddress, POI } from 'src/components/models';
+import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent, Ref, ref } from 'vue';
 import { Router } from 'vue-router';
 
 var poi: Ref<POI | undefined> = ref(undefined);
 
 async function loadPlacePage(router: Router, osm_id_with_type: string) {
-  router.replace(`/place/${osm_id_with_type}`);
-
-  activeMarkers.forEach((marker) => marker.remove());
-  activeMarkers.length = 0;
+  router.replace(`/place/${osm_id_with_type}`); // TODO: do we need to do this?
 
   const response = await fetch(`/nominatim/lookup/${osm_id_with_type}`);
   if (response.status != 200) {
@@ -40,12 +29,12 @@ async function loadPlacePage(router: Router, osm_id_with_type: string) {
   const xmlPoi = parser.parseFromString(text, 'text/xml');
   const placeTag = xmlPoi.getElementsByTagName('place').item(0);
   const position = {
-    lat: maybeParseFloat(
-      placeTag?.attributes?.getNamedItem('lat')?.textContent
-    ) as number,
-    long: maybeParseFloat(
-      placeTag?.attributes?.getNamedItem('lon')?.textContent
-    ) as number,
+    lat: parseFloat(
+      placeTag?.attributes?.getNamedItem('lat')?.textContent as string
+    ),
+    long: parseFloat(
+      placeTag?.attributes?.getNamedItem('lon')?.textContent as string
+    ),
   };
   const houseNumber = xmlPoi
     .getElementsByTagName('house_number')
@@ -80,20 +69,13 @@ async function loadPlacePage(router: Router, osm_id_with_type: string) {
   }
 }
 
-function maybeParseFloat(text: string | null | undefined): number | undefined {
-  if (text) {
-    return parseFloat(text);
-  }
-  return undefined;
-}
-
 export default defineComponent({
   name: 'PlacePage',
   props: {
     osm_id: String,
   },
   emits: ['loadedPoi'],
-  components: {},
+  components: { PlaceCard },
   watch: {
     osm_id: {
       immediate: true,
@@ -111,6 +93,10 @@ export default defineComponent({
       await loadPlacePage(this.$router, this.$props.osm_id as string);
       this.$emit('loadedPoi', poi.value);
     });
+  },
+  unmounted: function () {
+    activeMarkers.forEach((marker) => marker.remove());
+    activeMarkers.length = 0;
   },
   setup: function () {
     return { poi };

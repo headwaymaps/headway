@@ -16,6 +16,17 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/pin/:long/:lat',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: '/pin/:long/:lat',
+        props: true,
+        component: () => import('pages/DroppedPinPage.vue'),
+      },
+    ],
+  },
 
   // Always leave this as last one,
   // but you can also remove it

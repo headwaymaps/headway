@@ -11,7 +11,7 @@
     </q-header>
     <div class="mainContainer">
       <router-view v-on:loadedPoi="propagatePoiSelection"></router-view>
-      <base-map></base-map>
+      <base-map v-on:on-map-click="dropPin"></base-map>
     </div>
   </q-layout>
 </template>
@@ -21,7 +21,7 @@ import { POI } from 'src/components/models';
 import { defineComponent, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import BaseMap, { activeMarkers, map } from 'src/components/BaseMap.vue';
-import { Marker } from 'maplibre-gl';
+import { MapMouseEvent, Marker } from 'maplibre-gl';
 
 var hoverMarkers: Marker[] = [];
 
@@ -33,6 +33,9 @@ export default defineComponent({
     osm_id: String,
   },
   methods: {
+    dropPin: function (event: MapMouseEvent) {
+      this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
+    },
     propagatePoiSelection: function (poi?: POI) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.$refs.searchBox as any).setPoi(poi);
