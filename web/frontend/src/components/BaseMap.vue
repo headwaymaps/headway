@@ -10,6 +10,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 export var map: maplibregl.Map | null = null;
 
+export var activeMarkers: Marker[] = [];
+
 async function loadMap() {
   const response = await fetch('/bbox.txt');
   if (response.status != 200) {

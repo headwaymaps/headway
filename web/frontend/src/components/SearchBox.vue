@@ -1,49 +1,53 @@
 <template>
-  <q-input
-    ref="autoCompleteInput"
-    id="autoCompleteInput"
-    class="mainSearchBar"
-    label="Search"
-    label-color="white"
-    v-model="inputText"
-    :clearable="true"
-    :input-style="{ color: 'white' }"
-    :outlined="true"
-    :debounce="0"
-    v-on:clear="clearAutocomplete"
-    v-on:beforeinput="updateAutocompleteEventBeforeInput"
-    v-on:update:model-value="updateAutocompleteEventRawString"
-  >
-  </q-input>
-  <q-menu
-    persistent
-    ref="autoCompleteMenu"
-    :no-focus="true"
-    :no-refocus="true"
-    :target="inputField"
-    v-show="menuShowing"
-  >
-    <q-item
-      :key="item.key"
-      v-for="item in autocompleteOptions"
-      clickable
-      v-on:click="() => updatePoi(item)"
-      v-on:mouseenter="() => updateHoveredPoi(item)"
-      v-on:mouseleave="() => updateHoveredPoi(undefined)"
+  <div>
+    <q-input
+      ref="autoCompleteInput"
+      id="autoCompleteInput"
+      class="mainSearchBar"
+      label="Search"
+      label-color="white"
+      v-model="inputText"
+      :clearable="true"
+      :input-style="{ color: 'white' }"
+      :outlined="true"
+      :debounce="0"
+      v-on:clear="clearAutocomplete"
+      v-on:beforeinput="updateAutocompleteEventBeforeInput"
+      v-on:update:model-value="updateAutocompleteEventRawString"
     >
-      <q-item-section>
-        <q-item-label>{{ item.name }}</q-item-label>
-        <q-item-label v-if="item.caption" caption>{{
-          item.caption
-        }}</q-item-label>
-      </q-item-section>
-    </q-item>
-  </q-menu>
+    </q-input>
+    <q-menu
+      persistent
+      ref="autoCompleteMenu"
+      :no-focus="true"
+      :no-refocus="true"
+      :target="inputField"
+      v-show="menuShowing"
+    >
+      <q-item
+        :key="item.key"
+        v-for="item in autocompleteOptions"
+        clickable
+        v-on:click="() => updatePoi(item)"
+        v-on:mouseenter="() => updateHoveredPoi(item)"
+        v-on:mouseleave="() => updateHoveredPoi(undefined)"
+      >
+        <q-item-section>
+          <q-item-label>{{
+            item.name ? item.name : item.address
+          }}</q-item-label>
+          <q-item-label v-if="item.name" caption>{{
+            item.address
+          }}</q-item-label>
+        </q-item-section>
+      </q-item>
+    </q-menu>
+  </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
-import { LongLat, POI } from 'components/models';
+import { localizeAddress, LongLat, POI } from 'src/components/models';
 import { Event } from 'maplibre-gl';
 import { QMenu } from 'quasar';
 
@@ -63,48 +67,35 @@ async function updateAutocomplete(target?: HTMLInputElement) {
   const results = await response.json();
   var options: POI[] = [];
   for (const feature of results.features) {
-    // FIXME: i18n? other places surely construct addresses differently
-    var address = undefined;
-    if (feature.properties.housenumber && feature.properties.street) {
-      address = `${feature.properties.housenumber} ${feature.properties.street}`;
-    } else if (feature.properties.street) {
-      address = `${feature.properties.street}`;
-    } else if (feature.properties.locality && feature.properties.city) {
-      address = `${feature.properties.locality}, ${feature.properties.city}`;
-    } else if (feature.properties.city) {
-      address = `${feature.properties.city}`;
-    }
+    var address = localizeAddress(
+      feature.properties.housenumber,
+      feature.properties.street,
+      feature.properties.locality,
+      feature.properties.city
+    );
 
-    var locality = undefined;
-    if (feature.properties.locality && feature.properties.city) {
-      locality = `${feature.properties.locality}, ${feature.properties.city}`;
-    } else if (feature.properties.city) {
-      locality = `${feature.properties.city}`;
-    }
-
-    var name = feature.properties.name;
-    var caption = undefined;
-    if (name && address) {
-      caption = address;
-    } else if (name) {
-      caption = undefined;
-    } else if (address && locality) {
-      name = address;
-      caption = locality;
-    } else if (address) {
-      name = address;
-    } else {
-      continue;
-    }
+    // var name = feature.properties.name;
+    // var caption = undefined;
+    // if (name && address) {
+    //   caption = address;
+    // } else if (name) {
+    //   caption = undefined;
+    // } else if (address) {
+    //   name = address;
+    // } else {
+    //   continue;
+    // }
     const coordinates = feature?.geometry?.coordinates;
     const position: LongLat | undefined = coordinates
       ? { long: coordinates[0], lat: coordinates[1] }
       : undefined;
     options.push({
-      name: name,
-      caption: caption,
+      name: feature.properties.name,
+      address: address,
       key: feature.properties.osm_id,
       position: position,
+      id: feature?.properties?.osm_id,
+      type: feature?.properties?.osm_type,
     });
   }
   autocompleteOptions.value = options;
@@ -134,7 +125,7 @@ export default defineComponent({
         );
       }
     },
-    async updateAutocompleteEventRawString() {
+    updateAutocompleteEventRawString() {
       autoCompleteMenu?.show();
       if (null !== poi) {
         poi = null;
@@ -148,23 +139,27 @@ export default defineComponent({
         setTimeout(() => updateAutocomplete());
       }
     },
+    setPoi(selectedPoi?: POI) {
+      poi = selectedPoi;
+      if (poi) {
+        inputText.value = poi.name ? poi.name : (poi.address as string);
+      } else {
+        inputText.value = '';
+      }
+    },
     clearAutocomplete() {
       autoCompleteMenu?.hide();
       inputText.value = '';
-      if (null !== poi) {
-        poi = null;
-        this.$emit('poi_selected', poi);
-      }
-      if (null !== poiHovered) {
-        poiHovered = null;
-        this.$emit('poi_selected', poiHovered);
-      }
+      poi = null;
+      this.$emit('poi_selected', poi);
+      poiHovered = null;
+      this.$emit('poi_selected', poiHovered);
     },
     updatePoi(item?: POI) {
       if (item !== poi) {
         poi = item;
         if (poi) {
-          inputText.value = poi.name;
+          inputText.value = poi.name ? poi.name : (poi.address as string);
         } else {
           inputText.value = '';
         }

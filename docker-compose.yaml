@@ -6,6 +6,8 @@ services:
       PORT: 8000
   photon:
     image: headway_photon
+  nominatim:
+    image: headway_nominatim
   valhalla:
     image: headway_valhalla_run
     environment:
