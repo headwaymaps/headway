@@ -151,6 +151,7 @@ export default defineComponent({
       handler(newValue) {
         setTimeout(async () => {
           toPoi.value = await decanonicalizePoi(newValue);
+          this.rewriteUrl();
         });
       },
     },
@@ -160,6 +161,7 @@ export default defineComponent({
       handler(newValue) {
         setTimeout(async () => {
           fromPoi.value = await decanonicalizePoi(newValue);
+          this.rewriteUrl();
         });
       },
     },
