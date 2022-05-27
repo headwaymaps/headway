@@ -91,6 +91,9 @@ export default defineComponent({
   unmounted: function () {
     this.onUnmounted();
   },
+  beforeUnmount: function () {
+    this.onUnmounted();
+  },
   setup: function (props, context) {
     const inputText = ref('');
     const poiSelected: Ref<POI | undefined> = ref(undefined);
