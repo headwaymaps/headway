@@ -19,19 +19,6 @@
   </div>
   <div class="bottom-card" v-if="fromPoi && toPoi">
     <q-card>
-      <q-btn
-        flat
-        round
-        class="place-card-close-button"
-        color="white"
-        icon="close"
-        v-on:click="$router.push('/')"
-      />
-      <q-card-section class="bg-primary text-white">
-        <div class="text-subtitle1">
-          {{ `${poiDisplayName(fromPoi)} to ${poiDisplayName(toPoi)}` }}
-        </div>
-      </q-card-section>
       <q-card-section class="bg-primary text-white">
         <div class="timeline" ref="timeline" v-on:scroll="scroll">
           <ol>
@@ -40,6 +27,20 @@
             </li>
           </ol>
         </div>
+        <q-btn
+          round
+          color="black"
+          class="center-left-floating"
+          icon="chevron_left"
+          v-on:click="scrollLeft"
+        />
+        <q-btn
+          round
+          color="black"
+          class="center-right-floating"
+          icon="chevron_right"
+          v-on:click="scrollRight"
+        />
       </q-card-section>
     </q-card>
   </div>
@@ -76,6 +77,37 @@ export default defineComponent({
   components: { SearchBox },
   methods: {
     poiDisplayName,
+    scrollLeft() {
+      const timeline = this.$refs.timeline as Element;
+      const position =
+        timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
+      const step = Math.min(
+        Math.floor(position * this.$data.steps.length),
+        this.$data.steps.length - 1
+      );
+      const newStep = Math.max(Math.ceil(step - 1), 0);
+      const newPosition =
+        (newStep / this.$data.steps.length) *
+        (timeline.scrollWidth - timeline.clientWidth);
+      timeline.scroll({ behavior: 'smooth', left: newPosition });
+    },
+    scrollRight() {
+      const timeline = this.$refs.timeline as Element;
+      const position =
+        timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
+      const step = Math.min(
+        Math.floor(position * this.$data.steps.length),
+        this.$data.steps.length - 1
+      );
+      const newStep = Math.min(
+        this.$data.steps.length - 1,
+        Math.floor(step + 1)
+      );
+      const newPosition =
+        (newStep / this.$data.steps.length) *
+        (timeline.scrollWidth - timeline.clientWidth);
+      timeline.scroll({ behavior: 'smooth', left: newPosition });
+    },
     scroll() {
       const timeline = this.$refs.timeline as Element;
       const position =

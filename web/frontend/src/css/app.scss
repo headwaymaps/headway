@@ -81,7 +81,7 @@
         content: '';
         position: absolute;
         top: 0%;
-        left: calc(50%);
+        left: 0%;
         bottom: 0;
         width: 14px;
         height: 14px;
@@ -107,6 +107,22 @@
       }
     }
   }
+}
+
+.center-left-floating {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  margin-left: 1em;
+  transform: translateY(-50%);
+}
+
+.center-right-floating {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  margin-left: -1em;
+  transform: translateY(-50%) translate(-100%);
 }
 
 html {
