@@ -28,8 +28,17 @@
         v-on:click="$router.push('/')"
       />
       <q-card-section class="bg-primary text-white">
-        <div class="text-subtitle1 directions-title">
+        <div class="text-subtitle1">
           {{ `${poiDisplayName(fromPoi)} to ${poiDisplayName(toPoi)}` }}
+        </div>
+      </q-card-section>
+      <q-card-section class="bg-primary text-white">
+        <div class="timeline">
+          <ol>
+            <li :key="`${item.time}`" v-for="item in $data.steps">
+              <div class="instruction">{{ item.instruction }}</div>
+            </li>
+          </ol>
         </div>
       </q-card-section>
     </q-card>
@@ -207,7 +216,34 @@ export default defineComponent({
     }
   },
   setup: function () {
-    return { toPoi, fromPoi };
+    return {
+      toPoi,
+      fromPoi,
+      thumbStyle: {
+        right: '4px',
+        borderRadius: '5px',
+        backgroundColor: '#111',
+        width: '9px',
+        opacity: '0.75',
+      },
+
+      barStyle: {
+        right: '2px',
+        borderRadius: '9px',
+        backgroundColor: '#111',
+        width: '5px',
+        opacity: '0.2',
+      },
+      stepsListStyle: {
+        whiteSpace: 'nowrap',
+        overflow: 'auto',
+        display: 'table',
+      },
+      stepsItemStyle: {
+        display: 'inline-block',
+        height: '100%',
+      },
+    };
   },
 });
 </script>
