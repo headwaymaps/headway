@@ -10,9 +10,18 @@
       :outlined="true"
       :debounce="0"
       v-on:clear="() => selectPoi(undefined)"
-      v-on:blur="menuShowing = false"
-      v-on:beforeinput="updateAutocompleteEventBeforeInput"
-      v-on:update:model-value="updateAutocompleteEventRawString"
+      v-on:blur="deferHide(castToMenu($refs.autoCompleteMenu))"
+      v-on:beforeinput="
+        (event) =>
+          updateAutocompleteEventBeforeInput(
+            event,
+            castToMenu($refs.autoCompleteMenu)
+          )
+      "
+      v-on:update:model-value="
+        () =>
+          updateAutocompleteEventRawString(castToMenu($refs.autoCompleteMenu))
+      "
     >
     </q-input>
     <q-menu
@@ -21,7 +30,6 @@
       :no-focus="true"
       :no-refocus="true"
       :target="castToTarget($refs.autoCompleteInput)"
-      :v-model="menuShowing"
     >
       <q-item
         :key="item?.key"
@@ -54,6 +62,7 @@ import {
 } from 'src/components/models';
 import { Event, Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
+import { QMenu } from 'quasar';
 
 const isAndroid = /(android)/i.test(navigator.userAgent);
 
@@ -84,7 +93,6 @@ export default defineComponent({
   },
   setup: function (props, context) {
     const inputText = ref('');
-    const menuShowing = ref(false);
     const poiSelected: Ref<POI | undefined> = ref(undefined);
     const poiHovered: Ref<POI | undefined> = ref(undefined);
     const autocompleteOptions: Ref<(POI | undefined)[]> = ref([]);
@@ -130,7 +138,6 @@ export default defineComponent({
     };
     return {
       inputText,
-      menuShowing,
       autocompleteOptions,
       poiSelected,
       poiHovered,
@@ -138,8 +145,15 @@ export default defineComponent({
       castToTarget(target: any) {
         return target as Element;
       },
-      updateAutocompleteEventRawString() {
-        menuShowing.value = true;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      castToMenu(menu: any) {
+        return menu as QMenu;
+      },
+      deferHide(menu: QMenu) {
+        setTimeout(() => menu.hide(), 100);
+      },
+      updateAutocompleteEventRawString(menu: QMenu) {
+        menu.show();
         if (poiSelected.value) {
           poiSelected.value = undefined;
         }
@@ -150,9 +164,9 @@ export default defineComponent({
           setTimeout(() => updateAutocomplete(inputText.value));
         }
       },
-      updateAutocompleteEventBeforeInput(event: Event) {
+      updateAutocompleteEventBeforeInput(event: Event, menu: QMenu) {
         const inputEvent = event as InputEvent;
-        menuShowing.value = true;
+        menu.show();
         if (poiSelected.value) {
           poiSelected.value = undefined;
         }

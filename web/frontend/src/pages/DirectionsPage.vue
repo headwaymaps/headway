@@ -122,6 +122,13 @@ export default defineComponent({
             },
           });
         }
+      } else {
+        if (map?.getLayer('headway_polyline')) {
+          map?.removeLayer('headway_polyline');
+        }
+        if (map?.getSource('headway_polyline')) {
+          map?.removeSource('headway_polyline');
+        }
       }
     },
   },
@@ -149,6 +156,7 @@ export default defineComponent({
     setTimeout(async () => {
       toPoi.value = await decanonicalizePoi(this.$props.to as string);
       fromPoi.value = await decanonicalizePoi(this.$props.from as string);
+      await this.rewriteUrl();
     });
   },
   unmounted: function () {

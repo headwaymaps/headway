@@ -7,21 +7,21 @@
 </template>
 
 <script lang="ts">
-import { activeMarkers } from 'src/components/BaseMap.vue';
-import { POI } from 'src/components/models';
+import {
+  activeMarkers,
+  addMapHandler,
+  removeMapHandler,
+} from 'src/components/BaseMap.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
   name: 'DirectionsPage',
   components: { SearchBox },
-  unmounted: function () {
-    activeMarkers.forEach((marker) => marker.remove());
-    activeMarkers.length = 0;
-  },
   data: function () {
     return {
       poi: {},
+      handler: 0,
     };
   },
   watch: {
@@ -33,11 +33,15 @@ export default defineComponent({
       }
     },
   },
-  methods: {
-    changeModel(poi: POI | undefined) {
-      console.log('watch worked');
-      console.log(poi);
-    },
+  mounted: function () {
+    this.handler = addMapHandler('longpress', (event) => {
+      this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
+    });
+  },
+  unmounted: function () {
+    activeMarkers.forEach((marker) => marker.remove());
+    activeMarkers.length = 0;
+    removeMapHandler('longpress', this.handler);
   },
   setup: function () {
     return {};

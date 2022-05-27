@@ -52,6 +52,32 @@ async function loadMap() {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapTouchTimeouts: any[] = [];
 
+type BaseMapEventType = 'click' | 'longpress';
+type BaseMapEventHandler = (event: MapMouseEvent) => void;
+type BaseMapEventHandlerHandle = number;
+
+const mapTouchHandlers: Map<
+  BaseMapEventType,
+  Map<number, BaseMapEventHandler>
+> = new Map();
+var eventHandlerCount = 0;
+
+export function addMapHandler(
+  event: BaseMapEventType,
+  handler: BaseMapEventHandler
+): BaseMapEventHandlerHandle {
+  if (!mapTouchHandlers.get(event)) {
+    mapTouchHandlers.set(event, new Map());
+  }
+  eventHandlerCount++;
+  mapTouchHandlers.get(event)?.set(eventHandlerCount, handler);
+  return eventHandlerCount;
+}
+
+export function removeMapHandler(event: BaseMapEventType, handle: number) {
+  mapTouchHandlers.get(event)?.delete(handle);
+}
+
 function clearAllTimeouts() {
   mapTouchTimeouts.forEach((timeout) => clearTimeout(timeout));
   mapTouchTimeouts.length = 0;
@@ -74,12 +100,14 @@ export default defineComponent({
   mounted: async function () {
     await loadMap();
     map?.on('click', (event: MapMouseEvent) => {
-      this.$emit('onMapClick', event);
+      mapTouchHandlers.get('click')?.forEach((value) => value(event));
     });
     map?.on('mousedown', (event: MapMouseEvent) => {
       clearAllTimeouts();
       mapTouchTimeouts.push(
-        setTimeout(() => this.$emit('onMapLongPress', event), 700)
+        setTimeout(() => {
+          mapTouchHandlers.get('longpress')?.forEach((value) => value(event));
+        }, 700)
       );
     });
     map?.on('mouseup', () => clearAllTimeouts());

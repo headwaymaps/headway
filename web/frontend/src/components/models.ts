@@ -12,9 +12,9 @@ export interface LongLat {
   lat: number;
 }
 
-export function poiDisplayName(poi: POI | undefined) {
-  if (poi?.name) {
-    return poi?.name;
+export function poiDisplayName(poi: POI | undefined): string {
+  if (poi?.name !== undefined) {
+    return poi?.name ? poi?.name : '';
   }
   if (poi?.address) {
     return poi?.address;
