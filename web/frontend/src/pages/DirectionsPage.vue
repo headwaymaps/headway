@@ -105,10 +105,32 @@ export default defineComponent({
           if (map?.getSource('headway_polyline')) {
             map?.removeSource('headway_polyline');
           }
+          // min/max
+          const bbox: number[] = [1000, 1000, -1000, -1000];
           var points: number[][] = [];
-          decode(legs[0].shape, 6).forEach((point) =>
-            points.push([point[1], point[0]])
-          );
+          decode(legs[0].shape, 6).forEach((point) => {
+            points.push([point[1], point[0]]);
+            if (point[1] < bbox[0]) {
+              bbox[0] = point[1];
+            }
+            if (point[0] < bbox[1]) {
+              bbox[1] = point[0];
+            }
+            if (point[1] > bbox[2]) {
+              bbox[2] = point[1];
+            }
+            if (point[0] > bbox[3]) {
+              bbox[3] = point[0];
+            }
+          });
+          const center = [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2];
+          const extents = [bbox[2] - bbox[0], bbox[3] - bbox[1]];
+          const zoomBounds: [number, number, number, number] = [
+            center[0] - extents[0],
+            center[1] - extents[1],
+            center[0] + extents[0],
+            center[1] + extents[1],
+          ];
           map?.addSource('headway_polyline', {
             type: 'geojson',
             data: {
@@ -133,6 +155,7 @@ export default defineComponent({
               'line-width': 8,
             },
           });
+          map?.fitBounds(zoomBounds);
         }
       } else {
         if (map?.getLayer('headway_polyline')) {
