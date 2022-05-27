@@ -11,18 +11,18 @@
   left: 0px !important;
 }
 
-.mainSearchBar {
+.main-search-bar {
   padding: 8px;
-  width: 300px;
+  width: 100%;
 }
 
-.placeCardSection {
-  margin-top: 8px;
-}
-
-.placeCardCloseButton {
+.over-map {
+  z-index: 100;
   position: fixed;
-  top: 0px;
+}
+
+.place-card-close-button {
+  @extend .over-map;
   left: 100%;
   transform: translate(-100%);
   margin-left: -12px;
@@ -30,28 +30,31 @@
   z-index: 101;
 }
 
-.overMap {
-  z-index: 100;
-  position: fixed;
-}
-
-.topLeftCard {
-  z-index: 101;
-  position: fixed;
+.top-left-card {
+  @extend .over-map;
   margin-top: 12px;
   margin-left: 12px;
 }
 
-.bottomCard {
-  z-index: 100;
-  position: fixed;
+.bottom-card {
+  @extend .over-map;
   bottom: 0;
-  left: 50%;
+  left: 0%;
   width: 100%;
+}
+
+.place-card-conditionally-wrap {
   @media screen and (min-width: 800px) {
-    width: 500px;
+    white-space: nowrap;
   }
-  transform: translate(-50%);
+}
+
+.place-card-section {
+  margin-top: 8px;
+  @media screen and (min-width: 800px) {
+    margin-right: 12px;
+    display: inline-block;
+  }
 }
 
 html {

@@ -1,5 +1,5 @@
 <template>
-  <div class="topLeftCard">
+  <div class="top-left-card">
     <q-card>
       <search-box
         ref="searchBox"
@@ -17,7 +17,7 @@
       ></search-box>
     </q-card>
   </div>
-  <div class="bottomCard">
+  <div class="bottom-card">
     <q-card>
       <q-card-section class="bg-primary text-white">
         <div class="text-subtitle1">

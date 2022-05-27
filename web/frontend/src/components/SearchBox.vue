@@ -2,7 +2,7 @@
   <div>
     <q-input
       ref="autoCompleteInput"
-      class="mainSearchBar"
+      class="main-search-bar"
       :label="$props.hint ? $props.hint : 'Where to?'"
       v-model="inputText"
       :clearable="true"
