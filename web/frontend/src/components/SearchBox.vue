@@ -153,7 +153,7 @@ export default defineComponent({
         return menu as QMenu;
       },
       deferHide(menu: QMenu) {
-        setTimeout(() => menu.hide(), 100);
+        setTimeout(() => menu.hide(), 500);
       },
       updateAutocompleteEventRawString(menu: QMenu) {
         menu.show();
