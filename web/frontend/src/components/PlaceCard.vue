@@ -19,7 +19,7 @@
           </div>
         </div>
         <div class="place-card-section">
-          <q-chip
+          <!-- <q-chip
             icon="directions_bus"
             clickable
             v-on:click="
@@ -27,7 +27,7 @@
             "
           >
             Bus there
-          </q-chip>
+          </q-chip> -->
           <q-chip
             icon="directions_bike"
             clickable
