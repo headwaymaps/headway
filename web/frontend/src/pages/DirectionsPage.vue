@@ -22,7 +22,11 @@
       <q-card-section class="bg-primary text-white">
         <div class="timeline" ref="timeline" v-on:scroll="scroll">
           <ol>
-            <li :key="`${item.time}`" v-for="item in $data.steps">
+            <li
+              :key="`${item.time}`"
+              :class="item.selected ? 'selected' : ''"
+              v-for="item in $data.steps"
+            >
               <div class="instruction">{{ item.instruction }}</div>
             </li>
           </ol>
@@ -82,24 +86,31 @@ export default defineComponent({
     poiDisplayName,
     scrollLeft() {
       const timeline = this.$refs.timeline as Element;
+      if (timeline.scrollWidth - timeline.clientWidth == 0) {
+        return;
+      }
       const position =
         timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
       const step = Math.min(
-        Math.floor(position * this.$data.steps.length),
+        Math.floor(position * (this.$data.steps.length - 1)),
         this.$data.steps.length - 1
       );
       const newStep = Math.max(Math.ceil(step - 1), 0);
       const newPosition =
-        (newStep / this.$data.steps.length) *
+        (newStep / (this.$data.steps.length - 1)) *
         (timeline.scrollWidth - timeline.clientWidth);
       timeline.scroll({ behavior: 'smooth', left: newPosition });
     },
     scrollRight() {
       const timeline = this.$refs.timeline as Element;
+      if (timeline.scrollWidth - timeline.clientWidth == 0) {
+        return;
+      }
       const position =
         timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
+      console.log(`position: ${position}`);
       const step = Math.min(
-        Math.floor(position * this.$data.steps.length),
+        Math.floor(0.05 + position * (this.$data.steps.length - 1)),
         this.$data.steps.length - 1
       );
       const newStep = Math.min(
@@ -107,15 +118,29 @@ export default defineComponent({
         Math.floor(step + 1)
       );
       const newPosition =
-        (newStep / this.$data.steps.length) *
+        (newStep / (this.$data.steps.length - 1)) *
         (timeline.scrollWidth - timeline.clientWidth);
       timeline.scroll({ behavior: 'smooth', left: newPosition });
     },
     setupPopup() {
       const timeline = this.$refs.timeline as Element;
+      if (timeline.scrollWidth - timeline.clientWidth == 0) {
+        return;
+      }
       const position =
         timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
-      const step = position * this.$data.steps.length;
+      console.log(`position: ${position}`);
+      const step = position * (this.$data.steps.length - 1);
+      console.log(`step: ${step}`);
+
+      const nearestStepRounded = Math.min(
+        Math.round(step),
+        this.$data.steps.length - 1
+      );
+
+      this.$data.steps.forEach((step, index) => {
+        step.selected = index == nearestStepRounded;
+      });
 
       if (
         Math.abs(this.$data.stepCalloutStep - step) <= 0.1 ||
@@ -125,10 +150,6 @@ export default defineComponent({
       }
       this.$data.stepCalloutStep = step;
 
-      const nearestStepRounded = Math.min(
-        Math.round(step),
-        this.$data.steps.length - 1
-      );
       const stepStartPositionIndex =
         this.$data.steps[nearestStepRounded].begin_shape_index;
       const point = this.$data.points[stepStartPositionIndex];
@@ -170,18 +191,21 @@ export default defineComponent({
           .setLngLat(this.$data.points[stepStartPositionIndex])
           .setText(this.$data.steps[nearestStepRounded].instruction)
           .addTo(map);
+        this.$data.steps.forEach((step, index) => {
+          step.selected = index == nearestStepRounded;
+        });
       });
     },
     scroll() {
-      this.setupPopup();
+      setTimeout(() => this.setupPopup());
       const timeline = this.$refs.timeline as Element;
       const position =
         timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
       const step = Math.min(
-        Math.floor(position * this.$data.steps.length),
+        Math.floor(position * (this.$data.steps.length - 1)),
         this.$data.steps.length - 1
       );
-      const fraction = position * this.$data.steps.length - step;
+      const fraction = position * (this.$data.steps.length - 1) - step;
       const stepStartPositionIndex = this.$data.steps[step].begin_shape_index;
       const stepEndPositionIndex = this.$data.steps[step].end_shape_index;
       const stepPositionCount = stepEndPositionIndex - stepStartPositionIndex;
@@ -292,6 +316,7 @@ export default defineComponent({
             offset: [0, -this.$refs.bottomCard.clientHeight / 2],
             zoom: 16,
           });
+          this.setupPopup();
         }
       } else {
         if (map?.getLayer('headway_polyline')) {
@@ -299,6 +324,10 @@ export default defineComponent({
         }
         if (map?.getSource('headway_polyline')) {
           map?.removeSource('headway_polyline');
+        }
+        if (this.$data.stepCallout) {
+          this.$data.stepCallout.remove();
+          this.$data.stepCallout = undefined;
         }
       }
     },
@@ -340,6 +369,10 @@ export default defineComponent({
     }
     if (map?.getSource('headway_polyline')) {
       map?.removeSource('headway_polyline');
+    }
+    if (this.$data.stepCallout) {
+      this.$data.stepCallout.remove();
+      this.$data.stepCallout = undefined;
     }
   },
   setup: function () {

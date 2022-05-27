@@ -64,19 +64,22 @@
 .timeline {
   white-space: nowrap;
   overflow-x: auto;
-  padding-bottom: 9em;
+  padding-bottom: 8em;
   height: fit-content;
   ol {
     width: 100%;
     padding-left: 50%;
-    padding-right: 50%;
+    margin-right: 50%;
     display: inline;
     li {
       position: relative;
       display: inline-block;
-      width: 240px;
+      width: 320px;
       height: 3px;
       background: #fff;
+      &:last-child {
+        width: 0px;
+      }
       &::after {
         content: '';
         position: absolute;
@@ -95,15 +98,21 @@
         left: 3em;
         padding: 10px;
         font-size: 1rem;
-        width: 75%;
+        width: 240px;
         white-space: normal;
         color: black;
         background: white;
         box-shadow: 3px 3px 1px -2px rgba(0, 0, 0, 0.2),
           0px 2px 2px 0 rgba(0, 0, 0, 0.14), 0px 1px 5px 0px rgba(0, 0, 0, 0.12);
-        left: calc(50%);
-        transform: translate(-50%);
+        transform: translate(-66.6%);
         top: calc(16px);
+      }
+    }
+    li.selected {
+      &::after {
+        width: 24px;
+        height: 24px;
+        background: #d11;
       }
     }
   }
