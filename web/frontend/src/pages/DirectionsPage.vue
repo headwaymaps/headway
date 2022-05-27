@@ -19,15 +19,17 @@
   </div>
   <div class="bottom-card">
     <q-card>
+      <q-btn
+        flat
+        round
+        class="place-card-close-button"
+        color="white"
+        icon="close"
+        v-on:click="$router.push('/')"
+      />
       <q-card-section class="bg-primary text-white">
-        <div class="text-subtitle1">
-          {{
-            from
-              ? `Directions from ${poiDisplayName(fromPoi)} to ${poiDisplayName(
-                  toPoi
-                )}`
-              : `Directions to ${poiDisplayName(toPoi)}`
-          }}
+        <div class="text-subtitle1 directions-title" v-if="fromPoi && toPoi">
+          {{ `${poiDisplayName(fromPoi)} to ${poiDisplayName(toPoi)}` }}
         </div>
       </q-card-section>
     </q-card>
@@ -55,6 +57,11 @@ export default defineComponent({
     mode: String,
     to: String,
     from: String,
+  },
+  data: function () {
+    return {
+      steps: [],
+    };
   },
   components: { SearchBox },
   methods: {
@@ -87,6 +94,7 @@ export default defineComponent({
         const route = await response.json();
         const legs = route?.trip?.legs;
         if (legs && map) {
+          this.$data.steps = legs[0].maneuvers;
           if (map?.getLayer('headway_polyline')) {
             map?.removeLayer('headway_polyline');
           }

@@ -1,5 +1,5 @@
 <template>
-  <div class="topLeftCard">
+  <div class="top-left-card">
     <q-card>
       <search-box ref="searchBox" v-model="poi"></search-box>
     </q-card>

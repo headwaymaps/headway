@@ -43,6 +43,10 @@
   width: 100%;
 }
 
+.directions-title {
+  margin-bottom: 12px;
+}
+
 .place-card-conditionally-wrap {
   @media screen and (min-width: 800px) {
     white-space: nowrap;
