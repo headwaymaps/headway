@@ -67,6 +67,10 @@ export default defineComponent({
   methods: {
     poiDisplayName,
     rewriteUrl: async function () {
+      if (!fromPoi.value?.position && !toPoi.value?.position) {
+        this.$router.push('/');
+        return;
+      }
       const fromCanonical = fromPoi.value
         ? canonicalizePoi(fromPoi.value)
         : '_';

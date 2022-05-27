@@ -1,5 +1,5 @@
 <template>
-  <div class="topLeftCard">
+  <div class="top-left-card">
     <q-card>
       <search-box
         ref="searchBox"
@@ -9,7 +9,7 @@
     </q-card>
   </div>
 
-  <div class="bottomCard">
+  <div class="bottom-card">
     <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
   </div>
 </template>
