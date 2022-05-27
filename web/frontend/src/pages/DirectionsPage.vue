@@ -151,8 +151,8 @@ export default defineComponent({
               'line-cap': 'round',
             },
             paint: {
-              'line-color': '#888',
-              'line-width': 8,
+              'line-color': '#1976D2',
+              'line-width': 6,
             },
           });
           map?.fitBounds(zoomBounds);
