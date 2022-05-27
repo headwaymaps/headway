@@ -17,7 +17,7 @@
       ></search-box>
     </q-card>
   </div>
-  <div class="bottom-card">
+  <div class="bottom-card" v-if="fromPoi && toPoi">
     <q-card>
       <q-btn
         flat
@@ -28,7 +28,7 @@
         v-on:click="$router.push('/')"
       />
       <q-card-section class="bg-primary text-white">
-        <div class="text-subtitle1 directions-title" v-if="fromPoi && toPoi">
+        <div class="text-subtitle1 directions-title">
           {{ `${poiDisplayName(fromPoi)} to ${poiDisplayName(toPoi)}` }}
         </div>
       </q-card-section>
@@ -170,6 +170,12 @@ export default defineComponent({
   unmounted: function () {
     activeMarkers.forEach((marker) => marker.remove());
     activeMarkers.length = 0;
+    if (map?.getLayer('headway_polyline')) {
+      map?.removeLayer('headway_polyline');
+    }
+    if (map?.getSource('headway_polyline')) {
+      map?.removeSource('headway_polyline');
+    }
   },
   setup: function () {
     return { toPoi, fromPoi };
