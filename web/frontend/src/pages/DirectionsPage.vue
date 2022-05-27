@@ -35,7 +35,7 @@
 </template>
 
 <script lang="ts">
-import { activeMarkers } from 'src/components/BaseMap.vue';
+import { activeMarkers, map } from 'src/components/BaseMap.vue';
 import {
   canonicalizePoi,
   decanonicalizePoi,
@@ -44,6 +44,7 @@ import {
 } from 'src/components/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
+import { decode } from 'src/components/utils';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -58,7 +59,7 @@ export default defineComponent({
   components: { SearchBox },
   methods: {
     poiDisplayName,
-    rewriteUrl: function () {
+    rewriteUrl: async function () {
       const fromCanonical = fromPoi.value
         ? canonicalizePoi(fromPoi.value)
         : '_';
@@ -66,6 +67,62 @@ export default defineComponent({
       this.$router.replace(
         `/directions/${this.mode}/${toCanonical}/${fromCanonical}`
       );
+      if (fromPoi.value?.position && toPoi.value?.position) {
+        const requestObject = {
+          locations: [
+            {
+              lon: fromPoi.value?.position.long,
+              lat: fromPoi.value.position.lat,
+            },
+            { lon: toPoi.value?.position.long, lat: toPoi.value.position.lat },
+          ],
+          costing: 'bicycle',
+          directions_options: {
+            language: 'en-US', // FIXME: don't hardcode languages!
+          },
+        };
+        const response = await fetch(
+          `/valhalla/route?json=${JSON.stringify(requestObject)}`
+        );
+        const route = await response.json();
+        const legs = route?.trip?.legs;
+        if (legs && map) {
+          if (map?.getLayer('headway_polyline')) {
+            map?.removeLayer('headway_polyline');
+          }
+          if (map?.getSource('headway_polyline')) {
+            map?.removeSource('headway_polyline');
+          }
+          var points: number[][] = [];
+          decode(legs[0].shape, 6).forEach((point) =>
+            points.push([point[1], point[0]])
+          );
+          map?.addSource('headway_polyline', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: points,
+              },
+            },
+          });
+          map?.addLayer({
+            id: 'headway_polyline',
+            type: 'line',
+            source: 'headway_polyline',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#888',
+              'line-width': 8,
+            },
+          });
+        }
+      }
     },
   },
   watch: {

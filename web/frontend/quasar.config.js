@@ -98,6 +98,10 @@ module.exports = configure(function (/* ctx */) {
           target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },
+        '/valhalla': {
+          target: 'https://maps.ellenhp.me',
+          changeOrigin: true,
+        },
         '/bbox.txt': {
           target: 'https://maps.ellenhp.me',
           changeOrigin: true,
