@@ -29,6 +29,7 @@
       ref="autoCompleteMenu"
       :no-focus="true"
       :no-refocus="true"
+      v-on:before-hide="removeHoverMarkers"
       :target="castToTarget($refs.autoCompleteInput)"
     >
       <q-item
@@ -153,7 +154,19 @@ export default defineComponent({
         return menu as QMenu;
       },
       deferHide(menu: QMenu) {
-        setTimeout(() => menu.hide(), 500);
+        setTimeout(() => {
+          menu.hide();
+          if (hoverMarker) {
+            hoverMarker.remove();
+            hoverMarker = undefined;
+          }
+        }, 500);
+      },
+      removeHoverMarkers() {
+        if (hoverMarker) {
+          hoverMarker.remove();
+          hoverMarker = undefined;
+        }
       },
       updateAutocompleteEventRawString(menu: QMenu) {
         menu.show();
@@ -192,9 +205,9 @@ export default defineComponent({
         } else {
           inputText.value = '';
         }
-        if (hoverMarker) {
-          hoverMarker.remove();
-        }
+        setTimeout(() => {
+          if (hoverMarker) hoverMarker.remove();
+        });
         context.emit('update:modelValue', poi);
       },
       hoverPoi(poi: POI | undefined) {
