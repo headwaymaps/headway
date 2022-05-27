@@ -5,31 +5,37 @@ Headway is a maps stack in a box. Upon completion, you will be able to run `make
 ### Status
 
 Headway is currently capable of taking a given city from the list in the Makefile and generating docker images preloaded with that city's data for:
-* A photon geocoder
-* A tileserver-gl tile server
-* A valhalla image
+
+- A photon geocoder
+- A tileserver-gl tile server
+- A valhalla image
 
 The frontend is a work in progress. It is currently capable of:
-* Showing base map tiles
-* Letting you search for a place or an address (with autocomplete)
+
+- Showing base map tiles
+- Letting you search for a place or an address (with autocomplete)
+- Routing between any two POIs, including dropped pins.
 
 It is not capable of:
-* Open-ended search (show all matches on the map or in a list)
-* Dropping a pin on a selected POI and surfacing info about it
-* Directions/routing
+
+- Open-ended search (show all matches on the map or in a list)
+- Clicking on a POI on the base map (technically the base map doesn't have any POIs because the tilserver-gl style isn't customized yet)
+- Showing a detailed directions view.
 
 The project is also missing:
-* A way to download GTFS feeds (maybe from [here](https://database.mobilitydata.org/)?)
-* Steps to download/build elevation tiles for valhalla
-* Kubernetes config for production use
+
+- A way to download GTFS feeds (maybe from [here](https://database.mobilitydata.org/)?)
+- Steps to download/build elevation tiles for valhalla
+- Kubernetes config for production use
 
 Headway is not currently usable as a replacement for Google or Apple maps, but ultimately that is the goal!
 
 ### Known Issues
 
 There are a few issues I want to track specifically:
-* Headway requires an amd64 machine for building and will not work on ARM machines like Raspberry Pis or machines running on Apple silicon. There appears to be a bug in Qemu that shows up regularly during the valhalla tile building step.
-* The build process can occasionally stall and require either a large amount of waiting or an explicit `docker kill`.
+
+- Headway requires an amd64 machine for building and will not work on ARM machines like Raspberry Pis or machines running on Apple silicon. There appears to be a bug in Qemu that shows up regularly during the valhalla tile building step.
+- The build process can occasionally stall and require either a large amount of waiting or an explicit `docker kill`.
 
 ### Architecture
 
