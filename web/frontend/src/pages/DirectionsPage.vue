@@ -17,7 +17,7 @@
       ></search-box>
     </q-card>
   </div>
-  <div class="bottom-card" v-if="fromPoi && toPoi">
+  <div class="bottom-card" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-card>
       <q-card-section class="bg-primary text-white">
         <div class="timeline" ref="timeline" v-on:scroll="scroll">
@@ -57,6 +57,7 @@ import {
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import { decode } from 'src/components/utils';
+import { Popup } from 'maplibre-gl';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -72,6 +73,8 @@ export default defineComponent({
     return {
       steps: [],
       points: [],
+      stepCallout: undefined,
+      stepCalloutStep: -1,
     };
   },
   components: { SearchBox },
@@ -108,7 +111,69 @@ export default defineComponent({
         (timeline.scrollWidth - timeline.clientWidth);
       timeline.scroll({ behavior: 'smooth', left: newPosition });
     },
+    setupPopup() {
+      const timeline = this.$refs.timeline as Element;
+      const position =
+        timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
+      const step = position * this.$data.steps.length;
+
+      if (
+        Math.abs(this.$data.stepCalloutStep - step) <= 0.1 ||
+        Math.round(this.$data.stepCalloutStep) == Math.round(step)
+      ) {
+        return;
+      }
+      this.$data.stepCalloutStep = step;
+
+      const nearestStepRounded = Math.min(
+        Math.round(step),
+        this.$data.steps.length - 1
+      );
+      const stepStartPositionIndex =
+        this.$data.steps[nearestStepRounded].begin_shape_index;
+      const point = this.$data.points[stepStartPositionIndex];
+      const beforePoint = this.$data.points[stepStartPositionIndex - 1];
+      const afterPoint = this.$data.points[stepStartPositionIndex + 1];
+
+      var neighborAverage = [point[0], point[1]];
+      if (afterPoint && beforePoint) {
+        neighborAverage = [
+          (afterPoint[0] + beforePoint[0]) / 2,
+          (afterPoint[1] + beforePoint[1]) / 2,
+        ];
+      } else if (afterPoint) {
+        neighborAverage = afterPoint;
+      } else if (beforePoint) {
+        neighborAverage = beforePoint;
+      }
+      var chosenAnchor = 'center';
+      if (neighborAverage[0] >= point[0] && neighborAverage[1] >= point[1]) {
+        chosenAnchor = 'top-right';
+      }
+      if (neighborAverage[0] <= point[0] && neighborAverage[1] >= point[1]) {
+        chosenAnchor = 'top-left';
+      }
+      if (neighborAverage[0] >= point[0] && neighborAverage[1] <= point[1]) {
+        chosenAnchor = 'bottom-right';
+      }
+      if (neighborAverage[0] <= point[0] && neighborAverage[1] <= point[1]) {
+        chosenAnchor = 'bottom-left';
+      }
+      setTimeout(() => {
+        if (this.$data.stepCallout) {
+          this.$data.stepCallout.remove();
+        }
+        this.$data.stepCallout = new Popup({
+          closeOnClick: true,
+          anchor: chosenAnchor,
+        })
+          .setLngLat(this.$data.points[stepStartPositionIndex])
+          .setText(this.$data.steps[nearestStepRounded].instruction)
+          .addTo(map);
+      });
+    },
     scroll() {
+      this.setupPopup();
       const timeline = this.$refs.timeline as Element;
       const position =
         timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
@@ -134,7 +199,11 @@ export default defineComponent({
         lerpEnd[0] * lerpFraction + lerpStart[0] * (1 - lerpFraction),
         lerpEnd[1] * lerpFraction + lerpStart[1] * (1 - lerpFraction),
       ];
-      map?.easeTo({ center: finalPos, zoom: 16, duration: 0 });
+      map?.easeTo({
+        center: finalPos,
+        duration: 0,
+        offset: [0, -this.$refs.bottomCard.clientHeight / 2],
+      });
     },
     rewriteUrl: async function () {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
@@ -193,14 +262,6 @@ export default defineComponent({
               bbox[3] = point[0];
             }
           });
-          const center = [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2];
-          const extents = [bbox[2] - bbox[0], bbox[3] - bbox[1]];
-          const zoomBounds: [number, number, number, number] = [
-            center[0] - extents[0],
-            center[1] - extents[1],
-            center[0] + extents[0],
-            center[1] + extents[1],
-          ];
           this.$data.points = points;
           map?.addSource('headway_polyline', {
             type: 'geojson',
@@ -226,7 +287,11 @@ export default defineComponent({
               'line-width': 6,
             },
           });
-          map?.fitBounds(zoomBounds);
+          map?.flyTo({
+            center: points[0] as [number, number],
+            offset: [0, -this.$refs.bottomCard.clientHeight / 2],
+            zoom: 16,
+          });
         }
       } else {
         if (map?.getLayer('headway_polyline')) {
