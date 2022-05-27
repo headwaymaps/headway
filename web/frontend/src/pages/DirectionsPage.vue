@@ -75,7 +75,7 @@ export default defineComponent({
         ? canonicalizePoi(fromPoi.value)
         : '_';
       const toCanonical = toPoi.value ? canonicalizePoi(toPoi.value) : '_';
-      this.$router.replace(
+      this.$router.push(
         `/directions/${this.mode}/${toCanonical}/${fromCanonical}`
       );
       if (fromPoi.value?.position && toPoi.value?.position) {
