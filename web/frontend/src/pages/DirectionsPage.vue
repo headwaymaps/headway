@@ -33,7 +33,7 @@
         </div>
       </q-card-section>
       <q-card-section class="bg-primary text-white">
-        <div class="timeline">
+        <div class="timeline" ref="timeline" v-on:scroll="scroll">
           <ol>
             <li :key="`${item.time}`" v-for="item in $data.steps">
               <div class="instruction">{{ item.instruction }}</div>
@@ -70,11 +70,40 @@ export default defineComponent({
   data: function () {
     return {
       steps: [],
+      points: [],
     };
   },
   components: { SearchBox },
   methods: {
     poiDisplayName,
+    scroll() {
+      const timeline = this.$refs.timeline as Element;
+      const position =
+        timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
+      const step = Math.min(
+        Math.floor(position * this.$data.steps.length),
+        this.$data.steps.length - 1
+      );
+      const fraction = position * this.$data.steps.length - step;
+      const stepStartPositionIndex = this.$data.steps[step].begin_shape_index;
+      const stepEndPositionIndex = this.$data.steps[step].end_shape_index;
+      const stepPositionCount = stepEndPositionIndex - stepStartPositionIndex;
+      const lerpFraction =
+        fraction * stepPositionCount - Math.floor(fraction * stepPositionCount);
+      const lerpStart =
+        this.$data.points[
+          stepStartPositionIndex + Math.floor(fraction * stepPositionCount)
+        ];
+      const lerpEnd =
+        this.$data.points[
+          stepStartPositionIndex + Math.ceil(fraction * stepPositionCount)
+        ];
+      const finalPos: [number, number] = [
+        lerpEnd[0] * lerpFraction + lerpStart[0] * (1 - lerpFraction),
+        lerpEnd[1] * lerpFraction + lerpStart[1] * (1 - lerpFraction),
+      ];
+      map?.easeTo({ center: finalPos, zoom: 16, duration: 0 });
+    },
     rewriteUrl: async function () {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
         this.$router.push('/');
@@ -140,6 +169,7 @@ export default defineComponent({
             center[0] + extents[0],
             center[1] + extents[1],
           ];
+          this.$data.points = points;
           map?.addSource('headway_polyline', {
             type: 'geojson',
             data: {
@@ -219,30 +249,6 @@ export default defineComponent({
     return {
       toPoi,
       fromPoi,
-      thumbStyle: {
-        right: '4px',
-        borderRadius: '5px',
-        backgroundColor: '#111',
-        width: '9px',
-        opacity: '0.75',
-      },
-
-      barStyle: {
-        right: '2px',
-        borderRadius: '9px',
-        backgroundColor: '#111',
-        width: '5px',
-        opacity: '0.2',
-      },
-      stepsListStyle: {
-        whiteSpace: 'nowrap',
-        overflow: 'auto',
-        display: 'table',
-      },
-      stepsItemStyle: {
-        display: 'inline-block',
-        height: '100%',
-      },
     };
   },
 });
