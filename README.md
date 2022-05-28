@@ -6,7 +6,8 @@ Headway is a maps stack in a box. Upon completion, you will be able to run `make
 
 Headway is currently capable of taking a given city from the list in the Makefile and generating docker images preloaded with that city's data for:
 
-- A photon geocoder
+- A nominatim geocoder
+- A photon geocoder (used as an auto-complete service for nominatim)
 - A tileserver-gl tile server
 - A valhalla image
 
@@ -15,20 +16,18 @@ The frontend is a work in progress. It is currently capable of:
 - Showing base map tiles
 - Letting you search for a place or an address (with autocomplete)
 - Routing between any two POIs, including dropped pins.
+- Providing a scrubbable timeline of a cycling route.
 
 It is not capable of:
 
 - Open-ended search (show all matches on the map or in a list)
 - Clicking on a POI on the base map (technically the base map doesn't have any POIs because the tilserver-gl style isn't customized yet)
-- Showing a detailed directions view.
 
 The project is also missing:
 
 - A way to download GTFS feeds (maybe from [here](https://database.mobilitydata.org/)?)
 - Steps to download/build elevation tiles for valhalla
 - Kubernetes config for production use
-
-Headway is not currently usable as a replacement for Google or Apple maps, but ultimately that is the goal!
 
 ### Known Issues
 
