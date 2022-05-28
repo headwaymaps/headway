@@ -1,6 +1,5 @@
 <template>
   <router-view />
-  <base-map></base-map>
 </template>
 
 <script lang="ts">

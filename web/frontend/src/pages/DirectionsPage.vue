@@ -51,7 +51,11 @@
 </template>
 
 <script lang="ts">
-import { activeMarkers, map } from 'src/components/BaseMap.vue';
+import {
+  activeMarkers,
+  map,
+  setBottomCardAllowance,
+} from 'src/components/BaseMap.vue';
 import {
   canonicalizePoi,
   decanonicalizePoi,
@@ -331,6 +335,13 @@ export default defineComponent({
         }
       }
     },
+    resizeMap() {
+      if (this.$refs.bottomCard && this.$refs.bottomCard) {
+        setBottomCardAllowance(this.$refs.bottomCard.offsetHeight);
+      } else {
+        setBottomCardAllowance(0);
+      }
+    },
   },
   watch: {
     to: {
@@ -339,7 +350,8 @@ export default defineComponent({
       handler(newValue) {
         setTimeout(async () => {
           toPoi.value = await decanonicalizePoi(newValue);
-          this.rewriteUrl();
+          await this.rewriteUrl();
+          this.resizeMap();
         });
       },
     },
@@ -349,7 +361,8 @@ export default defineComponent({
       handler(newValue) {
         setTimeout(async () => {
           fromPoi.value = await decanonicalizePoi(newValue);
-          this.rewriteUrl();
+          await this.rewriteUrl();
+          this.resizeMap();
         });
       },
     },
@@ -359,6 +372,7 @@ export default defineComponent({
       toPoi.value = await decanonicalizePoi(this.$props.to as string);
       fromPoi.value = await decanonicalizePoi(this.$props.from as string);
       await this.rewriteUrl();
+      this.resizeMap();
     });
   },
   unmounted: function () {

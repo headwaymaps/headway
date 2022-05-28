@@ -9,9 +9,7 @@
     </q-card>
   </div>
 
-  <div class="bottomCard">
-    <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
-  </div>
+  <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
 </template>
 
 <script lang="ts">

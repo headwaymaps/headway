@@ -46,6 +46,7 @@ async function loadMap() {
     center: [0, 0], // starting position [lng, lat]
     maxBounds: maxBounds,
     zoom: 1, // starting zoom
+    trackResize: true,
   });
 }
 
@@ -83,6 +84,22 @@ function clearAllTimeouts() {
   mapTouchTimeouts.length = 0;
 }
 
+var bottomCardAllowance = 0;
+
+export function setBottomCardAllowance(pixels?: number) {
+  if (pixels !== undefined) {
+    bottomCardAllowance = pixels;
+  }
+  const maps = document.getElementsByClassName('maplibregl-map');
+  console.log(window.innerHeight - bottomCardAllowance);
+  for (var mapIdx = 0; mapIdx < maps.length; mapIdx++) {
+    maps.item(mapIdx).style.height = `${
+      window.innerHeight - bottomCardAllowance
+    }px`;
+  }
+  map?.resize();
+}
+
 export default defineComponent({
   name: 'BaseMap',
   emits: ['onMapClick', 'onMapLongPress', 'load'],
@@ -113,6 +130,7 @@ export default defineComponent({
     map?.on('mouseup', () => clearAllTimeouts());
     map?.on('mousemove', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
+    map?.on('load', () => setBottomCardAllowance());
     this.$emit('load');
   },
 });

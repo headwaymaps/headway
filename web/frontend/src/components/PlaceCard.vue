@@ -1,5 +1,5 @@
 <template>
-  <q-card class="bottom-card">
+  <q-card class="bottom-card" ref="bottomCard">
     <q-card-section class="bg-primary text-white">
       <div class="place-card-conditionally-wrap">
         <q-btn
@@ -45,6 +45,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { setBottomCardAllowance } from './BaseMap.vue';
 import { canonicalizePoi } from './models';
 
 export default defineComponent({
@@ -55,6 +56,18 @@ export default defineComponent({
   },
   methods: {
     canonicalizePoi,
+  },
+  watch: {
+    poi: function () {
+      setTimeout(() => {
+        setBottomCardAllowance(this.$refs.bottomCard.$el.offsetHeight);
+      });
+    },
+  },
+  mounted: function () {
+    setTimeout(() => {
+      setBottomCardAllowance(this.$refs.bottomCard.$el.offsetHeight);
+    });
   },
   components: {},
 });
