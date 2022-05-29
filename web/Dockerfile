@@ -1,14 +1,4 @@
-FROM nginx
-
-RUN apt-get update
-
-RUN apt-get install -y curl
-
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
-
-RUN apt-get install -y nodejs
-
-RUN npm install --global yarn
+FROM node:16-slim as builder
 
 RUN yarn global add @quasar/cli
 
@@ -16,21 +6,14 @@ COPY frontend /frontend
 
 WORKDIR /frontend
 
-RUN yarn cache clean
+RUN yarn install \
+  && quasar build
 
-RUN rm -rf ./.node_modules
+FROM nginx
 
-RUN rm -rf ./.quasar
+COPY --from=builder /frontend/dist/spa/ /usr/share/nginx/html/
 
-RUN yarn install
-
-RUN quasar build
-
-RUN cp -r /frontend/dist/spa/* /usr/share/nginx/html
-
-COPY nginx.conf /etc/nginx/nginx.conf
-
-COPY .base_url /etc/nginx/
+COPY nginx.conf .base_url /etc/nginx/
 
 COPY bbox.txt /usr/share/nginx/html/bbox.txt
 
