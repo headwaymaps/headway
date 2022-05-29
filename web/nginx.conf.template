@@ -18,53 +18,53 @@ http {
   proxy_http_version 1.1;
 
   server {
-    resolver 127.0.0.11;
-    listen 8080 default_server;
+    resolver ${HEADWAY_RESOLVER};
+    listen ${HEADWAY_HTTP_PORT} default_server;
 
     # nominatim
     location ~ /nominatim/lookup/([NRW][0-9]+)  {
-      proxy_pass      http://nominatim:8080/lookup?osm_ids=$1;
+      proxy_pass      ${HEADWAY_NOMINATIM_URL}/lookup?osm_ids=${ESC}1;
     }
 
     # photon
     location /photon/  {
-      proxy_pass      http://photon:2322/;
+      proxy_pass      ${HEADWAY_PHOTON_URL}/;
     }
 
     # graphhopper
     location /graphhopper/  {
-      proxy_pass      http://graphhopper:8989/;
+      proxy_pass      ${HEADWAY_GRAPHHOPPER_URL};
     }
 
     # mbtileserver stuff
     location /data/  {
       proxy_set_header Accept-Encoding "";
-      proxy_set_header x-real-IP $remote_addr;
-      proxy_set_header x-forwarded-for $proxy_add_x_forwarded_for;
+      proxy_set_header x-real-IP ${ESC}remote_addr;
+      proxy_set_header x-forwarded-for ${ESC}proxy_add_x_forwarded_for;
       proxy_set_header Host "magic_string_magic";
       sub_filter_types application/json;
-      sub_filter_once off;
-      sub_filter 'http://magic_string_magic' '__HEADWAY_BASE_URL__';
-      proxy_pass      http://mbtileserver:8000;
+      sub_filter_once  off;
+      sub_filter       'http://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
+      proxy_pass       ${HEADWAY_TILESERVER_URL}/data/;
     }
     location /styles/  {
       proxy_set_header Accept-Encoding "";
-      proxy_set_header x-real-IP $remote_addr;
+      proxy_set_header x-real-IP ${ESC}remote_addr;
       proxy_set_header x-forwarded-for $proxy_add_x_forwarded_for;
       proxy_set_header Host "magic_string_magic";
       sub_filter_types application/json;
-      sub_filter_once off;
-      sub_filter 'http://magic_string_magic' '__HEADWAY_BASE_URL__';
-      proxy_pass      http://mbtileserver:8000;
+      sub_filter_once  off;
+      sub_filter       'http://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
+      proxy_pass       ${HEADWAY_TILESERVER_URL};
     }
     location /fonts/  {
       proxy_set_header Accept-Encoding "";
-      proxy_set_header x-real-IP $remote_addr;
+      proxy_set_header x-real-IP ${ESC}remote_addr;
       proxy_set_header x-forwarded-for $proxy_add_x_forwarded_for;
-      proxy_pass      http://mbtileserver:8000;
+      proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;
     }
     location / {
-      try_files $uri /index.html;
+      try_files ${ESC}uri /index.html;
     }
   }
 }
