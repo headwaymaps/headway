@@ -41,7 +41,7 @@ list:
 %.bbox:
 	@echo "Extracting bounding box for $(basename $@)"
 	grep "$(basename $@):" bboxes.csv > $@
-	sed -i 's/$(basename $@)://' $@
+	perl -i.bak -pe 's/$(basename $@)://' $@
 
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(basename $@)"
@@ -58,20 +58,20 @@ list:
 		--download \
 		--force
 	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
-	bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
-	bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
+	-bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
+	-bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
 	docker run -d --name headway_mbtiles_ephemeral_busybox -v headway_mbtiles_build:/headway_mbtiles_build busybox sleep 1000
 	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
 	bash -c 'docker cp $$(<.mbtiles_cid):/headway_mbtiles_build/output.mbtiles $@'
-	bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
-	bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
+	-bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
+	-bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
 
 %.nominatim.tgz: %.nominatim_image
 	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
 	mkdir -p ./.tmp_geocoder
 	rm -rf ./.tmp_geocoder/*
 	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
-	docker volume rm headway_geocoder_build || echo "Volume does not exist!"
+	docker volume rm -f headway_geocoder_build || echo "Volume does not exist!"
 	docker volume create headway_geocoder_build
 	docker build ./geocoder/nominatim --tag headway_nominatim
 	docker run --memory=6G -it --rm \
@@ -81,13 +81,13 @@ list:
 		headway_nominatim \
 		/jobs/import_wait_dump.sh
 	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
-	bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
-	docker run -d --name headway_geocoder_ephemeral_busybox -v headway_geocoder_build:/headway_geocoder_build busybox sleep 1000
+	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
+	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
+	docker run -d --rm --name headway_geocoder_ephemeral_busybox -v headway_geocoder_build:/headway_geocoder_build busybox sleep 1000
 	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
 	bash -c 'docker cp $$(<.nominatim_cid):/headway_geocoder_build/nominatim ./.tmp_geocoder/nominatim'
-	bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
+	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
+	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
 	tar -C ./.tmp_geocoder -czf $@ nominatim
 	rm -rf ./.tmp_geocoder/*
 
@@ -107,54 +107,87 @@ list:
 	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
 	docker build ./geocoder/nominatim --tag headway_nominatim
 
-%.valhalla.tar: %.osm.pbf
-	@echo "Building valhalla tiles for $(basename $(basename $@))."
-	mkdir -p ./.tmp_valhalla
-	rm -rf ./.tmp_valhalla/*
-	cp $(basename $(basename $@)).osm.pbf ./.tmp_valhalla/data.osm.pbf
-	docker volume rm headway_valhalla_build || echo "Volume does not exist!"
-	docker volume create headway_valhalla_build
-	docker build ./valhalla/build --tag headway_valhalla_build
-	docker run --rm --memory=6G \
-		-v headway_valhalla_build:/tmp_vol \
-		-v ${PWD}/.tmp_valhalla:/data_vol \
-		headway_valhalla_build
-	docker ps -aqf "name=headway_valhalla_ephemeral_busybox" > .valhalla_cid
-	bash -c 'docker kill $$(<.valhalla_cid) || echo "container is not running"'
-	bash -c 'docker rm $$(<.valhalla_cid) || echo "container does not exist"'
-	docker run -d --name headway_valhalla_ephemeral_busybox -v headway_valhalla_build:/headway_valhalla_build busybox sleep 1000
-	docker ps -aqf "name=headway_valhalla_ephemeral_busybox" > .valhalla_cid
-	bash -c 'docker cp $$(<.valhalla_cid):/headway_valhalla_build/valhalla_tiles.tar $@'
-	bash -c 'docker kill $$(<.valhalla_cid) || echo "container is not running"'
-	bash -c 'docker rm $$(<.valhalla_cid) || echo "container does not exist"'
-
-%.valhalla_image: %.valhalla.tar
-	@echo "Building valhalla image for $(basename $@)."
-	cp $(basename $@).valhalla.tar ./valhalla/run/tiles.tar
-	docker build ./valhalla/run --tag headway_valhalla_run
+%.graph.tgz: %.osm.pbf
+	@echo "Pre-generating graphhopper graph for $(basename $(basename $@))."
+	docker build ./graphhopper --tag headway_graphhopper_build_image
+	mkdir -p ./.tmp_graphhopper
+	rm -rf ./.tmp_graphhopper/*
+	cp $(basename $(basename $@)).osm.pbf ./.tmp_graphhopper/data.osm.pbf
+	-docker volume rm -f headway_graphhopper_build || echo "Volume does not exist!"
+	docker volume create headway_graphhopper_build
+	docker run -d --rm --name headway_graphhopper_ephemeral_busybox_build \
+		-v headway_graphhopper_build:/headway_graphhopper_build \
+		alpine:3 \
+		sleep 1000
+	docker ps -aqf "name=headway_graphhopper_ephemeral_busybox_build" > .graphhopper_build_cid
+	bash -c 'docker cp $(basename $(basename $@)).osm.pbf $$(<.graphhopper_build_cid):/headway_graphhopper_build/data.osm.pbf'
+	-bash -c 'docker kill $$(<.graphhopper_build_cid) || echo "container is not running"'
+	docker run --memory=6G -it --rm \
+		-v headway_graphhopper_build:/graph_volume \
+		headway_graphhopper_build_image \
+		-Ddw.graphhopper.datareader.file=/graph_volume/data.osm.pbf \
+		-jar \
+		/graphhopper/graphhopper-web-5.3.jar \
+		import \
+		config.yaml
+	-docker ps -aqf "name=headway_graphhopper_ephemeral_busybox_build" > .graphhopper_build_cid
+	-bash -c 'docker kill $$(<.graphhopper_build_cid) || echo "container is not running"'
+	docker run --rm \
+		-v headway_graphhopper_build:/headway_graphhopper_build \
+		alpine:3 \
+		/bin/sh -c 'rm -f /headway_graphhopper_build/graph.tgz && cd /headway_graphhopper_build && tar -czf graph.tgz *'
+	docker run -d --rm --name headway_graphhopper_ephemeral_busybox_build \
+		-v headway_graphhopper_build:/headway_graphhopper_build \
+		alpine:3 \
+		sleep 1000
+	docker ps -aqf "name=headway_graphhopper_ephemeral_busybox_build" > .graphhopper_build_cid
+	bash -c 'docker cp $$(<.graphhopper_build_cid):/headway_graphhopper_build/graph.tgz $@'
+	-bash -c 'docker kill $$(<.graphhopper_build_cid) || echo "container is not running"'
+	rm -rf ./.tmp_graphhopper/*
 
 %.nginx_image: .base_url %.bbox
 	cp .base_url web/
 	cp $(basename $@).bbox web/bbox.txt
 	docker build ./web --tag headway_nginx
 
-%.tag_images: %.tileserver_image %.photon_image %.valhalla_image %.nginx_image %.nominatim_image
+%.tag_images: %.tileserver_image %.photon_image %.nginx_image %.nominatim_image graphhopper_image
 	@echo "Tagging images"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.valhalla.tar %.tag_images
+%.graphhopper_volume: %.graph.tgz graphhopper_image
+	@echo "Create volume, then delete, then create, to force failures if the volume is in use."
+	-docker volume create headway_graphhopper_vol
+	docker volume rm -f headway_graphhopper_vol
+	docker volume create headway_graphhopper_vol
+
+	docker run -d --rm --name headway_graphhopper_ephemeral_busybox_tag \
+		-v headway_graphhopper_vol:/headway_graphhopper \
+		alpine:3 \
+		sleep 1000
+
+	-docker ps -aqf "name=headway_graphhopper_ephemeral_busybox_tag" > .graphhopper_cid
+	bash -c 'docker cp $(basename $@).graph.tgz $$(<.graphhopper_cid):/headway_graphhopper/graph.tgz'
+	-bash -c 'docker kill $$(<.graphhopper_cid) || echo "container is not running"'
+
+	docker run --rm \
+		-v headway_graphhopper_vol:/headway_graphhopper \
+		alpine:3 \
+		/bin/sh -c 'cd /headway_graphhopper && tar -xvf graph.tgz && rm graph.tgz'
+
+%.tag_volumes: %.graphhopper_volume
+	@echo "Tagged volumes"
+
+$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images %.tag_volumes
 	@echo "Building $@"
 
 clean:
-	rm -rf ./*.valhalla.tar
 	rm -rf ./*.nominatim.tgz
 	rm -rf ./*.mbtiles
 	rm -rf ./.tmp_mbtiles/tmp
 	rm -rf ./.tmp_mbtiles/data.osm.pbf
-	rm -rf ./.tmp_valhalla/*
 	rm -rf ./.tmp_geocoder/*
 	rm -rf ./.*_cid
 
-%.up: %
+%.up: % %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images %.tag_volumes
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d
@@ -163,3 +196,6 @@ clean:
 clean_all: clean
 	rm -rf ./*.osm.pbf
 	rm -rf ./.tmp_mbtiles/*
+
+graphhopper_image:
+	docker build ./graphhopper --tag headway_graphhopper

@@ -1,9 +1,10 @@
 .tmp_*
 *.osm.pbf
 *.nominatim.tgz
-*.valhalla.tar
+*.graph.tgz
 *.mbtiles
 **/.DS_Store
 .*_cid
 .base_url
 *.bbox
+*.bbox.bak

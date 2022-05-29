@@ -27,7 +27,7 @@
               :class="item.selected ? 'selected' : ''"
               v-for="item in $data.steps"
             >
-              <div class="instruction">{{ item.instruction }}</div>
+              <div class="instruction">{{ item.text }}</div>
             </li>
           </ol>
         </div>
@@ -64,7 +64,7 @@ import {
 } from 'src/components/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
-import { decode } from 'src/components/utils';
+import { decodePath } from 'src/third_party/decodePath';
 import { Popup } from 'maplibre-gl';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
@@ -133,9 +133,7 @@ export default defineComponent({
       }
       const position =
         timeline.scrollLeft / (timeline.scrollWidth - timeline.clientWidth);
-      console.log(`position: ${position}`);
       const step = position * (this.$data.steps.length - 1);
-      console.log(`step: ${step}`);
 
       const nearestStepRounded = Math.min(
         Math.round(step),
@@ -155,7 +153,7 @@ export default defineComponent({
       this.$data.stepCalloutStep = step;
 
       const stepStartPositionIndex =
-        this.$data.steps[nearestStepRounded].begin_shape_index;
+        this.$data.steps[nearestStepRounded].interval[0];
       const point = this.$data.points[stepStartPositionIndex];
       const beforePoint = this.$data.points[stepStartPositionIndex - 1];
       const afterPoint = this.$data.points[stepStartPositionIndex + 1];
@@ -193,7 +191,7 @@ export default defineComponent({
           anchor: chosenAnchor,
         })
           .setLngLat(this.$data.points[stepStartPositionIndex])
-          .setText(this.$data.steps[nearestStepRounded].instruction)
+          .setText(this.$data.steps[nearestStepRounded].text)
           .addTo(map);
         this.$data.steps.forEach((step, index) => {
           step.selected = index == nearestStepRounded;
@@ -210,8 +208,8 @@ export default defineComponent({
         this.$data.steps.length - 1
       );
       const fraction = position * (this.$data.steps.length - 1) - step;
-      const stepStartPositionIndex = this.$data.steps[step].begin_shape_index;
-      const stepEndPositionIndex = this.$data.steps[step].end_shape_index;
+      const stepStartPositionIndex = this.$data.steps[step].interval[0];
+      const stepEndPositionIndex = this.$data.steps[step].interval[1];
       const stepPositionCount = stepEndPositionIndex - stepStartPositionIndex;
       const lerpFraction =
         fraction * stepPositionCount - Math.floor(fraction * stepPositionCount);
@@ -230,7 +228,6 @@ export default defineComponent({
       map?.easeTo({
         center: finalPos,
         duration: 0,
-        offset: [0, -this.$refs.bottomCard.clientHeight / 2],
       });
     },
     rewriteUrl: async function () {
@@ -246,26 +243,19 @@ export default defineComponent({
         `/directions/${this.mode}/${toCanonical}/${fromCanonical}`
       );
       if (fromPoi.value?.position && toPoi.value?.position) {
-        const requestObject = {
-          locations: [
-            {
-              lon: fromPoi.value?.position.long,
-              lat: fromPoi.value.position.lat,
-            },
-            { lon: toPoi.value?.position.long, lat: toPoi.value.position.lat },
-          ],
-          costing: 'bicycle',
-          directions_options: {
-            language: 'en-US', // FIXME: don't hardcode languages!
-          },
-        };
         const response = await fetch(
-          `/valhalla/route?json=${JSON.stringify(requestObject)}`
+          `/graphhopper/route?point=${fromPoi.value?.position.lat},${fromPoi.value?.position.long}&point=${toPoi.value?.position.lat},${toPoi.value?.position.long}&profile=${this.$props.mode}`
         );
         const route = await response.json();
-        const legs = route?.trip?.legs;
-        if (legs && map) {
-          this.$data.steps = legs[0].maneuvers;
+        const path = route?.paths[0];
+        if (path && map) {
+          var totalTime = 0;
+          for (const key in path.instructions) {
+            totalTime += path.instructions[key].time;
+            path.instructions[key].time = totalTime;
+          }
+          this.$data.steps = path.instructions;
+          console.log(this.$data.steps);
           if (map?.getLayer('headway_polyline')) {
             map?.removeLayer('headway_polyline');
           }
@@ -275,21 +265,22 @@ export default defineComponent({
           // min/max
           const bbox: number[] = [1000, 1000, -1000, -1000];
           var points: number[][] = [];
-          decode(legs[0].shape, 6).forEach((point) => {
-            points.push([point[1], point[0]]);
-            if (point[1] < bbox[0]) {
-              bbox[0] = point[1];
+          decodePath(path.points, false).forEach((point) => {
+            points.push(point);
+            if (point[0] < bbox[0]) {
+              bbox[0] = point[0];
             }
-            if (point[0] < bbox[1]) {
-              bbox[1] = point[0];
+            if (point[1] < bbox[1]) {
+              bbox[1] = point[1];
             }
-            if (point[1] > bbox[2]) {
-              bbox[2] = point[1];
+            if (point[2] > bbox[2]) {
+              bbox[2] = point[2];
             }
-            if (point[0] > bbox[3]) {
-              bbox[3] = point[0];
+            if (point[3] > bbox[3]) {
+              bbox[3] = point[3];
             }
           });
+          console.log(points);
           this.$data.points = points;
           map?.addSource('headway_polyline', {
             type: 'geojson',
@@ -317,7 +308,6 @@ export default defineComponent({
           });
           map?.flyTo({
             center: points[0] as [number, number],
-            offset: [0, -this.$refs.bottomCard.clientHeight / 2],
             zoom: 16,
           });
           this.setupPopup();
