@@ -98,7 +98,7 @@ module.exports = configure(function (/* ctx */) {
           target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },
-        '/valhalla': {
+        '/graphhopper': {
           target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },
