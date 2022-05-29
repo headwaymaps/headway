@@ -9,7 +9,7 @@ Headway is currently capable of taking a given city from the list in the Makefil
 - A nominatim geocoder
 - A photon geocoder (used as an auto-complete service for nominatim)
 - A tileserver-gl tile server
-- A valhalla image
+- A graphhopper image
 
 The frontend is a work in progress. It is currently capable of:
 
@@ -26,7 +26,6 @@ It is not capable of:
 The project is also missing:
 
 - A way to download GTFS feeds (maybe from [here](https://database.mobilitydata.org/)?)
-- Steps to download/build elevation tiles for valhalla
 - Kubernetes config for production use
 
 ### Architecture
