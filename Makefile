@@ -176,7 +176,7 @@ list:
 %.tag_volumes: %.graphhopper_volume
 	@echo "Tagged volumes"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images %.tag_volumes
+$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.graph.tgz %.mbtiles %.tag_images %.tag_volumes
 	@echo "Building $@"
 
 clean:
@@ -187,7 +187,7 @@ clean:
 	rm -rf ./.tmp_geocoder/*
 	rm -rf ./.*_cid
 
-%.up: % %.osm.pbf %.nominatim.tgz %.mbtiles %.tag_images %.tag_volumes
+%.up: % %.osm.pbf %.nominatim.tgz %.mbtiles %.graph.tgz %.tag_images %.tag_volumes
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d

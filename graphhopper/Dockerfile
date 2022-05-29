@@ -1,8 +1,8 @@
-FROM openjdk:8-jre-alpine
+FROM openjdk:11-jre
 
-RUN apk update
+RUN apt-get update
 
-RUN apk add curl
+RUN apt-get install -y curl
 
 WORKDIR /graphhopper
 
