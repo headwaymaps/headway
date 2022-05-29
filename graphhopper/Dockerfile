@@ -16,4 +16,4 @@ ENTRYPOINT [ "java" ]
 
 EXPOSE 8989
 
-CMD [ "-jar", "graphhopper-web-5.3.jar", "serve", "/graphhopper/config.yaml" ]
+CMD [ "-jar", "-Xmx6g", "-Xms6g", "graphhopper-web-5.3.jar", "serve", "/graphhopper/config.yaml" ]
