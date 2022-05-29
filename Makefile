@@ -40,7 +40,7 @@ list:
 
 %.bbox:
 	@echo "Extracting bounding box for $(basename $@)"
-	grep "$(basename $@):" bboxes.csv > $@
+	grep "$(basename $@):" gtfs/bboxes.csv > $@
 	perl -i.bak -pe 's/$(basename $@)://' $@
 
 %.mbtiles: %.osm.pbf

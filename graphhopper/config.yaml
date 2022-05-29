@@ -4,7 +4,8 @@ graphhopper:
   datareader.file: "/graph_volume/data.osm.pbf"
   # Local folder used by graphhopper to store its data
   graph.location: /graph_volume
-
+  # GTFS files
+  gtfs.file: "__magic_string_to_be_replaced_with_gtfs_feeds__"
   ##### Vehicles #####
 
 

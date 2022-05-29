@@ -12,7 +12,9 @@ RUN sh -c 'echo "98e379dbbc345d39e7e07101b48d106e81d0b09a1f67a23c18e6c45be54ff92
 
 COPY config.yaml /graphhopper
 
-ENTRYPOINT [ "java" ]
+COPY startup.sh /graphhopper
+
+ENTRYPOINT [ "/graphhopper/startup.sh" ]
 
 EXPOSE 8989
 
