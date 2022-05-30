@@ -26,8 +26,6 @@ USER root
 
 COPY data.nominatim.sql /nominatim_data/data.nominatim.sql
 
-WORKDIR /nominatim_data
-
 WORKDIR /photon
 
 RUN ["/bin/bash", "/photon/import_from_dump.sh"]

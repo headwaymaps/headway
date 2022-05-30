@@ -1,6 +1,8 @@
 #!/bin/bash
 
-HEADWAY_NOMINATIM_FILE=${HEADWAY_NOMINATIM_FILE:-/nominatim_data/nominatim}
+set -xe
+
+HEADWAY_NOMINATIM_FILE=${HEADWAY_NOMINATIM_FILE:-/nominatim_data/data.nominatim.sql}
 HEADWAY_PHOTON_LANGUAGES=${HEADWAY_PHOTON_LANGUAGES:-es,fr,de,en}
 
 service postgresql start && \

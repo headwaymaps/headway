@@ -20,8 +20,6 @@ RUN curl -L -o ./photon.jar https://github.com/komoot/photon/releases/download/$
 
 RUN echo "${PHOTON_HASH}  ./photon.jar" | sha256sum --check
 
-COPY import_from_dump.sh /photon
+COPY untar_and_start.sh /photon
 
-USER photon
-
-CMD [ "java", "-jar", "/photon/photon.jar" ]
+CMD [ "/photon/untar_and_start.sh" ]
