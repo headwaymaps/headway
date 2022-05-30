@@ -33,7 +33,7 @@ http {
 
     # graphhopper
     location /graphhopper/  {
-      proxy_pass      ${HEADWAY_GRAPHHOPPER_URL};
+      proxy_pass      ${HEADWAY_GRAPHHOPPER_URL}/;
     }
 
     # mbtileserver stuff
