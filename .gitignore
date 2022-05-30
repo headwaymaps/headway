@@ -1,6 +1,7 @@
 .tmp_*
 *.osm.pbf
-*.nominatim.tgz
+*.nominatim.sql
+*.photon.tgz
 *.graph.tgz
 *.mbtiles
 **/.DS_Store

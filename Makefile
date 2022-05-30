@@ -50,40 +50,26 @@ list:
 	cp $(basename $@).osm.pbf mbtiles/data.osm.pbf
 	docker build ./mbtiles --tag headway_mbtiles_builder
 	bash -c 'export CID=$$(docker create headway_mbtiles_builder) && \
-		docker cp $$CID:/data/output.mbtiles - > $@ && \
+		docker cp $$CID:/data/output.mbtiles $@ && \
 		docker rm -v $$CID'
 
-%.nominatim.tgz: %.nominatim_image
-	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
-	mkdir -p ./.tmp_geocoder
-	rm -rf ./.tmp_geocoder/*
-	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
-	docker volume rm -f headway_geocoder_build || echo "Volume does not exist!"
-	docker volume create headway_geocoder_build
-	docker build ./geocoder/nominatim --tag headway_nominatim
-	docker run --memory=$(DOCKER_MEMORY) -it --rm \
-		-v headway_geocoder_build:/tmp_volume \
-		-v "${PWD}/.tmp_geocoder":/data_volume \
-		-e PBF_PATH=/data_volume/data.osm.pbf \
-		headway_nominatim \
-		/jobs/import_wait_dump.sh
-	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
-	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
-	docker run -d --rm --name headway_geocoder_ephemeral_busybox -v headway_geocoder_build:/headway_geocoder_build busybox sleep 1000
-	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
-	bash -c 'docker cp $$(<.nominatim_cid):/headway_geocoder_build/nominatim ./.tmp_geocoder/nominatim'
-	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
-	tar -C ./.tmp_geocoder -czf $@ nominatim
-	rm -rf ./.tmp_geocoder/*
+%.nominatim.sql: %.nominatim_image
+	@echo "Building geocoding index for $(basename $(basename $@))."
+	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim_build/data.osm.pbf
+	docker build ./geocoder/nominatim_build --tag headway_nominatim_build
+	bash -c 'export CID=$$(docker create headway_nominatim_build) && \
+		docker cp $$CID:/dump/nominatim.sql $@ && \
+		docker rm -v $$CID'
 
-%.photon_image: %.nominatim.tgz
-	@echo "Importing data into photon and building image for $(basename $@)."
-	cp $(basename $@).nominatim.tgz ./geocoder/photon/data.nominatim.tgz
-	docker build ./geocoder/photon --tag headway_photon
+%.photon.tgz: %.nominatim.sql
+	@echo "Importing data into photon and building index for $(basename $(basename $@))."
+	cp $(basename $(basename $@)).nominatim.sql ./geocoder/photon_build/data.nominatim.sql
+	docker build ./geocoder/photon_build --tag headway_photon_build
+	bash -c 'export CID=$$(docker create headway_photon_build) && \
+		docker cp $$CID:/photon/photon.tgz $@ && \
+		docker rm -v $$CID'
 
-%.tileserver_image: %.mbtiles
+tileserver_image: %.mbtiles
 	@echo "Building tileserver image for $(basename $@)."
 	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
 	docker build ./tileserver --tag headway_tileserver
