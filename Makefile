@@ -147,7 +147,7 @@ tag_images: nginx_image photon_image graphhopper_image
 %.tag_volumes: %.graphhopper_volume
 	@echo "Tagged volumes"
 
-$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.photon ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz %.tag_images %.tag_volumes
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.photon ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz tag_images %.tag_volumes
 	@echo "Building $@"
 
 clean:
@@ -155,7 +155,7 @@ clean:
 	rm -rf ${DATA_DIR}/*.nominatim.sql
 	rm -rf ./.tmp_graphhopper
 
-%.up: % ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.photon ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz %.tag_images %.tag_volumes
+%.up: % ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.photon ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz tag_images %.tag_volumes
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d
@@ -167,6 +167,8 @@ clean_all: clean
 	rm -rf ${DATA_DIR}/*.bbox.bak
 	rm -rf ${DATA_DIR}/*.photon
 	rm -rf ${DATA_DIR}/sources
+	rm -rf ${DATA_DIR}/nominatim_flatnode
+	rm -rf ${DATA_DIR}/nominatim_pg
 
 graphhopper_image:
 	docker build ./graphhopper --tag headway_graphhopper

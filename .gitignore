@@ -9,3 +9,4 @@
 *.bbox
 *.bbox.bak
 data/*
+.env
