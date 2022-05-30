@@ -8,3 +8,4 @@
 .base_url
 *.bbox
 *.bbox.bak
+data/*

@@ -20,6 +20,7 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 				Zagreb Zuerich
 
 .DEFAULT_GOAL := help
+DATA_DIR := "${PWD}/data"
 DOCKER_MEMORY := "12G"
 JAVA_TOOL_OPTIONS := "-Xmx12G"
 
@@ -46,7 +47,7 @@ list:
 	mkdir -p data/sources
 	cd data/sources && bash -c "find -name '*.zip' || (wget https://f000.backblazeb2.com/file/headway/sources.tar && tar xvf sources.tar)"
 	docker run --memory=$(DOCKER_MEMORY) --rm -e JAVA_TOOL_OPTIONS="$(JAVA_TOOL_OPTIONS)" \
-		-v "${PWD}/data:/data" \
+		-v "${DATA_DIR}:/data" \
 		ghcr.io/onthegomap/planetiler:latest \
 		--osm-path=/data/$(notdir $(basename $(basename $@))).osm.pbf \
 		--download \
@@ -55,7 +56,7 @@ list:
 %.nominatim.sql: %.osm.pbf
 	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
 	docker run --memory=$(DOCKER_MEMORY) -it --rm \
-		-v "${PWD}/data":/data \
+		-v "${DATA_DIR}":/data \
 		-e PBF_PATH=/data/$(notdir $(basename $(basename $@))).osm.pbf \
 		mediagis/nominatim:4.0 \
 		bash -c 'useradd -m nominatim && /app/config.sh && /app/init.sh && touch /var/lib/postgresql/12/main/import-finished && service postgresql start && (sudo -u nominatim pg_dump nominatim > /data/$(notdir $(basename $(basename $@))).nominatim.sql)'
@@ -68,7 +69,7 @@ photon_image:
 	@echo "Importing data into photon for $(basename $@)."
 	mkdir -p $@
 	docker run -it --rm \
-		-v "${PWD}/data":/data \
+		-v "${DATA_DIR}":/data \
 		-v "$(abspath $@)":/photon_data \
 		-e HEADWAY_NOMINATIM_FILE=/data/$(notdir $(basename $(basename $@))).nominatim.sql \
 		-w /photon_data \
@@ -143,26 +144,26 @@ nginx_image:
 %.tag_volumes: %.graphhopper_volume
 	@echo "Tagged volumes"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.sql %.graph.tgz %.mbtiles %.tag_images %.tag_volumes
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.photon ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz %.tag_images %.tag_volumes
 	@echo "Building $@"
 
 clean:
-	rm -rf ./*.nominatim.sql
-	rm -rf ./*.mbtiles
-	rm -rf ./.tmp_mbtiles/tmp
-	rm -rf ./.tmp_mbtiles/data.osm.pbf
-	rm -rf ./.tmp_geocoder/*
-	rm -rf ./.*_cid
+	rm -rf ${DATA_DIR}/*.mbtiles
+	rm -rf ${DATA_DIR}/*.nominatim.sql
+	rm -rf ./.tmp_graphhopper
 
-%.up: % %.osm.pbf %.nominatim.sql %.mbtiles %.photon %.graph.tgz %.tag_images %.tag_volumes
+%.up: % ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.photon ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz %.tag_images %.tag_volumes
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d
 
 # Don't clean base URL because that's a user config option.
 clean_all: clean
-	rm -rf ./*.osm.pbf
-	rm -rf ./.tmp_mbtiles/*
+	rm -rf ${DATA_DIR}/*.osm.pbf
+	rm -rf ${DATA_DIR}/*.bbox
+	rm -rf ${DATA_DIR}/*.bbox.bak
+	rm -rf ${DATA_DIR}/*.photon
+	rm -rf ${DATA_DIR}/sources
 
 graphhopper_image:
 	docker build ./graphhopper --tag headway_graphhopper
