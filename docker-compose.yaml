@@ -5,17 +5,30 @@ volumes:
 services:
   mbtileserver:
     image: headway_tileserver
+    build: ./tileserver
     environment:
       PORT: 8000
   photon:
     image: headway_photon
+    build: ./geocoder/photon
   nominatim:
     image: headway_nominatim
+    build: ./geocoder/nominatim
   graphhopper:
     image: headway_graphhopper
+    build: ./graphhopper
     volumes:
     - "headway_graphhopper_vol:/graph_volume"
   nginx:
     image: headway_nginx
+    build: ./web
+    environment:
+      HEADWAY_PUBLIC_URL: http://127.0.0.1:8080
+      HEADWAY_HTTP_PORT: 8080
+      HEADWAY_RESOLVER: 127.0.0.11
+      HEADWAY_GRAPHHOPPER_URL: http://graphhopper:8989
+      HEADWAY_NOMINATIM_URL: http://nominatim:8080
+      HEADWAY_PHOTON_URL: http://photon:2322
+      HEADWAY_TILESERVER_URL: http://mbtileserver:8000
     ports:
     - "8080:8080"
