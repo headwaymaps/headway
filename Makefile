@@ -31,19 +31,15 @@ help:
 list:
 	@echo ${CITIES}
 
-.base_url:
-	@echo "Using default base URL, override this if you want to host this for the open internet!"
-	echo 'http://localhost:8080' > $@
-
 %.osm.pbf:
 	@echo "Downloading $@ from BBBike.";
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $(basename $(basename $@)))/$(notdir $@)" || rm $@
 
 %.bbox:
-	@echo "Extracting bounding box for $(basename $@)"
-	grep "$(basename $@):" gtfs/bboxes.csv > $@
-	perl -i.bak -pe 's/$(basename $@)://' $@
+	@echo "Extracting bounding box for $(notdir $(basename $@))"
+	grep "$(notdir $(basename $@)):" gtfs/bboxes.csv > $@
+	perl -i.bak -pe 's/$(notdir $(basename $@))://' $@
 
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(notdir $(basename $@))"
@@ -123,12 +119,10 @@ photon_image:
 	-bash -c 'docker kill $$(<.graphhopper_build_cid) || echo "container is not running"'
 	rm -rf ./.tmp_graphhopper/*
 
-%.nginx_image: .base_url %.bbox
-	cp .base_url web/
-	cp $(basename $@).bbox web/bbox.txt
+nginx_image:
 	docker build ./web --tag headway_nginx
 
-%.tag_images: %.tileserver_image %.photon_image %.nginx_image graphhopper_image
+%.tag_images: %.tileserver_image %.photon_image nginx_image graphhopper_image
 	@echo "Tagging images"
 
 %.graphhopper_volume: %.graph.tgz graphhopper_image
