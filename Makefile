@@ -20,6 +20,8 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 				Zagreb Zuerich
 
 .DEFAULT_GOAL := help
+DOCKER_MEMORY := "12G"
+JAVA_TOOL_OPTIONS := "-Xmx12G"
 
 help:
 	@echo "Try 'make Amsterdam'"
@@ -50,7 +52,7 @@ list:
 	docker volume create headway_mbtiles_build || echo "Volume already exists"
 	docker build ./mbtiles/bootstrap --tag headway_mbtiles_bootstrap
 	docker run --rm -v headway_mbtiles_build:/data headway_mbtiles_bootstrap
-	docker run --memory=6G --rm -e JAVA_TOOL_OPTIONS="-Xmx8g" \
+	docker run --memory=$(DOCKER_MEMORY) --rm -e JAVA_TOOL_OPTIONS="$(JAVA_TOOL_OPTIONS)" \
 		-v headway_mbtiles_build:/data \
 		-v "${PWD}/.tmp_mbtiles":/input_volume \
 		ghcr.io/onthegomap/planetiler:latest \
@@ -74,7 +76,7 @@ list:
 	docker volume rm -f headway_geocoder_build || echo "Volume does not exist!"
 	docker volume create headway_geocoder_build
 	docker build ./geocoder/nominatim --tag headway_nominatim
-	docker run --memory=6G -it --rm \
+	docker run --memory=$(DOCKER_MEMORY) -it --rm \
 		-v headway_geocoder_build:/tmp_volume \
 		-v "${PWD}/.tmp_geocoder":/data_volume \
 		-e PBF_PATH=/data_volume/data.osm.pbf \
@@ -122,7 +124,7 @@ list:
 	docker ps -aqf "name=headway_graphhopper_ephemeral_busybox_build" > .graphhopper_build_cid
 	bash -c 'docker cp $(basename $(basename $@)).osm.pbf $$(<.graphhopper_build_cid):/headway_graphhopper_build/data.osm.pbf'
 	-bash -c 'docker kill $$(<.graphhopper_build_cid) || echo "container is not running"'
-	docker run --memory=6G -it --rm \
+	docker run --memory=$(DOCKER_MEMORY) -it --rm \
 		-v headway_graphhopper_build:/graph_volume \
 		headway_graphhopper_build_image \
 		-Ddw.graphhopper.datareader.file=/graph_volume/data.osm.pbf \
