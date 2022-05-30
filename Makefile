@@ -50,6 +50,7 @@ list:
 		-v "${DATA_DIR}:/data" \
 		ghcr.io/onthegomap/planetiler:latest \
 		--osm-path=/data/$(notdir $(basename $(basename $@))).osm.pbf \
+		--mbtiles=/data/$(notdir $(basename $(basename $@))).mbtiles \
 		--download \
 		--force
 
@@ -72,7 +73,7 @@ photon_image:
 	mkdir -p $@
 	docker run -it --rm \
 		-v "${DATA_DIR}":/data \
-		-v "$(abspath $@)":/photon_data \
+		-v "$@":/photon_data \
 		-e HEADWAY_NOMINATIM_FILE=/data/$(notdir $(basename $(basename $@))).nominatim.sql \
 		-w /photon_data \
 		--user 0 \
@@ -120,7 +121,7 @@ photon_image:
 nginx_image:
 	docker build ./web --tag headway_nginx
 
-%.tag_images: %.photon_image nginx_image graphhopper_image
+tag_images: nginx_image photon_image graphhopper_image
 	@echo "Tagging images"
 
 %.graphhopper_volume: %.graph.tgz graphhopper_image
