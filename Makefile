@@ -43,8 +43,8 @@ list:
 
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(notdir $(basename $@))"
-	docker build ./mbtiles/bootstrap --tag headway_mbtiles_bootstrap
-	docker run --rm -v ${PWD}/data:/data headway_mbtiles_bootstrap
+	mkdir -p data/sources
+	cd data/sources && bash -c "find -name '*.zip' || (wget https://f000.backblazeb2.com/file/headway/sources.tar && tar xvf sources.tar)"
 	docker run --memory=$(DOCKER_MEMORY) --rm -e JAVA_TOOL_OPTIONS="$(JAVA_TOOL_OPTIONS)" \
 		-v "${PWD}/data:/data" \
 		ghcr.io/onthegomap/planetiler:latest \
@@ -75,11 +75,6 @@ photon_image:
 		--user 0 \
 		headway_photon \
 		/photon/import_from_dump.sh
-
-%.tileserver_image: %.mbtiles
-	@echo "Building tileserver image for $(basename $@)."
-	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
-	docker build ./tileserver --tag headway_tileserver
 
 %.graph.tgz: %.osm.pbf
 	@echo "Pre-generating graphhopper graph for $(basename $(basename $@))."
@@ -122,7 +117,7 @@ photon_image:
 nginx_image:
 	docker build ./web --tag headway_nginx
 
-%.tag_images: %.tileserver_image %.photon_image nginx_image graphhopper_image
+%.tag_images: %.photon_image nginx_image graphhopper_image
 	@echo "Tagging images"
 
 %.graphhopper_volume: %.graph.tgz graphhopper_image

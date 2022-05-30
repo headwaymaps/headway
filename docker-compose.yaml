@@ -4,10 +4,11 @@ volumes:
     external: true
 services:
   mbtileserver:
-    image: headway_tileserver
-    build: ./tileserver
+    image: maptiler/tileserver-gl
     environment:
       PORT: 8000
+    volumes:
+      - "./data/Malmoe.mbtiles:/data/Malmoe.mbtiles:ro"
   photon:
     image: headway_photon
     build: ./geocoder/photon
