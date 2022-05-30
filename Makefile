@@ -57,6 +57,8 @@ list:
 	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
 	docker run --memory=$(DOCKER_MEMORY) -it --rm \
 		-v "${DATA_DIR}":/data \
+		-v "${DATA_DIR}/nominatim_pg/":/var/lib/postgresql/12/main \
+		-v "${DATA_DIR}/nominatim_flatnode/":/nominatim/flatnode \
 		-e PBF_PATH=/data/$(notdir $(basename $(basename $@))).osm.pbf \
 		mediagis/nominatim:4.0 \
 		bash -c 'useradd -m nominatim && /app/config.sh && /app/init.sh && touch /var/lib/postgresql/12/main/import-finished && service postgresql start && (sudo -u nominatim pg_dump nominatim > /data/$(notdir $(basename $(basename $@))).nominatim.sql)'

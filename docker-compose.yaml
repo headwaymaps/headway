@@ -20,6 +20,8 @@ services:
       PBF_PATH: /data/Malmoe.osm.pbf
     volumes:
       - "./data/:/data/:ro"
+      - "./data/nominatim_pg/:/var/lib/postgresql/12/main"
+      - "./data/nominatim_flatnode/:/nominatim/flatnode"
     command: '/bin/bash -c "useradd -m nominatim && /app/config.sh && /app/init.sh && touch /var/lib/postgresql/12/main/import-finished  && /app/start.sh"'
   graphhopper:
     image: headway_graphhopper
@@ -30,9 +32,9 @@ services:
     image: headway_nginx
     build: ./web
     environment:
-      HEADWAY_PUBLIC_URL: http://127.0.0.1:8080
       HEADWAY_BBOX: '12.78 55.33 13.72 55.95'
       HEADWAY_HTTP_PORT: 8080
+      HEADWAY_PUBLIC_URL: http://127.0.0.1:8080
       HEADWAY_RESOLVER: 127.0.0.11
       HEADWAY_GRAPHHOPPER_URL: http://graphhopper:8989
       HEADWAY_NOMINATIM_URL: http://nominatim:8080
