@@ -42,43 +42,43 @@ list:
 	grep "$(notdir $(basename $@)):" gtfs/bboxes.csv > $@
 	perl -i.bak -pe 's/$(notdir $(basename $@))://' $@
 
-%.mbtiles: %.osm.pbf
-	@echo "Building MBTiles $(notdir $(basename $@))"
-	mkdir -p data/sources
-	cd data/sources && bash -c "find -name '*.zip' || (wget https://f000.backblazeb2.com/file/headway/sources.tar && tar xvf sources.tar)"
-	docker run --memory=$(DOCKER_MEMORY) --rm -e JAVA_TOOL_OPTIONS="$(JAVA_TOOL_OPTIONS)" \
-		-v "${DATA_DIR}:/data" \
-		ghcr.io/onthegomap/planetiler:latest \
-		--osm-path=/data/$(notdir $(basename $(basename $@))).osm.pbf \
-		--mbtiles=/data/$(notdir $(basename $(basename $@))).mbtiles \
-		--download \
-		--force
+	@echo "Building MBTiles $(basename $@)"
+	cp $(basename $@).osm.pbf mbtiles/data.osm.pbf
+	docker build ./mbtiles --tag headway_mbtiles_builder
+	bash -c 'export CID=$$(docker create headway_mbtiles_builder) && \
+		docker cp $$CID:/data/output.mbtiles $@ && \
+		docker rm -v $$CID'
 
-%.nominatim.sql: %.osm.pbf
-	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
-	docker run --memory=$(DOCKER_MEMORY) -it --rm \
-		-v "${DATA_DIR}":/data \
-		-v "${DATA_DIR}/nominatim_pg/":/var/lib/postgresql/12/main \
-		-v "${DATA_DIR}/nominatim_flatnode/":/nominatim/flatnode \
-		-e PBF_PATH=/data/$(notdir $(basename $(basename $@))).osm.pbf \
-		mediagis/nominatim:4.0 \
-		bash -c 'useradd -m nominatim && /app/config.sh && /app/init.sh && touch /var/lib/postgresql/12/main/import-finished && service postgresql start && (sudo -u nominatim pg_dump nominatim > /data/$(notdir $(basename $(basename $@))).nominatim.sql)'
+%.nominatim.sql: %.nominatim_image
+	@echo "Building geocoding index for $(basename $(basename $@))."
+	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim_build/data.osm.pbf
+	docker build ./geocoder/nominatim_build --tag headway_nominatim_build
+	bash -c 'export CID=$$(docker create headway_nominatim_build) && \
+		docker cp $$CID:/dump/nominatim.sql $@ && \
+		docker rm -v $$CID'
+
+%.photon.tgz: %.nominatim.sql
+	@echo "Importing data into photon and building index for $(basename $(basename $@))."
+	cp $(basename $(basename $@)).nominatim.sql ./geocoder/photon_build/data.nominatim.sql
+	docker build ./geocoder/photon_build --tag headway_photon_build
+	bash -c 'export CID=$$(docker create headway_photon_build) && \
+		docker cp $$CID:/photon/photon.tgz $@ && \
+		docker rm -v $$CID'
+
+tileserver_image: %.mbtiles
+	@echo "Building tileserver image for $(basename $@)."
+	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
+	docker build ./tileserver --tag headway_tileserver
+
+%.nominatim_image: %.osm.pbf
+	mkdir -p ./.tmp_geocoder
+	rm -rf ./.tmp_geocoder/*
+	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
+	docker build ./geocoder/nominatim --tag headway_nominatim
 
 photon_image:
 	@echo "Building photon image"
 	docker build ./geocoder/photon --tag headway_photon
-
-%.photon: %.nominatim.sql photon_image
-	@echo "Importing data into photon for $(basename $@)."
-	mkdir -p $@
-	docker run -it --rm \
-		-v "${DATA_DIR}":/data \
-		-v "$@":/photon_data \
-		-e HEADWAY_NOMINATIM_FILE=/data/$(notdir $(basename $(basename $@))).nominatim.sql \
-		-w /photon_data \
-		--user 0 \
-		headway_photon \
-		/photon/import_from_dump.sh
 
 %.graph.tgz: %.osm.pbf
 	@echo "Pre-generating graphhopper graph for $(basename $(basename $@))."

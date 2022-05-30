@@ -15,8 +15,10 @@ sudo -E -u postgres psql postgres -c "DROP DATABASE IF EXISTS nominatim"
 
 sudo -E -u postgres psql postgres -c "CREATE DATABASE nominatim"
 
-sudo -E -u postgres psql nominatim < ${HEADWAY_NOMINATIM_FILE}
+sudo -E -u postgres pg_restore --dbname nominatim --format tar ${HEADWAY_NOMINATIM_FILE}
 
 sudo -u photon /bin/sh -c "java -jar /photon/photon.jar -nominatim-import -host localhost -port 5432 -database nominatim -user nominatim -password password1 -languages ${HEADWAY_PHOTON_LANGUAGES}"
 
-# TODO delete the postgres db to save disk space.
+mkdir -p /dump
+
+tar czf /photon/photon.tgz /photon/photon_data
