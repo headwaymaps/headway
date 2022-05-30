@@ -38,7 +38,7 @@ list:
 %.osm.pbf:
 	@echo "Downloading $@ from BBBike.";
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
-	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(basename $(basename $@))/$@" || rm $@
+	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $(basename $(basename $@)))/$(notdir $@)" || rm $@
 
 %.bbox:
 	@echo "Extracting bounding box for $(basename $@)"
@@ -46,68 +46,44 @@ list:
 	perl -i.bak -pe 's/$(basename $@)://' $@
 
 %.mbtiles: %.osm.pbf
-	@echo "Building MBTiles $(basename $@)"
-	mkdir -p ./.tmp_mbtiles
-	cp $(basename $@).osm.pbf ./.tmp_mbtiles/data.osm.pbf
-	docker volume create headway_mbtiles_build || echo "Volume already exists"
+	@echo "Building MBTiles $(notdir $(basename $@))"
 	docker build ./mbtiles/bootstrap --tag headway_mbtiles_bootstrap
-	docker run --rm -v headway_mbtiles_build:/data headway_mbtiles_bootstrap
+	docker run --rm -v ${PWD}/data:/data headway_mbtiles_bootstrap
 	docker run --memory=$(DOCKER_MEMORY) --rm -e JAVA_TOOL_OPTIONS="$(JAVA_TOOL_OPTIONS)" \
-		-v headway_mbtiles_build:/data \
-		-v "${PWD}/.tmp_mbtiles":/input_volume \
+		-v "${PWD}/data:/data" \
 		ghcr.io/onthegomap/planetiler:latest \
-		--osm-path=/input_volume/data.osm.pbf \
+		--osm-path=/data/$(notdir $(basename $(basename $@))).osm.pbf \
 		--download \
 		--force
-	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
-	-bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
-	docker run -d --name headway_mbtiles_ephemeral_busybox -v headway_mbtiles_build:/headway_mbtiles_build busybox sleep 1000
-	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
-	bash -c 'docker cp $$(<.mbtiles_cid):/headway_mbtiles_build/output.mbtiles $@'
-	-bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
 
-%.nominatim.tgz: %.nominatim_image
+%.nominatim.sql: %.osm.pbf
 	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
-	mkdir -p ./.tmp_geocoder
-	rm -rf ./.tmp_geocoder/*
-	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
-	docker volume rm -f headway_geocoder_build || echo "Volume does not exist!"
-	docker volume create headway_geocoder_build
-	docker build ./geocoder/nominatim --tag headway_nominatim
 	docker run --memory=$(DOCKER_MEMORY) -it --rm \
-		-v headway_geocoder_build:/tmp_volume \
-		-v "${PWD}/.tmp_geocoder":/data_volume \
-		-e PBF_PATH=/data_volume/data.osm.pbf \
-		headway_nominatim \
-		/jobs/import_wait_dump.sh
-	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
-	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
-	docker run -d --rm --name headway_geocoder_ephemeral_busybox -v headway_geocoder_build:/headway_geocoder_build busybox sleep 1000
-	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
-	bash -c 'docker cp $$(<.nominatim_cid):/headway_geocoder_build/nominatim ./.tmp_geocoder/nominatim'
-	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
-	tar -C ./.tmp_geocoder -czf $@ nominatim
-	rm -rf ./.tmp_geocoder/*
+		-v "${PWD}/data":/data \
+		-e PBF_PATH=/data/$(notdir $(basename $(basename $@))).osm.pbf \
+		mediagis/nominatim:4.0 \
+		bash -c 'useradd -m nominatim && /app/config.sh && /app/init.sh && touch /var/lib/postgresql/12/main/import-finished && service postgresql start && (sudo -u nominatim pg_dump nominatim > /data/$(notdir $(basename $(basename $@))).nominatim.sql)'
 
-%.photon_image: %.nominatim.tgz
-	@echo "Importing data into photon and building image for $(basename $@)."
-	cp $(basename $@).nominatim.tgz ./geocoder/photon/data.nominatim.tgz
+photon_image:
+	@echo "Building photon image"
 	docker build ./geocoder/photon --tag headway_photon
+
+%.photon: %.nominatim.sql photon_image
+	@echo "Importing data into photon for $(basename $@)."
+	mkdir -p $@
+	docker run -it --rm \
+		-v "${PWD}/data":/data \
+		-v "$(abspath $@)":/photon_data \
+		-e HEADWAY_NOMINATIM_FILE=/data/$(notdir $(basename $(basename $@))).nominatim.sql \
+		-w /photon_data \
+		--user 0 \
+		headway_photon \
+		/photon/import_from_dump.sh
 
 %.tileserver_image: %.mbtiles
 	@echo "Building tileserver image for $(basename $@)."
 	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
 	docker build ./tileserver --tag headway_tileserver
-
-%.nominatim_image: %.osm.pbf
-	mkdir -p ./.tmp_geocoder
-	rm -rf ./.tmp_geocoder/*
-	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
-	docker build ./geocoder/nominatim --tag headway_nominatim
 
 %.graph.tgz: %.osm.pbf
 	@echo "Pre-generating graphhopper graph for $(basename $(basename $@))."
@@ -152,7 +128,7 @@ list:
 	cp $(basename $@).bbox web/bbox.txt
 	docker build ./web --tag headway_nginx
 
-%.tag_images: %.tileserver_image %.photon_image %.nginx_image %.nominatim_image graphhopper_image
+%.tag_images: %.tileserver_image %.photon_image %.nginx_image graphhopper_image
 	@echo "Tagging images"
 
 %.graphhopper_volume: %.graph.tgz graphhopper_image
@@ -178,18 +154,18 @@ list:
 %.tag_volumes: %.graphhopper_volume
 	@echo "Tagged volumes"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.graph.tgz %.mbtiles %.tag_images %.tag_volumes
+$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.sql %.graph.tgz %.mbtiles %.tag_images %.tag_volumes
 	@echo "Building $@"
 
 clean:
-	rm -rf ./*.nominatim.tgz
+	rm -rf ./*.nominatim.sql
 	rm -rf ./*.mbtiles
 	rm -rf ./.tmp_mbtiles/tmp
 	rm -rf ./.tmp_mbtiles/data.osm.pbf
 	rm -rf ./.tmp_geocoder/*
 	rm -rf ./.*_cid
 
-%.up: % %.osm.pbf %.nominatim.tgz %.mbtiles %.graph.tgz %.tag_images %.tag_volumes
+%.up: % %.osm.pbf %.nominatim.sql %.mbtiles %.photon %.graph.tgz %.tag_images %.tag_volumes
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d

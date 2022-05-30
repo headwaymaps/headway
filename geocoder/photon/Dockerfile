@@ -22,18 +22,6 @@ RUN echo "${PHOTON_HASH}  ./photon.jar" | sha256sum --check
 
 COPY import_from_dump.sh /photon
 
-USER root
-
-COPY data.nominatim.tgz /nominatim_data/data.nominatim.tgz
-
-WORKDIR /nominatim_data
-
-RUN tar xvf data.nominatim.tgz
-
-WORKDIR /photon
-
-RUN ["/bin/bash", "/photon/import_from_dump.sh"]
-
 USER photon
 
-CMD [ "java", "-jar", "photon.jar" ]
+CMD [ "java", "-jar", "/photon/photon.jar" ]

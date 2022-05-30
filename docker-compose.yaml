@@ -11,9 +11,15 @@ services:
   photon:
     image: headway_photon
     build: ./geocoder/photon
+    volumes:
+    - "./data/Malmoe.photon/photon_data:/photon/photon_data"
   nominatim:
-    image: headway_nominatim
-    build: ./geocoder/nominatim
+    image: mediagis/nominatim:4.0
+    environment:
+      PBF_PATH: /data/Malmoe.osm.pbf
+    volumes:
+      - "./data/:/data/:ro"
+    command: '/bin/bash -c "useradd -m nominatim && /app/config.sh && /app/init.sh && touch /var/lib/postgresql/12/main/import-finished  && /app/start.sh"'
   graphhopper:
     image: headway_graphhopper
     build: ./graphhopper
