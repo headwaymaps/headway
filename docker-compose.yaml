@@ -27,12 +27,12 @@ services:
     env_file: .env
     volumes:
       - "./data/:/data/:ro"
-  graphhopper:
-    image: headway_graphhopper
-    build: ./graphhopper
+  otp:
+    image: headway_otp
+    build: ./otp/run
     env_file: .env
     volumes:
-      - "headway_graphhopper_vol:/graph_volume"
+      - "./data/:/data/:ro"
   nginx:
     image: headway_nginx
     build: ./web

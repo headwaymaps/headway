@@ -31,9 +31,9 @@ http {
       proxy_pass      ${HEADWAY_PHOTON_URL}/;
     }
 
-    # graphhopper
-    location /graphhopper/  {
-      proxy_pass      ${HEADWAY_GRAPHHOPPER_URL}/;
+    # opentripplanner
+    location /otp/  {
+      proxy_pass      ${HEADWAY_OTP_URL}/;
     }
 
     # mbtileserver stuff
