@@ -128,10 +128,6 @@ export default defineComponent({
       this.$emit('loadedPoi', this.$data.poi);
     });
   },
-  unmounted: function () {
-    activeMarkers.forEach((marker) => marker.remove());
-    activeMarkers.length = 0;
-  },
   setup: function () {
     return {};
   },
