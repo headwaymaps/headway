@@ -6,11 +6,9 @@ See BUILD.md for more information about the build process.
 
 ### Status
 
-Headway is currently capable of showing a map, searching for points of interest and addresses within an OpenStreetMap extract and providing directions between any two places within that extract. Currently it only provides bicycling directions, but transit and walking directions are a work in progress.
+Headway is currently capable of showing a map, searching for points of interest and addresses within an OpenStreetMap extract and providing directions between any two places within that extract. Currently it is capable of providing directions for driving, cycling and walking, but transit directions are a work in progress.
 
-The project is also missing:
-
-- A kubernetes config for production use
+The project is missing a kubernetes config for production use. Contributions for productionization are very welcome! Please open an issue to discuss first though.
 
 ### System Requirements
 
