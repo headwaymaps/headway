@@ -92,7 +92,7 @@ list:
 %.gtfs.tar:
 	set -e ;\
 		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./gtfs --build-arg CITY_NAME=$(notdir $*) --tag $${ITAG} ;\
+		docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG} ;\
 		CID=$$(docker create $${ITAG}) ;\
 		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
 		docker rm -v $$CID

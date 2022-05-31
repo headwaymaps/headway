@@ -52,7 +52,7 @@ with open('bboxes.csv') as csvfile:
   csvlines = [line.rstrip().split(':') for line in csvlines]
 
 for city_bbox in csvlines:
-  if city_bbox[0] == os.environ["CITY_NAME"]:
+  if city_bbox[0] == os.environ["HEADWAY_AREA"]:
     bbox = [float(val) for val in city_bbox[1].split(' ')]
 
 gtfs_url = 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media'
