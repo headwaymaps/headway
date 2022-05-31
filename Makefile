@@ -69,27 +69,33 @@ list:
 		docker rm -v $$CID'
 
 %.graph.obj: %.osm.pbf %.gtfs.tar
-	@echo "Building OpenTripPlanner graph for $(basename $(basename $@))."
-	cp $(basename $(basename $@)).osm.pbf ./otp/build/data.osm.pbf
-	cp $(basename $(basename $@)).gtfs.tar ./otp/build/gtfs.tar
-	docker build ./otp/build --tag headway_otp_build
-	bash -c 'export CID=$$(docker create headway_otp_build) && \
-		docker cp $$CID:/data/graph.obj $@ && \
-		docker rm -v $$CID'
+	@echo "Building OpenTripPlanner graph for $*."
+	cp $*.osm.pbf ./otp/build/data.osm.pbf
+	cp $*.gtfs.tar ./otp/build/gtfs.tar
+	set -e ;\
+		ITAG=headway_build_otp_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./otp/build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/data/graph.obj $@ ;\
+		docker rm -v $$CID
 
 %.valhalla.tar: %.osm.pbf
 	@echo "Building Valhalla tiles for $(basename $(basename $@))."
-	cp $(basename $(basename $@)).osm.pbf ./valhalla/build/data.osm.pbf
-	docker build ./valhalla/build --tag headway_valhalla_build
-	bash -c 'export CID=$$(docker create headway_valhalla_build) && \
-		docker cp $$CID:/tiles/valhalla.tar $@ && \
-		docker rm -v $$CID'
+	cp $< ./valhalla/build/data.osm.pbf
+	set -e ;\
+		ITAG=headway_build_valhalla_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./valhalla/build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/tiles/valhalla.tar $@ ;\
+		docker rm -v $$CID
 
 %.gtfs.tar:
-	docker build ./gtfs --build-arg CITY_NAME=$(notdir $(basename $(basename $@))) --tag headway_gtfs_download
-	bash -c 'export CID=$$(docker create headway_gtfs_download) && \
-		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ && \
-		docker rm -v $$CID'
+	set -e ;\
+		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./gtfs --build-arg CITY_NAME=$(notdir $*) --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
+		docker rm -v $$CID
 
 tileserver_image: %.mbtiles
 	@echo "Building tileserver image for $(basename $@)."
