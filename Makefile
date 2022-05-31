@@ -20,6 +20,9 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 				Zagreb Zuerich
 
 .DEFAULT_GOAL := help
+.ONESHELL:
+SHELL := /bin/bash
+.SHELLFLAGS := -ec
 DATA_DIR := ${PWD}/data
 DOCKER_MEMORY := "12G"
 JAVA_TOOL_OPTIONS := "-Xmx12G"
@@ -33,40 +36,43 @@ list:
 	@echo ${CITIES}
 
 %.osm.pbf:
-	@mkdir -p ${DATA_DIR}
-	@echo "Downloading $@ from BBBike.";
+	mkdir -p ${DATA_DIR}
+	echo "Downloading $(notdir $*) from BBBike."
+	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
-	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $(basename $(basename $@)))/$(notdir $@)" || rm $@
 
 %.bbox:
-	@echo "Extracting bounding box for $(notdir $(basename $@))"
-	grep "$(notdir $(basename $@)):" gtfs/bboxes.csv > ${DATA_DIR}/bbox.txt
-	perl -i.bak -pe 's/$(notdir $(basename $@))://' ${DATA_DIR}/bbox.txt
+	@echo "Extracting bounding box for $(notdir $*)"
+	grep "$(notdir $*):" gtfs/bboxes.csv > ${DATA_DIR}/bbox.txt
+	perl -i.bak -pe 's/$(notdir $*)://' ${DATA_DIR}/bbox.txt
 
 %.mbtiles: %.osm.pbf
-	@echo "Building MBTiles $(basename $@)"
-	cp $(basename $@).osm.pbf mbtiles_build/data.osm.pbf
-	docker build ./mbtiles_build --tag headway_mbtiles_builder
-	bash -c 'export CID=$$(docker create headway_mbtiles_builder) && \
-		docker cp $$CID:/data/output.mbtiles $@ && \
-		docker rm -v $$CID'
+	@echo "Building MBTiles $*"
+	cp $*.osm.pbf mbtiles_build/data.osm.pbf
+	ITAG=headway_build_mbtiles_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./mbtiles_build --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/data/output.mbtiles $@
+	docker rm -v $$CID
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
 	@echo "Building geocoding index for $(basename $(basename $@))."
-	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim_build/data.osm.pbf
-	docker build ./geocoder/nominatim_build --tag headway_nominatim_build
-	bash -c 'export CID=$$(docker create headway_nominatim_build) && \
-		docker cp $$CID:/dump/nominatim.sql $(basename $(basename $@)).nominatim.sql && \
-		docker cp $$CID:/nominatim/tokenizer.tgz $(basename $(basename $@)).nominatim_tokenizer.tgz && \
-		docker rm -v $$CID'
+	cp $^ ./geocoder/nominatim_build/data.osm.pbf
+	ITAG=headway_build_nominatim_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./geocoder/nominatim_build --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/dump/nominatim.sql $*.nominatim.sql
+	docker cp $$CID:/nominatim/tokenizer.tgz $*.nominatim_tokenizer.tgz
+	docker rm -v $$CID
 
 %.photon.tgz: %.nominatim.sql
-	@echo "Importing data into photon and building index for $(basename $(basename $@))."
-	cp $(basename $(basename $@)).nominatim.sql ./geocoder/photon_build/data.nominatim.sql
-	docker build ./geocoder/photon_build --tag headway_photon_build
-	bash -c 'export CID=$$(docker create headway_photon_build) && \
-		docker cp $$CID:/photon/photon.tgz $@ && \
-		docker rm -v $$CID'
+	@echo "Importing data into photon and building index for $*."
+	cp $^ ./geocoder/photon_build/data.nominatim.sql
+	ITAG=headway_build_photon_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./geocoder/photon_build --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/photon/photon.tgz $@
+	docker rm -v $$CID
 
 %.graph.obj: %.osm.pbf %.gtfs.tar
 	@echo "Building OpenTripPlanner graph for $*."
@@ -131,6 +137,7 @@ clean:
 	rm -rf ${DATA_DIR}/*.nominatim.sql
 	rm -rf ${DATA_DIR}/*.nominatim_tokenizer.tgz
 	rm -rf ${DATA_DIR}/*.photon.tgz
+	rm -rf ${DATA_DIR}/*.valhalla.tar
 	rm -rf ${DATA_DIR}/*.graph.obj
 	rm -rf ${DATA_DIR}/bbox.txt
 	rm -rf ${DATA_DIR}/bbox.txt.bak
