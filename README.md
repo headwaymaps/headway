@@ -6,13 +6,13 @@ See BUILD.md for more information about the build process.
 
 ### Status
 
-Headway is currently capable of showing a map, searching for points of interest and addresses within an OpenStreetMap extract and providing directions between any two places within that extract. Currently it is capable of providing directions for driving, cycling and walking, but transit directions are a work in progress.
+Headway is currently capable of showing a map, searching for points of interest and addresses within an OpenStreetMap extract and providing directions between any two places within that extract. Currently it is capable of providing directions for driving, cycling and walking. Transit directions are a work-in-progress.
 
 The project is missing a kubernetes config for production use. Contributions for productionization are very welcome! Please open an issue to discuss first though.
 
 ### System Requirements
 
-Headway has been confirmed working on amd64 machines running Linux and macOS. The machine used for generation of the data files needs to have at least 8GB of memory, potentially more for larger areas. The requirements for running an instance of the stack are lower though. Expect to need around 4GB for a medium sized metro area. We also recommend at least 50GB of free disk space, even if the OpenStreetMap extract for the area of interest is much smaller than that. Plan ahead to avoid disk pressure.
+Headway has been confirmed working on amd64 machines running Linux and macOS. The machine used for generation of the data files needs to have at least 8GB of memory, potentially more for larger areas. The requirements for running an instance of the stack are lower though. Expect to need around 4GB for a medium sized metro area. The requirements can be reduced further by the omission of transit routing. We also recommend at least 50GB of free disk space, even if the OpenStreetMap extract for the area of interest is much smaller than that. Plan ahead to avoid disk pressure.
 
 ### License
 
