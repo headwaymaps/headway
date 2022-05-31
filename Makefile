@@ -110,7 +110,10 @@ nginx_image:
 otp_image:
 	docker build ./otp/run --tag headway_otp
 
-tag_images: nginx_image photon_image nominatim_image otp_image
+valhalla_image:
+	docker build ./valhalla/run --tag headway_valhalla
+
+tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image
 	@echo "Tagged images"
 
 $(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.bbox tag_images

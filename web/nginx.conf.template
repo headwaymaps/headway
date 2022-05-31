@@ -37,6 +37,11 @@ http {
       proxy_pass      ${HEADWAY_OTP_URL};
     }
 
+    # valhalla
+    location /valhalla/  {
+      proxy_pass      ${HEADWAY_VALHALLA_URL}/;
+    }
+
     # mbtileserver stuff
     location /data/  {
       proxy_set_header Accept-Encoding "";

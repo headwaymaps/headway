@@ -1,9 +1,15 @@
 FROM gisops/valhalla:latest
 
-COPY tiles.tar /custom_files/valhalla_tiles.tar
-
 USER root
+WORKDIR /data/valhalla
+RUN chown valhalla /data
+RUN chown valhalla /data/valhalla
+USER valhalla
 
-RUN md5sum /custom_files/valhalla_tiles.tar > /custom_files/file_hashes.txt
+COPY gen_hash.sh /app/gen_hash.sh
+
+ENTRYPOINT ["/bin/bash"]
 
 USER valhalla
+
+CMD ["/app/gen_hash.sh"]
