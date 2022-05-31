@@ -47,8 +47,8 @@ list:
 
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(basename $@)"
-	cp $(basename $@).osm.pbf mbtiles/data.osm.pbf
-	docker build ./mbtiles --tag headway_mbtiles_builder
+	cp $(basename $@).osm.pbf mbtiles_build/data.osm.pbf
+	docker build ./mbtiles_build --tag headway_mbtiles_builder
 	bash -c 'export CID=$$(docker create headway_mbtiles_builder) && \
 		docker cp $$CID:/data/output.mbtiles $@ && \
 		docker rm -v $$CID'
