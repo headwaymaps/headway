@@ -32,10 +32,21 @@
             icon="directions_bike"
             clickable
             v-on:click="
-              $router.push(`/directions/bicycle/${canonicalizePoi($props.poi)}`)
+              $router.push(
+                `/directions/bicycle/${canonicalizePoi($props.poi)}/_`
+              )
             "
           >
             Bike there
+          </q-chip>
+          <q-chip
+            icon="directions_walk"
+            clickable
+            v-on:click="
+              $router.push(`/directions/walk/${canonicalizePoi($props.poi)}/_`)
+            "
+          >
+            Walk there
           </q-chip>
         </div>
       </div>
