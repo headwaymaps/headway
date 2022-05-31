@@ -147,3 +147,4 @@ clean_all: clean
 	rm -rf ${DATA_DIR}/*.osm.pbf
 	rm -rf ${DATA_DIR}/*.gtfs.tar
 	rm -rf ${DATA_DIR}/sources
+	docker images -qf "reference=headway_build_*" --format='{{.Repository}}:{{.Tag}}' | xargs docker rmi
