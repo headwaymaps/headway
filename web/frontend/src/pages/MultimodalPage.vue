@@ -131,6 +131,7 @@ import {
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
+import { Marker } from 'maplibre-gl';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -313,6 +314,19 @@ export default defineComponent({
       fromPoi.value = await decanonicalizePoi(this.$props.from as string);
       await this.rewriteUrl();
       this.resizeMap();
+
+      activeMarkers.forEach((marker) => marker.remove());
+      activeMarkers.length = 0;
+      if (this.toPoi?.position) {
+        const marker = new Marker({ color: '#111111' }).setLngLat([
+          this.toPoi.position.long,
+          this.toPoi.position.lat,
+        ]);
+        if (map) {
+          marker.addTo(map);
+          activeMarkers.push(marker);
+        }
+      }
     });
   },
   unmounted: function () {

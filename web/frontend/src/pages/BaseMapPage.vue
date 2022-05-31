@@ -35,14 +35,14 @@ export default defineComponent({
     },
   },
   mounted: function () {
+    activeMarkers.forEach((marker) => marker.remove());
+    activeMarkers.length = 0;
     this.handler = addMapHandler('longpress', (event) => {
       this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
     });
     setTimeout(() => setBottomCardAllowance(0));
   },
   unmounted: function () {
-    activeMarkers.forEach((marker) => marker.remove());
-    activeMarkers.length = 0;
     removeMapHandler('longpress', this.handler);
   },
   setup: function () {

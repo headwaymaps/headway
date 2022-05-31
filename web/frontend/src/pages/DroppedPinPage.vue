@@ -137,10 +137,6 @@ export default defineComponent({
       await loadDroppedPinPage(this.$router, position, true);
     });
   },
-  unmounted: function () {
-    activeMarkers.forEach((marker) => marker.remove());
-    activeMarkers.length = 0;
-  },
   setup: function () {
     return { poi };
   },
