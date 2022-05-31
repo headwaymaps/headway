@@ -1,3 +1,44 @@
+// This function is copied from GraphHopper's web client, licensed under the terms of the Apache License, version 2.0
+// Copyright 2012-2013 Peter Karich
+export function decodeOtpPath(encoded: string) {
+  // var start = new Date().getTime();
+  const len = encoded.length;
+  let index = 0;
+  const array = [];
+  let lat = 0;
+  let lng = 0;
+
+  while (index < len) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const deltaLon = result & 1 ? ~(result >> 1) : result >> 1;
+    lng += deltaLon;
+
+    array.push([lng * 1e-5, lat * 1e-5]);
+  }
+  // var end = new Date().getTime();
+  // console.log("decoded " + len + " coordinates in " + ((end - start) / 1000) + "s");
+  return array;
+}
+
+// decodeValhallaPath() was copied from the valhalla demo project, copyright notice follows:
+
 // Copyright (c) 2018 Valhalla contributors
 // Copyright (c) 2015-2017 Mapillary AB, Mapzen
 
@@ -19,7 +60,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-export function decode(str: string, precision: number) {
+export function decodeValhallaPath(str: string, precision: number) {
   let index = 0,
     lat = 0,
     lng = 0,

@@ -41,6 +41,39 @@
   bottom: 0;
   left: 0%;
   width: 100%;
+  max-height: 40%;
+  overflow-y: scroll;
+}
+
+.itinerary-container {
+  list-style: none;
+  align-items: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  display: flex;
+  padding: 0;
+}
+
+.itinerary-item {
+  flex-grow: 1;
+  position: static;
+  background-color: $dark;
+  min-width: calc(max(40%, 300px));
+  height: 0;
+  padding: 2.5em;
+  margin: 0.5em;
+  border-radius: 0.5em;
+}
+.itinerary-item-selected {
+  box-shadow: 0em 0em 0.4em 0.4em #fff;
+}
+
+.itinerary-item-line {
+  position: relative;
+  background-color: #fff;
+  top: -0.25em;
+  height: 0.5em;
+  border-radius: 0.25em;
 }
 
 .directions-title {

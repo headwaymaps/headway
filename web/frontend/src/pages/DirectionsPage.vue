@@ -66,7 +66,7 @@ import {
 } from 'src/components/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
-import { decode } from 'src/third_party/decodePath';
+import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { Popup } from 'maplibre-gl';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
@@ -287,7 +287,7 @@ export default defineComponent({
           // min/max
           const bbox: number[] = [1000, 1000, -1000, -1000];
           var points: number[][] = [];
-          decode(leg.shape, 6).forEach((point) => {
+          decodeValhallaPath(leg.shape, 6).forEach((point) => {
             points.push([point[1], point[0]]);
             if (point[0] < bbox[1]) {
               bbox[1] = point[0];
@@ -356,27 +356,19 @@ export default defineComponent({
     },
   },
   watch: {
-    to: {
-      immediate: true,
-      deep: true,
-      handler(newValue) {
-        setTimeout(async () => {
-          toPoi.value = await decanonicalizePoi(newValue);
-          await this.rewriteUrl();
-          this.resizeMap();
-        });
-      },
+    to(newValue) {
+      setTimeout(async () => {
+        toPoi.value = await decanonicalizePoi(newValue);
+        await this.rewriteUrl();
+        this.resizeMap();
+      });
     },
-    from: {
-      immediate: true,
-      deep: true,
-      handler(newValue) {
-        setTimeout(async () => {
-          fromPoi.value = await decanonicalizePoi(newValue);
-          await this.rewriteUrl();
-          this.resizeMap();
-        });
-      },
+    from(newValue) {
+      setTimeout(async () => {
+        fromPoi.value = await decanonicalizePoi(newValue);
+        await this.rewriteUrl();
+        this.resizeMap();
+      });
     },
   },
   mounted: async function () {

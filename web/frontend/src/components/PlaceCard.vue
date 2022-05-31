@@ -19,15 +19,15 @@
           </div>
         </div>
         <div class="place-card-section">
-          <!-- <q-chip
+          <q-chip
             icon="directions_bus"
             clickable
             v-on:click="
-              $router.push(`/directions/transit/${canonicalizePoi($props.poi)}`)
+              $router.push(`/multimodal/${canonicalizePoi($props.poi)}/_`)
             "
           >
             Bus there
-          </q-chip> -->
+          </q-chip>
           <q-chip
             icon="directions_car"
             clickable
