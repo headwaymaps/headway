@@ -24,8 +24,6 @@ DATA_DIR := ${PWD}/data
 DOCKER_MEMORY := "12G"
 JAVA_TOOL_OPTIONS := "-Xmx12G"
 
-.PRECIOUS=${DATA_DIR}/bbox.txt,${DATA_DIR}/*.gtfs.tar
-
 help:
 	@echo "Try 'make Amsterdam'"
 	@echo "Docker must be installed"
@@ -46,14 +44,17 @@ list:
 	perl -i.bak -pe 's/$(notdir $(basename $@))://' ${DATA_DIR}/bbox.txt
 
 %.mbtiles: %.osm.pbf
+	-docker image rm headway_mbtiles_builder
 	@echo "Building MBTiles $(basename $@)"
 	cp $(basename $@).osm.pbf mbtiles_build/data.osm.pbf
 	docker build ./mbtiles_build --tag headway_mbtiles_builder
 	bash -c 'export CID=$$(docker create headway_mbtiles_builder) && \
 		docker cp $$CID:/data/output.mbtiles $@ && \
 		docker rm -v $$CID'
+	-docker image rm headway_mbtiles_builder
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
+	-docker image rm headway_nominatim_build
 	@echo "Building geocoding index for $(basename $(basename $@))."
 	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim_build/data.osm.pbf
 	docker build ./geocoder/nominatim_build --tag headway_nominatim_build
@@ -61,16 +62,20 @@ list:
 		docker cp $$CID:/dump/nominatim.sql $(basename $(basename $@)).nominatim.sql && \
 		docker cp $$CID:/nominatim/tokenizer.tgz $(basename $(basename $@)).nominatim_tokenizer.tgz && \
 		docker rm -v $$CID'
+	-docker image rm headway_nominatim_build
 
 %.photon.tgz: %.nominatim.sql
+	-docker image rm headway_photon_build
 	@echo "Importing data into photon and building index for $(basename $(basename $@))."
 	cp $(basename $(basename $@)).nominatim.sql ./geocoder/photon_build/data.nominatim.sql
 	docker build ./geocoder/photon_build --tag headway_photon_build
 	bash -c 'export CID=$$(docker create headway_photon_build) && \
 		docker cp $$CID:/photon/photon.tgz $@ && \
 		docker rm -v $$CID'
+	-docker image rm headway_photon_build
 
 %.graph.obj: %.osm.pbf %.gtfs.tar
+	-docker image rm headway_otp_build
 	@echo "Building OpenTripPlanner graph for $(basename $(basename $@))."
 	cp $(basename $(basename $@)).osm.pbf ./otp/build/data.osm.pbf
 	cp $(basename $(basename $@)).gtfs.tar ./otp/build/gtfs.tar
@@ -78,13 +83,15 @@ list:
 	bash -c 'export CID=$$(docker create headway_otp_build) && \
 		docker cp $$CID:/data/graph.obj $@ && \
 		docker rm -v $$CID'
+	-docker image rm headway_otp_build
 
 %.gtfs.tar:
-	cp $(basename $(basename $@)).bbox ./gtfs/city.bbox
+	-docker image rm headway_gtfs_download
 	docker build ./gtfs --build-arg CITY_NAME=$(notdir $(basename $(basename $@))) --tag headway_gtfs_download
 	bash -c 'export CID=$$(docker create headway_gtfs_download) && \
 		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ && \
 		docker rm -v $$CID'
+	-docker image rm headway_gtfs_download
 
 tileserver_image: %.mbtiles
 	@echo "Building tileserver image for $(basename $@)."
@@ -108,7 +115,7 @@ otp_image:
 tag_images: nginx_image photon_image nominatim_image otp_image
 	@echo "Tagged images"
 
-$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.bbox tag_images
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.bbox tag_images
 	@echo "Built $@"
 
 clean:
@@ -117,7 +124,7 @@ clean:
 	rm -rf ${DATA_DIR}/*.photon
 	rm -rf ${DATA_DIR}/bbox.txt
 
-%.up: % ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.bbox tag_images
+%.up: % ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.bbox tag_images
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d

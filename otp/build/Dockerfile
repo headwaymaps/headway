@@ -24,4 +24,6 @@ RUN tar xvf gtfs.tar
 
 ARG JAVA_MEM_ARGS=-Xmx4G
 
+COPY build-config.json /data
+
 RUN java ${JAVA_MEM_ARGS} -jar /otp/otp-shaded.jar --build --save .
