@@ -29,6 +29,15 @@
             Bus there
           </q-chip> -->
           <q-chip
+            icon="directions_car"
+            clickable
+            v-on:click="
+              $router.push(`/directions/car/${canonicalizePoi($props.poi)}/_`)
+            "
+          >
+            Drive there
+          </q-chip>
+          <q-chip
             icon="directions_bike"
             clickable
             v-on:click="

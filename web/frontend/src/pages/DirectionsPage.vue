@@ -249,6 +249,8 @@ export default defineComponent({
           costingModel = 'pedestrian';
         } else if (this.$props.mode === 'bicycle') {
           costingModel = 'bicycle';
+        } else if (this.$props.mode === 'car') {
+          costingModel = 'auto';
         }
         const requestObject = {
           locations: [
