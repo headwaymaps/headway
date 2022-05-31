@@ -2,7 +2,7 @@
 
 If you want to host a headway instance for the open internet, you need to start with step 1, but for serving on localhost at port 8080 you can start at step 2.
 
-1. `Pick a metro area from the `Makefile` like "Amsterdam" or "Denver". These values are case-sensitive.
+1. Pick a metro area from the `Makefile` like "Amsterdam" or "Denver". These values are case-sensitive.
 2. Execute `make Amsterdam` using your chosen metro area.
 3. Make a `.env` file with configuration. See/copy `.env.example` for defaults. In particular:
   1. `HEADWAY\_PUBLIC\_URL` (Optional for fully local setup) Pick a base URL for the domain you wish to serve on, paying attention to scheme (http vs https), domain and port (if not default). This will look like "http://example.com" or "http://maps.example.com:8080". Please omit the trailing slash.
