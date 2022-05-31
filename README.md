@@ -12,7 +12,7 @@ The project is missing a kubernetes config for production use. Contributions for
 
 ### System Requirements
 
-The machine used for generation of the data files needs to have at least 8GB of memory, potentially more for larger areas. We also recommend at least 50GB of free disk space, even if the OpenStreetMap extract for the area of interest is much smaller than that. Plan ahead to avoid disk pressure.
+Headway has been confirmed working on amd64 machines running Linux and macOS. The machine used for generation of the data files needs to have at least 8GB of memory, potentially more for larger areas. The requirements for running an instance of the stack are lower though. Expect to need around 4GB for a medium sized metro area. We also recommend at least 50GB of free disk space, even if the OpenStreetMap extract for the area of interest is much smaller than that. Plan ahead to avoid disk pressure.
 
 ### License
 
