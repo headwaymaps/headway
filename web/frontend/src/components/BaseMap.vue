@@ -131,6 +131,7 @@ export default defineComponent({
     map?.on('mousemove', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
     map?.on('load', () => setBottomCardAllowance());
+    window.addEventListener('resize', () => setBottomCardAllowance());
     this.$emit('load');
   },
 });
