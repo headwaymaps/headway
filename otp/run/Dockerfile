@@ -14,6 +14,8 @@ RUN curl -L -o ./otp-shaded.jar "https://github.com/opentripplanner/OpenTripPlan
 
 RUN bash -c 'echo "${OTP_HASH}  otp-shaded.jar" | sha256sum --check'
 
+ARG JAVA_MEM_ARGS=-Xmx4G
+
 COPY rename_and_run.sh /otp
 
 CMD [ "/otp/rename_and_run.sh" ]

@@ -2,4 +2,4 @@
 
 cp /data/*graph.obj /otp/graph.obj
 
-java -jar otp-shaded.jar --load /otp
+java ${JAVA_MEM_ARGS} -jar otp-shaded.jar --load /otp
