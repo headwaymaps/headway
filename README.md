@@ -1,6 +1,8 @@
 # Headway
 
-Headway is a maps stack in a box. Upon completion, you will be able to run `make Amsterdam` then `docker-compose up` to bring up a fully functional maps stack for the Amsterdam metro area including a frontend, basemap, geocoder and a routing engine for driving, walking, bicycling and transit.
+Headway is a maps stack in a box, allowing you to run `make Amsterdam` then `docker-compose up` to bring up a fully functional maps stack for the Amsterdam metro area including a frontend, basemap, geocoder and routing engine.
+
+See BUILD.md for more information about the build process.
 
 ### Status
 
