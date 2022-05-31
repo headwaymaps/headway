@@ -126,6 +126,11 @@ tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image
 $(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar ${DATA_DIR}/%.bbox tag_images
 	@echo "Built $@"
 
+%.up: %
+	docker-compose kill || echo "Containers not up"
+	docker-compose down || echo "Containers dont exist"
+	docker-compose up -d
+
 # Clean only generated data.
 clean:
 	rm -rf ${DATA_DIR}/*.mbtiles
@@ -137,13 +142,9 @@ clean:
 	rm -rf ${DATA_DIR}/bbox.txt
 	rm -rf ${DATA_DIR}/bbox.txt.bak
 
-%.up: %
-	docker-compose kill || echo "Containers not up"
-	docker-compose down || echo "Containers dont exist"
-	docker-compose up -d
-
 # Clean even the data we have to download from external sources.
 clean_all: clean
 	rm -rf ${DATA_DIR}/*.osm.pbf
 	rm -rf ${DATA_DIR}/*.gtfs.tar
 	rm -rf ${DATA_DIR}/sources
+	docker images -qf "reference=headway_build_*" --format='{{.Repository}}:{{.Tag}}' | xargs docker rmi
