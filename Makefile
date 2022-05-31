@@ -48,16 +48,16 @@ list:
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(basename $@)"
 	cp $(basename $@).osm.pbf mbtiles_build/data.osm.pbf
-	docker build ./mbtiles_build --tag headway_mbtiles_builder
-	bash -c 'export CID=$$(docker create headway_mbtiles_builder) && \
+	docker build ./mbtiles_build --tag headway_build_mbtiles_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	bash -c 'export CID=$$(docker create headway_build_mbtiles_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]')) && \
 		docker cp $$CID:/data/output.mbtiles $@ && \
 		docker rm -v $$CID'
 
 %.nominatim.sql %.nominatim_tokenizer.tgz:
 	@echo "Building geocoding index for $(basename $(basename $@))."
 	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim_build/data.osm.pbf
-	docker build ./geocoder/nominatim_build --tag headway_nominatim_build
-	bash -c 'export CID=$$(docker create headway_nominatim_build) && \
+	docker build ./geocoder/nominatim_build --tag headway_build_nominatim_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	bash -c 'export CID=$$(docker create headway_build_nominatim_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]')) && \
 		docker cp $$CID:/dump/nominatim.sql $(basename $(basename $@)).nominatim.sql && \
 		docker cp $$CID:/nominatim/tokenizer.tgz $(basename $(basename $@)).nominatim_tokenizer.tgz && \
 		docker rm -v $$CID'
@@ -65,8 +65,8 @@ list:
 %.photon.tgz: %.nominatim.sql
 	@echo "Importing data into photon and building index for $(basename $(basename $@))."
 	cp $(basename $(basename $@)).nominatim.sql ./geocoder/photon_build/data.nominatim.sql
-	docker build ./geocoder/photon_build --tag headway_photon_build
-	bash -c 'export CID=$$(docker create headway_photon_build) && \
+	docker build ./geocoder/photon_build --tag headway_build_photon_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	bash -c 'export CID=$$(docker create headway_build_photon_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]')) && \
 		docker cp $$CID:/photon/photon.tgz $@ && \
 		docker rm -v $$CID'
 
@@ -80,7 +80,7 @@ photon_image:
 
 %.graph.tgz: %.osm.pbf
 	@echo "Pre-generating graphhopper graph for $(basename $(basename $@))."
-	docker build ./graphhopper --tag headway_graphhopper_build_image
+	docker build ./graphhopper --tag headway_build_graphhopper_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
 	mkdir -p ./.tmp_graphhopper
 	rm -rf ./.tmp_graphhopper/*
 	cp $(basename $(basename $@)).osm.pbf ./.tmp_graphhopper/data.osm.pbf
@@ -95,7 +95,7 @@ photon_image:
 	-bash -c 'docker kill $$(<.graphhopper_build_cid) || echo "container is not running"'
 	docker run --memory=$(DOCKER_MEMORY) -it --rm \
 		-v headway_graphhopper_build:/graph_volume \
-		headway_graphhopper_build_image \
+		headway_build_graphhopper_$(shell echo $(notdir $*) | tr '[:upper:]' '[:lower:]') \
 		-Ddw.graphhopper.datareader.file=/graph_volume/data.osm.pbf \
 		-jar \
 		/graphhopper/graphhopper-web-5.3.jar \
@@ -166,6 +166,7 @@ clean_all: clean
 	rm -rf ${DATA_DIR}/sources
 	rm -rf ${DATA_DIR}/nominatim_flatnode
 	rm -rf ${DATA_DIR}/nominatim_pg
+	docker images | grep ^headway_build_ | tr -s ' ' | cut -d' ' -f3 | xargs docker rmi
 
 graphhopper_image:
 	docker build ./graphhopper --tag headway_graphhopper
