@@ -8,7 +8,7 @@ services:
     environment:
       PORT: 8000
     env_file: .env
-    command: '/data/${HEADWAY_AREA}.mbtiles -p 80'
+    command: '--mbtiles /data/${HEADWAY_AREA}.mbtiles -p 8000'
     volumes:
       - "./data/:/data/:ro"
   photon:
@@ -16,22 +16,23 @@ services:
     build: ./geocoder/photon
     env_file: .env
     volumes:
-    - "./data/${HEADWAY_AREA}.photon/photon_data:/photon/photon_data"
+      - "./data/:/data/:ro"
   nominatim:
-    image: mediagis/nominatim:4.0
+    image: headway_nominatim
+    build: ./geocoder/nominatim
     environment:
       PBF_PATH: /data/${HEADWAY_AREA}.osm.pbf
+      HEADWAY_NOMINATIM_FILE: /data/${HEADWAY_AREA}.nominatim.sql
+      HEADWAY_NOMINATIM_TOKENIZER: /data/${HEADWAY_AREA}.nominatim_tokenizer.tgz
     env_file: .env
     volumes:
       - "./data/:/data/:ro"
-      - "./data/nominatim_pg/:/var/lib/postgresql/12/main"
-      - "./data/nominatim_flatnode/:/nominatim/flatnode"
   graphhopper:
     image: headway_graphhopper
     build: ./graphhopper
     env_file: .env
     volumes:
-    - "headway_graphhopper_vol:/graph_volume"
+      - "headway_graphhopper_vol:/graph_volume"
   nginx:
     image: headway_nginx
     build: ./web
@@ -43,4 +44,6 @@ services:
       HEADWAY_PHOTON_URL: http://photon:2322
       HEADWAY_TILESERVER_URL: http://mbtileserver:8000
     ports:
-    - "8080:8080"
+      - "8080:8080"
+    volumes:
+      - "./data/:/data/:ro"

@@ -15,9 +15,8 @@ COPY --from=builder /frontend/dist/spa/ /usr/share/nginx/html/
 
 COPY nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
-COPY bbox.txt /usr/share/nginx/html/bbox.txt
-
 ENV HEADWAY_PUBLIC_URL=http://127.0.0.1:8080
+ENV HEADWAY_SHARED_VOL=/data
 ENV HEADWAY_HTTP_PORT=8080
 ENV HEADWAY_RESOLVER=127.0.0.11
 ENV HEADWAY_GRAPHHOPPER_URL=http://graphhopper:8989
