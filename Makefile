@@ -77,6 +77,14 @@ list:
 		docker cp $$CID:/data/graph.obj $@ && \
 		docker rm -v $$CID'
 
+%.valhalla.tar: %.osm.pbf
+	@echo "Building Valhalla tiles for $(basename $(basename $@))."
+	cp $(basename $(basename $@)).osm.pbf ./valhalla/build/data.osm.pbf
+	docker build ./valhalla/build --tag headway_valhalla_build
+	bash -c 'export CID=$$(docker create headway_valhalla_build) && \
+		docker cp $$CID:/tiles/valhalla.tar $@ && \
+		docker rm -v $$CID'
+
 %.gtfs.tar:
 	docker build ./gtfs --build-arg CITY_NAME=$(notdir $(basename $(basename $@))) --tag headway_gtfs_download
 	bash -c 'export CID=$$(docker create headway_gtfs_download) && \
