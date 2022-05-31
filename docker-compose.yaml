@@ -1,7 +1,4 @@
 version: "3"
-volumes:
-  headway_graphhopper_vol:
-    external: true
 services:
   mbtileserver:
     image: maptiler/tileserver-gl
@@ -27,12 +24,18 @@ services:
     env_file: .env
     volumes:
       - "./data/:/data/:ro"
-  graphhopper:
-    image: headway_graphhopper
-    build: ./graphhopper
+  otp:
+    image: headway_otp
+    build: ./otp/run
     env_file: .env
     volumes:
-      - "headway_graphhopper_vol:/graph_volume"
+      - "./data/:/data/:ro"
+  valhalla:
+    image: headway_valhalla
+    build: ./valhalla/run
+    env_file: .env
+    volumes:
+      - "./data/:/data_mount/:ro"
   nginx:
     image: headway_nginx
     build: ./web

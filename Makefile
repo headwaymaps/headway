@@ -27,8 +27,6 @@ DATA_DIR := ${PWD}/data
 DOCKER_MEMORY := "12G"
 JAVA_TOOL_OPTIONS := "-Xmx12G"
 
-.PRECIOUS=${DATA_DIR}/bbox.txt
-
 help:
 	@echo "Try 'make Amsterdam'"
 	@echo "Docker must be installed"
@@ -76,6 +74,35 @@ list:
 	docker cp $$CID:/photon/photon.tgz $@
 	docker rm -v $$CID
 
+%.graph.obj: %.osm.pbf %.gtfs.tar
+	@echo "Building OpenTripPlanner graph for $*."
+	cp $*.osm.pbf ./otp/build/data.osm.pbf
+	cp $*.gtfs.tar ./otp/build/gtfs.tar
+	set -e ;\
+		ITAG=headway_build_otp_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./otp/build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/data/graph.obj $@ ;\
+		docker rm -v $$CID
+
+%.valhalla.tar: %.osm.pbf
+	@echo "Building Valhalla tiles for $(basename $(basename $@))."
+	cp $< ./valhalla/build/data.osm.pbf
+	set -e ;\
+		ITAG=headway_build_valhalla_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./valhalla/build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/tiles/valhalla.tar $@ ;\
+		docker rm -v $$CID
+
+%.gtfs.tar:
+	set -e ;\
+		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
+		docker rm -v $$CID
+
 nominatim_image:
 	@echo "Building nominatim image"
 	docker build ./geocoder/nominatim --tag headway_nominatim
@@ -84,76 +111,39 @@ photon_image:
 	@echo "Building photon image"
 	docker build ./geocoder/photon --tag headway_photon
 
-%.graph.tgz: %.osm.pbf
-	@echo "Pre-generating graphhopper graph for $*."
-	ITAG=headway_build_graphhopper_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	docker build ./graphhopper --tag $${ITAG}
-	docker volume rm -f headway_graphhopper_build
-	docker volume create headway_graphhopper_build
-	CID=$$(docker container create --name headway_graphhopper_ephemeral_busybox_build \
-		-v headway_graphhopper_build:/headway_graphhopper_build \
-		alpine:3)
-	docker cp $< $${CID}:/headway_graphhopper_build/data.osm.pbf
-	docker run --memory=$(DOCKER_MEMORY) -it --rm \
-		-v headway_graphhopper_build:/graph_volume \
-		$${ITAG} \
-		-Ddw.graphhopper.datareader.file=/graph_volume/data.osm.pbf \
-		-jar \
-		/graphhopper/graphhopper-web-5.3.jar \
-		import \
-		config.yaml
-	docker run --rm \
-		-v headway_graphhopper_build:/headway_graphhopper_build \
-		alpine:3 \
-		/bin/sh -c 'rm -f /headway_graphhopper_build/graph.tgz && cd /headway_graphhopper_build && tar -czf graph.tgz *'
-	docker cp $${CID}:/headway_graphhopper_build/graph.tgz $@
-	docker rm $${CID}
-	docker volume rm headway_graphhopper_build
-
 nginx_image:
 	docker build ./web --tag headway_nginx
 
-tag_images: nginx_image photon_image graphhopper_image nominatim_image
-	@echo "Tagging images"
+otp_image:
+	docker build ./otp/run --tag headway_otp
 
-%.graphhopper_volume: ${DATA_DIR}/%.graph.tgz graphhopper_image
-	@echo "Create volume, then delete, then create, to force failures if the volume is in use."
-	-docker volume create headway_graphhopper_vol
-	docker volume rm -f headway_graphhopper_vol
-	docker volume create headway_graphhopper_vol
-	CID=$$(docker create --name headway_graphhopper_ephemeral_busybox_tag \
-		-v headway_graphhopper_vol:/headway_graphhopper \
-		alpine:3 \
-		/bin/sh -c 'cd /headway_graphhopper && tar -xvf graph.tgz && rm graph.tgz' \
-	)
-	docker cp $< $${CID}:/headway_graphhopper/graph.tgz
-	docker start -a $${CID}
-	docker rm $${CID}
+valhalla_image:
+	docker build ./valhalla/run --tag headway_valhalla
 
-%.tag_volumes: %.graphhopper_volume
-	@echo "Tagged volumes"
+tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image
+	@echo "Tagged images"
 
-$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz ${DATA_DIR}/%.bbox tag_images %.tag_volumes
-	@echo "Building $@"
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar ${DATA_DIR}/%.bbox tag_images
+	@echo "Built $@"
 
+# Clean only generated data.
 clean:
 	rm -rf ${DATA_DIR}/*.mbtiles
 	rm -rf ${DATA_DIR}/*.nominatim.sql
+	rm -rf ${DATA_DIR}/*.nominatim_tokenizer.tgz
+	rm -rf ${DATA_DIR}/*.photon.tgz
+	rm -rf ${DATA_DIR}/*.valhalla.tar
+	rm -rf ${DATA_DIR}/*.graph.obj
+	rm -rf ${DATA_DIR}/bbox.txt
+	rm -rf ${DATA_DIR}/bbox.txt.bak
 
-%.up: % ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz ${DATA_DIR}/%.bbox tag_images %.tag_volumes
+%.up: %
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d
 
-# Don't clean base URL because that's a user config option.
+# Clean even the data we have to download from external sources.
 clean_all: clean
 	rm -rf ${DATA_DIR}/*.osm.pbf
-	rm -rf ${DATA_DIR}/*.photon
-	rm -rf ${DATA_DIR}/bbox.txt
+	rm -rf ${DATA_DIR}/*.gtfs.tar
 	rm -rf ${DATA_DIR}/sources
-	rm -rf ${DATA_DIR}/nominatim_flatnode
-	rm -rf ${DATA_DIR}/nominatim_pg
-	docker images | grep ^headway_build_ | tr -s ' ' | cut -d' ' -f3 | xargs docker rmi
-
-graphhopper_image:
-	docker build ./graphhopper --tag headway_graphhopper
