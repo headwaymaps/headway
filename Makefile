@@ -70,11 +70,6 @@ list:
 		docker cp $$CID:/photon/photon.tgz $@ && \
 		docker rm -v $$CID'
 
-tileserver_image: %.mbtiles
-	@echo "Building tileserver image for $(basename $@)."
-	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
-	docker build ./tileserver --tag headway_tileserver
-
 nominatim_image:
 	@echo "Building nominatim image"
 	docker build ./geocoder/nominatim --tag headway_nominatim
