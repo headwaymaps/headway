@@ -33,7 +33,7 @@ http {
 
     # graphhopper
     location /graphhopper/  {
-      proxy_pass      ${HEADWAY_GRAPHHOPPER_URL};
+      proxy_pass      ${HEADWAY_GRAPHHOPPER_URL}/;
     }
 
     # mbtileserver stuff
@@ -62,6 +62,10 @@ http {
       proxy_set_header x-real-IP ${ESC}remote_addr;
       proxy_set_header x-forwarded-for $proxy_add_x_forwarded_for;
       proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;
+    }
+    location /bbox.txt {
+      add_header Content-Type text/plain;
+      alias ${HEADWAY_SHARED_VOL}/bbox.txt;
     }
     location / {
       try_files ${ESC}uri /index.html;

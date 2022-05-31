@@ -1,6 +1,10 @@
 #!/bin/bash
 
-sudo service postgresql start && \
+set -xe
+
+(cd ${PROJECT_DIR} && tar xvf ${HEADWAY_NOMINATIM_TOKENIZER})
+
+service postgresql start && \
 sudo -E -u postgres psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='nominatim'" | grep -q 1 || sudo -E -u postgres createuser -s nominatim && \
 sudo -E -u postgres psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='www-data'" | grep -q 1 || sudo -E -u postgres createuser -SDR www-data && \
 
@@ -12,8 +16,8 @@ sudo -E -u postgres psql postgres -c "DROP DATABASE IF EXISTS nominatim"
 
 sudo -E -u postgres psql postgres -c "CREATE DATABASE nominatim"
 
-sudo -E -u postgres psql nominatim < /nominatim_data/nominatim
+sudo -E -u postgres pg_restore --dbname nominatim --format tar ${HEADWAY_NOMINATIM_FILE}
 
-sudo -u photon /bin/sh -c 'java -jar photon.jar -nominatim-import -host localhost -port 5432 -database nominatim -user nominatim -password password1 -languages es,fr,de,en'
+touch /var/lib/postgresql/12/main/import-finished
 
-# TODO delete the postgres db to save disk space.
+/app/start.sh

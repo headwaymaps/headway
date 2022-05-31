@@ -20,8 +20,11 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 				Zagreb Zuerich
 
 .DEFAULT_GOAL := help
+DATA_DIR := ${PWD}/data
 DOCKER_MEMORY := "12G"
 JAVA_TOOL_OPTIONS := "-Xmx12G"
+
+.PRECIOUS=${DATA_DIR}/bbox.txt
 
 help:
 	@echo "Try 'make Amsterdam'"
@@ -31,83 +34,54 @@ help:
 list:
 	@echo ${CITIES}
 
-.base_url:
-	@echo "Using default base URL, override this if you want to host this for the open internet!"
-	echo 'http://localhost:8080' > $@
-
 %.osm.pbf:
+	@mkdir -p ${DATA_DIR}
 	@echo "Downloading $@ from BBBike.";
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
-	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(basename $(basename $@))/$@" || rm $@
+	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $(basename $(basename $@)))/$(notdir $@)" || rm $@
 
 %.bbox:
-	@echo "Extracting bounding box for $(basename $@)"
-	grep "$(basename $@):" gtfs/bboxes.csv > $@
-	perl -i.bak -pe 's/$(basename $@)://' $@
+	@echo "Extracting bounding box for $(notdir $(basename $@))"
+	grep "$(notdir $(basename $@)):" gtfs/bboxes.csv > ${DATA_DIR}/bbox.txt
+	perl -i.bak -pe 's/$(notdir $(basename $@))://' ${DATA_DIR}/bbox.txt
 
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $(basename $@)"
-	mkdir -p ./.tmp_mbtiles
-	cp $(basename $@).osm.pbf ./.tmp_mbtiles/data.osm.pbf
-	docker volume create headway_mbtiles_build || echo "Volume already exists"
-	docker build ./mbtiles/bootstrap --tag headway_mbtiles_bootstrap
-	docker run --rm -v headway_mbtiles_build:/data headway_mbtiles_bootstrap
-	docker run --memory=$(DOCKER_MEMORY) --rm -e JAVA_TOOL_OPTIONS="$(JAVA_TOOL_OPTIONS)" \
-		-v headway_mbtiles_build:/data \
-		-v "${PWD}/.tmp_mbtiles":/input_volume \
-		ghcr.io/onthegomap/planetiler:latest \
-		--osm-path=/input_volume/data.osm.pbf \
-		--download \
-		--force
-	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
-	-bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
-	docker run -d --name headway_mbtiles_ephemeral_busybox -v headway_mbtiles_build:/headway_mbtiles_build busybox sleep 1000
-	docker ps -aqf "name=headway_mbtiles_ephemeral_busybox" > .mbtiles_cid
-	bash -c 'docker cp $$(<.mbtiles_cid):/headway_mbtiles_build/output.mbtiles $@'
-	-bash -c 'docker kill $$(<.mbtiles_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.mbtiles_cid) || echo "container does not exist"'
+	cp $(basename $@).osm.pbf mbtiles_build/data.osm.pbf
+	docker build ./mbtiles_build --tag headway_mbtiles_builder
+	bash -c 'export CID=$$(docker create headway_mbtiles_builder) && \
+		docker cp $$CID:/data/output.mbtiles $@ && \
+		docker rm -v $$CID'
 
-%.nominatim.tgz: %.nominatim_image
-	@echo "Bootstrapping geocoding index for $(basename $(basename $@))."
-	mkdir -p ./.tmp_geocoder
-	rm -rf ./.tmp_geocoder/*
-	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
-	docker volume rm -f headway_geocoder_build || echo "Volume does not exist!"
-	docker volume create headway_geocoder_build
-	docker build ./geocoder/nominatim --tag headway_nominatim
-	docker run --memory=$(DOCKER_MEMORY) -it --rm \
-		-v headway_geocoder_build:/tmp_volume \
-		-v "${PWD}/.tmp_geocoder":/data_volume \
-		-e PBF_PATH=/data_volume/data.osm.pbf \
-		headway_nominatim \
-		/jobs/import_wait_dump.sh
-	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
-	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
-	docker run -d --rm --name headway_geocoder_ephemeral_busybox -v headway_geocoder_build:/headway_geocoder_build busybox sleep 1000
-	docker ps -aqf "name=headway_geocoder_ephemeral_busybox" > .nominatim_cid
-	bash -c 'docker cp $$(<.nominatim_cid):/headway_geocoder_build/nominatim ./.tmp_geocoder/nominatim'
-	-bash -c 'docker kill $$(<.nominatim_cid) || echo "container is not running"'
-	-bash -c 'docker rm $$(<.nominatim_cid) || echo "container does not exist"'
-	tar -C ./.tmp_geocoder -czf $@ nominatim
-	rm -rf ./.tmp_geocoder/*
+%.nominatim.sql %.nominatim_tokenizer.tgz:
+	@echo "Building geocoding index for $(basename $(basename $@))."
+	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim_build/data.osm.pbf
+	docker build ./geocoder/nominatim_build --tag headway_nominatim_build
+	bash -c 'export CID=$$(docker create headway_nominatim_build) && \
+		docker cp $$CID:/dump/nominatim.sql $(basename $(basename $@)).nominatim.sql && \
+		docker cp $$CID:/nominatim/tokenizer.tgz $(basename $(basename $@)).nominatim_tokenizer.tgz && \
+		docker rm -v $$CID'
 
-%.photon_image: %.nominatim.tgz
-	@echo "Importing data into photon and building image for $(basename $@)."
-	cp $(basename $@).nominatim.tgz ./geocoder/photon/data.nominatim.tgz
-	docker build ./geocoder/photon --tag headway_photon
+%.photon.tgz: %.nominatim.sql
+	@echo "Importing data into photon and building index for $(basename $(basename $@))."
+	cp $(basename $(basename $@)).nominatim.sql ./geocoder/photon_build/data.nominatim.sql
+	docker build ./geocoder/photon_build --tag headway_photon_build
+	bash -c 'export CID=$$(docker create headway_photon_build) && \
+		docker cp $$CID:/photon/photon.tgz $@ && \
+		docker rm -v $$CID'
 
-%.tileserver_image: %.mbtiles
+tileserver_image: %.mbtiles
 	@echo "Building tileserver image for $(basename $@)."
 	cp $(basename $@).mbtiles ./tileserver/tiles.mbtiles
 	docker build ./tileserver --tag headway_tileserver
 
-%.nominatim_image: %.osm.pbf
-	mkdir -p ./.tmp_geocoder
-	rm -rf ./.tmp_geocoder/*
-	cp $(basename $(basename $@)).osm.pbf ./geocoder/nominatim/data.osm.pbf
+nominatim_image:
+	@echo "Building nominatim image"
 	docker build ./geocoder/nominatim --tag headway_nominatim
+
+photon_image:
+	@echo "Building photon image"
+	docker build ./geocoder/photon --tag headway_photon
 
 %.graph.tgz: %.osm.pbf
 	@echo "Pre-generating graphhopper graph for $(basename $(basename $@))."
@@ -147,15 +121,13 @@ list:
 	-bash -c 'docker kill $$(<.graphhopper_build_cid) || echo "container is not running"'
 	rm -rf ./.tmp_graphhopper/*
 
-%.nginx_image: .base_url %.bbox
-	cp .base_url web/
-	cp $(basename $@).bbox web/bbox.txt
+nginx_image:
 	docker build ./web --tag headway_nginx
 
-%.tag_images: %.tileserver_image %.photon_image %.nginx_image %.nominatim_image graphhopper_image
+tag_images: nginx_image photon_image graphhopper_image nominatim_image
 	@echo "Tagging images"
 
-%.graphhopper_volume: %.graph.tgz graphhopper_image
+%.graphhopper_volume: ${DATA_DIR}/%.graph.tgz graphhopper_image
 	@echo "Create volume, then delete, then create, to force failures if the volume is in use."
 	-docker volume create headway_graphhopper_vol
 	docker volume rm -f headway_graphhopper_vol
@@ -167,7 +139,7 @@ list:
 		sleep 1000
 
 	-docker ps -aqf "name=headway_graphhopper_ephemeral_busybox_tag" > .graphhopper_cid
-	bash -c 'docker cp $(basename $@).graph.tgz $$(<.graphhopper_cid):/headway_graphhopper/graph.tgz'
+	bash -c 'docker cp ${DATA_DIR}/$(basename $@).graph.tgz $$(<.graphhopper_cid):/headway_graphhopper/graph.tgz'
 	-bash -c 'docker kill $$(<.graphhopper_cid) || echo "container is not running"'
 
 	docker run --rm \
@@ -178,26 +150,27 @@ list:
 %.tag_volumes: %.graphhopper_volume
 	@echo "Tagged volumes"
 
-$(filter %,$(CITIES)): %: %.osm.pbf %.nominatim.tgz %.graph.tgz %.mbtiles %.tag_images %.tag_volumes
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz ${DATA_DIR}/%.bbox tag_images %.tag_volumes
 	@echo "Building $@"
 
 clean:
-	rm -rf ./*.nominatim.tgz
-	rm -rf ./*.mbtiles
-	rm -rf ./.tmp_mbtiles/tmp
-	rm -rf ./.tmp_mbtiles/data.osm.pbf
-	rm -rf ./.tmp_geocoder/*
-	rm -rf ./.*_cid
+	rm -rf ${DATA_DIR}/*.mbtiles
+	rm -rf ${DATA_DIR}/*.nominatim.sql
+	rm -rf ./.tmp_graphhopper
 
-%.up: % %.osm.pbf %.nominatim.tgz %.mbtiles %.graph.tgz %.tag_images %.tag_volumes
+%.up: % ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.tgz ${DATA_DIR}/%.bbox tag_images %.tag_volumes
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
 	docker-compose up -d
 
 # Don't clean base URL because that's a user config option.
 clean_all: clean
-	rm -rf ./*.osm.pbf
-	rm -rf ./.tmp_mbtiles/*
+	rm -rf ${DATA_DIR}/*.osm.pbf
+	rm -rf ${DATA_DIR}/*.photon
+	rm -rf ${DATA_DIR}/bbox.txt
+	rm -rf ${DATA_DIR}/sources
+	rm -rf ${DATA_DIR}/nominatim_flatnode
+	rm -rf ${DATA_DIR}/nominatim_pg
 
 graphhopper_image:
 	docker build ./graphhopper --tag headway_graphhopper

@@ -1,9 +1,9 @@
-FROM debian:bullseye-slim
+FROM mediagis/nominatim:4.0
 
 ENV TZ="America/New_York"
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends postgresql postgis postgresql-postgis curl openjdk-11-jre-headless sudo
+  && apt-get install -y --no-install-recommends curl openjdk-11-jre-headless sudo
 
 RUN mkdir /photon
 
@@ -20,6 +20,16 @@ RUN curl -L -o ./photon.jar https://github.com/komoot/photon/releases/download/$
 
 RUN echo "${PHOTON_HASH}  ./photon.jar" | sha256sum --check
 
-COPY untar_and_start.sh /photon
+COPY import_from_dump.sh /photon
 
-CMD [ "/photon/untar_and_start.sh" ]
+USER root
+
+COPY data.nominatim.sql /nominatim_data/data.nominatim.sql
+
+WORKDIR /photon
+
+RUN ["/bin/bash", "/photon/import_from_dump.sh"]
+
+USER photon
+
+CMD [ "java", "-jar", "photon.jar" ]
