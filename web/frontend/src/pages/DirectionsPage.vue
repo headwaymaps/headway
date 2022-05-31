@@ -357,21 +357,21 @@ export default defineComponent({
   },
   watch: {
     to(newValue) {
-      activeMarkers.forEach((marker) => marker.remove());
-      activeMarkers.length = 0;
-      const marker = new Marker({ color: '#111111' }).setLngLat([
-        newValue.position.long,
-        newValue.position.lat,
-      ]);
-      if (map) {
-        marker.addTo(map);
-        activeMarkers.push(marker);
-      }
-
       setTimeout(async () => {
         toPoi.value = await decanonicalizePoi(newValue);
         await this.rewriteUrl();
         this.resizeMap();
+
+        activeMarkers.forEach((marker) => marker.remove());
+        activeMarkers.length = 0;
+        const marker = new Marker({ color: '#111111' }).setLngLat([
+          newValue.position.long,
+          newValue.position.lat,
+        ]);
+        if (map) {
+          marker.addTo(map);
+          activeMarkers.push(marker);
+        }
       });
     },
     from(newValue) {
