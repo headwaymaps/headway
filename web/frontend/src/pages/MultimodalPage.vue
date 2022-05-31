@@ -276,6 +276,8 @@ export default defineComponent({
             padding: {
               top: this.$refs.searchCard.offsetHeight + 20,
               bottom: 20,
+              left: 10,
+              right: 10,
             },
           });
         }, 100);
