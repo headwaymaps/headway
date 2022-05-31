@@ -20,7 +20,9 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 				Zagreb Zuerich
 
 .DEFAULT_GOAL := help
+.ONESHELL:
 SHELL := /bin/bash
+.SHELLFLAGS := -ec
 DATA_DIR := ${PWD}/data
 DOCKER_MEMORY := "12G"
 JAVA_TOOL_OPTIONS := "-Xmx12G"
@@ -36,9 +38,8 @@ list:
 	@echo ${CITIES}
 
 %.osm.pbf:
-	mkdir -p ${DATA_DIR} ;\
-		AREA=$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		echo "Downloading $${AREA} from BBBike."
+	mkdir -p ${DATA_DIR}
+	echo "Downloading $(notdir $*) from BBBike."
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
@@ -50,33 +51,30 @@ list:
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $*"
 	cp $*.osm.pbf mbtiles_build/data.osm.pbf
-	set -e ;\
-		ITAG=headway_build_mbtiles_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./mbtiles_build --tag $${ITAG} ;\
-		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/data/output.mbtiles $@ ;\
-		docker rm -v $$CID
+	ITAG=headway_build_mbtiles_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./mbtiles_build --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/data/output.mbtiles $@
+	docker rm -v $$CID
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
 	@echo "Building geocoding index for $(basename $(basename $@))."
 	cp $^ ./geocoder/nominatim_build/data.osm.pbf
-	set -e ;\
-		ITAG=headway_build_nominatim_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./geocoder/nominatim_build --tag $${ITAG} ;\
-		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/dump/nominatim.sql $*.nominatim.sql ;\
-		docker cp $$CID:/nominatim/tokenizer.tgz $*.nominatim_tokenizer.tgz ;\
-		docker rm -v $$CID
+	ITAG=headway_build_nominatim_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./geocoder/nominatim_build --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/dump/nominatim.sql $*.nominatim.sql
+	docker cp $$CID:/nominatim/tokenizer.tgz $*.nominatim_tokenizer.tgz
+	docker rm -v $$CID
 
 %.photon.tgz: %.nominatim.sql
 	@echo "Importing data into photon and building index for $*."
 	cp $^ ./geocoder/photon_build/data.nominatim.sql
-	set -e ;\
-		ITAG=headway_build_photon_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./geocoder/photon_build --tag $${ITAG} ;\
-		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/photon/photon.tgz $@ ;\
-		docker rm -v $$CID
+	ITAG=headway_build_photon_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./geocoder/photon_build --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/photon/photon.tgz $@
+	docker rm -v $$CID
 
 nominatim_image:
 	@echo "Building nominatim image"
@@ -88,30 +86,29 @@ photon_image:
 
 %.graph.tgz: %.osm.pbf
 	@echo "Pre-generating graphhopper graph for $*."
-	set -e ;\
-		ITAG=headway_build_graphhopper_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./graphhopper --tag $${ITAG} ;\
-		docker volume rm -f headway_graphhopper_build ;\
-		docker volume create headway_graphhopper_build ;\
-		CID=$$(docker container create --name headway_graphhopper_ephemeral_busybox_build \
-			-v headway_graphhopper_build:/headway_graphhopper_build \
-			alpine:3) ;\
-		docker cp $< $${CID}:/headway_graphhopper_build/data.osm.pbf ;\
-		docker run --memory=$(DOCKER_MEMORY) -it --rm \
-			-v headway_graphhopper_build:/graph_volume \
-			$${ITAG} \
-			-Ddw.graphhopper.datareader.file=/graph_volume/data.osm.pbf \
-			-jar \
-			/graphhopper/graphhopper-web-5.3.jar \
-			import \
-			config.yaml ;\
-		docker run --rm \
-			-v headway_graphhopper_build:/headway_graphhopper_build \
-			alpine:3 \
-			/bin/sh -c 'rm -f /headway_graphhopper_build/graph.tgz && cd /headway_graphhopper_build && tar -czf graph.tgz *' ;\
-		docker cp $${CID}:/headway_graphhopper_build/graph.tgz $@ ;\
-		docker rm $${CID} ;\
-		docker volume rm headway_graphhopper_build
+	ITAG=headway_build_graphhopper_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./graphhopper --tag $${ITAG}
+	docker volume rm -f headway_graphhopper_build
+	docker volume create headway_graphhopper_build
+	CID=$$(docker container create --name headway_graphhopper_ephemeral_busybox_build \
+		-v headway_graphhopper_build:/headway_graphhopper_build \
+		alpine:3)
+	docker cp $< $${CID}:/headway_graphhopper_build/data.osm.pbf
+	docker run --memory=$(DOCKER_MEMORY) -it --rm \
+		-v headway_graphhopper_build:/graph_volume \
+		$${ITAG} \
+		-Ddw.graphhopper.datareader.file=/graph_volume/data.osm.pbf \
+		-jar \
+		/graphhopper/graphhopper-web-5.3.jar \
+		import \
+		config.yaml
+	docker run --rm \
+		-v headway_graphhopper_build:/headway_graphhopper_build \
+		alpine:3 \
+		/bin/sh -c 'rm -f /headway_graphhopper_build/graph.tgz && cd /headway_graphhopper_build && tar -czf graph.tgz *'
+	docker cp $${CID}:/headway_graphhopper_build/graph.tgz $@
+	docker rm $${CID}
+	docker volume rm headway_graphhopper_build
 
 nginx_image:
 	docker build ./web --tag headway_nginx
@@ -122,17 +119,16 @@ tag_images: nginx_image photon_image graphhopper_image nominatim_image
 %.graphhopper_volume: ${DATA_DIR}/%.graph.tgz graphhopper_image
 	@echo "Create volume, then delete, then create, to force failures if the volume is in use."
 	-docker volume create headway_graphhopper_vol
-	set -e ;\
-		docker volume rm -f headway_graphhopper_vol ;\
-		docker volume create headway_graphhopper_vol ;\
-		CID=$$(docker create --name headway_graphhopper_ephemeral_busybox_tag \
-			-v headway_graphhopper_vol:/headway_graphhopper \
-			alpine:3 \
-			/bin/sh -c 'cd /headway_graphhopper && tar -xvf graph.tgz && rm graph.tgz' \
-		) ;\
-		docker cp $< $${CID}:/headway_graphhopper/graph.tgz ;\
-		docker start -a $${CID} ;\
-		docker rm $${CID}
+	docker volume rm -f headway_graphhopper_vol
+	docker volume create headway_graphhopper_vol
+	CID=$$(docker create --name headway_graphhopper_ephemeral_busybox_tag \
+		-v headway_graphhopper_vol:/headway_graphhopper \
+		alpine:3 \
+		/bin/sh -c 'cd /headway_graphhopper && tar -xvf graph.tgz && rm graph.tgz' \
+	)
+	docker cp $< $${CID}:/headway_graphhopper/graph.tgz
+	docker start -a $${CID}
+	docker rm $${CID}
 
 %.tag_volumes: %.graphhopper_volume
 	@echo "Tagged volumes"
