@@ -6,9 +6,9 @@ WORKDIR /gtfs
 
 COPY bboxes.csv download_gtfs_feeds.py /gtfs/
 
-ARG CITY_NAME
+ARG HEADWAY_AREA
 
-ENV CITY_NAME=${CITY_NAME}
+ENV HEADWAY_AREA=${HEADWAY_AREA}
 
 RUN mkdir /gtfs_feeds
 
