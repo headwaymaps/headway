@@ -1,6 +1,7 @@
 import os
 from urllib.request import urlopen
 import requests
+import csv
 
 def extract_column(name_row, data_row, wanted_column):
   try:
@@ -45,20 +46,18 @@ def gtfs_line_intersects(name_row, data_row, bbox):
     return False
   return True
 
-csv = open('bboxes.csv').readlines()
-
-with open('bboxes.csv') as csvfile:
-  csvlines = csvfile.readlines()
-  csvlines = [line.rstrip().split(':') for line in csvlines]
-
-for city_bbox in csvlines:
-  if city_bbox[0] == os.environ["HEADWAY_AREA"]:
-    bbox = [float(val) for val in city_bbox[1].split(' ')]
+try:
+  bbox = [float(val) for val in os.environ['HEADWAY_BBOX'].strip().split(' ')]
+  if len(bbox) != 4:
+    raise ValueError('Length != 4')
+except:
+    print('Invalid or missing environment variable HEADWAY_BBOX')
+    raise
 
 gtfs_url = 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media'
 gtfs_feed_text = urlopen(gtfs_url).read().decode('utf-8')
 
-gtfs_lines = [line.strip().split(',') for line in gtfs_feed_text.split('\n')]
+gtfs_lines = [row for row in csv.reader(gtfs_feed_text.split('\n'), delimiter=',', quotechar='"') if len(row) > 0]
 gtfs_name_line = gtfs_lines[0]
 gtfs_data_lines = gtfs_lines[1:]
 
