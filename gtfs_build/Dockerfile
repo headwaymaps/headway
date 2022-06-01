@@ -4,13 +4,13 @@ RUN pip install requests
 
 WORKDIR /gtfs
 
-COPY bboxes.csv download_gtfs_feeds.py /gtfs/
-
-ARG HEADWAY_AREA
-
-ENV HEADWAY_AREA=${HEADWAY_AREA}
-
 RUN mkdir /gtfs_feeds
+
+COPY download_gtfs_feeds.py /gtfs/
+
+ARG HEADWAY_BBOX
+
+ENV HEADWAY_BBOX=${HEADWAY_BBOX}
 
 RUN python /gtfs/download_gtfs_feeds.py
 
