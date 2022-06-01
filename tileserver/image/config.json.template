@@ -1,0 +1,25 @@
+{
+  "options": {
+    "paths": {
+      "root": "/data",
+      "fonts": "fonts",
+      "sprites": "sprite",
+      "styles": "/app/styles",
+      "mbtiles": ""
+    },
+    "serveAllFonts": true,
+    "serveAllStyles": true
+  },
+
+  "styles": {
+    "bright": {
+      "style": "/app/styles/bright.json",
+      "serve_data": true
+    }
+  },
+  "data": {
+    "default": {
+      "mbtiles": "${HEADWAY_AREA}.mbtiles"
+    }
+  }
+}

@@ -44,6 +44,8 @@ $(filter %,$(CITIES)): %: \
 		${DATA_DIR}/%.mbtiles \
 		${DATA_DIR}/%.graph.obj \
 		${DATA_DIR}/%.valhalla.tar \
+		${DATA_DIR}/fonts.tar \
+		${DATA_DIR}/sprite.tar \
 		tag_images
 	@echo "Built $@"
 
@@ -55,7 +57,8 @@ $(filter %,$(CITIES)): %: \
 
 %.gtfs.tar:
 	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG}
+	HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2)
+	docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG}
 	CID=$$(docker create $${ITAG})
 	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
 	docker rm -v $$CID
@@ -102,14 +105,25 @@ $(filter %,$(CITIES)): %: \
 %.valhalla.tar: %.osm.pbf
 	@echo "Building Valhalla tiles for $(basename $(basename $@))."
 	cp $< ./valhalla/build/data.osm.pbf
-	set -e ;\
-		ITAG=headway_build_valhalla_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./valhalla/build --tag $${ITAG} ;\
-		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/tiles/valhalla.tar $@ ;\
-		docker rm -v $$CID
+	ITAG=headway_build_valhalla_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+	docker build ./valhalla/build --tag $${ITAG} ;\
+	CID=$$(docker create $${ITAG}) ;\
+	docker cp $$CID:/tiles/valhalla.tar $@ ;\
+	docker rm -v $$CID
 
-tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image
+# fontnik only runs on amd64 node images unfortunately.
+${DATA_DIR}/fonts.tar ${DATA_DIR}/sprite.tar:
+	ITAG=headway_build_fonts ;\
+	docker build ./tileserver/assets --tag $${ITAG} ;\
+	CID=$$(docker create $${ITAG}) ;\
+	docker cp $$CID:/output/fonts.tar ${DATA_DIR}/fonts.tar ;\
+	docker cp $$CID:/output/sprite.tar ${DATA_DIR}/sprite.tar ;\
+	docker rm -v $$CID ;\
+	mkdir -p ${DATA_DIR}/fonts && cd ${DATA_DIR}/fonts && tar xvf ../fonts.tar ;\
+	mkdir -p ${DATA_DIR}/sprite && cd ${DATA_DIR}/sprite && tar xvf ../sprite.tar
+
+
+tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image tileserver_image
 	@echo "Tagged images"
 
 nginx_image:
@@ -129,6 +143,12 @@ otp_image:
 valhalla_image:
 	docker build ./valhalla/run --tag headway_valhalla
 
+# These copies may often be unnecessary, but they're cheap and better to do them too much than forget to do them.
+tileserver_image:
+	mkdir -p ${DATA_DIR}/styles
+	cp tileserver/style/style.json.template ${DATA_DIR}/styles/bright.json.template
+	docker build ./tileserver/image --tag headway_tileserver
+
 %.up: %
 	docker-compose kill || echo "Containers not up"
 	docker-compose down || echo "Containers dont exist"
@@ -142,6 +162,9 @@ clean:
 	rm -rf ${DATA_DIR}/*.photon.tgz
 	rm -rf ${DATA_DIR}/*.valhalla.tar
 	rm -rf ${DATA_DIR}/*.graph.obj
+	rm -rf ${DATA_DIR}/fonts*
+	rm -rf ${DATA_DIR}/sprite*
+	rm -rf ${DATA_DIR}/styles
 
 # Clean even the data we have to download from external sources.
 clean_all: clean
