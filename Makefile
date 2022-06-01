@@ -57,7 +57,8 @@ $(filter %,$(CITIES)): %: \
 
 %.gtfs.tar:
 	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG}
+	HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2)
+	docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG}
 	CID=$$(docker create $${ITAG})
 	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
 	docker rm -v $$CID
