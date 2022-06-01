@@ -103,6 +103,26 @@ list:
 		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
 		docker rm -v $$CID
 
+# fontnik only runs on amd64 node images, so use buildx.
+${DATA_DIR}/fonts.tar:
+	set -e ;\
+		ITAG=headway_build_fonts ;\
+		docker buildx build --platform linux/amd64 ./tileserver/fonts --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/output/fonts.tar ${DATA_DIR}/fonts.tar ;\
+		docker rm -v $$CID ;\
+		mkdir -p ${DATA_DIR}/fonts && cd ${DATA_DIR}/fonts && tar xvf ../fonts.tar
+
+# These copies may often be unnecessary, but they're cheap and better to do them too much than forget to do them.
+tileserver_image:
+	mkdir -p ${DATA_DIR}/sprites
+	mkdir -p ${DATA_DIR}/styles
+	cp tileserver/style/sprite.json tileserver/style/sprite@2x.json \
+			tileserver/style/sprite.png tileserver/style/sprite@2x.png \
+			${DATA_DIR}/sprites
+	cp tileserver/style/style.json ${DATA_DIR}/styles/bright.json
+	docker build ./geocoder/nominatim --tag headway_nominatim
+
 nominatim_image:
 	@echo "Building nominatim image"
 	docker build ./geocoder/nominatim --tag headway_nominatim
@@ -123,7 +143,7 @@ valhalla_image:
 tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image
 	@echo "Tagged images"
 
-$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar ${DATA_DIR}/%.bbox tag_images
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar ${DATA_DIR}/fonts.tar ${DATA_DIR}/%.bbox tag_images
 	@echo "Built $@"
 
 %.up: %
@@ -139,6 +159,9 @@ clean:
 	rm -rf ${DATA_DIR}/*.photon.tgz
 	rm -rf ${DATA_DIR}/*.valhalla.tar
 	rm -rf ${DATA_DIR}/*.graph.obj
+	rm -rf ${DATA_DIR}/fonts*
+	rm -rf ${DATA_DIR}/sprites
+	rm -rf ${DATA_DIR}/styles
 	rm -rf ${DATA_DIR}/bbox.txt
 	rm -rf ${DATA_DIR}/bbox.txt.bak
 

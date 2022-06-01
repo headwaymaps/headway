@@ -1,0 +1,21 @@
+{
+  "options": {
+    "paths": {
+      "root": "/data",
+      "fonts": "fonts",
+      "sprites": "sprites",
+      "styles": "styles",
+      "mbtiles": ""
+    }
+  },
+  "styles": {
+    "bright": {
+      "style": "bright.json"
+    }
+  },
+  "data": {
+    "zurich-vector": {
+      "mbtiles": "${HEADWAY_AREA}.mbtiles"
+    }
+  }
+}

@@ -1,11 +1,11 @@
 version: "3"
 services:
   mbtileserver:
-    image: maptiler/tileserver-gl
+    image: headway_tileserver_gl
+    build: ./tileserver/image
     environment:
       PORT: 8000
     env_file: .env
-    command: '--mbtiles /data/${HEADWAY_AREA}.mbtiles -p 8000'
     volumes:
       - "./data/:/data/:ro"
   photon:
