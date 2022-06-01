@@ -42,7 +42,7 @@ async function loadMap() {
   ];
   map = new maplibregl.Map({
     container: 'map', // container id
-    style: '/styles/basic-preview/style.json', // style URL
+    style: '/styles/bright/style.json', // style URL
     center: [0, 0], // starting position [lng, lat]
     maxBounds: maxBounds,
     zoom: 1, // starting zoom

@@ -1,13 +1,15 @@
 version: "3"
 services:
   mbtileserver:
-    image: headway_tileserver_gl
+    image: headway_tileserver
     build: ./tileserver/image
     environment:
       PORT: 8000
     env_file: .env
     volumes:
       - "./data/:/data/:ro"
+    ports:
+      - "8000:8000"
   photon:
     image: headway_photon
     build: ./geocoder/photon

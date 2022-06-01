@@ -60,13 +60,16 @@ http {
       proxy_set_header Host "magic_string_magic";
       sub_filter_types application/json;
       sub_filter_once  off;
-      sub_filter       'http://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
+      sub_filter       'http://magic_string_magic' '';
       proxy_pass       ${HEADWAY_TILESERVER_URL};
     }
+    location /style/  {
+      proxy_pass       ${HEADWAY_TILESERVER_URL};
+    }
+    location /static/  {
+      alias ${HEADWAY_SHARED_VOL}/sprite/;
+    }
     location /fonts/  {
-      proxy_set_header Accept-Encoding "";
-      proxy_set_header x-real-IP ${ESC}remote_addr;
-      proxy_set_header x-forwarded-for $proxy_add_x_forwarded_for;
       proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;
     }
     location /bbox.txt {
