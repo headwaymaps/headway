@@ -51,7 +51,7 @@ $(filter %,$(CITIES)): %: \
 	mkdir -p ${DATA_DIR}
 	echo "Downloading $(notdir $*) from BBBike."
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
-	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
+	@echo -e "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
 %.gtfs.tar:
 	set -e ;\
