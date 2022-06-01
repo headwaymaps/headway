@@ -41,11 +41,6 @@ list:
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
-%.bbox:
-	@echo "Extracting bounding box for $(notdir $*)"
-	grep "$(notdir $*):" gtfs/bboxes.csv > ${DATA_DIR}/bbox.txt
-	perl -i.bak -pe 's/$(notdir $*)://' ${DATA_DIR}/bbox.txt
-
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $*"
 	cp $*.osm.pbf mbtiles_build/data.osm.pbf
@@ -96,12 +91,12 @@ list:
 		docker rm -v $$CID
 
 %.gtfs.tar:
-	set -e ;\
-		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG} ;\
-		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
-		docker rm -v $$CID
+	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2)
+	docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
+	docker rm -v $$CID
 
 nominatim_image:
 	@echo "Building nominatim image"
@@ -123,7 +118,7 @@ valhalla_image:
 tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image
 	@echo "Tagged images"
 
-$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar ${DATA_DIR}/%.bbox tag_images
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar tag_images
 	@echo "Built $@"
 
 %.up: %
@@ -139,8 +134,6 @@ clean:
 	rm -rf ${DATA_DIR}/*.photon.tgz
 	rm -rf ${DATA_DIR}/*.valhalla.tar
 	rm -rf ${DATA_DIR}/*.graph.obj
-	rm -rf ${DATA_DIR}/bbox.txt
-	rm -rf ${DATA_DIR}/bbox.txt.bak
 
 # Clean even the data we have to download from external sources.
 clean_all: clean
