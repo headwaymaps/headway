@@ -43,7 +43,7 @@ list:
 
 %.bbox:
 	@echo "Extracting bounding box for $(notdir $*)"
-	grep "$(notdir $*):" gtfs/bboxes.csv > ${DATA_DIR}/bbox.txt
+	grep "$(notdir $*):" gtfs_build/bboxes.csv > ${DATA_DIR}/bbox.txt
 	perl -i.bak -pe 's/$(notdir $*)://' ${DATA_DIR}/bbox.txt
 
 %.mbtiles: %.osm.pbf
@@ -96,12 +96,11 @@ list:
 		docker rm -v $$CID
 
 %.gtfs.tar:
-	set -e ;\
-		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG} ;\
-		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
-		docker rm -v $$CID
+	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./gtfs_build --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
+	docker rm -v $$CID
 
 nominatim_image:
 	@echo "Building nominatim image"
