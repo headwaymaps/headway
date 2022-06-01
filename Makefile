@@ -36,15 +36,15 @@ list:
 	@echo ${CITIES}
 
 $(filter %,$(CITIES)): %: \
-  ${DATA_DIR}/%.osm.pbf \
-  ${DATA_DIR}/%.gtfs.tar \
-  ${DATA_DIR}/%.nominatim.sql
-  ${DATA_DIR}/%.nominatim_tokenizer.tgz \
-  ${DATA_DIR}/%.photon.tgz \
-  ${DATA_DIR}/%.mbtiles \
-  ${DATA_DIR}/%.graph.obj \
-  ${DATA_DIR}/%.valhalla.tar \
-  tag_images
+		${DATA_DIR}/%.osm.pbf \
+		${DATA_DIR}/%.gtfs.tar \
+		${DATA_DIR}/%.nominatim.sql \
+		${DATA_DIR}/%.nominatim_tokenizer.tgz \
+		${DATA_DIR}/%.photon.tgz \
+		${DATA_DIR}/%.mbtiles \
+		${DATA_DIR}/%.graph.obj \
+		${DATA_DIR}/%.valhalla.tar \
+		tag_images
 	@echo "Built $@"
 
 %.osm.pbf:
@@ -54,12 +54,11 @@ $(filter %,$(CITIES)): %: \
 	@echo -e "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
 %.gtfs.tar:
-	set -e ;\
-		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-		docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG} ;\
-		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
-		docker rm -v $$CID
+	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
+	docker rm -v $$CID
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
 	@echo "Building geocoding index for $(basename $(basename $@))."
