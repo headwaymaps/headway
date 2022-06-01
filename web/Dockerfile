@@ -19,6 +19,7 @@ COPY nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
 ENV HEADWAY_PUBLIC_URL=http://127.0.0.1:8080
 ENV HEADWAY_BBOX_PATH=/frontend/bbox.txt
+ENV HEADWAY_SHARED_VOL=/data
 ENV HEADWAY_HTTP_PORT=8080
 ENV HEADWAY_RESOLVER=127.0.0.11
 ENV HEADWAY_OTP_URL=http://otp:8080
