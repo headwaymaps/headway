@@ -31,7 +31,7 @@ def gtfs_line_intersects(name_row, data_row, bbox):
   if min_long is None or max_long is None or min_lat is None or max_lat is None:
     return False
 
-  if max_lat - min_lat > 10 or max_long-min_long > 10:
+  if max_lat - min_lat > 18 or max_long - min_long > 16:
     # This almost certainly just means the transit provider operates "everywhere".
     return False
 
