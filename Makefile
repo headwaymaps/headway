@@ -41,11 +41,6 @@ list:
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
 	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
-%.bbox:
-	@echo "Extracting bounding box for $(notdir $*)"
-	grep "$(notdir $*):" gtfs_build/bboxes.csv > ${DATA_DIR}/bbox.txt
-	perl -i.bak -pe 's/$(notdir $*)://' ${DATA_DIR}/bbox.txt
-
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $*"
 	cp $*.osm.pbf mbtiles_build/data.osm.pbf
@@ -123,7 +118,7 @@ valhalla_image:
 tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image
 	@echo "Tagged images"
 
-$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar ${DATA_DIR}/%.bbox tag_images
+$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar tag_images
 	@echo "Built $@"
 
 %.up: %
@@ -139,8 +134,6 @@ clean:
 	rm -rf ${DATA_DIR}/*.photon.tgz
 	rm -rf ${DATA_DIR}/*.valhalla.tar
 	rm -rf ${DATA_DIR}/*.graph.obj
-	rm -rf ${DATA_DIR}/bbox.txt
-	rm -rf ${DATA_DIR}/bbox.txt.bak
 
 # Clean even the data we have to download from external sources.
 clean_all: clean
