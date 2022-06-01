@@ -35,19 +35,31 @@ help:
 list:
 	@echo ${CITIES}
 
+$(filter %,$(CITIES)): %: \
+		${DATA_DIR}/%.osm.pbf \
+		${DATA_DIR}/%.gtfs.tar \
+		${DATA_DIR}/%.nominatim.sql \
+		${DATA_DIR}/%.nominatim_tokenizer.tgz \
+		${DATA_DIR}/%.photon.tgz \
+		${DATA_DIR}/%.mbtiles \
+		${DATA_DIR}/%.graph.obj \
+		${DATA_DIR}/%.valhalla.tar \
+		${DATA_DIR}/fonts.tar \
+		${DATA_DIR}/sprite.tar \
+		tag_images
+	@echo "Built $@"
+
 %.osm.pbf:
 	mkdir -p ${DATA_DIR}
 	echo "Downloading $(notdir $*) from BBBike."
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
-	@echo "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
+	@echo -e "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
-%.mbtiles: %.osm.pbf
-	@echo "Building MBTiles $*"
-	cp $*.osm.pbf mbtiles_build/data.osm.pbf
-	ITAG=headway_build_mbtiles_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	docker build ./mbtiles_build --tag $${ITAG}
+%.gtfs.tar:
+	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./gtfs --build-arg HEADWAY_AREA=$(notdir $*) --tag $${ITAG}
 	CID=$$(docker create $${ITAG})
-	docker cp $$CID:/data/output.mbtiles $@
+	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
 	docker rm -v $$CID
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
@@ -67,6 +79,15 @@ list:
 	docker build ./geocoder/photon_build --tag $${ITAG}
 	CID=$$(docker create $${ITAG})
 	docker cp $$CID:/photon/photon.tgz $@
+	docker rm -v $$CID
+
+%.mbtiles: %.osm.pbf
+	@echo "Building MBTiles $*"
+	cp $*.osm.pbf mbtiles_build/data.osm.pbf
+	ITAG=headway_build_mbtiles_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
+	docker build ./mbtiles_build --tag $${ITAG}
+	CID=$$(docker create $${ITAG})
+	docker cp $$CID:/data/output.mbtiles $@
 	docker rm -v $$CID
 
 %.graph.obj: %.osm.pbf %.gtfs.tar
@@ -90,14 +111,6 @@ list:
 		docker cp $$CID:/tiles/valhalla.tar $@ ;\
 		docker rm -v $$CID
 
-%.gtfs.tar:
-	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2)
-	docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG}
-	CID=$$(docker create $${ITAG})
-	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
-	docker rm -v $$CID
-
 # fontnik only runs on amd64 node images unfortunately.
 ${DATA_DIR}/fonts.tar ${DATA_DIR}/sprite.tar:
 	set -e ;\
@@ -110,22 +123,20 @@ ${DATA_DIR}/fonts.tar ${DATA_DIR}/sprite.tar:
 		mkdir -p ${DATA_DIR}/fonts && cd ${DATA_DIR}/fonts && tar xvf ../fonts.tar ;\
 		mkdir -p ${DATA_DIR}/sprite && cd ${DATA_DIR}/sprite && tar xvf ../sprite.tar
 
-# These copies may often be unnecessary, but they're cheap and better to do them too much than forget to do them.
-tileserver_image:
-	mkdir -p ${DATA_DIR}/styles
-	cp tileserver/style/style.json.template ${DATA_DIR}/styles/bright.json.template
-	docker build ./tileserver/image --tag headway_tileserver
 
-nominatim_image:
-	@echo "Building nominatim image"
-	docker build ./geocoder/nominatim --tag headway_nominatim
+tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image tileserver_image
+	@echo "Tagged images"
+
+nginx_image:
+	docker build ./web --tag headway_nginx
 
 photon_image:
 	@echo "Building photon image"
 	docker build ./geocoder/photon --tag headway_photon
 
-nginx_image:
-	docker build ./web --tag headway_nginx
+nominatim_image:
+	@echo "Building nominatim image"
+	docker build ./geocoder/nominatim --tag headway_nominatim
 
 otp_image:
 	docker build ./otp/run --tag headway_otp
@@ -133,11 +144,11 @@ otp_image:
 valhalla_image:
 	docker build ./valhalla/run --tag headway_valhalla
 
-tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image tileserver_image
-	@echo "Tagged images"
-
-$(filter %,$(CITIES)): %: ${DATA_DIR}/%.osm.pbf ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz ${DATA_DIR}/%.photon.tgz ${DATA_DIR}/%.mbtiles ${DATA_DIR}/%.graph.obj ${DATA_DIR}/%.gtfs.tar ${DATA_DIR}/%.valhalla.tar ${DATA_DIR}/fonts.tar ${DATA_DIR}/sprite.tar tag_images
-	@echo "Built $@"
+# These copies may often be unnecessary, but they're cheap and better to do them too much than forget to do them.
+tileserver_image:
+	mkdir -p ${DATA_DIR}/styles
+	cp tileserver/style/style.json.template ${DATA_DIR}/styles/bright.json.template
+	docker build ./tileserver/image --tag headway_tileserver
 
 %.up: %
 	docker-compose kill || echo "Containers not up"
