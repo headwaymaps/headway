@@ -38,7 +38,8 @@ list:
 $(filter %,$(CITIES)): %: \
   ${DATA_DIR}/%.osm.pbf \
   ${DATA_DIR}/%.gtfs.tar \
-  ${DATA_DIR}/%.nominatim.sql ${DATA_DIR}/%.nominatim_tokenizer.tgz \
+  ${DATA_DIR}/%.nominatim.sql
+  ${DATA_DIR}/%.nominatim_tokenizer.tgz \
   ${DATA_DIR}/%.photon.tgz \
   ${DATA_DIR}/%.mbtiles \
   ${DATA_DIR}/%.graph.obj \
