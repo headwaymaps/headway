@@ -1,5 +1,8 @@
-FROM node:16-slim as builder
+FROM node:16 as builder
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    apt-get clean
 RUN yarn global add @quasar/cli
 
 COPY frontend /frontend
