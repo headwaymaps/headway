@@ -6,7 +6,6 @@
 
     1. `HEADWAY_PUBLIC_URL` (Optional for fully local setup) Pick a base URL for the domain you wish to serve on, paying attention to scheme (http vs https), domain and port (if not default). This will look like "http://example.com" or "http://maps.example.com:8080". Please omit the trailing slash.
     2. `HEADWAY_AREA`: The name of the area you ran above.
-    3. `HEADWAY_BBOX`: Replace with contents of the generated `data/${AREA_NAME}.bbox` file
 
 4. Execute `docker-compose up -d` to bring up a headway server on port 8080.
 5. (For internet-facing installations only) reverse-proxy internet traffic to port 8080.
