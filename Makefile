@@ -44,8 +44,6 @@ $(filter %,$(CITIES)): %: \
 		${DATA_DIR}/%.mbtiles \
 		${DATA_DIR}/%.graph.obj \
 		${DATA_DIR}/%.valhalla.tar \
-		${DATA_DIR}/fonts.tar \
-		${DATA_DIR}/sprite.tar \
 		tag_images
 	@echo "Built $@"
 
@@ -110,18 +108,6 @@ $(filter %,$(CITIES)): %: \
 	CID=$$(docker create $${ITAG}) ;\
 	docker cp $$CID:/tiles/valhalla.tar $@ ;\
 	docker rm -v $$CID
-
-# fontnik only runs on amd64 node images unfortunately.
-${DATA_DIR}/fonts.tar ${DATA_DIR}/sprite.tar:
-	ITAG=headway_build_fonts ;\
-	docker build ./tileserver/assets --tag $${ITAG} ;\
-	CID=$$(docker create $${ITAG}) ;\
-	docker cp $$CID:/output/fonts.tar ${DATA_DIR}/fonts.tar ;\
-	docker cp $$CID:/output/sprite.tar ${DATA_DIR}/sprite.tar ;\
-	docker rm -v $$CID ;\
-	mkdir -p ${DATA_DIR}/fonts && cd ${DATA_DIR}/fonts && tar xvf ../fonts.tar ;\
-	mkdir -p ${DATA_DIR}/sprite && cd ${DATA_DIR}/sprite && tar xvf ../sprite.tar
-
 
 tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image tileserver_image
 	@echo "Tagged images"
