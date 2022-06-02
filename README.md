@@ -1,6 +1,10 @@
 # Headway
 
-Headway is a maps stack in a box, allowing you to run, for example, `make Amsterdam` then `docker-compose up` to bring up a fully functional maps stack for the Amsterdam metro area including a frontend, basemap, geocoder and routing engine. Over 200 different cities are currently supported.
+![GitHub last commit](https://img.shields.io/github/last-commit/ellenhp/headway)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/ellenhp/headway)
+![GitHub](https://img.shields.io/github/license/ellenhp/headway)
+
+Headway is a maps stack in a box that makes it easy to take your location data into your own hands. For example, `make Amsterdam` then `docker-compose up` will bring up a fully functional maps web app for the Amsterdam metro area. This includes a frontend, basemap, geocoder and routing engine. Over 200 different cities are currently supported.
 
 See BUILD.md for more information about the build process.
 
