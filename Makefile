@@ -131,8 +131,6 @@ valhalla_image:
 
 # These copies may often be unnecessary, but they're cheap and better to do them too much than forget to do them.
 tileserver_image:
-	mkdir -p ${DATA_DIR}/styles
-	cp tileserver/style/style.json.template ${DATA_DIR}/styles/bright.json.template
 	docker build ./tileserver/image --tag headway_tileserver
 
 %.up: %

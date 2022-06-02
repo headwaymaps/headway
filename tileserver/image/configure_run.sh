@@ -3,7 +3,7 @@
 set -xe
 
 envsubst < /app/config.json.template > /app/config.json
-envsubst < /data/styles/bright.json.template > /app/styles/bright.json
+envsubst < /app/style_templates/bright.json.template > /app/styles/bright.json
 
 cat /app/config.json
 

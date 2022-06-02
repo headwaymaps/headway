@@ -66,12 +66,6 @@ http {
     location /style/  {
       proxy_pass       ${HEADWAY_TILESERVER_URL};
     }
-    location /static/  {
-      alias /usr/share/nginx/html/assets/;
-    }
-    location /fonts/  {
-      proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;
-    }
     location /bbox.txt {
       add_header Content-Type text/plain;
       alias ${HEADWAY_BBOX_PATH};
