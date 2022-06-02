@@ -4,10 +4,14 @@
   "description": "Frontend for the Headway project",
   "productName": "Headway",
   "author": "Ellen Poe <ellen@ellenhp.me>",
-  "private": true,
+  "private": false,
   "scripts": {
-    "lint": "eslint --ext .js,.ts,.vue ./",
+    "build": "yarn build-glyphs && yarn build-sprites && quasar build",
+    "build-glyphs": "find ./assets/fonts -name '*.ttf' -exec node ./build/build_glyphs {} 'public/assets/glyphs' \\;",
+    "build-sprites": "node ./build/build_sprites ./assets/sprites ./public/assets/sprite; node ./build/build_sprites --retina ./assets/sprites ./public/assets/sprite@2x;",
+    "dev": "yarn build-glyphs && yarn build-sprites && quasar dev",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
+    "lint": "eslint --ext .js,.ts,.vue ./",
     "test": "echo \"No test specified\" && exit 0"
   },
   "dependencies": {
@@ -18,15 +22,21 @@
     "vue-router": "^4.0.0"
   },
   "devDependencies": {
+    "@mapbox/spritezero": "git+https://github.com/3nprob/spritezero#fix-vulnerable-deps",
     "@quasar/app-vite": "^1.0.0",
     "@types/node": "^12.20.21",
     "@typescript-eslint/eslint-plugin": "^5.10.0",
     "@typescript-eslint/parser": "^5.10.0",
     "autoprefixer": "^10.4.2",
+    "d3-queue": "^3.0.7",
     "eslint": "^8.10.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-vue": "^8.5.0",
+    "fontnik": "git+https://github.com/3nprob/node-fontnik#fix-build-errors-node14",
+    "mkdirp": "^1.0.4",
+    "postcss": "^8.1.0",
     "prettier": "^2.5.1",
+    "rollup": "^2.0.0",
     "typescript": "^4.5.4"
   },
   "engines": {

@@ -7,7 +7,7 @@ COPY frontend /frontend
 WORKDIR /frontend
 
 RUN yarn install \
-  && quasar build
+  && yarn build
 
 FROM nginx
 
