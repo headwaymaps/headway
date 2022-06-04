@@ -13,6 +13,7 @@ RUN chown node /app/styles
 USER node
 
 COPY configure_run.sh config.json.template /app/
+COPY styles/ /app/style_templates/
 
 ENTRYPOINT [ "/bin/bash" ]
 
