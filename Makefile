@@ -20,7 +20,6 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 				Zagreb Zuerich
 
 .DEFAULT_GOAL := help
-.ONESHELL:
 SHELL := /bin/bash
 .SHELLFLAGS := -ec
 DATA_DIR := ${PWD}/data
@@ -56,40 +55,44 @@ $(filter %,$(CITIES)): %: \
 	@echo -e "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
 %.gtfs.tar:
-	ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2)
-	docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG}
-	CID=$$(docker create $${ITAG})
-	docker cp $$CID:/gtfs_feeds/gtfs.tar $@
-	docker rm -v $$CID
+	set -e ;\
+		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2) ;\
+		docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
+		docker rm -v $$CID
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
 	@echo "Building geocoding index for $(basename $(basename $@))."
 	cp $^ ./geocoder/nominatim_build/data.osm.pbf
-	ITAG=headway_build_nominatim_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	docker build ./geocoder/nominatim_build --tag $${ITAG}
-	CID=$$(docker create $${ITAG})
-	docker cp $$CID:/dump/nominatim.sql $*.nominatim.sql
-	docker cp $$CID:/nominatim/tokenizer.tgz $*.nominatim_tokenizer.tgz
-	docker rm -v $$CID
+	set -e  ;\
+		ITAG=headway_build_nominatim_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./geocoder/nominatim_build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/dump/nominatim.sql $*.nominatim.sql ;\
+		docker cp $$CID:/nominatim/tokenizer.tgz $*.nominatim_tokenizer.tgz ;\
+		docker rm -v $$CID
 
 %.photon.tgz: %.nominatim.sql
 	@echo "Importing data into photon and building index for $*."
 	cp $^ ./geocoder/photon_build/data.nominatim.sql
-	ITAG=headway_build_photon_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	docker build ./geocoder/photon_build --tag $${ITAG}
-	CID=$$(docker create $${ITAG})
-	docker cp $$CID:/photon/photon.tgz $@
-	docker rm -v $$CID
+	set -e ;\
+		ITAG=headway_build_photon_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./geocoder/photon_build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/photon/photon.tgz $@ ;\
+		docker rm -v $$CID
 
 %.mbtiles: %.osm.pbf
 	@echo "Building MBTiles $*"
 	cp $*.osm.pbf mbtiles_build/data.osm.pbf
-	ITAG=headway_build_mbtiles_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]')
-	docker build ./mbtiles_build --tag $${ITAG}
-	CID=$$(docker create $${ITAG})
-	docker cp $$CID:/data/output.mbtiles $@
-	docker rm -v $$CID
+	set -e ;\
+		ITAG=headway_build_mbtiles_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./mbtiles_build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/data/output.mbtiles $@ ;\
+		docker rm -v $$CID
 
 %.graph.obj: %.osm.pbf %.gtfs.tar
 	@echo "Building OpenTripPlanner graph for $*."
@@ -105,23 +108,24 @@ $(filter %,$(CITIES)): %: \
 %.valhalla.tar: %.osm.pbf
 	@echo "Building Valhalla tiles for $(basename $(basename $@))."
 	cp $< ./valhalla/build/data.osm.pbf
-	ITAG=headway_build_valhalla_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
-	docker build ./valhalla/build --tag $${ITAG} ;\
-	CID=$$(docker create $${ITAG}) ;\
-	docker cp $$CID:/tiles/valhalla.tar $@ ;\
-	docker rm -v $$CID
+	set -e ;\
+		ITAG=headway_build_valhalla_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./valhalla/build --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/tiles/valhalla.tar $@ ;\
+		docker rm -v $$CID
 
 # fontnik only runs on amd64 node images unfortunately.
 ${DATA_DIR}/fonts.tar ${DATA_DIR}/sprite.tar:
-	ITAG=headway_build_fonts ;\
-	docker build ./tileserver/assets --tag $${ITAG} ;\
-	CID=$$(docker create $${ITAG}) ;\
-	docker cp $$CID:/output/fonts.tar ${DATA_DIR}/fonts.tar ;\
-	docker cp $$CID:/output/sprite.tar ${DATA_DIR}/sprite.tar ;\
-	docker rm -v $$CID ;\
-	mkdir -p ${DATA_DIR}/fonts && cd ${DATA_DIR}/fonts && tar xvf ../fonts.tar ;\
-	mkdir -p ${DATA_DIR}/sprite && cd ${DATA_DIR}/sprite && tar xvf ../sprite.tar
-
+	set -e ;\
+		ITAG=headway_build_fonts ;\
+		docker build ./tileserver/assets --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/output/fonts.tar ${DATA_DIR}/fonts.tar ;\
+		docker cp $$CID:/output/sprite.tar ${DATA_DIR}/sprite.tar ;\
+		docker rm -v $$CID ;\
+		mkdir -p ${DATA_DIR}/fonts && cd ${DATA_DIR}/fonts && tar xvf ../fonts.tar ;\
+		mkdir -p ${DATA_DIR}/sprite && cd ${DATA_DIR}/sprite && tar xvf ../sprite.tar
 
 tag_images: nginx_image photon_image nominatim_image otp_image valhalla_image tileserver_image
 	@echo "Tagged images"
