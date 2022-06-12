@@ -50,7 +50,9 @@ http {
       proxy_set_header Host "magic_string_magic";
       sub_filter_types application/json;
       sub_filter_once  off;
+      sub_filter_last_modified on;
       sub_filter       'http://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
+      sub_filter       'https://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
       proxy_pass       ${HEADWAY_TILESERVER_URL}/data/;
     }
     location /styles/  {
@@ -60,7 +62,9 @@ http {
       proxy_set_header Host "magic_string_magic";
       sub_filter_types application/json;
       sub_filter_once  off;
+      sub_filter_last_modified on;
       sub_filter       'http://magic_string_magic' '';
+      sub_filter       'https://magic_string_magic' '';
       proxy_pass       ${HEADWAY_TILESERVER_URL};
     }
     location /style/  {
