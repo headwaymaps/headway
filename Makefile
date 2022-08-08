@@ -36,6 +36,7 @@ list:
 
 $(filter %,$(CITIES)): %: \
 		${DATA_DIR}/%.osm.pbf \
+		${DATA_DIR}/%.gtfs.csv \
 		${DATA_DIR}/%.gtfs.tar \
 		${DATA_DIR}/%.nominatim.sql \
 		${DATA_DIR}/%.nominatim_tokenizer.tgz \
@@ -55,7 +56,8 @@ $(filter %,$(CITIES)): %: \
 	@echo -e "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
 %.gtfs.csv:
-	@echo "To build with transit, run `make $(notdir $*)`.enumerate_gtfs_feeds and manually edit $@ if necessary."
+	touch $@
+	@echo "To build with transit, run `make $(notdir $*)`.enumerate_gtfs_feeds and manually edit $@ to curate transit agencies."
 	@echo "Building without transit."
 
 %.enumerate_gtfs_feeds:
@@ -107,7 +109,7 @@ $(filter %,$(CITIES)): %: \
 		docker cp $$CID:/data/output.mbtiles $@ ;\
 		docker rm -v $$CID
 
-%.graph.obj: %.osm.pbf %.gtfs.tar
+%.graph.obj: %.osm.pbf %.gtfs.csv %.gtfs.tar
 	@echo "Building OpenTripPlanner graph for $*."
 	cp $*.osm.pbf ./otp/build/data.osm.pbf
 	cp $*.gtfs.tar ./otp/build/gtfs.tar
@@ -187,5 +189,6 @@ clean:
 clean_all: clean
 	rm -rf ${DATA_DIR}/*.osm.pbf
 	rm -rf ${DATA_DIR}/*.gtfs.tar
+	rm -rf ${DATA_DIR}/*.gtfs.csv
 	rm -rf ${DATA_DIR}/sources
 	docker images -qf "reference=headway_build_*" --format='{{.Repository}}:{{.Tag}}' | xargs docker rmi
