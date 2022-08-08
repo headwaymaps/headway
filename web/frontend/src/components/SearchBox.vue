@@ -60,6 +60,8 @@ import {
   LongLat,
   POI,
   poiDisplayName,
+  decanonicalizePoi,
+  canonicalizePoi,
 } from 'src/components/models';
 import { Event, Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
@@ -199,7 +201,7 @@ export default defineComponent({
         }
       },
       selectPoi(poi: POI | undefined) {
-        poiSelected.value = poi;
+        poiSelected.value = poi ? decanonicalizePoi(canonicalizePoi(poi)) : undefined;
         if (poi) {
           inputText.value = poiDisplayName(poi);
         } else {
