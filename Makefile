@@ -57,7 +57,7 @@ $(filter %,$(CITIES)): %: \
 
 %.gtfs.csv:
 	touch $@
-	@echo "To build with transit, run `make $(notdir $*)`.enumerate_gtfs_feeds and manually edit $@ to curate transit agencies."
+	@echo "To build with transit, run 'make $(notdir $*)'.enumerate_gtfs_feeds and manually edit $@ to curate transit agencies."
 	@echo "Building without transit."
 
 %.enumerate_gtfs_feeds:
