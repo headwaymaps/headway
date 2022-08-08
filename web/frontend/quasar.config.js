@@ -83,31 +83,35 @@ module.exports = configure(function (/* ctx */) {
       open: true, // opens browser window automatically
       proxy: {
         '/styles': {
-          target: 'https://maps.ellenhp.me',
+          target: 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
         '/fonts': {
-          target: 'https://maps.ellenhp.me',
+          target: 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
         '/photon': {
-          target: 'https://maps.ellenhp.me',
+          target: 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
         '/nominatim': {
-          target: 'https://maps.ellenhp.me',
+          target: 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
         '/otp': {
-          target: 'https://maps.ellenhp.me',
+          target: 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
         '/valhalla': {
-          target: 'https://maps.ellenhp.me',
+          target: 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
         '/bbox.txt': {
-          target: 'https://maps.ellenhp.me',
+          target: 'http://127.0.0.1:8080',
+          changeOrigin: true,
+        },
+        '/capabilities.txt': {
+          target: 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
       },
