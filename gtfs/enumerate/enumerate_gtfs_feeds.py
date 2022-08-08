@@ -51,8 +51,8 @@ try:
   if len(bbox) != 4:
     raise ValueError('Length != 4')
 except:
-    print('Invalid or missing environment variable HEADWAY_BBOX')
-    raise
+  print('Invalid or missing environment variable HEADWAY_BBOX')
+  raise
 
 gtfs_url = 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media'
 gtfs_feed_text = urlopen(gtfs_url).read().decode('utf-8')
@@ -63,9 +63,11 @@ gtfs_data_lines = gtfs_lines[1:]
 
 matching_lines = [line for line in gtfs_data_lines if gtfs_line_intersects(gtfs_name_line, line, bbox)]
 
-for line in matching_lines:
-  if extract_column(gtfs_name_line, line, 'data_type') == 'gtfs':
-    dl_url = extract_column(gtfs_name_line, line, 'urls.latest')
-    print("Downloading feed for", extract_column(gtfs_name_line, line, 'provider'))
-    with open('/gtfs_feeds/' + extract_column(gtfs_name_line, line, 'mdb_source_id') + '.gtfs.zip', 'wb') as f:
-        f.write(requests.get(dl_url).content)
+with open('/gtfs_feeds/gtfs_feeds.csv', 'w') as f:
+  w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+  for line in matching_lines:
+    if extract_column(gtfs_name_line, line, 'data_type') == 'gtfs':
+      w.writerow([
+        extract_column(gtfs_name_line, line, 'provider'),
+        extract_column(gtfs_name_line, line, 'mdb_source_id'),
+        extract_column(gtfs_name_line, line, 'urls.latest')])

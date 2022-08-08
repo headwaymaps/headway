@@ -54,14 +54,27 @@ $(filter %,$(CITIES)): %: \
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
 	@echo -e "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
-%.gtfs.tar:
+%.gtfs.csv:
+	@echo "To build with transit, run `make $(notdir $*)`.enumerate_gtfs_feeds and manually edit $@ if necessary."
+	@echo "Building without transit."
+
+%.enumerate_gtfs_feeds:
 	set -e ;\
-		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		ITAG=headway_enumerate_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
 		HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2) ;\
-		docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG} ;\
+		docker build ./gtfs/enumerate --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/gtfs_feeds/gtfs_feeds.csv ${DATA_DIR}/$(notdir $*).gtfs.csv ;\
+		docker rm -v $$CID
+
+%.gtfs.tar: %.gtfs.csv
+	cp ${DATA_DIR}/$(notdir $*).gtfs.csv gtfs/download/gtfs_feeds.gen.csv
+	set -e ;\
+		ITAG=headway_download_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./gtfs/download --tag $${ITAG} ;\
 		CID=$$(docker create $${ITAG}) ;\
 		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
-		docker rm -v $$CID
+		docker rm -v $$CID \
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
 	@echo "Building geocoding index for $(basename $(basename $@))."

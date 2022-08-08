@@ -7,10 +7,7 @@ WORKDIR /gtfs
 RUN mkdir /gtfs_feeds
 
 COPY download_gtfs_feeds.py /gtfs/
-
-ARG HEADWAY_BBOX
-
-ENV HEADWAY_BBOX=${HEADWAY_BBOX}
+COPY gtfs_feeds.gen.csv /gtfs/gtfs_feeds.csv
 
 RUN python /gtfs/download_gtfs_feeds.py
 
