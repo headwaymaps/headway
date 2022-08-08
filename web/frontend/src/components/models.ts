@@ -13,8 +13,8 @@ export interface LongLat {
 }
 
 export function poiDisplayName(poi: POI | undefined): string {
-  if (poi?.name !== undefined) {
-    return poi?.name ? poi?.name : '';
+  if (poi?.name) {
+    return poi?.name;
   }
   if (poi?.address) {
     return poi?.address;
@@ -60,11 +60,19 @@ export async function decanonicalizePoi(
       .item(0)?.textContent;
     const clazz = placeTag?.attributes?.getNamedItem('class')
       ?.textContent as string;
+    const type = placeTag?.attributes?.getNamedItem('type')
+      ?.textContent as string;
     const road = xmlPoi.getElementsByTagName('road').item(0)?.textContent;
-    const name =
-      clazz !== 'place'
-        ? xmlPoi.getElementsByTagName(clazz as string).item(0)?.textContent
-        : undefined;
+    let name = undefined;
+    const clazzTagContent = xmlPoi.getElementsByTagName(clazz as string).item(0)?.textContent;
+    const typeTagContent = xmlPoi.getElementsByTagName(type as string).item(0)?.textContent;
+    if (typeTagContent) {
+      console.log("using type");
+      name = typeTagContent;
+    } else if (clazzTagContent) {
+      console.log("using clazz");
+      name = clazzTagContent;
+    }
     const suburb = xmlPoi.getElementsByTagName('suburb').item(0)?.textContent;
     const city = xmlPoi.getElementsByTagName('city').item(0)?.textContent;
 
