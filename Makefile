@@ -36,6 +36,7 @@ list:
 
 $(filter %,$(CITIES)): %: \
 		${DATA_DIR}/%.osm.pbf \
+		${DATA_DIR}/%.gtfs.csv \
 		${DATA_DIR}/%.gtfs.tar \
 		${DATA_DIR}/%.nominatim.sql \
 		${DATA_DIR}/%.nominatim_tokenizer.tgz \
@@ -54,14 +55,28 @@ $(filter %,$(CITIES)): %: \
 	wget -U headway/1.0 -O $@ "https://download.bbbike.org/osm/bbbike/$(notdir $*)/$(notdir $@)" || rm $@
 	@echo -e "\n\nConsider donating to BBBike to help cover hosting! https://extract.bbbike.org/community.html\n\n"
 
-%.gtfs.tar:
+%.gtfs.csv:
+	touch $@
+	@echo "To build with transit, run 'make $(notdir $*)'.enumerate_gtfs_feeds and manually edit $@ to curate transit agencies."
+	@echo "Building without transit."
+
+%.enumerate_gtfs_feeds:
 	set -e ;\
-		ITAG=headway_build_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		ITAG=headway_enumerate_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
 		HEADWAY_BBOX=$$(grep "$(notdir $*):" web/bboxes.csv | cut -d':' -f2) ;\
-		docker build ./gtfs_build --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG} ;\
+		docker build ./gtfs/enumerate --build-arg HEADWAY_BBOX="$${HEADWAY_BBOX}" --tag $${ITAG} ;\
+		CID=$$(docker create $${ITAG}) ;\
+		docker cp $$CID:/gtfs_feeds/gtfs_feeds.csv ${DATA_DIR}/$(notdir $*).gtfs.csv ;\
+		docker rm -v $$CID
+
+%.gtfs.tar: %.gtfs.csv
+	cp ${DATA_DIR}/$(notdir $*).gtfs.csv gtfs/download/gtfs_feeds.gen.csv
+	set -e ;\
+		ITAG=headway_download_gtfs_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
+		docker build ./gtfs/download --tag $${ITAG} ;\
 		CID=$$(docker create $${ITAG}) ;\
 		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
-		docker rm -v $$CID
+		docker rm -v $$CID \
 
 %.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
 	@echo "Building geocoding index for $(basename $(basename $@))."
@@ -94,7 +109,7 @@ $(filter %,$(CITIES)): %: \
 		docker cp $$CID:/data/output.mbtiles $@ ;\
 		docker rm -v $$CID
 
-%.graph.obj: %.osm.pbf %.gtfs.tar
+%.graph.obj: %.osm.pbf %.gtfs.csv %.gtfs.tar
 	@echo "Building OpenTripPlanner graph for $*."
 	cp $*.osm.pbf ./otp/build/data.osm.pbf
 	cp $*.gtfs.tar ./otp/build/gtfs.tar
@@ -174,5 +189,6 @@ clean:
 clean_all: clean
 	rm -rf ${DATA_DIR}/*.osm.pbf
 	rm -rf ${DATA_DIR}/*.gtfs.tar
+	rm -rf ${DATA_DIR}/*.gtfs.csv
 	rm -rf ${DATA_DIR}/sources
 	docker images -qf "reference=headway_build_*" --format='{{.Repository}}:{{.Tag}}' | xargs docker rmi

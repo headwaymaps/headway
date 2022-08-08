@@ -110,6 +110,10 @@ module.exports = configure(function (/* ctx */) {
           target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },
+        '/capabilities.txt': {
+          target: 'https://maps.ellenhp.me',
+          changeOrigin: true,
+        },
       },
     },
 

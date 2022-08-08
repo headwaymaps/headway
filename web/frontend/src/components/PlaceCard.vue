@@ -21,6 +21,7 @@
         <div class="place-card-section">
           <q-chip
             icon="directions_bus"
+            v-if="haveTransit"
             clickable
             v-on:click="
               $router.push(`/multimodal/${canonicalizePoi($props.poi)}/_`)
@@ -74,6 +75,11 @@ export default defineComponent({
   props: {
     poi: Object,
   },
+  data() {
+    return {
+      haveTransit: false,
+    }
+  },
   methods: {
     canonicalizePoi,
   },
@@ -84,10 +90,17 @@ export default defineComponent({
       });
     },
   },
-  mounted: function () {
+  mounted: async function () {
     setTimeout(() => {
       setBottomCardAllowance(this.$refs.bottomCard.$el.offsetHeight);
     });
+    let response = await fetch("/capabilities.txt");
+    if (response.status != 200) {
+      // TODO surface error
+      return false;
+    }
+    const capabilities = (await response.text()).split('\n');
+    this.haveTransit = capabilities.find((val: string) => val === "OTP") !== undefined
   },
   components: {},
 });

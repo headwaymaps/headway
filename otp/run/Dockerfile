@@ -3,7 +3,7 @@ FROM debian:bullseye-slim
 ENV TZ="America/New_York"
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl openjdk-11-jre-headless sudo
+  && apt-get install -y --no-install-recommends curl openjdk-11-jre-headless sudo netcat
 
 ARG OTP_VERISON=2.1.0
 ARG OTP_HASH=b4c986b1c726c7d81d255fa183d32576122ba4e50290d53e4bb40be051971134
