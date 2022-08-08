@@ -101,7 +101,6 @@ export default defineComponent({
     }
     const capabilities = (await response.text()).split('\n');
     this.haveTransit = capabilities.find((val: string) => val === "OTP") !== undefined
-
   },
   components: {},
 });
