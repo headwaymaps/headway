@@ -67,10 +67,8 @@ export async function decanonicalizePoi(
     const clazzTagContent = xmlPoi.getElementsByTagName(clazz as string).item(0)?.textContent;
     const typeTagContent = xmlPoi.getElementsByTagName(type as string).item(0)?.textContent;
     if (typeTagContent) {
-      console.log("using type");
       name = typeTagContent;
-    } else if (clazzTagContent) {
-      console.log("using clazz");
+    } else if (clazz !== 'place' && clazzTagContent) {
       name = clazzTagContent;
     }
     const suburb = xmlPoi.getElementsByTagName('suburb').item(0)?.textContent;
