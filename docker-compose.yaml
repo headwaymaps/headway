@@ -46,6 +46,7 @@ services:
     env_file: .env
     environment:
       HEADWAY_RESOLVER: 127.0.0.11
+      HEADWAY_FORCE_BBOX: ${HEADWAY_FORCE_BBOX}
       HEADWAY_GRAPHHOPPER_URL: http://graphhopper:8989
       HEADWAY_NOMINATIM_URL: http://nominatim:8080
       HEADWAY_PHOTON_URL: http://photon:2322

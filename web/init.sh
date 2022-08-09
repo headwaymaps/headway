@@ -2,7 +2,10 @@
 
 set -xe
 
-if [ ! -z ${HEADWAY_AREA} ]
+if [ ! -z "${HEADWAY_FORCE_BBOX}" ]
+then
+  echo "${HEADWAY_FORCE_BBOX}" > ${HEADWAY_BBOX_PATH}
+elif [ ! -z ${HEADWAY_AREA} ]
 then
   [[ -e ${HEADWAY_BBOX_PATH} ]] && echo "WARN: overwriting existing ${HEADWAY_BBOX_PATH} with bbox"
   grep "^${HEADWAY_AREA}:" /frontend/bboxes.csv | cut -d':' -f2 > ${HEADWAY_BBOX_PATH}
