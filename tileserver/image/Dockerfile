@@ -4,8 +4,7 @@ RUN npm install -g tileserver-gl-light
 
 USER root
 
-RUN apt-get update -y
-RUN apt-get install -y gettext-base
+RUN apt-get update -y && apt-get install -y gettext-base
 
 RUN mkdir -p /app/styles
 RUN chown node /app
