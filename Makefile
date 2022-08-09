@@ -20,6 +20,7 @@ CITIES = Aachen Aarhus Adelaide Albuquerque Alexandria Amsterdam Antwerpen Arnhe
 				Zagreb Zuerich
 
 .DEFAULT_GOAL := help
+.SECONDARY:
 SHELL := /bin/bash
 .SHELLFLAGS := -ec
 DATA_DIR := ${PWD}/data
@@ -35,6 +36,21 @@ list:
 	@echo ${CITIES}
 
 $(filter %,$(CITIES)): %: \
+		${DATA_DIR}/%.osm.pbf \
+		${DATA_DIR}/%.gtfs.csv \
+		${DATA_DIR}/%.gtfs.tar \
+		${DATA_DIR}/%.nominatim.sql.bz2 \
+		${DATA_DIR}/%.nominatim_tokenizer.tgz \
+		${DATA_DIR}/%.photon.tar.bz2 \
+		${DATA_DIR}/%.mbtiles \
+		${DATA_DIR}/%.graph.obj \
+		${DATA_DIR}/%.valhalla.tar.bz2 \
+		${DATA_DIR}/fonts.tar \
+		${DATA_DIR}/sprite.tar \
+		tag_images
+	@echo "Built $@"
+
+%.custom: \
 		${DATA_DIR}/%.osm.pbf \
 		${DATA_DIR}/%.gtfs.csv \
 		${DATA_DIR}/%.gtfs.tar \
