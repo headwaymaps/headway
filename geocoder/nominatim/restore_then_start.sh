@@ -16,7 +16,8 @@ sudo -E -u postgres psql postgres -c "DROP DATABASE IF EXISTS nominatim"
 
 sudo -E -u postgres psql postgres -c "CREATE DATABASE nominatim"
 
-sudo -E -u postgres pg_restore --dbname nominatim --format tar ${HEADWAY_NOMINATIM_FILE}
+echo "Beginning nominatim restore"
+time cat ${HEADWAY_NOMINATIM_FILE} | pbzip2 -d | sudo -E -u postgres psql nominatim
 
 touch /var/lib/postgresql/12/main/import-finished
 

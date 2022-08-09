@@ -1,6 +1,7 @@
 .tmp_*
 *.osm.pbf
 *.nominatim.sql
+*.nominatim.sql.bz2
 *.photon.tgz
 *.graph.tgz
 *.mbtiles

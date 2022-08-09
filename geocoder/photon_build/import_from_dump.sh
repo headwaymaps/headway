@@ -2,7 +2,7 @@
 
 set -xe
 
-HEADWAY_NOMINATIM_FILE=${HEADWAY_NOMINATIM_FILE:-/nominatim_data/data.nominatim.sql}
+HEADWAY_NOMINATIM_FILE=${HEADWAY_NOMINATIM_FILE:-/nominatim_data/data.nominatim.sql.bz2}
 HEADWAY_PHOTON_LANGUAGES=${HEADWAY_PHOTON_LANGUAGES:-es,fr,de,en}
 
 service postgresql start && \
@@ -17,10 +17,10 @@ sudo -E -u postgres psql postgres -c "DROP DATABASE IF EXISTS nominatim"
 
 sudo -E -u postgres psql postgres -c "CREATE DATABASE nominatim"
 
-sudo -E -u postgres pg_restore --dbname nominatim --format tar ${HEADWAY_NOMINATIM_FILE}
+cat ${HEADWAY_NOMINATIM_FILE} | pbzip2 -d | sudo -E -u postgres psql nominatim
 
 sudo -u photon /bin/sh -c "java -jar /photon/photon.jar -nominatim-import -host localhost -port 5432 -database nominatim -user nominatim -password password1 -languages ${HEADWAY_PHOTON_LANGUAGES}"
 
 mkdir -p /dump
 
-tar czf /photon/photon.tgz /photon/photon_data
+tar cvf - /photon/photon_data | pbzip2 -c -6 > /photon/photon.tar.bz2

@@ -1,5 +1,7 @@
 FROM mediagis/nominatim:4.0
 
+RUN apt-get update -y && apt-get install -y pbzip2
+
 COPY data.osm.pbf /data.osm.pbf
 
 RUN bash -c 'useradd -m -p ${NOMINATIM_PASSWORD} nominatim'
