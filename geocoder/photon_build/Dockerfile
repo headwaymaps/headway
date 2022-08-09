@@ -3,7 +3,7 @@ FROM mediagis/nominatim:4.0
 ENV TZ="America/New_York"
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl openjdk-11-jre-headless sudo
+  && apt-get install -y --no-install-recommends curl openjdk-11-jre-headless sudo pbzip2
 
 RUN mkdir /photon
 
@@ -24,7 +24,7 @@ COPY import_from_dump.sh /photon
 
 USER root
 
-COPY data.nominatim.sql /nominatim_data/data.nominatim.sql
+COPY data.nominatim.sql.bz2 /nominatim_data/data.nominatim.sql.bz2
 
 WORKDIR /photon
 

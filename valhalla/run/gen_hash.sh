@@ -4,9 +4,7 @@ set -xe
 
 mkdir -p /data/valhalla/
 
-cp /data_mount/${HEADWAY_AREA}.valhalla.tar /data/valhalla/tiles.tar
-
-cd /valhalla_data && tar -zxvf /data/valhalla/tiles.tar timezones.sqlite admins.sqlite
+cd /valhalla_data && time cat /data_mount/${HEADWAY_AREA}.valhalla.tar.bz2 | pbzip2 -d | tar x
 
 valhalla_build_config --mjolnir-timezone /valhalla_data/timezones.sqlite --mjolnir-admin /valhalla_data/admins.sqlite > valhalla.json
 

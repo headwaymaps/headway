@@ -38,12 +38,12 @@ $(filter %,$(CITIES)): %: \
 		${DATA_DIR}/%.osm.pbf \
 		${DATA_DIR}/%.gtfs.csv \
 		${DATA_DIR}/%.gtfs.tar \
-		${DATA_DIR}/%.nominatim.sql \
+		${DATA_DIR}/%.nominatim.sql.bz2 \
 		${DATA_DIR}/%.nominatim_tokenizer.tgz \
-		${DATA_DIR}/%.photon.tgz \
+		${DATA_DIR}/%.photon.tar.bz2 \
 		${DATA_DIR}/%.mbtiles \
 		${DATA_DIR}/%.graph.obj \
-		${DATA_DIR}/%.valhalla.tar \
+		${DATA_DIR}/%.valhalla.tar.bz2 \
 		${DATA_DIR}/fonts.tar \
 		${DATA_DIR}/sprite.tar \
 		tag_images
@@ -78,25 +78,25 @@ $(filter %,$(CITIES)): %: \
 		docker cp $$CID:/gtfs_feeds/gtfs.tar $@ ;\
 		docker rm -v $$CID \
 
-%.nominatim.sql %.nominatim_tokenizer.tgz: %.osm.pbf
+%.nominatim.sql.bz2 %.nominatim_tokenizer.tgz: %.osm.pbf
 	@echo "Building geocoding index for $(basename $(basename $@))."
 	cp $^ ./geocoder/nominatim_build/data.osm.pbf
 	set -e  ;\
 		ITAG=headway_build_nominatim_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
 		docker build ./geocoder/nominatim_build --tag $${ITAG} ;\
 		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/dump/nominatim.sql $*.nominatim.sql ;\
+		docker cp $$CID:/dump/nominatim.sql.bz2 $*.nominatim.sql.bz2 ;\
 		docker cp $$CID:/nominatim/tokenizer.tgz $*.nominatim_tokenizer.tgz ;\
 		docker rm -v $$CID
 
-%.photon.tgz: %.nominatim.sql
+%.photon.tar.bz2: %.nominatim.sql.bz2
 	@echo "Importing data into photon and building index for $*."
-	cp $^ ./geocoder/photon_build/data.nominatim.sql
+	cp $^ ./geocoder/photon_build/data.nominatim.sql.bz2
 	set -e ;\
 		ITAG=headway_build_photon_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
 		docker build ./geocoder/photon_build --tag $${ITAG} ;\
 		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/photon/photon.tgz $@ ;\
+		docker cp $$CID:/photon/photon.tar.bz2 $@ ;\
 		docker rm -v $$CID
 
 %.mbtiles: %.osm.pbf
@@ -120,14 +120,14 @@ $(filter %,$(CITIES)): %: \
 		docker cp $$CID:/data/graph.obj $@ ;\
 		docker rm -v $$CID
 
-%.valhalla.tar: %.osm.pbf
+%.valhalla.tar.bz2: %.osm.pbf
 	@echo "Building Valhalla tiles for $(basename $(basename $@))."
 	cp $< ./valhalla/build/data.osm.pbf
 	set -e ;\
 		ITAG=headway_build_valhalla_$$(echo $(notdir $*) | tr '[:upper:]' '[:lower:]') ;\
 		docker build ./valhalla/build --tag $${ITAG} ;\
 		CID=$$(docker create $${ITAG}) ;\
-		docker cp $$CID:/tiles/valhalla.tar $@ ;\
+		docker cp $$CID:/tiles/valhalla.tar.bz2 $@ ;\
 		docker rm -v $$CID
 
 # fontnik only runs on amd64 node images unfortunately.
@@ -177,9 +177,12 @@ tileserver_image:
 clean:
 	rm -rf ${DATA_DIR}/*.mbtiles
 	rm -rf ${DATA_DIR}/*.nominatim.sql
+	rm -rf ${DATA_DIR}/*.nominatim.sql.bz2
 	rm -rf ${DATA_DIR}/*.nominatim_tokenizer.tgz
 	rm -rf ${DATA_DIR}/*.photon.tgz
+	rm -rf ${DATA_DIR}/*.photon.tar.bz2
 	rm -rf ${DATA_DIR}/*.valhalla.tar
+	rm -rf ${DATA_DIR}/*.valhalla.tar.bz2
 	rm -rf ${DATA_DIR}/*.graph.obj
 	rm -rf ${DATA_DIR}/fonts*
 	rm -rf ${DATA_DIR}/sprite*

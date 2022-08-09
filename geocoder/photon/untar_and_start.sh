@@ -1,3 +1,11 @@
 #!/bin/bash
 
-cd / && tar xvf /data/${HEADWAY_AREA}.photon.tgz && cd /photon && sudo -E -u photon java -jar /photon/photon.jar
+set -xe
+
+echo "Extracting photon index"
+
+cd / && time cat /data/${HEADWAY_AREA}.photon.tar.bz2 | pbzip2 -d | tar x
+
+echo "Starting photon"
+
+cd /photon && sudo -E -u photon java -jar /photon/photon.jar

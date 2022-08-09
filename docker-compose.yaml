@@ -19,7 +19,7 @@ services:
     build: ./geocoder/nominatim
     environment:
       PBF_PATH: /data/${HEADWAY_AREA}.osm.pbf
-      HEADWAY_NOMINATIM_FILE: /data/${HEADWAY_AREA}.nominatim.sql
+      HEADWAY_NOMINATIM_FILE: /data/${HEADWAY_AREA}.nominatim.sql.bz2
       HEADWAY_NOMINATIM_TOKENIZER: /data/${HEADWAY_AREA}.nominatim_tokenizer.tgz
     env_file: .env
     volumes:

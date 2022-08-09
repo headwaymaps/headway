@@ -3,7 +3,7 @@ FROM debian:bullseye-slim
 ENV TZ="America/New_York"
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends postgresql postgis postgresql-postgis curl openjdk-11-jre-headless sudo
+  && apt-get install -y --no-install-recommends postgresql postgis postgresql-postgis curl openjdk-11-jre-headless sudo pbzip2
 
 RUN mkdir /photon
 
