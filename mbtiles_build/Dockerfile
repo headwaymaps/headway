@@ -1,8 +1,6 @@
 FROM debian:bullseye-slim as bootstrapper
 
-RUN apt-get update -y
-
-RUN apt-get install -y --no-install-recommends wget ca-certificates
+RUN apt-get update -y && apt-get install -y --no-install-recommends wget ca-certificates
 
 COPY download_mirrored_data.sh /
 
@@ -10,9 +8,7 @@ RUN /download_mirrored_data.sh
 
 FROM debian:bullseye-slim
 
-RUN apt-get update -y
-
-RUN apt-get install -y --no-install-recommends curl ca-certificates openjdk-17-jre-headless
+RUN apt-get update -y && apt-get install -y --no-install-recommends curl ca-certificates openjdk-17-jre-headless
 
 WORKDIR /planetiler
 
