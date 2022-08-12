@@ -71,7 +71,9 @@ nominatim-build:
     RUN bash -c 'useradd -m -p ${NOMINATIM_PASSWORD} nominatim'
     ENV PBF_PATH=/data.osm.pbf
     RUN bash -c '/app/config.sh'
-    RUN bash -c '/app/init.sh'
+    # This is probably the worst line of code in the whole project.
+    # Piggback off the THREADS param to also pass in a flag that drops update tables.
+    RUN THREADS="$(nproc) --no-updates" bash -c '/app/init.sh'
 
     RUN touch /var/lib/postgresql/12/main/import-finished
 
