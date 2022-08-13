@@ -236,7 +236,7 @@ gtfs-build:
     FROM +gtfs-base
     COPY ./services/gtfs/download_gtfs_feeds.py /gtfs/
     ARG area
-    COPY --if-exists build/${area}.gtfs_feeds.csv /gtfs/gtfs_feeds.csv
+    COPY --if-exists data/${area}.gtfs_feeds.csv /gtfs/gtfs_feeds.csv
     RUN touch /gtfs/gtfs_feeds.csv # Just in case the GTFS feeds weren't enumerated earlier.
     RUN python /gtfs/download_gtfs_feeds.py
     RUN bash -c "cd /gtfs_feeds && ls *.zip | tar -cf /gtfs/gtfs.tar --files-from -"
@@ -290,6 +290,8 @@ otp-init-image:
 
 otp-serve-image:
     FROM +otp-base
+
+    RUN apt-get update -y && apt-get install -y --no-install-recommends netcat
 
     ARG javaMemArgs=-Xmx4G
     COPY ./services/otp/run_otp.sh /otp
