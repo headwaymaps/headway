@@ -53,3 +53,9 @@ Using a custom OSM extract is a bit more complicated, and less regularly tested.
 
 4. Execute `docker-compose up -d` to bring up a headway server on port 8080.
 5. (For https and non-default port use only) reverse-proxy traffic to port 8080.
+
+## Docker-compose restarts
+
+Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker-compose down --volume` to re-initialize the data in the init containers.
+
+This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `.env` file.
