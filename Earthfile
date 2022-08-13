@@ -5,7 +5,7 @@ VERSION 0.6
 # OSM extract
 ##############################
 
-metro:
+build:
     FROM debian:bullseye-slim
     ARG area
     COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
