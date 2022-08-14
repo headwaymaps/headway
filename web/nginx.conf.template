@@ -21,14 +21,9 @@ http {
     resolver ${HEADWAY_RESOLVER};
     listen ${HEADWAY_HTTP_PORT} default_server;
 
-    # nominatim
-    location ~ /nominatim/lookup/([NRW][0-9]+)  {
-      proxy_pass      ${HEADWAY_NOMINATIM_URL}/lookup?osm_ids=${ESC}1;
-    }
-
     # photon
-    location /photon/  {
-      proxy_pass      ${HEADWAY_PHOTON_URL}/;
+    location /pelias/  {
+      proxy_pass      ${HEADWAY_PELIAS_URL}/;
     }
 
     # opentripplanner

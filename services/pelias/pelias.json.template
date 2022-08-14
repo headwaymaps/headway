@@ -1,0 +1,50 @@
+{
+    "logger": {
+      "level": "info",
+      "timestamp": false
+    },
+    "esclient": {
+      "apiVersion": "7.5",
+      "hosts": [
+        { "host": "pelias_elasticsearch" }
+      ]
+    },
+    "elasticsearch": {
+      "settings": {
+        "index": {
+          "refresh_interval": "10s",
+          "number_of_replicas": "0",
+          "number_of_shards": "1"
+        }
+      }
+    },
+    "api": {
+      "services": {
+        "placeholder": { "url": "http://pelias_placeholder:4100" },
+        "interpolation": { "url": "http://pelias_interpolation:4300" },
+        "libpostal": { "url": "http://pelias_libpostal:4400" }
+      }
+    },
+    "imports": {
+      "adminLookup": {
+        "enabled": true
+      },        
+      "openstreetmap": {
+        "leveldbpath": "/tmp",
+        "datapath": "/data/openstreetmap",
+        "import": [{
+          "filename": "data.osm.pbf"
+        }]
+      },
+      "whosonfirst": {
+        "datapath": "/data/whosonfirst",
+        "importPostalcodes": true,
+        "countryCode": ${COUNTRY_CODE_LIST}
+      },
+      "polyline": {
+        "datapath": "/data/polylines",
+        "files": [ "extract.0sv" ]
+      }
+    }
+  }
+  

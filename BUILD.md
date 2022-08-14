@@ -44,7 +44,7 @@ That's it! In the future I'd like to have a kubernetes config to further product
 Using a custom OSM extract is a bit more complicated, and less regularly tested. Please report issues if you have any. Transit trip planning isn't currently supported for arbitrary OSM extracts, contributions are welcome though!
 
 1. Copy your OSM extract into Headway's top-level directory (same directory as this file), as e.g. `./california.osm.pbf`. It is important to name it something different than the cities listed above. For example, if I was building a custom extract of Amsterdam to avoid conflicts I would name it `AmsterdamCustom`.
-2. Execute `earthly +build --area="california"` replacing `california` with the name (no extension) of your OSM extract.
+2. Execute `earthly +build --area="california" --countries="US"` replacing `california` with the name (no extension) of your OSM extract, and `US` with a comma-separated list of the countries that the extract covers. This specifies which data to download from Who's On First. Accidentally including a country won't harm anything but it will cause needless downloads. You may wish to simply put `*` which will download data for the whole planet (potentially tens of gigabytes).
 3. Make a `.env` file with configuration. See/copy `.env.example` for defaults. In particular:
 
    1. `HEADWAY_PUBLIC_URL` (Optional for fully local setup that is accessed exclusively via the base URL `http://127.0.0.1`) Pick a base URL for the domain you wish to serve on, paying attention to scheme (http vs https), domain and port (if not default). This will look like "https://example.com", "http://maps.my.cool.intranet" or "https://maps.example.com:8080". Please omit the trailing slash.

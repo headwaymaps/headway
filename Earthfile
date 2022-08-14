@@ -1,4 +1,4 @@
-VERSION 0.6
+VERSION --use-copy-link 0.6
 
 
 ##############################
@@ -7,23 +7,30 @@ VERSION 0.6
 
 build:
     FROM debian:bullseye-slim
+    RUN apt-get -y update && apt-get install -y pbzip2
     ARG area
+    ARG country
     COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
-    COPY (+nominatim-build/tokenizer.tar --area=${area}) /tokenizer.tar
-    COPY (+nominatim-build/nominatim.sql.bz2 --area=${area}) /nominatim.tar.bz2
-    COPY (+photon-build/photon.tar.bz2 --area=${area}) /photon.tar.bz2
     COPY (+gtfs-build/gtfs.tar --area=${area}) /gtfs.tar
     COPY (+otp-build/graph.obj --area=${area}) /graph.obj
     COPY (+valhalla-build/valhalla.tar.bz2 --area=${area}) /valhalla.tar.bz2
     COPY (+planetiler-build-mbtiles/output.mbtiles --area=${area}) /output.mbtiles
+    COPY (+pelias-import/elasticsearch --area=${area} --country=${country}) /elasticsearch
+    COPY (+pelias-prepare-placeholder/placeholder --area=${area} --country=${country}) /placeholder
+    COPY (+pelias-prepare-interpolation/interpolation --area=${area} --country=${country}) /interpolation
+    COPY (+pelias-config/pelias.json --area=${area} --country=${country}) /pelias.json
+    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - | pbzip2 -c -6 > /elasticsearch.tar.bz2'
+    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | pbzip2 -c -6 > /placeholder.tar.bz2'
+    RUN bash -c 'cd /interpolation && ls | tar -c --files-from - | pbzip2 -c -6 > /interpolation.tar.bz2'
     SAVE ARTIFACT /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
-    SAVE ARTIFACT /tokenizer.tar AS LOCAL ./data/${area}.tokenizer.tar
-    SAVE ARTIFACT /nominatim.tar.bz2 AS LOCAL ./data/${area}.nominatim.sql.bz2
-    SAVE ARTIFACT /photon.tar.bz2 AS LOCAL ./data/${area}.photon.tar.bz2
     SAVE ARTIFACT /gtfs.tar AS LOCAL ./data/${area}.gtfs.tar
     SAVE ARTIFACT /graph.obj AS LOCAL ./data/${area}.graph.obj
     SAVE ARTIFACT /valhalla.tar.bz2 AS LOCAL ./data/${area}.valhalla.tar.bz2
     SAVE ARTIFACT /output.mbtiles AS LOCAL ./data/${area}.mbtiles
+    SAVE ARTIFACT /elasticsearch.tar.bz2 AS LOCAL ./data/${area}.elasticsearch.tar.bz2
+    SAVE ARTIFACT /placeholder.tar.bz2 AS LOCAL ./data/${area}.placeholder.tar.bz2
+    SAVE ARTIFACT /interpolation.tar.bz2 AS LOCAL ./data/${area}.interpolation.tar.bz2
+    SAVE ARTIFACT /pelias.json AS LOCAL ./data/${area}.pelias.json
     BUILD +images
 
 images:
@@ -32,18 +39,15 @@ images:
     COPY (+tileserver-build/sprite.tar) /sprite.tar
     SAVE ARTIFACT /fonts.tar AS LOCAL ./data/fonts.tar
     SAVE ARTIFACT /sprite.tar AS LOCAL ./data/sprite.tar
-    BUILD +nominatim-serve-image
-    BUILD +photon-serve-image
     BUILD +otp-serve-image
     BUILD +valhalla-serve-image
     BUILD +web-serve-image
     BUILD +tileserver-serve-image
-    BUILD +nominatim-init-image
-    BUILD +photon-init-image
     BUILD +otp-init-image
     BUILD +valhalla-init-image
     BUILD +web-init-image
     BUILD +tileserver-init-image
+    BUILD +pelias-init-image
 
 extract:
     FROM +downloader-base
@@ -55,119 +59,112 @@ extract:
     SAVE ARTIFACT /data/data.osm.pbf /data.osm.pbf
 
 ##############################
-# Nominatim
+# Pelias
 ##############################
 
-nominatim-base-image:
-    FROM mediagis/nominatim:4.0
-    ENV TZ="America/New_York"
-    RUN apt-get update -y && apt-get install -y pbzip2 python3-pip sudo
-
-nominatim-build:
-    FROM +nominatim-base-image
-    ARG area
-    COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
-
-    RUN bash -c 'useradd -m -p ${NOMINATIM_PASSWORD} nominatim'
-    ENV PBF_PATH=/data.osm.pbf
-    RUN bash -c '/app/config.sh'
-    # This is probably the worst line of code in the whole project.
-    # Piggback off the THREADS param to also pass in a flag that drops update tables.
-    RUN THREADS="$(nproc) --no-updates" bash -c '/app/init.sh'
-
-    RUN touch /var/lib/postgresql/12/main/import-finished
-
-    COPY ./services/nominatim/dump.sh /app
-
-    RUN /app/dump.sh
-    SAVE ARTIFACT /nominatim/tokenizer.tar /tokenizer.tar
-    SAVE ARTIFACT /dump/nominatim.sql.bz2 /nominatim.sql.bz2
-
-nominatim-init-image:
-    FROM +nominatim-base-image
-    RUN apt-get update -y && apt-get install -y wget ca-certificates
-
-    WORKDIR /services
-    COPY ./services/nominatim/init.sh /services/
-
-    CMD ["/services/init.sh"]
-
-    SAVE IMAGE headway_nominatim_init
-
-nominatim-serve-image:
-    FROM +nominatim-base-image
-    COPY ./services/nominatim/run.sh /app/run-custom.sh
-
-    ENTRYPOINT ["/bin/bash"]
-    CMD ["/app/run-custom.sh"]
-    SAVE IMAGE headway_nominatim
-
-##############################
-# Photon
-##############################
-
-photon-download:
+pelias-init-image:
     FROM +downloader-base
-    ARG PHOTON_VERSION=0.3.5
-    ARG PHOTON_HASH=6f438e905b020a70ec54de47b7c7f8b9c7921ef0ee84a3a9e0a6a6ebb7f74fa8
+    RUN apt-get update -y && apt-get install -y --no-install-recommends pbzip2
+    COPY ./services/pelias/init.sh /app/init.sh
+    CMD ["/app/init.sh"]
+    SAVE IMAGE headway_pelias_init
 
-	RUN wget -O /data/photon.jar "https://github.com/komoot/photon/releases/download/${PHOTON_VERSION}/photon-${PHOTON_VERSION}.jar"
-    RUN echo "${PHOTON_HASH}  /data/photon.jar" | sha256sum --check
-    
-    SAVE ARTIFACT /data/photon.jar /photon.jar
+pelias-config:
+    FROM debian:bullseye-slim
+    RUN apt-get update -y && apt-get install -y --no-install-recommends gettext-base
+    WORKDIR /config
+    COPY services/pelias/pelias.json.template pelias.json.template
+    ARG countries
+    ENV COUNTRIES=${countries}
+    IF [ -z ${COUNTRIES} ]
+        RUN echo "Must use --countries flag for custom extracts" && exit 1
+    END
+    RUN COUNTRY_CODE_LIST="[\"$(echo ${COUNTRIES} | sed 's/,/", "/g')\"]" \
+        bash -c "envsubst < pelias.json.template > pelias.json"
+    SAVE ARTIFACT /config/pelias.json /pelias.json
 
-photon-base-image:
-    FROM +java-base
-
-    RUN mkdir /photon
-    RUN useradd -ms /bin/bash photon
-    RUN chown photon /photon
-
-    COPY +photon-download/photon.jar /photon/photon.jar
-
-photon-build:
-    FROM +nominatim-base-image
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-17-jre-headless
-
-    RUN mkdir /photon
-    RUN useradd -ms /bin/bash photon
-    COPY +photon-download/photon.jar /photon/photon.jar
-    RUN chown -R photon /photon
-
-    RUN chown -R photon /app
-
+pelias-import-base:
+    FROM earthly/dind:alpine
     ARG area
-    ARG langs="es,fr,de,en,it"
-    ENV HEADWAY_PHOTON_LANGUAGES=${langs}
-    COPY ./services/photon/import_and_dump.sh /app/
-    COPY (+nominatim-build/nominatim.sql.bz2 --area=${area}) /nominatim_data/data.nominatim.sql.bz2
+    ARG countries
+    RUN mkdir -p /data/openstreetmap
+    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap    
+    WORKDIR /config
+    COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
+    COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
+    ENV DATA_DIR="/data"
 
-    USER root
-    RUN /app/import_and_dump.sh
+pelias-download-wof:
+    ARG area
+    ARG countries
+    FROM +pelias-import-base
+    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    WITH DOCKER \
+            --compose compose.yaml \
+            --service pelias_whosonfirst
+        RUN docker-compose run -T 'pelias_whosonfirst' bash ./bin/download
+    END
+    SAVE ARTIFACT /data/whosonfirst /whosonfirst
 
-    SAVE ARTIFACT /photon/photon.tar.bz2 /photon.tar.bz2
+pelias-prepare-polylines:
+    ARG area
+    ARG countries
+    FROM +pelias-import-base
+    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    WITH DOCKER \
+            --compose compose.yaml \
+            --service pelias_polylines_prepare
+        RUN docker-compose run -T 'pelias_polylines_prepare' bash ./docker_extract.sh
+    END
+    SAVE ARTIFACT /data/polylines /polylines
 
-photon-init-image:
-    FROM +photon-base-image
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends postgresql postgis postgresql-postgis wget pbzip2
+pelias-prepare-interpolation:
+    ARG area
+    ARG countries
+    FROM +pelias-import-base
+    COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /data/polylines
+    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    WITH DOCKER \
+            --compose compose.yaml \
+            --service pelias_interpolation
+        RUN docker-compose run -T 'pelias_interpolation' bash ./docker_build.sh
+    END
+    SAVE ARTIFACT /data/interpolation /interpolation
 
-    WORKDIR /services
-    COPY ./services/photon/init.sh /services/
+pelias-prepare-placeholder:
+    ARG area
+    ARG countries
+    FROM +pelias-import-base
+    COPY (+pelias-download-wof/whosonfirst --area=${area} --countries=${countries}) /data/whosonfirst
+    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    WITH DOCKER \
+            --compose compose.yaml \
+            --service pelias_placeholder
+        RUN docker-compose run -T 'pelias_placeholder' bash -c "./cmd/extract.sh && ./cmd/build.sh"
+    END
+    SAVE ARTIFACT /data/placeholder /placeholder
 
-    USER root
-    CMD ["/services/init.sh"]
-
-    SAVE IMAGE headway_photon_init
-
-photon-serve-image:
-    FROM +photon-base-image
-    WORKDIR /photon
-    USER photon
-    CMD ["java", "-jar", "/photon/photon.jar"]
-
-    SAVE IMAGE headway_photon
+pelias-import:
+    ARG area
+    ARG countries
+    FROM +pelias-import-base
+    COPY (+pelias-download-wof/whosonfirst --area=${area} --countries=${countries}) /data/whosonfirst
+    COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /data/polylines
+    RUN mkdir tools
+    COPY services/pelias/wait.sh ./tools/wait.sh
+    RUN mkdir /data/elasticsearch
+    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    WITH DOCKER \
+            --compose compose.yaml \
+            --service pelias_schema \
+            --service pelias_elasticsearch \
+            --service pelias_openstreetmap \
+            --service pelias_polylines_import
+        RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index" && \
+            docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start" && \
+            docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+    END
+    SAVE ARTIFACT /data/elasticsearch /elasticsearch
 
 ##############################
 # Planetiler
@@ -452,9 +449,8 @@ web-serve-image:
     ENV HEADWAY_RESOLVER=127.0.0.11
     ENV HEADWAY_OTP_URL=http://otp:8080
     ENV HEADWAY_VALHALLA_URL=http://valhalla:8002
-    ENV HEADWAY_PHOTON_URL=http://photon:2322
     ENV HEADWAY_TILESERVER_URL=http://mbtileserver:8000
-    ENV HEADWAY_NOMINATIM_URL=http://nominatim:8080
+    ENV HEADWAY_PELIAS_URL=http://pelias:8080
     # for escaping $ in nginx template
     ENV ESC=$
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
