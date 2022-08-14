@@ -6,32 +6,79 @@ VERSION --use-copy-link 0.6
 ##############################
 
 build:
-    FROM debian:bullseye-slim
-    RUN apt-get -y update && apt-get install -y pbzip2
     ARG area
-    ARG country
-    COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
-    COPY (+gtfs-build/gtfs.tar --area=${area}) /gtfs.tar
-    COPY (+otp-build/graph.obj --area=${area}) /graph.obj
-    COPY (+valhalla-build/valhalla.tar.bz2 --area=${area}) /valhalla.tar.bz2
-    COPY (+planetiler-build-mbtiles/output.mbtiles --area=${area}) /output.mbtiles
-    COPY (+pelias-import/elasticsearch --area=${area} --country=${country}) /elasticsearch
-    COPY (+pelias-prepare-placeholder/placeholder --area=${area} --country=${country}) /placeholder
-    COPY (+pelias-prepare-interpolation/interpolation --area=${area} --country=${country}) /interpolation
-    COPY (+pelias-config/pelias.json --area=${area} --country=${country}) /pelias.json
-    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - | pbzip2 -c -6 > /elasticsearch.tar.bz2'
-    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | pbzip2 -c -6 > /placeholder.tar.bz2'
-    RUN bash -c 'cd /interpolation && ls | tar -c --files-from - | pbzip2 -c -6 > /interpolation.tar.bz2'
-    SAVE ARTIFACT /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
-    SAVE ARTIFACT /gtfs.tar AS LOCAL ./data/${area}.gtfs.tar
-    SAVE ARTIFACT /graph.obj AS LOCAL ./data/${area}.graph.obj
-    SAVE ARTIFACT /valhalla.tar.bz2 AS LOCAL ./data/${area}.valhalla.tar.bz2
-    SAVE ARTIFACT /output.mbtiles AS LOCAL ./data/${area}.mbtiles
-    SAVE ARTIFACT /elasticsearch.tar.bz2 AS LOCAL ./data/${area}.elasticsearch.tar.bz2
-    SAVE ARTIFACT /placeholder.tar.bz2 AS LOCAL ./data/${area}.placeholder.tar.bz2
-    SAVE ARTIFACT /interpolation.tar.bz2 AS LOCAL ./data/${area}.interpolation.tar.bz2
-    SAVE ARTIFACT /pelias.json AS LOCAL ./data/${area}.pelias.json
+    ARG countries
+    BUILD +save --area=${area} --countries=${countries}
     BUILD +images
+
+save:
+    ARG area
+    ARG countries
+    BUILD +save-extract --area=${area}
+    BUILD +save-gtfs --area=${area}
+    BUILD +save-otp --area=${area}
+    BUILD +save-valhalla --area=${area}
+    BUILD +save-elasticsearch --area=${area} --countries=${countries}
+    BUILD +save-placeholder --area=${area} --countries=${countries}
+    BUILD +save-interpolation --area=${area} --countries=${countries}
+    BUILD +save-pelias-config --area=${area} --countries=${countries}
+
+save-extract:
+    FROM +save-base
+    ARG area
+    COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
+    SAVE ARTIFACT /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
+
+save-gtfs:
+    FROM +save-base
+    ARG area
+    COPY (+gtfs-build/gtfs.tar --area=${area}) /gtfs.tar
+    SAVE ARTIFACT /gtfs.tar AS LOCAL ./data/${area}.gtfs.tar
+
+save-otp:
+    FROM +save-base
+    ARG area
+    COPY (+otp-build/graph.obj --area=${area}) /graph.obj
+    SAVE ARTIFACT /graph.obj AS LOCAL ./data/${area}.graph.obj
+
+save-valhalla:
+    FROM +save-base
+    ARG area
+    COPY (+valhalla-build/tiles --area=${area}) /valhalla
+    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - | pbzip2 -c -6 > /valhalla.tar.bz2'
+    SAVE ARTIFACT /valhalla.tar.bz2 AS LOCAL ./data/${area}.valhalla.tar.bz2
+
+save-elasticsearch:
+    FROM +save-base
+    ARG area
+    ARG countries
+    COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
+    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - | pbzip2 -c -6 > /elasticsearch.tar.bz2'
+    SAVE ARTIFACT /elasticsearch.tar.bz2 AS LOCAL ./data/${area}.elasticsearch.tar.bz2
+
+save-placeholder:
+    FROM +save-base
+    ARG area
+    ARG countries
+    COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
+    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | pbzip2 -c -6 > /placeholder.tar.bz2'
+    SAVE ARTIFACT /placeholder.tar.bz2 AS LOCAL ./data/${area}.placeholder.tar.bz2
+
+save-interpolation:
+    FROM +save-base
+    ARG area
+    ARG countries
+    COPY (+pelias-prepare-interpolation/interpolation --area=${area} --countries=${countries}) /interpolation
+    RUN bash -c 'cd /interpolation && ls | tar -c --files-from - | pbzip2 -c -6 > /interpolation.tar.bz2'
+    SAVE ARTIFACT /interpolation.tar.bz2 AS LOCAL ./data/${area}.interpolation.tar.bz2
+
+save-pelias-config:
+    FROM +save-base
+    ARG area
+    ARG countries
+    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /pelias.json
+    SAVE ARTIFACT /pelias.json AS LOCAL ./data/${area}.pelias.json
+
 
 images:
     FROM debian:bullseye-slim
@@ -95,9 +142,14 @@ pelias-import-base:
     ENV DATA_DIR="/data"
 
 pelias-download-wof:
-    ARG area
+    FROM earthly/dind:alpine
     ARG countries
-    FROM +pelias-import-base
+    RUN mkdir -p /data/openstreetmap
+    WORKDIR /config
+    COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
+    COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
+    ENV DATA_DIR="/data"
+
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
     WITH DOCKER \
             --compose compose.yaml \
@@ -320,8 +372,7 @@ valhalla-build:
 
     RUN valhalla_build_tiles -c valhalla.json /tiles/data.osm.pbf
 
-    RUN bash -c 'cd /tiles && ls | tar -c --files-from - | pbzip2 -c -6 > /tiles/valhalla.tar.bz2'
-    SAVE ARTIFACT /tiles/valhalla.tar.bz2 /valhalla.tar.bz2
+    SAVE ARTIFACT /tiles /tiles
 
 valhalla-init-image:
     FROM +valhalla-base-image
@@ -481,3 +532,9 @@ java11-base:
     ENV TZ="America/New_York"
     RUN apt-get update \
         && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo
+
+save-base:
+    FROM debian:bullseye-slim
+    RUN apt-get -y update && apt-get install -y pbzip2
+    ARG area
+    ARG countries
