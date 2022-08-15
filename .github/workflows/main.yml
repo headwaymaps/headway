@@ -1,0 +1,23 @@
+name: GitHub Actions CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Run a build for Adelaide
+    runs-on: ubuntu-latest
+    steps:
+      - uses: earthly/actions-setup@v1
+        with:
+          version: "latest"
+      - uses: actions/checkout@v2
+      - name: Docker login # to avoid dockerhub rate-limiting
+        run: docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password "${{ secrets.DOCKERHUB_PASSWORD }}"
+      - name: what version is installed?
+        run: earthly --version
+      - name: run the earthly hello world
+        run: earthly +build --area=Adelaide --countries=AU
