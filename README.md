@@ -1,6 +1,6 @@
 # Headway
 
-![GitHub Actions status](https://github.com/headwaymaps/headway/actions/workflows/main.yml/badge.svg)
+![GitHub Actions status](https://github.com/headwaymaps/headway/actions/workflows/main.yml/badge.svg?branch=main)
 ![License](https://img.shields.io/github/license/ellenhp/headway)
 ![GitHub last commit](https://img.shields.io/github/last-commit/ellenhp/headway)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/ellenhp/headway)
