@@ -1,48 +1,121 @@
 version: "3"
 services:
+  mbtileserver_init:
+    image: headway_tileserver_init
+    env_file: .env
+    environment:
+      FONT_ARTIFACT_SOURCE_PATH: /bootstrap/fonts.tar
+      FONT_ARTIFACT_DEST_PATH: /data/fonts/fonts.tar
+      SPRITE_ARTIFACT_SOURCE_PATH: /bootstrap/sprite.tar
+      SPRITE_ARTIFACT_DEST_PATH: /data/sprite/sprite.tar
+      MBTILES_ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.mbtiles
+      MBTILES_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.mbtiles
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "mbtileserver_data:/data/:rw"
   mbtileserver:
     image: headway_tileserver
-    build: ./tileserver/image
     environment:
       PORT: 8000
     env_file: .env
     volumes:
-      - "./data/:/data/:ro"
+      - "mbtileserver_data:/data/:ro"
+    depends_on:
+      mbtileserver_init:
+        condition: service_completed_successfully
+  photon_init:
+    image: headway_photon_init
+    env_file: .env
+    environment:
+      ARTIFACT_LOCK: /photon/photon_data/imported
+      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.photon.tar.bz2
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "photon_data:/photon/photon_data:rw"
   photon:
     image: headway_photon
-    build: ./geocoder/photon
     env_file: .env
     volumes:
-      - "./data/:/data/:ro"
+      - "photon_data:/photon/photon_data:rw"
+    depends_on:
+      photon_init:
+        condition: service_completed_successfully
+  nominatim_init:
+    image: headway_nominatim_init
+    env_file: .env
+    environment:
+      ARTIFACT_LOCK: /photon/photon_data/imported
+      PBF_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.osm.pbf
+      PBF_PATH: /nominatim_extra/${HEADWAY_AREA}.osm.pbf
+      TOKENIZER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.tokenizer.tar
+      DUMP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.nominatim.sql.bz2
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "extra_vol:/nominatim_extra:rw"
+      - "nominatim_data:/var/lib/postgresql/12/main:rw"
   nominatim:
     image: headway_nominatim
-    build: ./geocoder/nominatim
     environment:
-      PBF_PATH: /data/${HEADWAY_AREA}.osm.pbf
+      PBF_PATH: /nominatim_extra/${HEADWAY_AREA}.osm.pbf
       HEADWAY_NOMINATIM_FILE: /data/${HEADWAY_AREA}.nominatim.sql.bz2
       HEADWAY_NOMINATIM_TOKENIZER: /data/${HEADWAY_AREA}.nominatim_tokenizer.tgz
     env_file: .env
     volumes:
-      - "./data/:/data/:ro"
+      - "extra_vol:/nominatim_extra:ro"
+      - "nominatim_data:/var/lib/postgresql/12/main:rw"
+    depends_on:
+      nominatim_init:
+        condition: service_completed_successfully
+  otp_init:
+    image: headway_otp_init
+    env_file: .env
+    environment:
+      ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.graph.obj
+      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "otp_data:/data/:rw"
   otp:
     image: headway_otp
-    build: ./otp/run
     env_file: .env
     volumes:
-      - "./data/:/data/:ro"
-  valhalla:
-    image: headway_valhalla
-    build: ./valhalla/run
+      - "otp_data:/data/:ro"
+    depends_on:
+      otp_init:
+        condition: service_completed_successfully
+  valhalla_init:
+    image: headway_valhalla_init
     env_file: .env
     volumes:
-      - "./data/:/data_mount/:ro"
+      - "valhalla_data:/data/:rw"
+      - "./data/:/bootstrap/:ro"
+    environment:
+      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar.bz2
+      ARTIFACT_LOCK: /data/imported
     ulimits:
       nofile:
         soft: 8192
         hard: 8192
+  valhalla:
+    image: headway_valhalla
+    env_file: .env
+    volumes:
+      - "valhalla_data:/data/:ro"
+    ulimits:
+      nofile:
+        soft: 8192
+        hard: 8192
+    depends_on:
+      valhalla_init:
+        condition: service_completed_successfully
+  nginx_init:
+    image: headway_nginx_init
+    env_file: .env
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "nginx_data:/data/:rw"
   nginx:
     image: headway_nginx
-    build: ./web
     env_file: .env
     environment:
       HEADWAY_RESOLVER: 127.0.0.11
@@ -61,3 +134,11 @@ services:
       - "nominatim"
       - "photon"
       - "mbtileserver"
+volumes:
+  extra_vol:
+  photon_data:
+  nominatim_data:
+  mbtileserver_data:
+  otp_data:
+  valhalla_data:
+  nginx_data:
