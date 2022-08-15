@@ -19,5 +19,5 @@ jobs:
         run: docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password "${{ secrets.DOCKERHUB_PASSWORD }}"
       - name: what version is installed?
         run: earthly --version
-      - name: run the earthly hello world
+      - name: run the build
         run: earthly +build --area=Adelaide --countries=AU
