@@ -1,8 +1,9 @@
 # Headway
 
+![GitHub Actions status](https://github.com/headwaymaps/headway/actions/workflows/main.yml/badge.svg)
+![License](https://img.shields.io/github/license/ellenhp/headway)
 ![GitHub last commit](https://img.shields.io/github/last-commit/ellenhp/headway)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/ellenhp/headway)
-![GitHub](https://img.shields.io/github/license/ellenhp/headway)
 
 Headway is a maps stack in a box that makes it easy to take your location data into your own hands. With just a few commands you can bring up your own fully functional maps server. This includes a frontend, basemap, geocoder and routing engine. Over 200 different cities are currently supported.
 
