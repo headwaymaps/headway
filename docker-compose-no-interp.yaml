@@ -83,7 +83,7 @@ services:
       HEADWAY_FORCE_BBOX: ${HEADWAY_FORCE_BBOX}
       HEADWAY_TILESERVER_URL: http://mbtileserver:8000
       HEADWAY_PELIAS_URL: http://pelias_api:4000
-      HEADWAY_VALHALLA_URL: http://valhalla:8000
+      HEADWAY_VALHALLA_URL: http://valhalla:8002
     ports:
       - "8080:8080"
     volumes:
