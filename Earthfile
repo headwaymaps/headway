@@ -15,6 +15,7 @@ save:
     ARG area
     ARG countries
     BUILD +save-extract --area=${area}
+    BUILD +save-mbtiles --area=${area}
     BUILD +save-gtfs --area=${area}
     BUILD +save-otp --area=${area}
     BUILD +save-valhalla --area=${area}
