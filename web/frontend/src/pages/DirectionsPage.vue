@@ -59,7 +59,7 @@ import {
   setBottomCardAllowance,
 } from 'src/components/BaseMap.vue';
 import {
-  canonicalizePoi,
+  encodePoi,
   decanonicalizePoi,
   POI,
   poiDisplayName,
@@ -237,9 +237,9 @@ export default defineComponent({
         return;
       }
       const fromCanonical = fromPoi.value
-        ? canonicalizePoi(fromPoi.value)
+        ? encodePoi(fromPoi.value)
         : '_';
-      const toCanonical = toPoi.value ? canonicalizePoi(toPoi.value) : '_';
+      const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
       this.$router.push(
         `/directions/${this.mode}/${toCanonical}/${fromCanonical}`
       );

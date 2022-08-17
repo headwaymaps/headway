@@ -27,8 +27,9 @@ export default defineComponent({
   },
   watch: {
     poi(newValue) {
-      if (newValue?.id) {
-        this.$router.push(`/place/${newValue?.type}${newValue?.id}`);
+      if (newValue?.gid) {
+        const gidComponent = encodeURIComponent(newValue?.gid);
+        this.$router.push(`/place/${gidComponent}`);
       } else {
         this.$router.push('/');
       }

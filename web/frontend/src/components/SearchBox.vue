@@ -111,7 +111,7 @@ export default defineComponent({
     ) {
       const value = target ? target.value : currentTextValue;
       const response = await fetch(
-        `/photon/api?q=${encodeURIComponent(value)}&limit=10`
+        `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}&limit=10`
       );
       if (response.status != 200) {
         autocompleteOptions.value = [];
@@ -136,8 +136,7 @@ export default defineComponent({
           address: address,
           key: feature.properties.osm_id,
           position: position,
-          id: feature?.properties?.osm_id,
-          type: feature?.properties?.osm_type,
+          gid: feature?.properties?.gid,
         });
       }
       autocompleteOptions.value = options;
@@ -200,8 +199,8 @@ export default defineComponent({
           );
         }
       },
-      selectPoi(poi: POI | undefined) {
-        poiSelected.value = poi ? decanonicalizePoi(canonicalizePoi(poi)) : undefined;
+      async selectPoi(poi: POI | undefined) {
+        poiSelected.value = poi ? await decanonicalizePoi(canonicalizePoi(poi)) : undefined;
         if (poi) {
           inputText.value = poiDisplayName(poi);
         } else {
