@@ -57,6 +57,8 @@ services:
     container_name: pelias_elasticsearch
     volumes:
       - "${DATA_DIR}/elasticsearch:/usr/share/elasticsearch/data"
+    environment:
+      ES_JAVA_OPTS: "-Xmx8g"
     ulimits:
       memlock:
         soft: -1

@@ -14,7 +14,7 @@
         "index": {
           "refresh_interval": "10s",
           "number_of_replicas": "0",
-          "number_of_shards": "1"
+          "number_of_shards": "5"
         }
       }
     },
@@ -38,8 +38,8 @@
       },
       "whosonfirst": {
         "datapath": "/data/whosonfirst",
-        "importPostalcodes": true,
-        "countryCode": ${COUNTRY_CODE_LIST}
+        "countryCode": ${COUNTRY_CODE_LIST},
+        "importPostalcodes": true
       },
       "polyline": {
         "datapath": "/data/polylines",

@@ -41,6 +41,12 @@ save-otp:
     COPY (+otp-build/graph.obj --area=${area}) /graph.obj
     SAVE ARTIFACT /graph.obj AS LOCAL ./data/${area}.graph.obj
 
+save-mbtiles:
+    FROM +save-base
+    ARG area
+    COPY (+planetiler-build-mbtiles/output.mbtiles --area=${area}) /output.mbtiles
+    SAVE ARTIFACT /output.mbtiles AS LOCAL ./data/${area}.mbtiles
+
 save-valhalla:
     FROM +save-base
     ARG area
@@ -126,8 +132,14 @@ pelias-config:
     IF [ -z ${COUNTRIES} ]
         RUN echo "Must use --countries flag for custom extracts" && exit 1
     END
-    RUN COUNTRY_CODE_LIST="[\"$(echo ${COUNTRIES} | sed 's/,/", "/g')\"]" \
-        bash -c "envsubst < pelias.json.template > pelias.json"
+    # Special-case the whole planet.
+    IF [ "$COUNTRIES" = "ALL" ]
+        RUN sed '/COUNTRY_CODE_LIST/d' pelias.json.template > pelias.json
+        RUN cat pelias.json
+    ELSE
+        RUN COUNTRY_CODE_LIST="[\"$(echo ${COUNTRIES} | sed 's/,/", "/g')\"]" \
+            bash -c "envsubst < pelias.json.template > pelias.json"
+    END
     SAVE ARTIFACT /config/pelias.json /pelias.json
 
 pelias-import-base:
@@ -163,11 +175,8 @@ pelias-prepare-polylines:
     ARG countries
     FROM +pelias-import-base
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_polylines_prepare
-        RUN docker-compose run -T 'pelias_polylines_prepare' bash ./docker_extract.sh
-    END
+    RUN mkdir -p /data/polylines
+    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
     SAVE ARTIFACT /data/polylines /polylines
 
 pelias-prepare-interpolation:
@@ -187,7 +196,7 @@ pelias-prepare-placeholder:
     ARG area
     ARG countries
     FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --area=${area} --countries=${countries}) /data/whosonfirst
+    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
     WITH DOCKER \
             --compose compose.yaml \
@@ -200,7 +209,7 @@ pelias-import:
     ARG area
     ARG countries
     FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --area=${area} --countries=${countries}) /data/whosonfirst
+    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
     COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /data/polylines
     RUN mkdir tools
     COPY services/pelias/wait.sh ./tools/wait.sh
@@ -373,6 +382,13 @@ valhalla-build:
     RUN valhalla_build_tiles -c valhalla.json /tiles/data.osm.pbf
 
     SAVE ARTIFACT /tiles /tiles
+
+valhalla-build-polylines:
+    FROM +valhalla-build
+
+    RUN valhalla_export_edges valhalla.json > /tiles/polylines.0sv
+
+    SAVE ARTIFACT /tiles/polylines.0sv
 
 valhalla-init-image:
     FROM +valhalla-base-image

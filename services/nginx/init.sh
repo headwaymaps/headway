@@ -13,5 +13,7 @@ if [ -f "${BBOX_SOURCE_PATH}" ]; then
     exit 0
 fi
 
-echo "Downloading artifact"
-wget -O "${ARTIFACT_DEST_PATH}" "${ARTIFACT_URL}"
+if [ ! - z "${ARTIFACT_URL}" ]; then
+    echo "Downloading artifact"
+    wget -O "${ARTIFACT_DEST_PATH}" "${ARTIFACT_URL}"
+fi

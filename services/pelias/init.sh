@@ -27,7 +27,7 @@ if [ ! -z "$(ls -A /data/interpolation)" ]; then
 elif [ -f "${INTERPOLATION_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Extracting artifact."
     cd /data/interpolation && cat "${INTERPOLATION_ARTIFACT_SOURCE_PATH}" | pbzip2 -d | tar -x
-else
+elif [ ! -z "${INTERPOLATION_ARTIFACT_URL}" ]; then
     echo "Downloading and extracting artifact."
     cd /data/interpolation && wget -qO- "${INTERPOLATION_ARTIFACT_URL}" | pbzip2 -d | tar -x
 fi

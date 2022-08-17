@@ -1,0 +1,160 @@
+version: "3"
+services:
+  mbtileserver_init:
+    image: headway_tileserver_init
+    env_file: .env
+    environment:
+      FONT_ARTIFACT_SOURCE_PATH: /bootstrap/fonts.tar
+      FONT_ARTIFACT_DEST_PATH: /data/fonts/fonts.tar
+      SPRITE_ARTIFACT_SOURCE_PATH: /bootstrap/sprite.tar
+      SPRITE_ARTIFACT_DEST_PATH: /data/sprite/sprite.tar
+      MBTILES_ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.mbtiles
+      MBTILES_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.mbtiles
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "mbtileserver_data:/data/:rw"
+  mbtileserver:
+    image: headway_tileserver
+    restart: always
+    env_file: .env
+    environment:
+      PORT: 8000
+    volumes:
+      - "mbtileserver_data:/data/:ro"
+    depends_on:
+      mbtileserver_init:
+        condition: service_completed_successfully
+  otp_init:
+    image: headway_otp_init
+    env_file: .env
+    environment:
+      ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.graph.obj
+      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "otp_data:/data/:rw"
+  otp:
+    image: headway_otp
+    restart: always
+    env_file: .env
+    volumes:
+      - "otp_data:/data/:ro"
+    depends_on:
+      otp_init:
+        condition: service_completed_successfully
+  valhalla_init:
+    image: headway_valhalla_init
+    env_file: .env
+    volumes:
+      - "valhalla_data:/data/:rw"
+      - "./data/:/bootstrap/:ro"
+    environment:
+      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar.bz2
+      ARTIFACT_LOCK: /data/imported
+    ulimits:
+      nofile:
+        soft: 8192
+        hard: 8192
+  valhalla:
+    image: headway_valhalla
+    restart: always
+    env_file: .env
+    volumes:
+      - "valhalla_data:/data/:ro"
+    ulimits:
+      nofile:
+        soft: 8192
+        hard: 8192
+    depends_on:
+      valhalla_init:
+        condition: service_completed_successfully
+  nginx_init:
+    image: headway_nginx_init
+    env_file: .env
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "nginx_data:/data/:rw"
+  nginx:
+    image: headway_nginx
+    restart: always
+    env_file: .env
+    environment:
+      HEADWAY_RESOLVER: 127.0.0.11
+      HEADWAY_FORCE_BBOX: ${HEADWAY_FORCE_BBOX}
+      HEADWAY_TILESERVER_URL: http://mbtileserver:8000
+      HEADWAY_PELIAS_URL: http://pelias_api:4000
+      HEADWAY_VALHALLA_URL: http://valhalla:8000
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./data/:/data/:ro"
+    depends_on:
+      - "valhalla"
+      - "otp"
+      - "pelias_api"
+      - "mbtileserver"
+  pelias_init:
+    image: headway_pelias_init
+    env_file: .env
+    environment:
+      ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.bz2
+      PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.bz2
+      PELIAS_CONFIG_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.pelias.json
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "pelias_config_data:/config"
+      - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
+      - "pelias_placeholder_data:/data/placeholder"
+  pelias_libpostal:
+    image: pelias/libpostal-service
+    restart: always
+  pelias_api:
+    image: pelias/api:master
+    restart: always
+    environment:
+      PORT: 4000
+      PELIAS_CONFIG: /config/pelias.json
+    volumes:
+      - "pelias_config_data:/config:ro"
+    depends_on:
+      pelias_elasticsearch:
+        condition: service_healthy
+      pelias_init:
+        condition: service_completed_successfully
+  pelias_placeholder:
+    image: pelias/placeholder:master
+    restart: always
+    environment:
+      PORT: 4100
+    volumes:
+      - "pelias_config_data:/config:ro"
+      - "pelias_placeholder_data:/data/placeholder"
+    depends_on:
+      pelias_init:
+        condition: service_completed_successfully
+  pelias_elasticsearch:
+    image: pelias/elasticsearch:7.16.1
+    restart: always
+    volumes:
+      - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add: ["IPC_LOCK"]
+    depends_on:
+      pelias_init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: nc -z localhost 9200
+volumes:
+  pelias_config_data:
+  pelias_placeholder_data:
+  pelias_elasticsearch_data:
+  mbtileserver_data:
+  otp_data:
+  valhalla_data:
+  nginx_data:
