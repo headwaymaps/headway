@@ -137,6 +137,7 @@ pelias-config:
     WORKDIR /config
     COPY services/pelias/pelias.json.template pelias.json.template
     ARG countries
+    ARG area
     ENV COUNTRIES=${countries}
     IF [ -z ${COUNTRIES} ]
         COPY (+pelias-guess-country/guessed_country --area=${area}) guessed_country
