@@ -123,6 +123,14 @@ pelias-init-image:
     CMD ["/app/init.sh"]
     SAVE IMAGE headway_pelias_init
 
+pelias-guess-country:
+    FROM debian:bullseye-slim
+    COPY services/pelias/cities_to_countries.csv /data/cities_to_countries.csv
+    ARG area
+    ENV HEADWAY_AREA=${area}
+    RUN grep "^${HEADWAY_AREA}:" /data/cities_to_countries.csv | cut -d':' -f2 > /data/guessed_country
+    SAVE ARTIFACT /data/guessed_country /guessed_country
+
 pelias-config:
     FROM debian:bullseye-slim
     RUN apt-get update -y && apt-get install -y --no-install-recommends gettext-base
@@ -131,15 +139,23 @@ pelias-config:
     ARG countries
     ENV COUNTRIES=${countries}
     IF [ -z ${COUNTRIES} ]
-        RUN echo "Must use --countries flag for custom extracts" && exit 1
-    END
-    # Special-case the whole planet.
-    IF [ "$COUNTRIES" = "ALL" ]
-        RUN sed '/COUNTRY_CODE_LIST/d' pelias.json.template > pelias.json
-        RUN cat pelias.json
+        COPY (+pelias-guess-country/guessed_country --area=${area}) guessed_country
+        IF [ -s guessed_country ]
+            RUN echo "Using guessed country"
+            RUN COUNTRY_CODE_LIST="[\"$(cat guessed_country | sed 's/,/", "/g')\"]" \
+                bash -c "envsubst < pelias.json.template > pelias.json"
+        ELSE
+            RUN echo "Must use --countries flag for custom extracts" && exit 1
+        END
     ELSE
-        RUN COUNTRY_CODE_LIST="[\"$(echo ${COUNTRIES} | sed 's/,/", "/g')\"]" \
-            bash -c "envsubst < pelias.json.template > pelias.json"
+        IF [ "$COUNTRIES" = "ALL" ]
+            # Special-case the whole planet.
+            RUN sed '/COUNTRY_CODE_LIST/d' pelias.json.template > pelias.json
+            RUN cat pelias.json
+        ELSE
+            RUN COUNTRY_CODE_LIST="[\"$(echo ${COUNTRIES} | sed 's/,/", "/g')\"]" \
+                bash -c "envsubst < pelias.json.template > pelias.json"
+        END
     END
     SAVE ARTIFACT /config/pelias.json /pelias.json
 
