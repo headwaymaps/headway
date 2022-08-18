@@ -121,7 +121,7 @@ pelias-init-image:
     RUN apt-get update -y && apt-get install -y --no-install-recommends pbzip2
     COPY ./services/pelias/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    SAVE IMAGE headway_pelias_init
+    SAVE IMAGE --push headwaymaps/pelias-init:latest
 
 pelias-guess-country:
     FROM debian:bullseye-slim
@@ -362,7 +362,7 @@ otp-init-image:
     FROM debian:bullseye-slim
     COPY ./services/otp/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    SAVE IMAGE headway_otp_init
+    SAVE IMAGE --push headwaymaps/opentripplanner-init:latest
 
 otp-serve-image:
     FROM +otp-base
@@ -373,7 +373,7 @@ otp-serve-image:
     COPY ./services/otp/run_otp.sh /otp
 
     CMD ["/otp/run_otp.sh"]
-    SAVE IMAGE headway_otp
+    SAVE IMAGE --push headwaymaps/opentripplanner:latest
 
 ##############################
 # Valhalla
@@ -414,14 +414,14 @@ valhalla-init-image:
     ENTRYPOINT ["/bin/bash"]
     USER root
     CMD ["/app/init.sh"]
-    SAVE IMAGE headway_valhalla_init
+    SAVE IMAGE --push headwaymaps/valhalla-init:latest
 
 valhalla-serve-image:
     FROM +valhalla-base-image
     ENTRYPOINT ["valhalla_service"]
     USER valhalla
     CMD ["/data/valhalla.json"]
-    SAVE IMAGE headway_valhalla
+    SAVE IMAGE --push headwaymaps/valhalla:latest
 
 ##############################
 # tileserver-gl-light
@@ -475,7 +475,7 @@ tileserver-init-image:
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    SAVE IMAGE headway_tileserver_init
+    SAVE IMAGE --push headwaymaps/tileserver-init:latest
 
 tileserver-serve-image:
     FROM node:16
@@ -497,7 +497,7 @@ tileserver-serve-image:
     COPY ./services/tileserver/configure_run.sh ./services/tileserver/config.json.template /app/
 
     CMD ["/app/configure_run.sh"]
-    SAVE IMAGE headway_tileserver
+    SAVE IMAGE --push headwaymaps/tileserver:latest
 
 ##############################
 # Web
@@ -515,7 +515,7 @@ web-init-image:
     FROM debian:bullseye-slim
     COPY ./services/nginx/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    SAVE IMAGE headway_nginx_init
+    SAVE IMAGE --push headwaymaps/headway-init:latest
 
 web-serve-image:
     FROM nginx
@@ -541,8 +541,7 @@ web-serve-image:
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
     ENTRYPOINT ["/frontend/init.sh"]
 
-    SAVE IMAGE headway_nginx
-
+    SAVE IMAGE --push headwaymaps/headway:latest
 
 ##############################
 # Generic base images
