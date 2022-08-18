@@ -14,8 +14,8 @@ jobs:
           version: "latest"
       - uses: actions/checkout@v2
       - name: Docker login # to avoid dockerhub rate-limiting
-        run: docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password "${{ secrets.DOCKERHUB_PASSWORD }}"
-      - name: what version is installed?
+        run: docker login --username "${{ secrets.DOCKERHUB_USERNAME_PUSH }}" --password "${{ secrets.DOCKERHUB_PASSWORD_PUSH }}"
+      - name: Earthly version check
         run: earthly --version
-      - name: run the build
+      - name: Push images
         run: earthly --push +images
