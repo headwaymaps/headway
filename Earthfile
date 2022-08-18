@@ -21,7 +21,6 @@ save:
     BUILD +save-valhalla --area=${area}
     BUILD +save-elasticsearch --area=${area} --countries=${countries}
     BUILD +save-placeholder --area=${area} --countries=${countries}
-    BUILD +save-interpolation --area=${area} --countries=${countries}
     BUILD +save-pelias-config --area=${area} --countries=${countries}
 
 save-extract:
@@ -70,14 +69,6 @@ save-placeholder:
     COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
     RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | pbzip2 -c -6 > /placeholder.tar.bz2'
     SAVE ARTIFACT /placeholder.tar.bz2 AS LOCAL ./data/${area}.placeholder.tar.bz2
-
-save-interpolation:
-    FROM +save-base
-    ARG area
-    ARG countries
-    COPY (+pelias-prepare-interpolation/interpolation --area=${area} --countries=${countries}) /interpolation
-    RUN bash -c 'cd /interpolation && ls | tar -c --files-from - | pbzip2 -c -6 > /interpolation.tar.bz2'
-    SAVE ARTIFACT /interpolation.tar.bz2 AS LOCAL ./data/${area}.interpolation.tar.bz2
 
 save-pelias-config:
     FROM +save-base
@@ -196,19 +187,6 @@ pelias-prepare-polylines:
     RUN mkdir -p /data/polylines
     COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
     SAVE ARTIFACT /data/polylines /polylines
-
-pelias-prepare-interpolation:
-    ARG area
-    ARG countries
-    FROM +pelias-import-base
-    COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /data/polylines
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_interpolation
-        RUN docker-compose run -T 'pelias_interpolation' bash ./docker_build.sh
-    END
-    SAVE ARTIFACT /data/interpolation /interpolation
 
 pelias-prepare-placeholder:
     ARG area
