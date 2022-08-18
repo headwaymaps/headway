@@ -1,7 +1,7 @@
 version: "3"
 services:
   mbtileserver_init:
-    image: headwaymaps/tileserver-init:latest
+    image: ghcr.io/headwaymaps/tileserver-init:latest
     env_file: .env
     environment:
       FONT_ARTIFACT_SOURCE_PATH: /bootstrap/fonts.tar
@@ -14,7 +14,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "mbtileserver_data:/data/:rw"
   mbtileserver:
-    image: headwaymaps/tileserver:latest
+    image: ghcr.io/headwaymaps/tileserver:latest
     restart: always
     env_file: .env
     environment:
@@ -25,7 +25,7 @@ services:
       mbtileserver_init:
         condition: service_completed_successfully
   otp_init:
-    image: headwaymaps/opentripplanner-init:latest
+    image: ghcr.io/headwaymaps/opentripplanner-init:latest
     env_file: .env
     environment:
       ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.graph.obj
@@ -34,7 +34,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "otp_data:/data/:rw"
   otp:
-    image: headwaymaps/opentripplanner:latest
+    image: ghcr.io/headwaymaps/opentripplanner:latest
     restart: always
     env_file: .env
     volumes:
@@ -43,7 +43,7 @@ services:
       otp_init:
         condition: service_completed_successfully
   valhalla_init:
-    image: headwaymaps/valhalla-init:latest
+    image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
     volumes:
       - "valhalla_data:/data/:rw"
@@ -56,7 +56,7 @@ services:
         soft: 8192
         hard: 8192
   valhalla:
-    image: headwaymaps/valhalla:latest
+    image: ghcr.io/headwaymaps/valhalla:latest
     restart: always
     env_file: .env
     volumes:
@@ -69,13 +69,13 @@ services:
       valhalla_init:
         condition: service_completed_successfully
   nginx_init:
-    image: headwaymaps/headway-init:latest
+    image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
     volumes:
       - "./data/:/bootstrap/:ro"
       - "nginx_data:/data/:rw"
   nginx:
-    image: headwaymaps/headway:latest
+    image: ghcr.io/headwaymaps/headway:latest
     restart: always
     env_file: .env
     environment:
@@ -94,7 +94,7 @@ services:
       - "pelias_api"
       - "mbtileserver"
   pelias_init:
-    image: headwaymaps/pelias-init:latest
+    image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
       ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.bz2
