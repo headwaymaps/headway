@@ -4,7 +4,7 @@ set -xe
 
 mkdir -p /usr/share/elasticsearch/data
 
-if [ ! -z "$(ls -A /usr/share/elasticsearch/data)" ]; then
+if [ ! -z "$(find /usr/share/elasticsearch/data '!' -name 'lost+found')" ]; then
     echo "Nothing to do, already have elasticsearch data"
 elif [ -f "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Extracting artifact."
