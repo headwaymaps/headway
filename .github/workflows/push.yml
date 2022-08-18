@@ -1,14 +1,12 @@
-name: Build
+name: Push
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   build:
-    name: Run a build for Adelaide
+    name: Push images to docker hub
     runs-on: ubuntu-latest
     steps:
       - uses: earthly/actions-setup@v1
@@ -17,7 +15,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Docker login # to avoid dockerhub rate-limiting
         run: docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password "${{ secrets.DOCKERHUB_PASSWORD }}"
-      - name: Earthly version check
+      - name: what version is installed?
         run: earthly --version
-      - name: Build Adelaide
-        run: earthly -P +build --area=Adelaide --countries=AU
+      - name: run the build
+        run: earthly --push +images
