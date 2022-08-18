@@ -121,7 +121,7 @@ pelias-init-image:
     RUN apt-get update -y && apt-get install -y --no-install-recommends pbzip2
     COPY ./services/pelias/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    save image --push ghcr.io/headwaymaps/pelias-init:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:latest
 
 pelias-guess-country:
     FROM debian:bullseye-slim
@@ -362,7 +362,7 @@ otp-init-image:
     FROM debian:bullseye-slim
     COPY ./services/otp/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    save image --push ghcr.io/headwaymaps/opentripplanner-init:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:latest
 
 otp-serve-image:
     FROM +otp-base
@@ -373,7 +373,7 @@ otp-serve-image:
     COPY ./services/otp/run_otp.sh /otp
 
     CMD ["/otp/run_otp.sh"]
-    save image --push ghcr.io/headwaymaps/opentripplanner:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:latest
 
 ##############################
 # Valhalla
@@ -414,14 +414,14 @@ valhalla-init-image:
     ENTRYPOINT ["/bin/bash"]
     USER root
     CMD ["/app/init.sh"]
-    save image --push ghcr.io/headwaymaps/valhalla-init:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla-init:latest
 
 valhalla-serve-image:
     FROM +valhalla-base-image
     ENTRYPOINT ["valhalla_service"]
     USER valhalla
     CMD ["/data/valhalla.json"]
-    save image --push ghcr.io/headwaymaps/valhalla:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla:latest
 
 ##############################
 # tileserver-gl-light
@@ -475,7 +475,7 @@ tileserver-init-image:
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    save image --push ghcr.io/headwaymaps/tileserver-init:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:latest
 
 tileserver-serve-image:
     FROM node:16
@@ -497,7 +497,7 @@ tileserver-serve-image:
     COPY ./services/tileserver/configure_run.sh ./services/tileserver/config.json.template /app/
 
     CMD ["/app/configure_run.sh"]
-    save image --push ghcr.io/headwaymaps/tileserver:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:latest
 
 ##############################
 # Web
@@ -515,7 +515,7 @@ web-init-image:
     FROM debian:bullseye-slim
     COPY ./services/nginx/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    save image --push ghcr.io/headwaymaps/headway-init:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:latest
 
 web-serve-image:
     FROM nginx
@@ -541,7 +541,7 @@ web-serve-image:
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
     ENTRYPOINT ["/frontend/init.sh"]
 
-    save image --push ghcr.io/headwaymaps/headway:latest
+    SAVE IMAGE --push ghcr.io/headwaymaps/headway:latest
 
 ##############################
 # Generic base images
