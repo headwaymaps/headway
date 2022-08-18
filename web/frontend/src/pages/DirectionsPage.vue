@@ -277,7 +277,6 @@ export default defineComponent({
             leg.maneuvers[key].time = totalTime;
           }
           this.$data.steps = leg.maneuvers;
-          console.log(this.$data.steps);
           if (map?.getLayer('headway_polyline')) {
             map?.removeLayer('headway_polyline');
           }
@@ -302,7 +301,6 @@ export default defineComponent({
               bbox[2] = point[3];
             }
           });
-          console.log(points);
           this.$data.points = points;
           map?.addSource('headway_polyline', {
             type: 'geojson',

@@ -110,9 +110,14 @@ export default defineComponent({
       target?: HTMLInputElement
     ) {
       const value = target ? target.value : currentTextValue;
-      const response = await fetch(
-        `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}&limit=10`
-      );
+      let url = undefined;
+      if (map && map.getZoom() > 6) {
+        const mapCenter = map?.getCenter();
+        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}&focus.point.lon=${mapCenter?.lng}&focus.point.lat=${mapCenter?.lat}`;
+      } else {
+        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}`;
+      }
+      const response = await fetch(url);
       if (response.status != 200) {
         autocompleteOptions.value = [];
         return;
@@ -123,8 +128,8 @@ export default defineComponent({
         var address = localizeAddress(
           feature.properties.housenumber,
           feature.properties.street,
-          feature.properties.locality,
-          feature.properties.city
+          feature.properties.neighborhood,
+          feature.properties.locality
         );
 
         const coordinates = feature?.geometry?.coordinates;
