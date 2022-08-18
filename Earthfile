@@ -110,8 +110,9 @@ extract:
 pelias-init-image:
     FROM +downloader-base
     RUN apt-get update -y && apt-get install -y --no-install-recommends pbzip2
-    COPY ./services/pelias/init.sh /app/init.sh
-    CMD ["/app/init.sh"]
+    RUN mkdir -p /app
+    COPY ./services/pelias/init* /app/
+    CMD ["echo", "run a specific command"]
     SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:latest
 
 pelias-guess-country:
