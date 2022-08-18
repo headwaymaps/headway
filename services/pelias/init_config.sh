@@ -2,6 +2,8 @@
 
 set -xe
 
+mkdir -p /config
+
 if [ -f "/config/pelias.json" ]; then
     echo "Nothing to do, already have pelias config"
 elif [ -f "${PELIAS_CONFIG_ARTIFACT_SOURCE_PATH}" ]; then

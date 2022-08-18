@@ -2,6 +2,8 @@
 
 set -xe
 
+mkdir -p /data/placeholder
+
 if [ ! -z "$(ls -A /data/placeholder)" ]; then
     echo "Nothing to do, already have placeholder data"
 elif [ -f "${PLACEHOLDER_ARTIFACT_SOURCE_PATH}" ]; then
