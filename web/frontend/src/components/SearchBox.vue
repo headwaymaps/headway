@@ -110,9 +110,14 @@ export default defineComponent({
       target?: HTMLInputElement
     ) {
       const value = target ? target.value : currentTextValue;
-      const response = await fetch(
-        `/photon/api?q=${encodeURIComponent(value)}&limit=10`
-      );
+      let url = undefined;
+      if (map && map.getZoom() > 6) {
+        const mapCenter = map?.getCenter();
+        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}&focus.point.lon=${mapCenter?.lng}&focus.point.lat=${mapCenter?.lat}`;
+      } else {
+        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}`;
+      }
+      const response = await fetch(url);
       if (response.status != 200) {
         autocompleteOptions.value = [];
         return;
@@ -123,8 +128,8 @@ export default defineComponent({
         var address = localizeAddress(
           feature.properties.housenumber,
           feature.properties.street,
-          feature.properties.locality,
-          feature.properties.city
+          feature.properties.neighborhood,
+          feature.properties.locality
         );
 
         const coordinates = feature?.geometry?.coordinates;
@@ -136,8 +141,7 @@ export default defineComponent({
           address: address,
           key: feature.properties.osm_id,
           position: position,
-          id: feature?.properties?.osm_id,
-          type: feature?.properties?.osm_type,
+          gid: feature?.properties?.gid,
         });
       }
       autocompleteOptions.value = options;
@@ -200,8 +204,8 @@ export default defineComponent({
           );
         }
       },
-      selectPoi(poi: POI | undefined) {
-        poiSelected.value = poi ? decanonicalizePoi(canonicalizePoi(poi)) : undefined;
+      async selectPoi(poi: POI | undefined) {
+        poiSelected.value = poi ? await decanonicalizePoi(canonicalizePoi(poi)) : undefined;
         if (poi) {
           inputText.value = poiDisplayName(poi);
         } else {

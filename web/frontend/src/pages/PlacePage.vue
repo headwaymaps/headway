@@ -16,7 +16,7 @@
 import { Marker } from 'maplibre-gl';
 import { activeMarkers, map } from 'src/components/BaseMap.vue';
 import {
-  canonicalizePoi,
+  encodePoi,
   decanonicalizePoi,
   POI,
   poiDisplayName,
@@ -63,7 +63,7 @@ export default defineComponent({
     poi(newValue) {
       setTimeout(async () => {
         if (newValue) {
-          await loadPlacePage(this.$router, canonicalizePoi(newValue));
+          await loadPlacePage(this.$router, encodePoi(newValue));
           this.$emit('loadedPoi', this.$data.poi);
         } else {
           this.$router.push('/');
@@ -76,8 +76,9 @@ export default defineComponent({
     poiSelected: function (poi?: POI) {
       activeMarkers.forEach((marker) => marker.remove());
       activeMarkers.length = 0;
-      if (poi?.id) {
-        this.$router.push(`/place/${poi?.type}${poi?.id}`);
+      if (poi?.gid) {
+        const gidComponent = encodeURIComponent(poi?.gid);
+        this.$router.push(`/place/${gidComponent}`);
       } else {
         this.$router.push('/');
       }

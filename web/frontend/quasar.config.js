@@ -90,11 +90,7 @@ module.exports = configure(function (/* ctx */) {
           target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },
-        '/photon': {
-          target: 'https://maps.ellenhp.me',
-          changeOrigin: true,
-        },
-        '/nominatim': {
+        '/pelias': {
           target: 'https://maps.ellenhp.me',
           changeOrigin: true,
         },

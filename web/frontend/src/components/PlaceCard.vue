@@ -24,7 +24,7 @@
             v-if="haveTransit"
             clickable
             v-on:click="
-              $router.push(`/multimodal/${canonicalizePoi($props.poi)}/_`)
+              $router.push(`/multimodal/${encodePoi($props.poi)}/_`)
             "
           >
             Bus there
@@ -33,7 +33,7 @@
             icon="directions_car"
             clickable
             v-on:click="
-              $router.push(`/directions/car/${canonicalizePoi($props.poi)}/_`)
+              $router.push(`/directions/car/${encodePoi($props.poi)}/_`)
             "
           >
             Drive there
@@ -43,7 +43,7 @@
             clickable
             v-on:click="
               $router.push(
-                `/directions/bicycle/${canonicalizePoi($props.poi)}/_`
+                `/directions/bicycle/${encodePoi($props.poi)}/_`
               )
             "
           >
@@ -53,7 +53,7 @@
             icon="directions_walk"
             clickable
             v-on:click="
-              $router.push(`/directions/walk/${canonicalizePoi($props.poi)}/_`)
+              $router.push(`/directions/walk/${encodePoi($props.poi)}/_`)
             "
           >
             Walk there
@@ -67,7 +67,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { setBottomCardAllowance } from './BaseMap.vue';
-import { canonicalizePoi } from './models';
+import { encodePoi } from './models';
 
 export default defineComponent({
   name: 'PlaceCard',
@@ -81,7 +81,7 @@ export default defineComponent({
     }
   },
   methods: {
-    canonicalizePoi,
+    encodePoi,
   },
   watch: {
     poi: function () {

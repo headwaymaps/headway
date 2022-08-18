@@ -104,8 +104,9 @@ export default defineComponent({
       activeMarkers.length = 0;
       hoverMarkers.forEach((marker) => marker.remove());
       hoverMarkers = [];
-      if (poi?.id) {
-        this.$router.push(`/place/${poi?.type}${poi?.id}`);
+      if (poi?.gid) {
+        const gidComponent = encodeURIComponent(poi?.gid);
+        this.$router.push(`/place/${gidComponent}`);
       } else {
         this.$router.push('/');
       }

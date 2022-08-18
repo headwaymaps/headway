@@ -20,4 +20,4 @@ jobs:
       - name: what version is installed?
         run: earthly --version
       - name: run the build
-        run: earthly +build --area=Adelaide --countries=AU
+        run: earthly -P +build --area=Adelaide --countries=AU

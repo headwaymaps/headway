@@ -3,8 +3,7 @@ export interface POI {
   name?: string | null;
   address?: string | null;
   position?: LongLat;
-  id?: number;
-  type?: string | null;
+  gid?: string;
 }
 
 export interface LongLat {
@@ -23,8 +22,8 @@ export function poiDisplayName(poi: POI | undefined): string {
 }
 
 export function canonicalizePoi(poi?: POI): string {
-  if (poi?.id && poi?.type) {
-    return `${poi.type}${poi.id}`;
+  if (poi?.gid) {
+    return poi.gid;
   }
   if (poi?.position) {
     return `${poi.position?.long},${poi.position?.lat}`;
@@ -32,58 +31,14 @@ export function canonicalizePoi(poi?: POI): string {
   return '';
 }
 
+export function encodePoi(poi?: POI): string {
+  return encodeURIComponent(canonicalizePoi(poi));
+}
+
 export async function decanonicalizePoi(
   poiString: string
 ): Promise<POI | undefined> {
-  if (/([NWR][0-9]+)/.test(poiString)) {
-    const response = await fetch(`/nominatim/lookup/${poiString}`);
-    if (response.status != 200) {
-      console.error(
-        `Could not fetch POI data for ${poiString}. Is nominatim down?`
-      );
-      return;
-    }
-    const text = await response.text();
-    const parser = new DOMParser();
-    const xmlPoi = parser.parseFromString(text, 'text/xml');
-    const placeTag = xmlPoi.getElementsByTagName('place').item(0);
-    const position = {
-      lat: parseFloat(
-        placeTag?.attributes?.getNamedItem('lat')?.textContent as string
-      ),
-      long: parseFloat(
-        placeTag?.attributes?.getNamedItem('lon')?.textContent as string
-      ),
-    };
-    const houseNumber = xmlPoi
-      .getElementsByTagName('house_number')
-      .item(0)?.textContent;
-    const clazz = placeTag?.attributes?.getNamedItem('class')
-      ?.textContent as string;
-    const type = placeTag?.attributes?.getNamedItem('type')
-      ?.textContent as string;
-    const road = xmlPoi.getElementsByTagName('road').item(0)?.textContent;
-    let name = undefined;
-    const clazzTagContent = xmlPoi.getElementsByTagName(clazz as string).item(0)?.textContent;
-    const typeTagContent = xmlPoi.getElementsByTagName(type as string).item(0)?.textContent;
-    if (typeTagContent) {
-      name = typeTagContent;
-    } else if (clazz !== 'place' && clazzTagContent) {
-      name = clazzTagContent;
-    }
-    const suburb = xmlPoi.getElementsByTagName('suburb').item(0)?.textContent;
-    const city = xmlPoi.getElementsByTagName('city').item(0)?.textContent;
-
-    const address = localizeAddress(houseNumber, road, suburb, city);
-
-    return {
-      name: name,
-      address: address,
-      position: position,
-      id: parseInt(poiString.substring(1)),
-      type: poiString.substring(0, 1),
-    };
-  } else if (/([0-9\.-]+,[0-9\.-]+)/.test(poiString)) {
+  if (/([0-9\.-]+,[0-9\.-]+)/.test(poiString)) {
     const longLat = poiString.split(',');
     return {
       position: {
@@ -91,6 +46,40 @@ export async function decanonicalizePoi(
         lat: parseFloat(longLat[1]),
       },
     };
+  } else {
+    console.log(`decanonicalize ${poiString}`)
+    const response = await fetch(`/pelias/v1/place?ids=${poiString}`);
+    if (response.status != 200) {
+      console.error(
+        `Could not fetch POI data for ${poiString}. Is pelias down?`
+      );
+      return;
+    }
+
+
+    const results = await response.json();
+    if (results.features.length > 0) {
+      const feature = results.features[0];
+      const address = localizeAddress(
+        feature.properties.housenumber,
+        feature.properties.street,
+        feature.properties.locality,
+        feature.properties.city
+      );
+
+      const coordinates = feature?.geometry?.coordinates;
+      const position: LongLat | undefined = coordinates
+        ? { long: coordinates[0], lat: coordinates[1] }
+        : undefined;
+      return {
+        name: feature.properties.name,
+        address: address,
+        key: feature.properties.osm_id,
+        position: position,
+        gid: feature?.properties?.gid,
+      };
+    }
+    return undefined;
   }
 }
 
