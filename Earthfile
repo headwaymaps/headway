@@ -337,7 +337,7 @@ otp-build:
     SAVE ARTIFACT /data/graph.obj /graph.obj
 
 otp-init-image:
-    FROM debian:bullseye-slim
+    FROM +downloader-base
     COPY ./services/otp/init.sh /app/init.sh
     CMD ["/app/init.sh"]
     SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:latest
@@ -388,6 +388,10 @@ valhalla-build-polylines:
 
 valhalla-init-image:
     FROM +valhalla-base-image
+    USER root
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends ca-certificates wget pbzip2
+    USER valhalla
     COPY ./services/valhalla/init.sh /app/init.sh
     ENTRYPOINT ["/bin/bash"]
     USER root
@@ -490,7 +494,7 @@ web-build:
     SAVE ARTIFACT /frontend/dist/spa /spa
 
 web-init-image:
-    FROM debian:bullseye-slim
+    FROM +downloader-base
     COPY ./services/nginx/init.sh /app/init.sh
     CMD ["/app/init.sh"]
     SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:latest
