@@ -12,10 +12,10 @@ mkdir -p /data/valhalla/
 
 if [ -f "${ARTIFACT_SOURCE_PATH}" ]; then
     echo "Copying artifact."
-    cd /data && cat ${ARTIFACT_SOURCE_PATH} | pbzip2 -d > /data/valhalla/tiles.tar
+    cd /data && cat ${ARTIFACT_SOURCE_PATH} > /data/valhalla/tiles.tar
 else
     echo "Downloading artifact."
-    cd /data && wget -qO- "${ARTIFACT_URL}" | pbzip2 -d > /data/valhalla/tiles.tar
+    cd /data && wget -qO- "${ARTIFACT_URL}" > /data/valhalla/tiles.tar
 fi
 
 valhalla_build_config --mjolnir-timezone /data/timezones.sqlite --mjolnir-admin /data/admins.sqlite > /data/valhalla.json

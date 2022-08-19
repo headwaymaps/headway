@@ -51,24 +51,24 @@ save-valhalla:
     FROM +save-base
     ARG area
     COPY (+valhalla-build/tiles --area=${area}) /valhalla
-    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - | pbzip2 -c -6 > /valhalla.tar.bz2'
-    SAVE ARTIFACT /valhalla.tar.bz2 AS LOCAL ./data/${area}.valhalla.tar.bz2
+    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - > /valhalla.tar'
+    SAVE ARTIFACT /valhalla.tar AS LOCAL ./data/${area}.valhalla.tar
 
 save-elasticsearch:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
-    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - | pbzip2 -c -6 > /elasticsearch.tar.bz2'
-    SAVE ARTIFACT /elasticsearch.tar.bz2 AS LOCAL ./data/${area}.elasticsearch.tar.bz2
+    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - > /elasticsearch.tar'
+    SAVE ARTIFACT /elasticsearch.tar AS LOCAL ./data/${area}.elasticsearch.tar
 
 save-placeholder:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
-    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | pbzip2 -c -6 > /placeholder.tar.bz2'
-    SAVE ARTIFACT /placeholder.tar.bz2 AS LOCAL ./data/${area}.placeholder.tar.bz2
+    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - > /placeholder.tar'
+    SAVE ARTIFACT /placeholder.tar AS LOCAL ./data/${area}.placeholder.tar
 
 save-pelias-config:
     FROM +save-base
@@ -110,7 +110,6 @@ extract:
 
 pelias-init-image:
     FROM +downloader-base
-    RUN apt-get update -y && apt-get install -y --no-install-recommends pbzip2
     RUN mkdir -p /app
     COPY ./services/pelias/init* /app/
     CMD ["echo", "run a specific command"]
@@ -366,7 +365,6 @@ valhalla-base-image:
     FROM gisops/valhalla:latest
 
     USER root
-    RUN apt-get -y update && apt-get install -y pbzip2
     WORKDIR /tiles
     RUN chown valhalla /tiles
     USER valhalla
@@ -395,7 +393,7 @@ valhalla-init-image:
     FROM +valhalla-base-image
     USER root
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget pbzip2
+        && apt-get install -y --no-install-recommends ca-certificates wget
     USER valhalla
     COPY ./services/valhalla/init.sh /app/init.sh
     ENTRYPOINT ["/bin/bash"]
@@ -460,7 +458,7 @@ tileserver-build:
 tileserver-init-image:
     FROM debian:bullseye-slim
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget pbzip2
+        && apt-get install -y --no-install-recommends ca-certificates wget
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
@@ -561,6 +559,5 @@ java11-base:
 
 save-base:
     FROM debian:bullseye-slim
-    RUN apt-get -y update && apt-get install -y pbzip2
     ARG area
     ARG countries
