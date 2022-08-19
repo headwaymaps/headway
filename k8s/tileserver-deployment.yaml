@@ -23,7 +23,7 @@ spec:
             - name: FONT_ARTIFACT_DEST_PATH
               value: /data/fonts/fonts.tar
             - name: SPRITE_ARTIFACT_DEST_PATH
-              value: /data/sprite/sprite.tar
+              value: /data/sprite/static/sprite.tar
             - name: MBTILES_ARTIFACT_DEST_PATH
               value: /data/data.mbtiles
             - name: FONT_ARTIFACT_URL

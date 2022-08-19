@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: pelias-elasticsearch
 spec:
-  replicas: 1
+  replicas: 2
   minReadySeconds: 10
   selector:
     matchLabels:

@@ -53,23 +53,9 @@ spec:
                 key: area
           resources:
             limits:
-              memory: 2Gi
+              memory: 4Gi
             requests:
-              memory: 500Mi
-          livenessProbe:
-            httpGet:
-              path: /status
-              port: 8002
-            initialDelaySeconds: 15
-            periodSeconds: 15
-            failureThreshold: 60
-          readinessProbe:
-            httpGet:
-              path: /status
-              port: 8002
-            initialDelaySeconds: 15
-            periodSeconds: 15
-            failureThreshold: 60
+              memory: 4Gi
       volumes:
         - name: valhalla-volume
           ephemeral:
