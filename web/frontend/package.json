@@ -1,7 +1,7 @@
 {
   "name": "headway-frontend",
   "version": "0.0.1",
-  "description": "Frontend for the Headway project",
+  "description": "Open-source web maps, powered by Headway and OpenStreetMap",
   "productName": "Headway",
   "author": "Ellen Poe <ellen@ellenhp.me>",
   "private": true,

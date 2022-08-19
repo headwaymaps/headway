@@ -82,32 +82,36 @@ module.exports = configure(function (/* ctx */) {
       // https: true
       open: true, // opens browser window automatically
       proxy: {
+        '/data': {
+          target: 'https://maps.earth',
+          changeOrigin: true,
+        },
         '/styles': {
-          target: 'https://maps.ellenhp.me',
+          target: 'https://maps.earth',
           changeOrigin: true,
         },
         '/fonts': {
-          target: 'https://maps.ellenhp.me',
+          target: 'https://maps.earth',
           changeOrigin: true,
         },
         '/pelias': {
-          target: 'https://maps.ellenhp.me',
+          target: 'https://maps.earth',
           changeOrigin: true,
         },
         '/otp': {
-          target: 'https://maps.ellenhp.me',
+          target: 'https://maps.earth',
           changeOrigin: true,
         },
         '/valhalla': {
-          target: 'https://maps.ellenhp.me',
+          target: 'https://maps.earth',
           changeOrigin: true,
         },
         '/bbox.txt': {
-          target: 'https://maps.ellenhp.me',
+          target: 'https://maps.earth',
           changeOrigin: true,
         },
         '/capabilities.txt': {
-          target: 'https://maps.ellenhp.me',
+          target: 'https://maps.earth',
           changeOrigin: true,
         },
       },
