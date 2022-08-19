@@ -45,13 +45,6 @@ services:
       - "${DATA_DIR}:/data"
     depends_on:
       - pelias_elasticsearch
-  pelias_interpolation:
-    image: pelias/interpolation:master
-    container_name: pelias_interpolation
-    environment: ["PORT=4300"]
-    volumes:
-      - "./pelias.json:/code/pelias.json"
-      - "${DATA_DIR}:/data"
   pelias_elasticsearch:
     image: pelias/elasticsearch:7.16.1
     container_name: pelias_elasticsearch
@@ -67,5 +60,9 @@ services:
         soft: 65536
         hard: 65536
     cap_add: ["IPC_LOCK"]
+    networks:
+      default:
+        aliases:
+          - peliaselasticsearch
 volumes:
   pelias_data:

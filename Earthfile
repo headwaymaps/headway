@@ -51,24 +51,24 @@ save-valhalla:
     FROM +save-base
     ARG area
     COPY (+valhalla-build/tiles --area=${area}) /valhalla
-    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - | pbzip2 -c -6 > /valhalla.tar.bz2'
-    SAVE ARTIFACT /valhalla.tar.bz2 AS LOCAL ./data/${area}.valhalla.tar.bz2
+    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - > /valhalla.tar'
+    SAVE ARTIFACT /valhalla.tar AS LOCAL ./data/${area}.valhalla.tar
 
 save-elasticsearch:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
-    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - | pbzip2 -c -6 > /elasticsearch.tar.bz2'
-    SAVE ARTIFACT /elasticsearch.tar.bz2 AS LOCAL ./data/${area}.elasticsearch.tar.bz2
+    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - > /elasticsearch.tar'
+    SAVE ARTIFACT /elasticsearch.tar AS LOCAL ./data/${area}.elasticsearch.tar
 
 save-placeholder:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
-    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | pbzip2 -c -6 > /placeholder.tar.bz2'
-    SAVE ARTIFACT /placeholder.tar.bz2 AS LOCAL ./data/${area}.placeholder.tar.bz2
+    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - > /placeholder.tar'
+    SAVE ARTIFACT /placeholder.tar AS LOCAL ./data/${area}.placeholder.tar
 
 save-pelias-config:
     FROM +save-base
@@ -80,19 +80,20 @@ save-pelias-config:
 
 images:
     FROM debian:bullseye-slim
+    ARG tag="latest"
     COPY (+tileserver-build/fonts.tar) /fonts.tar
     COPY (+tileserver-build/sprite.tar) /sprite.tar
     SAVE ARTIFACT /fonts.tar AS LOCAL ./data/fonts.tar
     SAVE ARTIFACT /sprite.tar AS LOCAL ./data/sprite.tar
-    BUILD +otp-serve-image
-    BUILD +valhalla-serve-image
-    BUILD +web-serve-image
-    BUILD +tileserver-serve-image
-    BUILD +otp-init-image
-    BUILD +valhalla-init-image
-    BUILD +web-init-image
-    BUILD +tileserver-init-image
-    BUILD +pelias-init-image
+    BUILD +otp-serve-image --tag=${tag}
+    BUILD +valhalla-serve-image --tag=${tag}
+    BUILD +web-serve-image --tag=${tag}
+    BUILD +tileserver-serve-image --tag=${tag}
+    BUILD +otp-init-image --tag=${tag}
+    BUILD +valhalla-init-image --tag=${tag}
+    BUILD +web-init-image --tag=${tag}
+    BUILD +tileserver-init-image --tag=${tag}
+    BUILD +pelias-init-image --tag=${tag}
 
 extract:
     FROM +downloader-base
@@ -109,11 +110,11 @@ extract:
 
 pelias-init-image:
     FROM +downloader-base
-    RUN apt-get update -y && apt-get install -y --no-install-recommends pbzip2
     RUN mkdir -p /app
     COPY ./services/pelias/init* /app/
     CMD ["echo", "run a specific command"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:${tag}
 
 pelias-guess-country:
     FROM debian:bullseye-slim
@@ -341,7 +342,8 @@ otp-init-image:
     FROM +downloader-base
     COPY ./services/otp/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:${tag}
 
 otp-serve-image:
     FROM +otp-base
@@ -352,7 +354,8 @@ otp-serve-image:
     COPY ./services/otp/run_otp.sh /otp
 
     CMD ["/otp/run_otp.sh"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:${tag}
 
 ##############################
 # Valhalla
@@ -362,7 +365,6 @@ valhalla-base-image:
     FROM gisops/valhalla:latest
 
     USER root
-    RUN apt-get -y update && apt-get install -y pbzip2
     WORKDIR /tiles
     RUN chown valhalla /tiles
     USER valhalla
@@ -391,20 +393,22 @@ valhalla-init-image:
     FROM +valhalla-base-image
     USER root
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget pbzip2
+        && apt-get install -y --no-install-recommends ca-certificates wget
     USER valhalla
     COPY ./services/valhalla/init.sh /app/init.sh
     ENTRYPOINT ["/bin/bash"]
     USER root
     CMD ["/app/init.sh"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla-init:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla-init:${tag}
 
 valhalla-serve-image:
     FROM +valhalla-base-image
     ENTRYPOINT ["valhalla_service"]
     USER valhalla
     CMD ["/data/valhalla.json"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla:${tag}
 
 ##############################
 # tileserver-gl-light
@@ -454,11 +458,12 @@ tileserver-build:
 tileserver-init-image:
     FROM debian:bullseye-slim
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget pbzip2
+        && apt-get install -y --no-install-recommends ca-certificates wget
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:${tag}
 
 tileserver-serve-image:
     FROM node:16
@@ -480,7 +485,8 @@ tileserver-serve-image:
     COPY ./services/tileserver/configure_run.sh ./services/tileserver/config.json.template /app/
 
     CMD ["/app/configure_run.sh"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:${tag}
 
 ##############################
 # Web
@@ -498,7 +504,8 @@ web-init-image:
     FROM +downloader-base
     COPY ./services/nginx/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:${tag}
 
 web-serve-image:
     FROM nginx
@@ -524,7 +531,8 @@ web-serve-image:
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
     ENTRYPOINT ["/frontend/init.sh"]
 
-    SAVE IMAGE --push ghcr.io/headwaymaps/headway:latest
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/headway:${tag}
 
 ##############################
 # Generic base images
@@ -551,6 +559,5 @@ java11-base:
 
 save-base:
     FROM debian:bullseye-slim
-    RUN apt-get -y update && apt-get install -y pbzip2
     ARG area
     ARG countries

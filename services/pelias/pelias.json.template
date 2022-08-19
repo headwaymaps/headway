@@ -6,7 +6,7 @@
     "esclient": {
       "apiVersion": "7.5",
       "hosts": [
-        { "host": "pelias_elasticsearch" }
+        { "host": "peliaselasticsearch" }
       ]
     },
     "elasticsearch": {
@@ -20,9 +20,8 @@
     },
     "api": {
       "services": {
-        "placeholder": { "url": "http://pelias_placeholder:4100" },
-        "interpolation": { "url": "http://pelias_interpolation:4300" },
-        "libpostal": { "url": "http://pelias_libpostal:4400" }
+        "placeholder": { "url": "http://peliasplaceholder:4100" },
+        "libpostal": { "url": "http://peliaslibpostal:4400" }
       }
     },
     "imports": {

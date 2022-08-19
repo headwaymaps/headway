@@ -49,7 +49,7 @@ services:
       - "valhalla_data:/data/:rw"
       - "./data/:/bootstrap/:ro"
     environment:
-      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar.bz2
+      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar
       ARTIFACT_LOCK: /data/imported
     ulimits:
       nofile:
@@ -106,21 +106,21 @@ services:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
-      ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.bz2
+      ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar
     command: ["/bin/bash", "/app/init_elastic.sh"]
     volumes:
       - "./data/:/bootstrap/:ro"
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
-  pelias_placeholder_init:
+  peliasplaceholder_init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
-      PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.bz2
+      PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar
     command: ["/bin/bash", "/app/init_placeholder.sh"]
     volumes:
       - "./data/:/bootstrap/:ro"
       - "pelias_placeholder_data:/data/placeholder"
-  pelias_libpostal:
+  peliaslibpostal:
     image: pelias/libpostal-service
     restart: always
   pelias_api:
@@ -132,11 +132,11 @@ services:
     volumes:
       - "pelias_config_data:/config:ro"
     depends_on:
-      pelias_elasticsearch:
+      peliaselasticsearch:
         condition: service_healthy
       pelias_config_init:
         condition: service_completed_successfully
-  pelias_placeholder:
+  peliasplaceholder:
     image: pelias/placeholder:master
     restart: always
     environment:
@@ -147,9 +147,9 @@ services:
     depends_on:
       pelias_config_init:
         condition: service_completed_successfully
-      pelias_placeholder_init:
+      peliasplaceholder_init:
         condition: service_completed_successfully
-  pelias_elasticsearch:
+  peliaselasticsearch:
     image: pelias/elasticsearch:7.16.1
     restart: always
     volumes:

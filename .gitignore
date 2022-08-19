@@ -1,14 +1,6 @@
 .tmp_*
 *.osm.pbf
-*.nominatim.sql
-*.nominatim.sql.bz2
-*.photon.tgz
-*.graph.tgz
 *.mbtiles
 **/.DS_Store
-.*_cid
-.base_url
-*.bbox
-*.bbox.bak
 data/*
 .env
