@@ -81,13 +81,14 @@ save-pelias-config:
 images:
     FROM debian:bullseye-slim
     ARG tag="latest"
+    ARG branding
     COPY (+tileserver-build/fonts.tar) /fonts.tar
     COPY (+tileserver-build/sprite.tar) /sprite.tar
     SAVE ARTIFACT /fonts.tar AS LOCAL ./data/fonts.tar
     SAVE ARTIFACT /sprite.tar AS LOCAL ./data/sprite.tar
     BUILD +otp-serve-image --tag=${tag}
     BUILD +valhalla-serve-image --tag=${tag}
-    BUILD +web-serve-image --tag=${tag}
+    BUILD +web-serve-image --tag=${tag} --branding=${branding}
     BUILD +tileserver-serve-image --tag=${tag}
     BUILD +otp-init-image --tag=${tag}
     BUILD +valhalla-init-image --tag=${tag}
@@ -497,6 +498,10 @@ web-build:
     RUN yarn global add @quasar/cli
     COPY ./web/frontend /frontend
     WORKDIR /frontend
+    ARG branding
+    IF [ ! -z ${branding} ]
+        RUN sed -i "s/.*productName.*/  \"productName\": \"${branding}\",/" package.json
+    END
     RUN yarn install && quasar build
     SAVE ARTIFACT /frontend/dist/spa /spa
 
@@ -512,7 +517,8 @@ web-serve-image:
 
     COPY web/init.sh web/bboxes.csv /frontend/
 
-    COPY +web-build/spa /usr/share/nginx/html/
+    ARG branding
+    COPY (+web-build/spa --branding=${branding}) /usr/share/nginx/html/
 
     COPY web/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
