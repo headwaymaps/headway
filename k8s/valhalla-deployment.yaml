@@ -62,14 +62,14 @@ spec:
               port: 8002
             initialDelaySeconds: 15
             periodSeconds: 15
-            failureThreshold: 10
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /status
               port: 8002
             initialDelaySeconds: 15
             periodSeconds: 15
-            failureThreshold: 10
+            failureThreshold: 60
       volumes:
         - name: valhalla-volume
           ephemeral:
