@@ -11,5 +11,5 @@ elif [ -f "${PLACEHOLDER_ARTIFACT_SOURCE_PATH}" ]; then
     cd /data/placeholder && cat "${PLACEHOLDER_ARTIFACT_SOURCE_PATH}" | tar -x
 else
     echo "Downloading and extracting artifact."
-    cd /data/placeholder && wget -qO- "${PLACEHOLDER_ARTIFACT_URL}" | tar -x
+    cd /data/placeholder && wget -O- "${PLACEHOLDER_ARTIFACT_URL}" | tar -x
 fi

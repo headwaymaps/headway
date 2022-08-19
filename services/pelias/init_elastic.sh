@@ -11,5 +11,5 @@ elif [ -f "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" ]; then
     cd /usr/share/elasticsearch/data && cat "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" | tar -x
 else
     echo "Downloading and extracting artifact."
-    cd /usr/share/elasticsearch/data && wget -qO- "${ELASTICSEARCH_ARTIFACT_URL}" | tar -x
+    cd /usr/share/elasticsearch/data && wget -O- "${ELASTICSEARCH_ARTIFACT_URL}" | tar -x
 fi
