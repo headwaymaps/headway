@@ -21,9 +21,12 @@ services:
       PORT: 8000
     volumes:
       - "mbtileserver_data:/data/:ro"
+      - "mbtileserver_data:/app/tiles/:ro"
     depends_on:
       mbtileserver_init:
         condition: service_completed_successfully
+    ports:
+      - "9000:8000"
   otp_init:
     image: ghcr.io/headwaymaps/opentripplanner-init:latest
     env_file: .env

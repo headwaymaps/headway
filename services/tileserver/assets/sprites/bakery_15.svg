@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" height="21" width="21"><title>bakery_15.svg</title><rect fill="none" x="0" y="0" width="21" height="21"></rect><rect x="1" y="1" rx="9.5" ry="9.5" width="19" height="19" stroke="#bbb" style="stroke-linejoin:round;stroke-miterlimit:4;" fill="#bbb" stroke-width="2"></rect><rect x="1" y="1" width="19" height="19" rx="9.5" ry="9.5" fill="#fff"></rect><path fill="#d97200" transform="translate(3 3)" d="M5.2941,4.3824L6,9.5
+	c0,0,0,1,1,1h1c1,0,1-1,1-1l0.7059-5.1176C9.7059,3,7.5,3,7.5,3S5.291,3,5.2941,4.3824z M3.5,5C2,5,2,6,2,6l1,4h1.5
+	c0.755,0,0.7941-0.7647,0.7941-0.7647L4.5,5H3.5z M1.5,7.5c0,0-0.6176-0.0294-1.0588,0.4118C0,8.3529,0,8.7941,0,8.7941V11h0.8824
+	C2,11,2,10,2,10L1.5,7.5z"></path><path fill="#d97200" transform="translate(3 3)" d="M11.5,5C13,5,13,6,13,6l-1,4h-1.5
+	c-0.755,0-0.7941-0.7647-0.7941-0.7647L10.5,5H11.5z M13.5,7.5c0,0,0.6176-0.0294,1.0588,0.4118C15,8.3529,15,8.7941,15,8.7941V11
+	h-0.8824C13,11,13,10,13,10L13.5,7.5z"></path></svg>
