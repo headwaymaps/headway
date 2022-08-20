@@ -20,22 +20,10 @@ spec:
             - name: tileserver-volume
               mountPath: /data
           env:
-            - name: FONT_ARTIFACT_DEST_PATH
-              value: /data/fonts/fonts.tar
-            - name: SPRITE_ARTIFACT_DEST_PATH
-              value: /data/sprite/static/sprite.tar
+            - name: HEADWAY_AREA
+              value: area
             - name: MBTILES_ARTIFACT_DEST_PATH
-              value: /data/data.mbtiles
-            - name: FONT_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: font-source-url
-            - name: SPRITE_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: sprite-source-url
+              value: /data/area.mbtiles
             - name: MBTILES_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
@@ -49,14 +37,20 @@ spec:
       containers:
         - name: tileserver
           image: ghcr.io/headwaymaps/tileserver:maps-dot-earth
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           volumeMounts:
             - name: tileserver-volume
               mountPath: /data
           env:
+            - name: HEADWAY_PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: public-url
             - name: HEADWAY_AREA
-              value: data
+              value: area
             - name: PORT
               value: "8000"
           resources:

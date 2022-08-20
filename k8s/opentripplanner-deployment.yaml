@@ -35,6 +35,7 @@ spec:
       containers:
         - name: opentripplanner
           image: ghcr.io/headwaymaps/opentripplanner:maps-dot-earth
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           volumeMounts:

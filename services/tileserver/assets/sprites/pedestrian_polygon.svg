@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>pedestrian-polygon</title>
+  <g>
+    <polygon points="0 59.25 0 60.75 3.25 64 4.75 64 0 59.25" fill="#e4e7f2"/>
+    <polygon points="32.75 0 31.25 0 64 32.75 64 31.25 32.75 0" fill="#e4e7f2"/>
+    <polygon points="36.75 0 35.25 0 64 28.75 64 27.25 36.75 0" fill="#e4e7f2"/>
+    <polygon points="44.75 0 43.25 0 64 20.75 64 19.25 44.75 0" fill="#e4e7f2"/>
+    <polygon points="60.75 0 59.25 0 64 4.75 64 3.25 60.75 0" fill="#e4e7f2"/>
+    <polygon points="56.75 0 55.25 0 64 8.75 64 7.25 56.75 0" fill="#e4e7f2"/>
+    <polygon points="48.75 0 47.25 0 64 16.75 64 15.25 48.75 0" fill="#e4e7f2"/>
+    <polygon points="52.75 0 51.25 0 64 12.75 64 11.25 52.75 0" fill="#e4e7f2"/>
+    <polygon points="40.75 0 39.25 0 64 24.75 64 23.25 40.75 0" fill="#e4e7f2"/>
+    <polygon points="4.75 0 3.25 0 64 60.75 64 59.25 4.75 0" fill="#e4e7f2"/>
+    <polygon points="64 0.75 64 0 63.25 0 64 0.75" fill="#e4e7f2"/>
+    <polygon points="8.75 0 7.25 0 64 56.75 64 55.25 8.75 0" fill="#e4e7f2"/>
+    <polygon points="12.75 0 11.25 0 64 52.75 64 51.25 12.75 0" fill="#e4e7f2"/>
+    <polygon points="28.75 0 27.25 0 64 36.75 64 35.25 28.75 0" fill="#e4e7f2"/>
+    <polygon points="24.75 0 23.25 0 64 40.75 64 39.25 24.75 0" fill="#e4e7f2"/>
+    <polygon points="16.75 0 15.25 0 64 48.75 64 47.25 16.75 0" fill="#e4e7f2"/>
+    <polygon points="20.75 0 19.25 0 64 44.75 64 43.25 20.75 0" fill="#e4e7f2"/>
+    <polygon points="0 15.25 0 16.75 47.25 64 48.75 64 0 15.25" fill="#e4e7f2"/>
+    <polygon points="0 11.25 0 12.75 51.25 64 52.75 64 0 11.25" fill="#e4e7f2"/>
+    <polygon points="0 19.25 0 20.75 43.25 64 44.75 64 0 19.25" fill="#e4e7f2"/>
+    <polygon points="0 7.25 0 8.75 55.25 64 56.75 64 0 7.25" fill="#e4e7f2"/>
+    <polygon points="0 23.25 0 24.75 39.25 64 40.75 64 0 23.25" fill="#e4e7f2"/>
+    <polygon points="0 3.25 0 4.75 59.25 64 60.75 64 0 3.25" fill="#e4e7f2"/>
+    <polygon points="0 55.25 0 56.75 7.25 64 8.75 64 0 55.25" fill="#e4e7f2"/>
+    <polygon points="0 63.25 0 64 0.75 64 0 63.25" fill="#e4e7f2"/>
+    <polygon points="0.75 0 0 0 0 0.75 63.25 64 64 64 64 63.25 0.75 0" fill="#e4e7f2"/>
+    <polygon points="0 47.25 0 48.75 15.25 64 16.75 64 0 47.25" fill="#e4e7f2"/>
+    <polygon points="0 51.25 0 52.75 11.25 64 12.75 64 0 51.25" fill="#e4e7f2"/>
+    <polygon points="0 27.25 0 28.75 35.25 64 36.75 64 0 27.25" fill="#e4e7f2"/>
+    <polygon points="0 43.25 0 44.75 19.25 64 20.75 64 0 43.25" fill="#e4e7f2"/>
+    <polygon points="0 31.25 0 32.75 31.25 64 32.75 64 0 31.25" fill="#e4e7f2"/>
+    <polygon points="0 39.25 0 40.75 23.25 64 24.75 64 0 39.25" fill="#e4e7f2"/>
+    <polygon points="0 35.25 0 36.75 27.25 64 28.75 64 0 35.25" fill="#e4e7f2"/>
+  </g>
+</svg>

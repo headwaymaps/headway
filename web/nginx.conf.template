@@ -53,7 +53,7 @@ http {
     location /styles/  {
       proxy_set_header Accept-Encoding "";
       proxy_set_header x-real-IP ${ESC}remote_addr;
-      proxy_set_header x-forwarded-for $proxy_add_x_forwarded_for;
+      proxy_set_header x-forwarded-for ${ESC}proxy_add_x_forwarded_for;
       proxy_set_header Host "magic_string_magic";
       sub_filter_types application/json;
       sub_filter_once  off;
@@ -62,11 +62,10 @@ http {
       sub_filter       'https://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
       proxy_pass       ${HEADWAY_TILESERVER_URL};
     }
-    location /style/  {
-      proxy_pass       ${HEADWAY_TILESERVER_URL};
-    }
     location /static/  {
-      alias ${HEADWAY_SHARED_VOL}/sprite/;
+      # allow use with maputnik
+      add_header Access-Control-Allow-Origin *;
+      alias ${HEADWAY_SHARED_VOL}/;
     }
     location /fonts/  {
       proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.0.0",
-    "maplibre-gl": "^2.1.9",
+    "maplibre-gl": "^2.3.0",
     "quasar": "^2.6.0",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0"

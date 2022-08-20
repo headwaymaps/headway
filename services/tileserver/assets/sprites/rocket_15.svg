@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" height="21" width="21"><title>rocket_15.svg</title><rect fill="none" x="0" y="0" width="21" height="21"></rect><rect x="1" y="1" rx="9.5" ry="9.5" width="19" height="19" stroke="#bbb" style="stroke-linejoin:round;stroke-miterlimit:4;" fill="#bbb" stroke-width="2"></rect><rect x="1" y="1" width="19" height="19" rx="9.5" ry="9.5" fill="#fff"></rect><path fill="#725a50" transform="translate(3 3)" d="M12.5547,1c-2.1441,0-5.0211,1.471-6.9531,4H4
+	C2.8427,5,2.1794,5.8638,1.7227,6.7773L1.1113,8h1.4434H4l1.5,1.5L7,11v1.4453v1.4434l1.2227-0.6113
+	C9.1362,12.8206,10,12.1573,10,11V9.3984c2.529-1.932,4-4.809,4-6.9531V1H12.5547z M10,4c0.5523,0,1,0.4477,1,1l0,0
+	c0,0.5523-0.4477,1-1,1l0,0C9.4477,6,9,5.5523,9,5v0C9,4.4477,9.4477,4,10,4L10,4z M3.5,10L3,10.5C2.2778,11.2222,2,13,2,13
+	s1.698-0.198,2.5-1L5,11.5L3.5,10z"></path></svg>
