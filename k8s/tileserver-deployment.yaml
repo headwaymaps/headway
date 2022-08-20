@@ -20,8 +20,10 @@ spec:
             - name: tileserver-volume
               mountPath: /data
           env:
+            - name: HEADWAY_AREA
+              value: area
             - name: MBTILES_ARTIFACT_DEST_PATH
-              value: /data/data.mbtiles
+              value: /data/area.mbtiles
             - name: MBTILES_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
@@ -42,8 +44,13 @@ spec:
             - name: tileserver-volume
               mountPath: /data
           env:
+            - name: HEADWAY_PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: public-url
             - name: HEADWAY_AREA
-              value: data
+              value: area
             - name: PORT
               value: "8000"
           resources:

@@ -32,7 +32,7 @@ spec:
             - name: FONT_ARTIFACT_DEST_PATH
               value: /data/fonts/fonts.tar
             - name: SPRITE_ARTIFACT_DEST_PATH
-              value: /data/sprite/static/sprite.tar
+              value: /data/sprite/sprite.tar
             - name: FONT_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
