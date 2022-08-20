@@ -4,7 +4,7 @@ The spirtes in ./sprites are all subject to copyright. See ./sprites/LICENSE.md
 
 # Fonts
 
-`Roboto *.ttf` are licensed under the Open Font License (see OFL.txt)
+`Roboto *.ttf` are licensed under the Apache 2.0 License (see FONT_LICENSE.txt)
 
 # Sprite generation code
 
