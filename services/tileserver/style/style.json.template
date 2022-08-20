@@ -12,8 +12,8 @@
       "url": "${HEADWAY_PUBLIC_URL}/data/default.json"
     }
   },
-  "sprite": "${HEADWAY_PUBLIC_URL}/static/sprite",
-  "glyphs": "${HEADWAY_PUBLIC_URL}/fonts/{fontstack}/{range}.pbf",
+  "sprite": "${HEADWAY_PUBLIC_URL}/static/sprite/sprite",
+  "glyphs": "${HEADWAY_PUBLIC_URL}/static/fonts/{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "background",

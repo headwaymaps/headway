@@ -4,7 +4,7 @@ The spirtes in ./sprites are all subject to copyright. See ./sprites/LICENSE.md
 
 # Fonts
 
-NotoSans-\*.ttf are licensed under the Open Font License (see OFL.txt)
+`Roboto *.ttf` are licensed under the Open Font License (see OFL.txt)
 
 # Sprite generation code
 

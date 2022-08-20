@@ -437,20 +437,20 @@ tileserver-build:
 
     USER fontnik
 
-    RUN mkdir "/output/Noto Sans Bold"
-    RUN mkdir "/output/Noto Sans Italic"
-    RUN mkdir "/output/Noto Sans Regular"
+    RUN mkdir "/output/Roboto Regular"
+    RUN mkdir "/output/Roboto Medium"
+    RUN mkdir "/output/Roboto Condensed Italic"
 
-    RUN node build_glyphs NotoSans-Bold.ttf "/output/Noto Sans Bold"
-    RUN node build_glyphs NotoSans-Italic.ttf "/output/Noto Sans Italic"
-    RUN node build_glyphs NotoSans-Regular.ttf "/output/Noto Sans Regular"
+    RUN node build_glyphs Roboto-Medium.ttf "/output/Roboto Medium"
+    RUN node build_glyphs Roboto-Condensed-Italic.ttf "/output/Roboto Condensed Italic"
+    RUN node build_glyphs Roboto-Regular.ttf "/output/Roboto Regular"
 
     RUN node build_sprites /output/sprite /app/sprite
     RUN node build_sprites --retina /output/sprite@2x /app/sprite
 
     WORKDIR /output
 
-    RUN tar -cf fonts.tar "Noto Sans Bold" "Noto Sans Italic" "Noto Sans Regular"
+    RUN tar -cf fonts.tar "Roboto Medium" "Roboto Condensed Italic" "Roboto Regular"
     RUN tar -cf sprite.tar sprite.json sprite.png sprite@2x.json sprite@2x.png
 
     SAVE ARTIFACT /output/fonts.tar /fonts.tar

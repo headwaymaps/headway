@@ -68,7 +68,7 @@ http {
     location /static/  {
       # allow use with maputnik
       add_header Access-Control-Allow-Origin *;
-      alias ${HEADWAY_SHARED_VOL}/sprite/;
+      alias ${HEADWAY_SHARED_VOL}/;
     }
     location /fonts/  {
       proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;

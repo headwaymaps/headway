@@ -4,10 +4,6 @@ services:
     image: ghcr.io/headwaymaps/tileserver-init:latest
     env_file: .env
     environment:
-      FONT_ARTIFACT_SOURCE_PATH: /bootstrap/fonts.tar
-      FONT_ARTIFACT_DEST_PATH: /data/fonts/fonts.tar
-      SPRITE_ARTIFACT_SOURCE_PATH: /bootstrap/sprite.tar
-      SPRITE_ARTIFACT_DEST_PATH: /data/sprite/sprite.tar
       MBTILES_ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.mbtiles
       MBTILES_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.mbtiles
     volumes:
@@ -74,6 +70,11 @@ services:
   nginx_init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
+    environment:
+      FONT_ARTIFACT_SOURCE_PATH: /bootstrap/fonts.tar
+      FONT_ARTIFACT_DEST_PATH: /data/fonts/fonts.tar
+      SPRITE_ARTIFACT_SOURCE_PATH: /bootstrap/sprite.tar
+      SPRITE_ARTIFACT_DEST_PATH: /data/sprite/sprite.tar
     volumes:
       - "./data/:/bootstrap/:ro"
       - "nginx_data:/data/:rw"
@@ -90,7 +91,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - "./data/:/data/:ro"
+      - "nginx_data:/data/:ro"
     depends_on:
       - "valhalla"
       - "otp"
