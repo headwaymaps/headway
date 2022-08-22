@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: pelias-elasticsearch
 spec:
-  replicas: 2
+  replicas: 1
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -71,11 +71,14 @@ spec:
               mountPath: /config
           ports:
             - containerPort: 9200
+          env:
+            - name: ES_JAVA_OPTS
+              value: "-Xmx8g"
           resources:
             limits:
-              memory: 6Gi
+              memory: 16Gi
             requests:
-              memory: 4Gi
+              memory: 16Gi
           livenessProbe:
             httpGet:
               path: /
