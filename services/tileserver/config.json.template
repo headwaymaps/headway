@@ -15,6 +15,9 @@
   "data": {
     "default": {
       "mbtiles": "${HEADWAY_AREA}.mbtiles"
+    },
+    "natural_earth": {
+      "mbtiles": "natural_earth.mbtiles"
     }
   }
 }

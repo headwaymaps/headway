@@ -22,6 +22,13 @@ spec:
           env:
             - name: HEADWAY_AREA
               value: area
+            - name: NATURAL_EARTH_ARTIFACT_DEST_PATH
+              value: /data/natural_earth.mbtiles
+            - name: NATURAL_EARTH_ARTIFACT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: natural-earth-source-url
             - name: MBTILES_ARTIFACT_DEST_PATH
               value: /data/area.mbtiles
             - name: MBTILES_ARTIFACT_URL
