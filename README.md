@@ -8,7 +8,10 @@
 </p>
 
 <p align=center>
-<img alt="World map image" src="assets/world.svg?raw=true">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="assets/world_dark.svg?raw=true">
+<img alt="World map image" src="assets/world_light.svg?raw=true">
+</picture>
 </p>
 
 Headway is a maps stack in a box that makes it easy to take your location data into your own hands. With just a few commands you can bring up your own fully functional maps server. This includes a frontend, basemap, geocoder and routing engine. Over 200 different cities are currently supported.
