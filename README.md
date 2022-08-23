@@ -9,8 +9,8 @@
 
 <p align=center>
 <picture>
-<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/headwaymaps/headway/main/assets/world_dark.png">
-<img alt="World map image" src="https://raw.githubusercontent.com/headwaymaps/headway/main/assets/world_light.png">
+<source media="(prefers-color-scheme: dark)" srcset="assets/world_dark.svg?raw=true">
+<img alt="World map image" src="assets/world_light.svg?raw=true">
 </picture>
 </p>
 
