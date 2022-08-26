@@ -1,0 +1,32 @@
+version: "3"
+services:
+  pelias_schema:
+    image: docker.io/pelias/schema:master
+    container_name: pelias_schema
+    volumes:
+      - "./${AREA}.import.pelias.json:/code/pelias.json"
+      - "../services/pelias/wait.sh:/tools/wait.sh:ro"
+    depends_on:
+      - peliaselasticsearch
+  pelias_openstreetmap:
+    image: docker.io/pelias/openstreetmap:master
+    container_name: pelias_openstreetmap
+    volumes:
+      - "./${AREA}.import.pelias.json:/code/pelias.json"
+      - "./${AREA}.whosonfirst.tar:/pdata/whosonfirst.tar"
+      - "./${AREA}.osm.pbf:/pdata/openstreetmap/data.osm.pbf"
+      - "../services/pelias/wait.sh:/tools/wait.sh:ro"
+      - "wof_data:/pdata/whosonfirst"
+    depends_on:
+      - peliaselasticsearch
+  peliaselasticsearch:
+    image: docker.io/pelias/elasticsearch:7.16.1
+    container_name: pelias_elasticsearch
+    volumes:
+      - "elastic_data:/usr/share/elasticsearch/data"
+    environment:
+      ES_JAVA_OPTS: "-Xmx8g"
+    cap_add: ["IPC_LOCK"]
+volumes:
+  elastic_data:
+  wof_data:

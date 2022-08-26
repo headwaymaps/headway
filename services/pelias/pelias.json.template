@@ -1,49 +1,48 @@
 {
-    "logger": {
-      "level": "info",
-      "timestamp": false
-    },
-    "esclient": {
-      "apiVersion": "7.5",
-      "hosts": [
-        { "host": "peliaselasticsearch" }
-      ]
-    },
-    "elasticsearch": {
-      "settings": {
-        "index": {
-          "refresh_interval": "10s",
-          "number_of_replicas": "0",
-          "number_of_shards": "5"
-        }
-      }
-    },
-    "api": {
-      "services": {
-        "placeholder": { "url": "http://peliasplaceholder:4100" },
-        "libpostal": { "url": "http://peliaslibpostal:4400" }
-      }
-    },
-    "imports": {
-      "adminLookup": {
-        "enabled": true
-      },        
-      "openstreetmap": {
-        "leveldbpath": "/tmp",
-        "datapath": "/data/openstreetmap",
-        "import": [{
-          "filename": "data.osm.pbf"
-        }]
-      },
-      "whosonfirst": {
-        "datapath": "/data/whosonfirst",
-        "countryCode": ${COUNTRY_CODE_LIST},
-        "importPostalcodes": true
-      },
-      "polyline": {
-        "datapath": "/data/polylines",
-        "files": [ "extract.0sv" ]
+  "logger": {
+    "level": "info",
+    "timestamp": false
+  },
+  "esclient": {
+    "apiVersion": "7.5",
+    "hosts": [
+      { "host": "${ELASTICSEARCH_HOST}" }
+    ]
+  },
+  "elasticsearch": {
+    "settings": {
+      "index": {
+        "refresh_interval": "10s",
+        "number_of_replicas": "0",
+        "number_of_shards": "12"
       }
     }
+  },
+  "api": {
+    "services": {
+      "placeholder": { "url": "http://${PLACEHOLDER_HOST}:4100" },
+      "libpostal": { "url": "http://${LIBPOSTAL_HOST}:4400" }
+    }
+  },
+  "imports": {
+    "adminLookup": {
+      "enabled": true
+    },        
+    "openstreetmap": {
+      "leveldbpath": "/tmp",
+      "datapath": "/pdata/openstreetmap",
+      "import": [{
+        "filename": "data.osm.pbf"
+      }]
+    },
+    "whosonfirst": {
+      "datapath": "/pdata/whosonfirst",
+      "countryCode": ${COUNTRY_CODE_LIST},
+      "importPostalcodes": true
+    },
+    "polyline": {
+      "datapath": "/pdata/polylines",
+      "files": [ "extract.0sv" ]
+    }
   }
-  
+}

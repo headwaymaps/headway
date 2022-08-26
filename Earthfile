@@ -20,7 +20,6 @@ save:
     BUILD +save-otp --area=${area}
     BUILD +save-valhalla --area=${area}
     BUILD +save-elasticsearch --area=${area} --countries=${countries}
-    BUILD +save-placeholder --area=${area} --countries=${countries}
     BUILD +save-pelias-config --area=${area} --countries=${countries}
     BUILD +save-tileserver-natural-earth
 
@@ -28,7 +27,7 @@ save-extract:
     FROM +save-base
     ARG area
     COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
-    SAVE ARTIFACT /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
+    SAVE ARTIFACT /data.osm.pbf /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
 
 save-gtfs:
     FROM +save-base
@@ -59,17 +58,7 @@ save-elasticsearch:
     FROM +save-base
     ARG area
     ARG countries
-    COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
-    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - > /elasticsearch.tar'
-    SAVE ARTIFACT /elasticsearch.tar AS LOCAL ./data/${area}.elasticsearch.tar
-
-save-placeholder:
-    FROM +save-base
-    ARG area
-    ARG countries
-    COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
-    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - > /placeholder.tar'
-    SAVE ARTIFACT /placeholder.tar AS LOCAL ./data/${area}.placeholder.tar
+    BUILD +pelias-run-import --area=${area} --countries=${countries}
 
 save-pelias-config:
     FROM +save-base
@@ -137,6 +126,12 @@ pelias-config:
     COPY services/pelias/pelias.json.template pelias.json.template
     ARG countries
     ARG area
+    ARG placeholder_host="peliasplaceholder"
+    ARG libpostal_host="peliasplaceholder"
+    ARG elasticsearch_host="peliaselasticsearch"
+    ENV PLACEHOLDER_HOST=${placeholder_host}
+    ENV LIBPOSTAL_HOST=${libpostal_host}
+    ENV ELASTICSEARCH_HOST=${elasticsearch_host}
     ENV COUNTRIES=${countries}
     IF [ -z ${COUNTRIES} ]
         COPY (+pelias-guess-country/guessed_country --area=${area}) guessed_country
@@ -151,7 +146,6 @@ pelias-config:
         IF [ "$COUNTRIES" = "ALL" ]
             # Special-case the whole planet.
             RUN sed '/COUNTRY_CODE_LIST/d' pelias.json.template > pelias.json
-            RUN cat pelias.json
         ELSE
             RUN COUNTRY_CODE_LIST="[\"$(echo ${COUNTRIES} | sed 's/,/", "/g')\"]" \
                 bash -c "envsubst < pelias.json.template > pelias.json"
@@ -159,18 +153,23 @@ pelias-config:
     END
     SAVE ARTIFACT /config/pelias.json /pelias.json
 
-pelias-import-base:
-    FROM earthly/dind:alpine
+pelias-import-config:
+    FROM debian:bullseye-slim
+    ARG countries
+    ARG area
+    COPY (+pelias-config/pelias.json \
+            --countries=${countries}) /config/pelias.json
+    SAVE ARTIFACT /config/pelias.json /pelias.json
+
+pelias-prepare-polylines:
     ARG area
     ARG countries
-    RUN mkdir -p /data/openstreetmap
-    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap    
-    WORKDIR /config
-    COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
-    COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
-    ENV DATA_DIR="/data"
+    FROM +pelias-import-base
+    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    RUN mkdir -p /data/polylines
+    SAVE ARTIFACT (+valhalla-build-polylines/polylines.0sv --area=${area}) AS LOCAL ./${area}.polylines.0sv
 
-pelias-download-wof:
+pelias-download-wof-dind:
     FROM earthly/dind:alpine
     ARG countries
     RUN mkdir -p /data/openstreetmap
@@ -185,51 +184,143 @@ pelias-download-wof:
             --service pelias_whosonfirst
         RUN docker-compose run -T 'pelias_whosonfirst' bash ./bin/download
     END
-    SAVE ARTIFACT /data/whosonfirst /whosonfirst
+    RUN cd /pdata/whosonfirst && tar cvf ../whosonfirst.tar *
+    SAVE ARTIFACT /pdata/whosonfirst.tar /whosonfirst.tar
 
-pelias-prepare-polylines:
+PELIAS_DOWNLOAD_WOF:
+    COMMAND
+    ARG area
+    ARG countries
+    IF [ ! -f ./data/${area}.whosonfirst.tar ]
+        IF [ ! -z $(which podman) ]
+            COPY (+pelias-import-config/pelias.json --area=${area} --countries=${countries}) ./data/${area}.import.pelias.json
+            RUN (podman pod exists headway-pelias-download-wof && podman pod rm headway-pelias-download-wof) || exit 0
+            RUN (podman volume exists headway-pelias-download-wof-vol && podman volume rm headway-pelias-download-wof-vol) || exit 0
+            RUN podman pod create --name headway-pelias-download-wof
+            RUN podman volume create headway-pelias-download-wof-vol
+            RUN podman run --pod headway-pelias-download-wof \
+                    --name headway-pelias-download-wof-wof \
+                    --user pelias \
+                    -v "./data/${area}.import.pelias.json:/code/pelias.json:ro" \
+                    -v "headway-pelias-download-wof-vol:/pdata:U,Z" \
+                    docker.io/pelias/whosonfirst:master bash -c "./bin/download && cd /pdata/whosonfirst && tar cvf ../whosonfirst.tar *"
+            RUN podman cp headway-pelias-download-wof-wof:/pdata/whosonfirst.tar ./data/${area}.whosonfirst.tar
+            RUN (podman pod exists headway-pelias-download-wof && podman pod rm headway-pelias-download-wof) || exit 0
+            RUN (podman volume exists headway-pelias-download-wof-vol && podman volume rm headway-pelias-download-wof-vol) || exit 0
+        ELSE
+            COPY (+pelias-download-wof-dind/whosonfirst.tar --area=${area} --countries=${countries}) ./data/${area}.whosonfirst.tar
+        END
+    END
+
+pelias-prepare-placeholder-dind:
     ARG area
     ARG countries
     FROM +pelias-import-base
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    RUN mkdir -p /data/polylines
-    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
-    SAVE ARTIFACT /data/polylines /polylines
-
-pelias-prepare-placeholder:
-    ARG area
-    ARG countries
-    FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /pdata/whosonfirst
+    RUN chmod -R 777 /pdata # FIXME: not everything should have execute permissions!
     WITH DOCKER \
             --compose compose.yaml \
             --service pelias_placeholder
         RUN docker-compose run -T 'pelias_placeholder' bash -c "./cmd/extract.sh && ./cmd/build.sh"
     END
-    SAVE ARTIFACT /data/placeholder /placeholder
+    RUN cd /pdata/placeholder && tar cvf ../placeholder.tar *
+    SAVE ARTIFACT /pdata/placeholder.tar /placeholder.tar
 
-pelias-import:
+PELIAS_PREPARE_PLACEHOLDER:
+    COMMAND
+    ARG area
+    ARG countries
+    DO +PELIAS_DOWNLOAD_WOF --area=${area} --countries=${countries}
+    IF [ ! -f ./data/${area}.placeholder.tar ]
+        IF [ ! -z $(which podman) ]
+            BUILD +pelias-import-config --area=${area} --countries=${countries}
+            COPY (+pelias-import-config/pelias.json --area=${area} --countries=${countries}) ./data/${area}.import.pelias.json
+            RUN (podman pod exists headway-pelias-prepare-placeholder && podman pod rm headway-pelias-prepare-placeholder) || exit 0
+            RUN (podman volume exists headway-pelias-prepare-placeholder-vol && podman volume rm headway-pelias-prepare-placeholder-vol) || exit 0
+            RUN podman pod create --name headway-pelias-prepare-placeholder
+            RUN podman volume create headway-pelias-prepare-placeholder-vol
+            ENV PODMAN_CMD="mkdir -p /pdata/whosonfirst && \
+                            cd /pdata/whosonfirst && \
+                            tar xvf /pdata/wof.tar && \
+                            cd /code/pelias/placeholder && \
+                            ./cmd/extract.sh && \
+                            ./cmd/build.sh && \
+                            cd /pdata/placeholder && \
+                            tar cvf ../placeholder.tar *"
+            RUN podman run --pod headway-pelias-prepare-placeholder \
+                    --name headway-pelias-prepare-placeholder-wof \
+                    --user pelias \
+                    --env PLACEHOLDER_DATA=/pdata/placeholder \
+                    --env WOF_DIR=/pdata/whosonfirst \
+                    -v "./data/${area}.import.pelias.json:/code/pelias.json:ro" \
+                    -v "./data/${area}.whosonfirst.tar:/pdata/wof.tar:ro" \
+                    -v "headway-pelias-prepare-placeholder-vol:/pdata:U,Z" \
+                    docker.io/pelias/placeholder:master bash -c "${PODMAN_CMD}"
+            RUN podman cp headway-pelias-prepare-placeholder-wof:/pdata/placeholder.tar ./data/${area}.placeholder.tar
+            RUN (podman pod exists headway-pelias-prepare-placeholder && podman pod rm headway-pelias-prepare-placeholder) || exit 0
+            RUN (podman volume exists headway-pelias-prepare-placeholder-vol && podman volume rm headway-pelias-prepare-placeholder-vol) || exit 0
+        ELSE
+            COPY (+pelias-prepare-placeholder-dind/placeholder.tar --area=${area} --countries=${countries}) ./data/${area}.placeholder.tar
+        END
+    END
+
+pelias-run-import-dind:
     ARG area
     ARG countries
     FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /data/polylines
+    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /pdata/whosonfirst
+    COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /pdata/polylines
     RUN mkdir tools
     COPY services/pelias/wait.sh ./tools/wait.sh
-    RUN mkdir /data/elasticsearch
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    RUN mkdir /pdata/elasticsearch
+    RUN chmod -R 777 /pdata # FIXME: not everything should have execute permissions!
     WITH DOCKER \
             --compose compose.yaml \
             --service pelias_schema \
             --service pelias_elasticsearch \
-            --service pelias_openstreetmap \
-            --service pelias_polylines_import
+            --service pelias_openstreetmap
         RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index" && \
-            docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start" && \
-            docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+            docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start"
     END
-    SAVE ARTIFACT /data/elasticsearch /elasticsearch
+    RUN cd /pdata/elasticsearch && tar cvf ../elasticsearch.tar *
+    SAVE ARTIFACT /pdata/elasticsearch.tar /elasticsearch.tar
+
+PELIAS_RUN_IMPORT:
+    COMMAND
+    ARG area
+    ARG countries
+    ENV AREA=${area}
+    DO +PELIAS_DOWNLOAD_WOF --area=${area} --countries=${countries}
+    DO +PELIAS_PREPARE_PLACEHOLDER --area=${area} --countries=${countries}
+    COPY (+extract/data.osm.pbf --area=${area}) ./data/${area}.osm.pbf
+    RUN rm ./data/${area}.podman-compose-import.yaml || echo "no file yet"
+    COPY (+pelias-process-podman-compose/podman-compose-import.yaml --area=${area}) ./data/${area}.podman-compose-import.yaml
+    IF [ ! -f ./data/${area}.elasticsearch.tar ]
+        IF [ ! -z $(which podman) ]
+            COPY (+pelias-import-config/pelias.json --area=${area} --countries=${countries}) ./data/${area}.import.pelias.json
+            RUN podman-compose -f "./data/${AREA}.podman-compose-import.yaml" down --volumes
+            RUN podman-compose -f "./data/${AREA}.podman-compose-import.yaml" run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index"
+            RUN podman-compose -f "./data/${AREA}.podman-compose-import.yaml" run -T 'pelias_openstreetmap' bash -c "cd /pdata/whosonfirst && tar xvf ../whosonfirst.tar && /tools/wait.sh && cd /code/pelias/openstreetmap && ./bin/start"
+            RUN podman-compose -f "./data/${AREA}.podman-compose-import.yaml" run -T 'peliaselasticsearch' bash -c "cd /usr/share/elasticsearch/pdata && tar cvf elasticsearch.tar *"
+            RUN podman cp pelias_elasticsearch:/usr/share/elasticsearch/data/elasticsearch.tar ./data/${area}.elasticsearch.tar
+        ELSE
+        END
+    END
+
+pelias-process-podman-compose:
+    FROM debian:bullseye-slim
+    ARG area
+    ENV AREA=${area}
+    RUN apt-get update -y && apt-get install -y gettext-base
+    COPY ./services/pelias/podman-compose-import.yaml.template podman-compose-import.yaml.template
+    RUN envsubst < podman-compose-import.yaml.template > podman-compose-import.yaml
+    SAVE ARTIFACT podman-compose-import.yaml /podman-compose-import.yaml
+
+pelias-run-import:
+    ARG area
+    ARG countries
+    LOCALLY
+    DO +PELIAS_RUN_IMPORT --area=${area} --countries=${countries}
 
 ##############################
 # Planetiler
@@ -301,7 +392,7 @@ gtfs-build:
     COPY --if-exists data/${area}.gtfs_feeds.csv /gtfs/gtfs_feeds.csv
     RUN touch /gtfs/gtfs_feeds.csv # Just in case the GTFS feeds weren't enumerated earlier.
     RUN python /gtfs/download_gtfs_feeds.py
-    RUN bash -c "cd /gtfs_feeds && ls *.zip | tar -cf /gtfs/gtfs.tar --files-from -"
+    RUN bash -c "(cd /gtfs_feeds && tar -cvf /gtfs/gtfs.tar *.zip) || echo no gtfs feeds"
     SAVE ARTIFACT /gtfs/gtfs.tar /gtfs.tar
 
 ##############################
