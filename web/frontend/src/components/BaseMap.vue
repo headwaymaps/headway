@@ -126,6 +126,8 @@ export default defineComponent({
   },
   mounted: async function () {
     await loadMap();
+    var nav = new maplibregl.NavigationControl({visualizePitch: true, showCompass: true, showZoom: true});
+    map?.addControl(nav, 'top-right');
     map?.on('click', (event: MapMouseEvent) => {
       mapTouchHandlers.get('click')?.forEach((value) => value(event));
     });
