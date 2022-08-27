@@ -125,12 +125,7 @@ export default defineComponent({
       const results = await response.json();
       var options: POI[] = [];
       for (const feature of results.features) {
-        var address = localizeAddress(
-          feature.properties.housenumber,
-          feature.properties.street,
-          feature.properties.neighborhood,
-          feature.properties.locality
-        );
+        var address = localizeAddress(feature.properties);
 
         const coordinates = feature?.geometry?.coordinates;
         const position: LongLat | undefined = coordinates

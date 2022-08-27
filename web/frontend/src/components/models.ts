@@ -1,3 +1,67 @@
+import addressFormatter from '@fragaria/address-formatter';
+
+const addressKeys = ['archipelago',
+  'city',
+  // 'continent',
+  'country',
+  'countryCode',
+  'county',
+  'hamlet',
+  'house',
+  'houseNumber',
+  'island',
+  'municipality',
+  'neighbourhood',
+  'postalCity',
+  'postcode',
+  'region',
+  'road',
+  'state',
+  'stateDistrict',
+  'village',
+  'allotments',
+  'borough',
+  'building',
+  'cityBlock',
+  'cityDistrict',
+  'commercial',
+  'countryName',
+  'countyCode',
+  'croft',
+  'department',
+  'district',
+  'farmland',
+  'footway',
+  'housenumber',
+  'houses',
+  'industrial',
+  'isolatedDwelling',
+  'localAdministrativeArea',
+  'locality',
+  'partialPostcode',
+  'path',
+  'pedestrian',
+  'place',
+  'postcode',
+  'province',
+  'publicBuilding',
+  'quarter',
+  'residential',
+  'roadReference',
+  'roadReferenceIntl',
+  'square',
+  'stateCode',
+  'street',
+  'streetName',
+  'streetNumber',
+  'subcounty',
+  'subdistrict',
+  'subdivision',
+  'suburb',
+  'town',
+  'township',
+  'ward'];
+
 export interface POI {
   key?: string;
   name?: string | null;
@@ -56,16 +120,10 @@ export async function decanonicalizePoi(
       return;
     }
 
-
     const results = await response.json();
     if (results.features.length > 0) {
       const feature = results.features[0];
-      const address = localizeAddress(
-        feature.properties.housenumber,
-        feature.properties.street,
-        feature.properties.locality,
-        feature.properties.city
-      );
+      const address = localizeAddress(feature.properties);
 
       const coordinates = feature?.geometry?.coordinates;
       const position: LongLat | undefined = coordinates
@@ -83,30 +141,21 @@ export async function decanonicalizePoi(
   }
 }
 
-// FIXME: this is US-only, if we get international users it must be expanded.
-export function localizeAddress(
-  houseNumber: string | undefined | null,
-  road: string | undefined | null,
-  neighborhood: string | undefined | null,
-  city: string | undefined | null
-) {
-  if (houseNumber && road && neighborhood && city) {
-    return `${houseNumber} ${road}, ${neighborhood}, ${city}`;
+// eslint-disable-next-line
+export function localizeAddress(properties: any, oneLine=true): string {
+  // eslint-disable-next-line
+  let addressProperties: any = {};
+  for (const [key, value] of Object.entries(properties)) {
+    if (key === 'region') {
+      // This looks like a localization bug but pelias aliases state, province, etc to region which the address formatter doesn't expect. Alias them back.
+      addressProperties['state'] = value;
+    } else if (addressKeys.includes(key)) {
+      addressProperties[key] = value;
+    }
   }
-  if (houseNumber && road && city) {
-    return `${houseNumber} ${road}, ${city}`;
+  const address = addressFormatter.format(addressProperties, {abbreviate: true, output: 'string', countryCode: properties.country_code, appendCountry: false});
+  if (oneLine) {
+    return address.trim().replaceAll("\n", ", ");
   }
-  if (houseNumber && road) {
-    return `${houseNumber} ${road}`;
-  }
-  if (road) {
-    return `${road}`;
-  }
-  if (neighborhood && city) {
-    return `${neighborhood}, ${city}`;
-  }
-  if (city) {
-    return `${city}`;
-  }
-  return undefined;
+  return address;
 }
