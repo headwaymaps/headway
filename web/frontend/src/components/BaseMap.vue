@@ -137,8 +137,18 @@ export default defineComponent({
         }, 700)
       );
     });
+    map?.on('touchstart', (event: MapMouseEvent) => {
+      clearAllTimeouts();
+      mapTouchTimeouts.push(
+        setTimeout(() => {
+          mapTouchHandlers.get('longpress')?.forEach((value) => value(event));
+        }, 700)
+      );
+    });
     map?.on('mouseup', () => clearAllTimeouts());
     map?.on('mousemove', () => clearAllTimeouts());
+    map?.on('touchup', () => clearAllTimeouts());
+    map?.on('touchend', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
     map?.on('load', () => setBottomCardAllowance());
     window.addEventListener('resize', () => setBottomCardAllowance());
