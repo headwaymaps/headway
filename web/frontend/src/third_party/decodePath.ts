@@ -32,8 +32,6 @@ export function decodeOtpPath(encoded: string) {
 
     array.push([lng * 1e-5, lat * 1e-5]);
   }
-  // var end = new Date().getTime();
-  // console.log("decoded " + len + " coordinates in " + ((end - start) / 1000) + "s");
   return array;
 }
 

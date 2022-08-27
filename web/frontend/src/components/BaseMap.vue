@@ -5,6 +5,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import maplibregl, {
+Feature,
   LngLatBoundsLike,
   MapMouseEvent,
   Marker,
@@ -63,8 +64,11 @@ async function loadMap() {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapTouchTimeouts: any[] = [];
 
-type BaseMapEventType = 'click' | 'longpress';
-type BaseMapEventHandler = (event: MapMouseEvent) => void;
+type BaseMapEventType = 'click' | 'longpress' | 'poi_click';
+type BaseMapEventHandler = (event: MapMouseEvent & {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    features?: any[] | undefined;
+}) => void;
 type BaseMapEventHandlerHandle = number;
 
 const mapTouchHandlers: Map<
@@ -101,7 +105,6 @@ export function setBottomCardAllowance(pixels?: number) {
     bottomCardAllowance = pixels;
   }
   const maps = document.getElementsByClassName('maplibregl-map');
-  console.log(window.innerHeight - bottomCardAllowance);
   for (var mapIdx = 0; mapIdx < maps.length; mapIdx++) {
     maps.item(mapIdx).style.height = `${
       window.innerHeight - bottomCardAllowance
@@ -152,7 +155,21 @@ export default defineComponent({
     map?.on('touchup', () => clearAllTimeouts());
     map?.on('touchend', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
-    map?.on('load', () => setBottomCardAllowance());
+    map?.on('load', () => {
+      setBottomCardAllowance();
+      const layers = map?.getStyle().layers
+      if (layers) {
+        for (const layer of layers) {
+          if (layer.id.startsWith("place_") || layer.id.startsWith("poi_")) {
+            map?.on('click', layer.id, (event) => {
+              if (event.features && event.features[0]) {
+                mapTouchHandlers.get('poi_click')?.forEach(value => value(event));
+              }
+            })
+          }
+        }
+      }
+    });
     window.addEventListener('resize', () => setBottomCardAllowance());
     this.$emit('load');
   },

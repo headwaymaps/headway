@@ -1,4 +1,5 @@
 import addressFormatter from '@fragaria/address-formatter';
+import { Feature, Point2D, PointLike } from 'maplibre-gl';
 
 const addressKeys = ['archipelago',
   'city',
@@ -111,7 +112,6 @@ export async function decanonicalizePoi(
       },
     };
   } else {
-    console.log(`decanonicalize ${poiString}`)
     const response = await fetch(`/pelias/v1/place?ids=${poiString}`);
     if (response.status != 200) {
       console.error(
@@ -139,6 +139,34 @@ export async function decanonicalizePoi(
     }
     return undefined;
   }
+}
+
+// eslint-disable-next-line
+export async function decanonicalizeMapFeature(feature: any): Promise<POI | undefined> {
+  const lng = feature?.geometry?.coordinates[0];
+  const lat = feature?.geometry?.coordinates[1];
+  if (!lat || !lng) {
+    console.error(
+      `Could not reverse geocode ${JSON.stringify(feature)}. Unsupported geometry.`
+    );
+  }
+  const response = await fetch(`/pelias/v1/reverse?point.lat=${lat}&point.lon=${lng}&boundary.circle.radius=0.1&sources=osm`);
+  if (response.status != 200) {
+    console.error(
+      `Could not reverse ${JSON.stringify(feature)}. Is pelias down?`
+    );
+    return;
+  }
+
+  const results = await response.json();
+  for (const id in results.features) {
+    console.log(results.features[id]);
+    if (results.features[id]?.properties?.name !== feature?.properties?.name) {
+      continue
+    }
+    return decanonicalizePoi(results.features[id].properties.gid)
+  }
+  return undefined;
 }
 
 // eslint-disable-next-line
