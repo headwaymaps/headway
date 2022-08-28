@@ -101,8 +101,12 @@ export function encodePoi(poi?: POI): string {
 }
 
 export async function decanonicalizePoi(
-  poiString: string
+  poiStringRaw: string
 ): Promise<POI | undefined> {
+  if (poiStringRaw == '_') {
+    return undefined;
+  }
+  const poiString = decodeURIComponent(poiStringRaw);
   if (/([0-9\.-]+,[0-9\.-]+)/.test(poiString)) {
     const longLat = poiString.split(',');
     return {

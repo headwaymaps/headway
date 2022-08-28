@@ -2,7 +2,7 @@
   <q-layout view="lHh Lpr lFf">
     <div class="mainContainer">
       <router-view></router-view>
-      <base-map></base-map>
+      <base-map ref="basemap"></base-map>
     </div>
   </q-layout>
 </template>
