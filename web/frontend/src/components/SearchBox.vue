@@ -110,6 +110,9 @@ export default defineComponent({
       target?: HTMLInputElement
     ) {
       const value = target ? target.value : currentTextValue;
+      if (!value) {
+        return;
+      }
       let url = undefined;
       if (map && map.getZoom() > 6) {
         const mapCenter = map?.getCenter();

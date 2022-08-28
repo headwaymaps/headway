@@ -16,7 +16,7 @@
 
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
-import { activeMarkers, map } from 'src/components/BaseMap.vue';
+import { activeMarkers, getBaseMap, map } from 'src/components/BaseMap.vue';
 import { LongLat, POI } from 'src/components/models';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent, Ref, ref } from 'vue';
@@ -28,26 +28,23 @@ var poi: Ref<POI | undefined> = ref(undefined);
 async function loadDroppedPinPage(
   router: Router,
   position: LongLat,
-  fly = false
 ) {
   if (!map) {
     setTimeout(() => loadDroppedPinPage(router, position), 100);
     return;
   }
   poi.value = {
-    name: 'Dropped Pin',
+    name: 'Dropped Pin', // i18n
     address: undefined,
     position: position,
     id: undefined,
     type: undefined,
   };
 
-  if (fly) {
-    map?.flyTo({
-      center: [position.long, position.lat],
-      zoom: 12,
-    });
-  }
+  getBaseMap()?.flyTo(
+    [position.long, position.lat],
+    16,
+  );
   if (map) {
     activeMarkers.forEach((marker) => marker.remove());
     activeMarkers.length = 0;

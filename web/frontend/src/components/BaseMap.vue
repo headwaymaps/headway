@@ -113,24 +113,40 @@ export function setBottomCardAllowance(pixels?: number) {
   map?.resize();
 }
 
+var baseMap: any = null;
+
+// There really has to be a better way to do this, but we only ever have 1 base map so I guess it works.
+export function getBaseMap() {
+  console.log(baseMap);
+  return baseMap;
+}
+
 export default defineComponent({
   name: 'BaseMap',
-  emits: ['onMapClick', 'onMapLongPress', 'load'],
+  data: function() {
+    return {flyToLocation: {}, hasGeolocated: false};
+  },
   methods: {
-    flyTo(location: LongLat, zoom: number) {
-      map?.flyTo({ center: [location.long, location.lat], zoom: zoom });
-    },
-    addToMap(item: Marker | Popup) {
-      if (map) {
-        item.addTo(map);
+    flyTo(location: [number, number], zoom: number) {
+      console.log(location)
+      console.log(zoom)
+      if (this.$data.hasGeolocated === true) {
+        map?.flyTo({ center: location, zoom: zoom }, {flying: true});
+      } else {
+        this.$data.flyToLocation = { center: location, zoom: zoom };
+        console.log("set location")
+        console.log(this.$data.flyToLocation);
       }
-      return item;
     },
   },
   mounted: async function () {
     await loadMap();
+    // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
+    baseMap = this.$.ctx;
     var nav = new maplibregl.NavigationControl({visualizePitch: true, showCompass: true, showZoom: true});
     map?.addControl(nav, 'top-right');
+    var geolocate = new maplibregl.GeolocateControl({positionOptions: {enableHighAccuracy: true}, showAccuracyCircle: true, showUserLocation: true});
+    map?.addControl(geolocate, 'bottom-right');
     map?.on('click', (event: MapMouseEvent) => {
       mapTouchHandlers.get('click')?.forEach((value) => value(event));
     });
@@ -155,6 +171,24 @@ export default defineComponent({
     map?.on('touchup', () => clearAllTimeouts());
     map?.on('touchend', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
+    setTimeout(async () => {
+      const result = await navigator.permissions.query({ name: "geolocation" });
+      if (result.state === 'granted') {
+        map?.on('load', () => {
+          geolocate.trigger();
+          geolocate.on('geolocate', () => {
+            if (!this.$data.hasGeolocated) {
+              map?.stop();
+              if (this.$data.flyToLocation) {
+                map?.flyTo(this.$data.flyToLocation, {flying: true});
+                this.$data.flyToLocation = null;
+              }
+            }
+            this.$data.hasGeolocated = true;
+          });
+        });
+      }
+    });
     map?.on('load', () => {
       setBottomCardAllowance();
       const layers = map?.getStyle().layers
@@ -171,7 +205,6 @@ export default defineComponent({
       }
     });
     window.addEventListener('resize', () => setBottomCardAllowance());
-    this.$emit('load');
   },
 });
 </script>

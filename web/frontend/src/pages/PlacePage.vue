@@ -14,7 +14,7 @@
 
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
-import { activeMarkers, map } from 'src/components/BaseMap.vue';
+import { activeMarkers, getBaseMap, map } from 'src/components/BaseMap.vue';
 import {
   encodePoi,
   decanonicalizePoi,
@@ -30,10 +30,10 @@ async function loadPlacePage(router: Router, canonicalName: string) {
   const poi = await decanonicalizePoi(canonicalName);
 
   if (poi?.position) {
-    map?.flyTo({
-      center: [poi.position.long, poi.position.lat],
-      zoom: 16,
-    });
+    getBaseMap()?.flyTo(
+      [poi.position.long, poi.position.lat],
+      16,
+    );
     if (map) {
       const marker = new Marker({ color: '#111111' }).setLngLat([
         poi.position.long,
