@@ -3,7 +3,7 @@
     <q-input
       ref="autoCompleteInput"
       class="main-search-bar"
-      :label="$props.hint ? $props.hint : 'Where to?'"
+      :label="$props.hint ? $props.hint : $t('where_to_question')"
       v-model="inputText"
       :clearable="true"
       :input-style="{ color: 'black' }"
