@@ -127,15 +127,12 @@ export default defineComponent({
     return {flyToLocation: {}, hasGeolocated: false};
   },
   methods: {
-    flyTo(location: [number, number], zoom: number) {
-      console.log(location)
-      console.log(zoom)
-      if (this.$data.hasGeolocated === true) {
+    flyTo: async function(location: [number, number], zoom: number) {
+      const permissionResult = await navigator.permissions.query({ name: 'geolocation' });
+      if (this.$data.hasGeolocated === true || permissionResult.state !== 'granted') {
         map?.flyTo({ center: location, zoom: zoom }, {flying: true});
       } else {
         this.$data.flyToLocation = { center: location, zoom: zoom };
-        console.log("set location")
-        console.log(this.$data.flyToLocation);
       }
     },
   },
@@ -172,7 +169,7 @@ export default defineComponent({
     map?.on('touchend', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
     setTimeout(async () => {
-      const result = await navigator.permissions.query({ name: "geolocation" });
+      const result = await navigator.permissions.query({ name: 'geolocation' });
       if (result.state === 'granted') {
         map?.on('load', () => {
           geolocate.trigger();
