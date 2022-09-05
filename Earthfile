@@ -80,7 +80,7 @@ save-pelias-config:
 
 save-tileserver-natural-earth:
     FROM +downloader-base
-    RUN wget https://publicdata.ellenhp.workers.dev/natural_earth_2_shaded_relief.raster.mbtiles
+    RUN wget -nv https://publicdata.ellenhp.workers.dev/natural_earth_2_shaded_relief.raster.mbtiles
     SAVE ARTIFACT natural_earth_2_shaded_relief.raster.mbtiles AS LOCAL ./data/natural_earth.mbtiles
 
 images:
@@ -106,7 +106,7 @@ extract:
     ARG area
     COPY --if-exists ${area}.osm.pbf /data/data.osm.pbf
 	IF [ ! -f "/data/data.osm.pbf" ]
-        RUN wget -U headway/1.0 -O /data/data.osm.pbf "https://download.bbbike.org/osm/bbbike/${area}/${area}.osm.pbf"
+        RUN wget -nv -U headway/1.0 -O /data/data.osm.pbf "https://download.bbbike.org/osm/bbbike/${area}/${area}.osm.pbf"
     END
     SAVE ARTIFACT /data/data.osm.pbf /data.osm.pbf
 
@@ -238,7 +238,7 @@ pelias-import:
 planetiler-download-mirrored-data:
     FROM +downloader-base
     WORKDIR /data
-    RUN wget https://f000.backblazeb2.com/file/headway/sources.tar && tar xvf sources.tar && rm sources.tar
+    RUN wget -nv https://f000.backblazeb2.com/file/headway/sources.tar && tar xvf sources.tar && rm sources.tar
     SAVE ARTIFACT /data/lake_centerline.shp.zip /lake_centerline.shp.zip
     SAVE ARTIFACT /data/natural_earth_vector.sqlite.zip /natural_earth_vector.sqlite.zip
     SAVE ARTIFACT /data/water-polygons-split-3857.zip /water-polygons-split-3857.zip
@@ -248,7 +248,7 @@ planetiler-download:
     ARG PLANETILER_VERSION=v0.5.0
     ARG PLANETILER_HASH=5f08d8f351751373084b1c2abd21bb38cbf66357dd2a02d2692d3561f16db70b
     
-    RUN wget -O /data/planetiler.jar https://github.com/onthegomap/planetiler/releases/download/${PLANETILER_VERSION}/planetiler.jar
+    RUN wget -nv -O /data/planetiler.jar https://github.com/onthegomap/planetiler/releases/download/${PLANETILER_VERSION}/planetiler.jar
     RUN ls -l /data
     RUN echo "${PLANETILER_HASH}  /data/planetiler.jar" | sha256sum --check
     
@@ -314,7 +314,7 @@ otp-download:
     ARG OTP_VERISON=2.1.0
     ARG OTP_HASH=b4c986b1c726c7d81d255fa183d32576122ba4e50290d53e4bb40be051971134
 
-    RUN wget -O /data/otp-shaded.jar "https://github.com/opentripplanner/OpenTripPlanner/releases/download/v${OTP_VERISON}/otp-${OTP_VERISON}-shaded.jar"
+    RUN wget -nv -O /data/otp-shaded.jar "https://github.com/opentripplanner/OpenTripPlanner/releases/download/v${OTP_VERISON}/otp-${OTP_VERISON}-shaded.jar"
     RUN echo "${OTP_HASH}  /data/otp-shaded.jar" | sha256sum --check
 
     SAVE ARTIFACT /data/otp-shaded.jar /otp-shaded.jar
