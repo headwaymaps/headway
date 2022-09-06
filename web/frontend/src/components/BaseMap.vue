@@ -58,14 +58,12 @@ async function loadMap() {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mapTouchTimeouts: any[] = [];
+const mapTouchTimeouts: NodeJS.Timeout[] = [];
 
 type BaseMapEventType = 'click' | 'longpress' | 'poi_click';
 type BaseMapEventHandler = (
   event: MapMouseEvent & {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    features?: any[] | undefined;
+    features?: GeoJSON.Feature[] | undefined;
   }
 ) => void;
 type BaseMapEventHandlerHandle = number;
@@ -105,19 +103,19 @@ export function setBottomCardAllowance(pixels?: number) {
   }
   const maps = document.getElementsByClassName('maplibregl-map');
   for (var mapIdx = 0; mapIdx < maps.length; mapIdx++) {
-    let map = maps.item(mapIdx);
+    let map = maps.item(mapIdx) as HTMLDivElement;
     if (map !== null) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (map as any).style.height = `${
-        window.innerHeight - bottomCardAllowance
-      }px`;
+      map.style.height = `${window.innerHeight - bottomCardAllowance}px`;
     }
   }
   map?.resize();
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-var baseMapMethods: any = null;
+var baseMapMethods:
+  | {
+      flyTo: (location: [number, number], zoom: number) => void;
+    }
+  | undefined = undefined;
 
 // There really has to be a better way to do this, but we only ever have 1 base map so I guess it works.
 export function getBaseMap() {

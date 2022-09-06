@@ -13,7 +13,7 @@ import {
   removeMapHandler,
   setBottomCardAllowance,
 } from 'src/components/BaseMap.vue';
-import { decanonicalizeMapFeature } from 'src/components/models';
+import { mapFeatureToPoi } from 'src/components/models';
 import SearchBox from 'src/components/SearchBox.vue';
 import { defineComponent } from 'vue';
 
@@ -43,12 +43,11 @@ export default defineComponent({
       this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
     });
     this.handler = addMapHandler('poi_click', async (event) => {
-      // eslint-disable-next-line
       if (!event?.features) {
         console.warn('poi_click without features');
         return;
       }
-      let poi = await decanonicalizeMapFeature(event?.features[0]);
+      let poi = await mapFeatureToPoi(event?.features[0]);
       if (!poi?.gid) {
         console.error('Could not canonicalize map feature.');
         return;
