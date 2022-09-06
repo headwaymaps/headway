@@ -23,9 +23,7 @@
             icon="directions_bus"
             v-if="haveTransit"
             clickable
-            v-on:click="
-              $router.push(`/multimodal/${encodePoi($props.poi)}/_`)
-            "
+            v-on:click="$router.push(`/multimodal/${encodePoi($props.poi)}/_`)"
           >
             Bus there
           </q-chip>
@@ -42,9 +40,7 @@
             icon="directions_bike"
             clickable
             v-on:click="
-              $router.push(
-                `/directions/bicycle/${encodePoi($props.poi)}/_`
-              )
+              $router.push(`/directions/bicycle/${encodePoi($props.poi)}/_`)
             "
           >
             Bike there
@@ -65,6 +61,7 @@
 </template>
 
 <script lang="ts">
+import { QCard } from 'quasar';
 import { defineComponent } from 'vue';
 import { setBottomCardAllowance } from './BaseMap.vue';
 import { encodePoi } from './models';
@@ -78,7 +75,7 @@ export default defineComponent({
   data() {
     return {
       haveTransit: false,
-    }
+    };
   },
   methods: {
     encodePoi,
@@ -86,21 +83,24 @@ export default defineComponent({
   watch: {
     poi: function () {
       setTimeout(() => {
-        setBottomCardAllowance(this.$refs.bottomCard.$el.offsetHeight);
+        setBottomCardAllowance(
+          (this.$refs.bottomCard as QCard).$el.offsetHeight
+        );
       });
     },
   },
   mounted: async function () {
     setTimeout(() => {
-      setBottomCardAllowance(this.$refs.bottomCard.$el.offsetHeight);
+      setBottomCardAllowance((this.$refs.bottomCard as QCard).$el.offsetHeight);
     });
-    let response = await fetch("/capabilities.txt");
+    let response = await fetch('/capabilities.txt');
     if (response.status != 200) {
       // TODO surface error
       return false;
     }
     const capabilities = (await response.text()).split('\n');
-    this.haveTransit = capabilities.find((val: string) => val === "OTP") !== undefined
+    this.haveTransit =
+      capabilities.find((val: string) => val === 'OTP') !== undefined;
   },
   components: {},
 });

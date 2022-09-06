@@ -30,10 +30,7 @@ async function loadPlacePage(router: Router, canonicalName: string) {
   const poi = await decanonicalizePoi(canonicalName);
 
   if (poi?.position) {
-    getBaseMap()?.flyTo(
-      [poi.position.long, poi.position.lat],
-      16,
-    );
+    getBaseMap()?.flyTo([poi.position.long, poi.position.lat], 16);
     if (map) {
       const marker = new Marker({ color: '#111111' }).setLngLat([
         poi.position.long,
@@ -44,7 +41,6 @@ async function loadPlacePage(router: Router, canonicalName: string) {
     }
     return poi;
   }
-
 }
 
 export default defineComponent({

@@ -5,13 +5,10 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import maplibregl, {
-Feature,
   LngLatBoundsLike,
   MapMouseEvent,
   Marker,
-  Popup,
 } from 'maplibre-gl';
-import { LongLat } from './models';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 export var map: maplibregl.Map | null = null;
@@ -65,10 +62,12 @@ async function loadMap() {
 const mapTouchTimeouts: any[] = [];
 
 type BaseMapEventType = 'click' | 'longpress' | 'poi_click';
-type BaseMapEventHandler = (event: MapMouseEvent & {
+type BaseMapEventHandler = (
+  event: MapMouseEvent & {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     features?: any[] | undefined;
-}) => void;
+  }
+) => void;
 type BaseMapEventHandlerHandle = number;
 
 const mapTouchHandlers: Map<
@@ -106,31 +105,43 @@ export function setBottomCardAllowance(pixels?: number) {
   }
   const maps = document.getElementsByClassName('maplibregl-map');
   for (var mapIdx = 0; mapIdx < maps.length; mapIdx++) {
-    maps.item(mapIdx).style.height = `${
-      window.innerHeight - bottomCardAllowance
-    }px`;
+    let map = maps.item(mapIdx);
+    if (map !== null) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).style.height = `${
+        window.innerHeight - bottomCardAllowance
+      }px`;
+    }
   }
   map?.resize();
 }
 
-var baseMap: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+var baseMapMethods: any = null;
 
 // There really has to be a better way to do this, but we only ever have 1 base map so I guess it works.
 export function getBaseMap() {
-  console.log(baseMap);
-  return baseMap;
+  return baseMapMethods;
 }
 
 export default defineComponent({
   name: 'BaseMap',
-  data: function() {
-    return {flyToLocation: {}, hasGeolocated: false};
+  data: function (): {
+    flyToLocation: { center: [number, number]; zoom: number } | undefined;
+    hasGeolocated: boolean;
+  } {
+    return { flyToLocation: undefined, hasGeolocated: false };
   },
   methods: {
-    flyTo: async function(location: [number, number], zoom: number) {
-      const permissionResult = await navigator.permissions.query({ name: 'geolocation' });
-      if (this.$data.hasGeolocated === true || permissionResult.state !== 'granted') {
-        map?.flyTo({ center: location, zoom: zoom }, {flying: true});
+    flyTo: async function (location: [number, number], zoom: number) {
+      const permissionResult = await navigator.permissions.query({
+        name: 'geolocation',
+      });
+      if (
+        this.$data.hasGeolocated === true ||
+        permissionResult.state !== 'granted'
+      ) {
+        map?.flyTo({ center: location, zoom: zoom }, { flying: true });
       } else {
         this.$data.flyToLocation = { center: location, zoom: zoom };
       }
@@ -139,10 +150,18 @@ export default defineComponent({
   mounted: async function () {
     await loadMap();
     // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
-    baseMap = this.$.ctx;
-    var nav = new maplibregl.NavigationControl({visualizePitch: true, showCompass: true, showZoom: true});
+    baseMapMethods = { flyTo: this.flyTo };
+    var nav = new maplibregl.NavigationControl({
+      visualizePitch: true,
+      showCompass: true,
+      showZoom: true,
+    });
     map?.addControl(nav, 'top-right');
-    var geolocate = new maplibregl.GeolocateControl({positionOptions: {enableHighAccuracy: true}, showAccuracyCircle: true, showUserLocation: true});
+    var geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      showAccuracyCircle: true,
+      showUserLocation: true,
+    });
     map?.addControl(geolocate, 'bottom-right');
     map?.on('click', (event: MapMouseEvent) => {
       mapTouchHandlers.get('click')?.forEach((value) => value(event));
@@ -177,8 +196,8 @@ export default defineComponent({
             if (!this.$data.hasGeolocated) {
               map?.stop();
               if (this.$data.flyToLocation) {
-                map?.flyTo(this.$data.flyToLocation, {flying: true});
-                this.$data.flyToLocation = null;
+                map?.flyTo(this.$data.flyToLocation, { flying: true });
+                this.$data.flyToLocation = undefined;
               }
             }
             this.$data.hasGeolocated = true;
@@ -188,15 +207,17 @@ export default defineComponent({
     });
     map?.on('load', () => {
       setBottomCardAllowance();
-      const layers = map?.getStyle().layers
+      const layers = map?.getStyle().layers;
       if (layers) {
         for (const layer of layers) {
-          if (layer.id.startsWith("place_") || layer.id.startsWith("poi_")) {
+          if (layer.id.startsWith('place_') || layer.id.startsWith('poi_')) {
             map?.on('click', layer.id, (event) => {
               if (event.features && event.features[0]) {
-                mapTouchHandlers.get('poi_click')?.forEach(value => value(event));
+                mapTouchHandlers
+                  .get('poi_click')
+                  ?.forEach((value) => value(event));
               }
-            })
+            });
           }
         }
       }

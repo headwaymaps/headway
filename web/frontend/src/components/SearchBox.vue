@@ -116,7 +116,9 @@ export default defineComponent({
       let url = undefined;
       if (map && map.getZoom() > 6) {
         const mapCenter = map?.getCenter();
-        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}&focus.point.lon=${mapCenter?.lng}&focus.point.lat=${mapCenter?.lat}`;
+        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(
+          value
+        )}&focus.point.lon=${mapCenter?.lng}&focus.point.lat=${mapCenter?.lat}`;
       } else {
         url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}`;
       }
@@ -203,7 +205,9 @@ export default defineComponent({
         }
       },
       async selectPoi(poi: POI | undefined) {
-        poiSelected.value = poi ? await decanonicalizePoi(canonicalizePoi(poi)) : undefined;
+        poiSelected.value = poi
+          ? await decanonicalizePoi(canonicalizePoi(poi))
+          : undefined;
         if (poi) {
           inputText.value = poiDisplayName(poi);
         } else {
