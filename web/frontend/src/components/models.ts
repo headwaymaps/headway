@@ -1,4 +1,5 @@
 import addressFormatter from '@fragaria/address-formatter';
+import {} from 'maplibre-gl';
 
 const addressKeys = [
   'archipelago',
@@ -146,12 +147,19 @@ export async function decanonicalizePoi(
   }
 }
 
-export async function decanonicalizeMapFeature(
-  // eslint-disable-next-line
-  feature: any
+export async function mapFeatureToPoi(
+  feature: GeoJSON.Feature
 ): Promise<POI | undefined> {
-  const lng = feature?.geometry?.coordinates[0];
-  const lat = feature?.geometry?.coordinates[1];
+  feature.geometry;
+  const pointGeometry = feature.geometry as GeoJSON.Point;
+  if (!pointGeometry) {
+    console.error(
+      "Geometry is not a point and Headway doesn't handle that yet"
+    );
+    return;
+  }
+  const lng = pointGeometry.coordinates[0];
+  const lat = pointGeometry.coordinates[1];
   if (!lat || !lng) {
     console.error(
       `Could not reverse geocode ${JSON.stringify(
