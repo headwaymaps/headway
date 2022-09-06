@@ -136,6 +136,25 @@ import { Marker } from 'maplibre-gl';
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
 
+type LegGeometry = {
+  points: string;
+};
+
+type ItineraryLeg = {
+  startTime: number;
+  endTime: number;
+  mode: 'WALK' | 'BUS' | 'TRAIN' | 'TRAM';
+  transitLeg: boolean;
+  legGeometry: LegGeometry;
+};
+
+type Itinerary = {
+  generalizedCost: number;
+  startTime: number;
+  endTime: number;
+  legs: ItineraryLeg[];
+};
+
 export default defineComponent({
   name: 'TransitPage',
   props: {
@@ -143,7 +162,13 @@ export default defineComponent({
     to: String,
     from: String,
   },
-  data: function () {
+  data: function (): {
+    itineraries: Itinerary[];
+    itineraryIndex: number;
+    earliestStart: number;
+    latestArrival: number;
+    points: [];
+  } {
     return {
       itineraries: [],
       itineraryIndex: 0,
@@ -164,9 +189,7 @@ export default defineComponent({
         this.$router.push('/');
         return;
       }
-      const fromCanonical = fromPoi.value
-        ? encodePoi(fromPoi.value)
-        : '_';
+      const fromCanonical = fromPoi.value ? encodePoi(fromPoi.value) : '_';
       const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
       this.$router.push(`/multimodal/${toCanonical}/${fromCanonical}`);
       if (fromPoi.value?.position && toPoi.value?.position) {
@@ -210,8 +233,12 @@ export default defineComponent({
     plotPath() {
       const itinerary = this.$data.itineraries[this.$data.itineraryIndex];
       // FIXME: Here and above, don't hardcode a credible maximum number of legs, it's very silly, just store it.
-      for (var index = 0; index < 100; index++) {
-        const layerName = `headway_polyline${index}`;
+      for (
+        var credibleMaxIndex = 0;
+        credibleMaxIndex < 100;
+        credibleMaxIndex++
+      ) {
+        const layerName = `headway_polyline${credibleMaxIndex}`;
         if (map?.getLayer(layerName)) {
           map?.removeLayer(layerName);
         }
@@ -275,7 +302,7 @@ export default defineComponent({
         setTimeout(() => {
           map?.fitBounds(bbox, {
             padding: {
-              top: this.$refs.searchCard.offsetHeight + 20,
+              top: (this.$refs.searchCard as HTMLDivElement).offsetHeight + 20,
               bottom: 20,
               left: 10,
               right: 10,
@@ -286,7 +313,9 @@ export default defineComponent({
     },
     resizeMap() {
       if (this.$refs.bottomCard && this.$refs.bottomCard) {
-        setBottomCardAllowance(this.$refs.bottomCard.offsetHeight);
+        setBottomCardAllowance(
+          (this.$refs.searchCard as HTMLDivElement).offsetHeight
+        );
       } else {
         setBottomCardAllowance(0);
       }

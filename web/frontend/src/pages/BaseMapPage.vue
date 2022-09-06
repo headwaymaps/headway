@@ -7,7 +7,6 @@
 </template>
 
 <script lang="ts">
-import { MapMouseEvent } from 'maplibre-gl';
 import {
   activeMarkers,
   addMapHandler,
@@ -46,12 +45,12 @@ export default defineComponent({
     this.handler = addMapHandler('poi_click', async (event) => {
       // eslint-disable-next-line
       if (!event?.features) {
-        console.warn("poi_click without features");
+        console.warn('poi_click without features');
         return;
       }
       let poi = await decanonicalizeMapFeature(event?.features[0]);
       if (!poi?.gid) {
-        console.error("Could not canonicalize map feature.");
+        console.error('Could not canonicalize map feature.');
         return;
       }
       const gidComponent = encodeURIComponent(poi?.gid);
