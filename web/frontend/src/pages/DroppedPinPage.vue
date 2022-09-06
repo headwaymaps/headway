@@ -25,10 +25,7 @@ import SearchBox from 'src/components/SearchBox.vue';
 
 var poi: Ref<POI | undefined> = ref(undefined);
 
-async function loadDroppedPinPage(
-  router: Router,
-  position: LongLat,
-) {
+async function loadDroppedPinPage(router: Router, position: LongLat) {
   if (!map) {
     setTimeout(() => loadDroppedPinPage(router, position), 100);
     return;
@@ -37,14 +34,9 @@ async function loadDroppedPinPage(
     name: 'Dropped Pin', // i18n
     address: undefined,
     position: position,
-    id: undefined,
-    type: undefined,
   };
 
-  getBaseMap()?.flyTo(
-    [position.long, position.lat],
-    16,
-  );
+  getBaseMap()?.flyTo([position.long, position.lat], 16);
   if (map) {
     activeMarkers.forEach((marker) => marker.remove());
     activeMarkers.length = 0;
@@ -132,7 +124,7 @@ export default defineComponent({
         long: parseFloat(this.$props.long as string),
         lat: parseFloat(this.$props.lat as string),
       };
-      await loadDroppedPinPage(this.$router, position, true);
+      await loadDroppedPinPage(this.$router, position);
     });
   },
   setup: function () {
