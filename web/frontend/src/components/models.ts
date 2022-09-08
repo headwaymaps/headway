@@ -1,7 +1,8 @@
 import addressFormatter from '@fragaria/address-formatter';
-import { Feature, Point2D, PointLike } from 'maplibre-gl';
+import {} from 'maplibre-gl';
 
-const addressKeys = ['archipelago',
+const addressKeys = [
+  'archipelago',
   'city',
   // 'continent',
   'country',
@@ -61,7 +62,8 @@ const addressKeys = ['archipelago',
   'suburb',
   'town',
   'township',
-  'ward'];
+  'ward',
+];
 
 export interface POI {
   key?: string;
@@ -145,16 +147,29 @@ export async function decanonicalizePoi(
   }
 }
 
-// eslint-disable-next-line
-export async function decanonicalizeMapFeature(feature: any): Promise<POI | undefined> {
-  const lng = feature?.geometry?.coordinates[0];
-  const lat = feature?.geometry?.coordinates[1];
+export async function mapFeatureToPoi(
+  feature: GeoJSON.Feature
+): Promise<POI | undefined> {
+  feature.geometry;
+  const pointGeometry = feature.geometry as GeoJSON.Point;
+  if (!pointGeometry) {
+    console.error(
+      "Geometry is not a point and Headway doesn't handle that yet"
+    );
+    return;
+  }
+  const lng = pointGeometry.coordinates[0];
+  const lat = pointGeometry.coordinates[1];
   if (!lat || !lng) {
     console.error(
-      `Could not reverse geocode ${JSON.stringify(feature)}. Unsupported geometry.`
+      `Could not reverse geocode ${JSON.stringify(
+        feature
+      )}. Unsupported geometry.`
     );
   }
-  const response = await fetch(`/pelias/v1/reverse?point.lat=${lat}&point.lon=${lng}&boundary.circle.radius=0.1&sources=osm`);
+  const response = await fetch(
+    `/pelias/v1/reverse?point.lat=${lat}&point.lon=${lng}&boundary.circle.radius=0.1&sources=osm`
+  );
   if (response.status != 200) {
     console.error(
       `Could not reverse ${JSON.stringify(feature)}. Is pelias down?`
@@ -166,15 +181,15 @@ export async function decanonicalizeMapFeature(feature: any): Promise<POI | unde
   for (const id in results.features) {
     console.log(results.features[id]);
     if (results.features[id]?.properties?.name !== feature?.properties?.name) {
-      continue
+      continue;
     }
-    return decanonicalizePoi(results.features[id].properties.gid)
+    return decanonicalizePoi(results.features[id].properties.gid);
   }
   return undefined;
 }
 
 // eslint-disable-next-line
-export function localizeAddress(properties: any, oneLine=true): string {
+export function localizeAddress(properties: any, oneLine = true): string {
   // eslint-disable-next-line
   let addressProperties: any = {};
   for (const [key, value] of Object.entries(properties)) {
@@ -185,9 +200,14 @@ export function localizeAddress(properties: any, oneLine=true): string {
       addressProperties[key] = value;
     }
   }
-  const address = addressFormatter.format(addressProperties, {abbreviate: true, output: 'string', countryCode: properties.country_code, appendCountry: false});
+  const address = addressFormatter.format(addressProperties, {
+    abbreviate: true,
+    output: 'string',
+    countryCode: properties.country_code,
+    appendCountry: false,
+  });
   if (oneLine) {
-    return address.trim().replaceAll("\n", ", ");
+    return address.trim().replaceAll('\n', ', ');
   }
   return address;
 }

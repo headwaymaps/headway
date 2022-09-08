@@ -1,11 +1,11 @@
 <template>
   <div class="top-left-card">
     <q-card>
-      <div :style="{display: 'flex', alignItems: 'center'}">
+      <div :style="{ display: 'flex', alignItems: 'center' }">
         <search-box
           ref="searchBox"
           hint="From"
-          :style="{minWidth: '18em'}"
+          :style="{ minWidth: '18em' }"
           v-model="fromPoi"
           :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
           v-on:update:model-value="rewriteUrl"
@@ -14,12 +14,13 @@
         <div>
           <q-btn
             size="small"
-            :style="{marginRight: '0.8em'}"
+            :style="{ marginRight: '0.8em' }"
             flat
             round
             color="primary"
             icon="gps_fixed"
-            v-on:click="fromUserLocation" />
+            v-on:click="fromUserLocation"
+          />
         </div>
       </div>
       <search-box
@@ -67,7 +68,7 @@
 </template>
 
 <script lang="ts">
-import BaseMapVue, {
+import {
   activeMarkers,
   getBaseMap,
   map,
@@ -77,17 +78,24 @@ import {
   encodePoi,
   decanonicalizePoi,
   POI,
-  LongLat,
   poiDisplayName,
 } from 'src/components/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
-import { Marker, Popup } from 'maplibre-gl';
+import { Marker, Popup, PositionAnchor } from 'maplibre-gl';
 import { useQuasar } from 'quasar';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
+
+type Step = {
+  begin_shape_index: number;
+  end_shape_index: number;
+  instruction: string;
+  selected: boolean;
+  time: number;
+};
 
 export default defineComponent({
   name: 'DirectionsPage',
@@ -96,7 +104,12 @@ export default defineComponent({
     to: String,
     from: String,
   },
-  data: function () {
+  data: function (): {
+    steps: Step[];
+    points: [number, number][];
+    stepCallout: Popup | undefined;
+    stepCalloutStep: number;
+  } {
     return {
       steps: [],
       points: [],
@@ -187,7 +200,7 @@ export default defineComponent({
       } else if (beforePoint) {
         neighborAverage = beforePoint;
       }
-      var chosenAnchor = 'center';
+      var chosenAnchor: PositionAnchor = 'center';
       if (neighborAverage[0] >= point[0] && neighborAverage[1] >= point[1]) {
         chosenAnchor = 'top-right';
       }
@@ -203,6 +216,10 @@ export default defineComponent({
       setTimeout(() => {
         if (this.$data.stepCallout) {
           this.$data.stepCallout.remove();
+        }
+        if (!map) {
+          console.error('Map is null during popup setup');
+          return;
         }
         this.$data.stepCallout = new Popup({
           closeOnClick: true,
@@ -222,21 +239,25 @@ export default defineComponent({
         maximumAge: 60000,
         timeout: 10000,
       };
-      navigator.geolocation.getCurrentPosition((position) => {
-        fromPoi.value = {
-          name: 'My Location', // i18n
-          position: {
-            lat: position.coords.latitude,
-            long: position.coords.longitude,
-          }
-        }
-        setTimeout(async () => {
-          await this.rewriteUrl();
-        });
-      }, (error) => {
-        useQuasar().notify('Could not get GPS location'); // i18n
-        console.error(error);
-      }, options);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fromPoi.value = {
+            name: 'My Location', // i18n
+            position: {
+              lat: position.coords.latitude,
+              long: position.coords.longitude,
+            },
+          };
+          setTimeout(async () => {
+            await this.rewriteUrl();
+          });
+        },
+        (error) => {
+          useQuasar().notify('Could not get GPS location'); // i18n
+          console.error(error);
+        },
+        options
+      );
     },
     scroll() {
       setTimeout(() => this.setupPopup());
@@ -275,9 +296,7 @@ export default defineComponent({
         this.$router.push('/');
         return;
       }
-      const fromCanonical = fromPoi.value
-        ? encodePoi(fromPoi.value)
-        : '_';
+      const fromCanonical = fromPoi.value ? encodePoi(fromPoi.value) : '_';
       const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
       this.$router.push(
         `/directions/${this.mode}/${toCanonical}/${fromCanonical}`
@@ -324,7 +343,7 @@ export default defineComponent({
           }
           // min/max
           const bbox: number[] = [1000, 1000, -1000, -1000];
-          var points: number[][] = [];
+          var points: [number, number][] = [];
           decodeValhallaPath(leg.shape, 6).forEach((point) => {
             points.push([point[1], point[0]]);
             if (point[0] < bbox[1]) {
@@ -365,10 +384,7 @@ export default defineComponent({
               'line-width': 6,
             },
           });
-          getBaseMap()?.flyTo(
-            points[0] as [number, number],
-            16,
-          );
+          getBaseMap()?.flyTo(points[0] as [number, number], 16);
           this.setupPopup();
         }
       } else {
@@ -386,7 +402,9 @@ export default defineComponent({
     },
     resizeMap() {
       if (this.$refs.bottomCard && this.$refs.bottomCard) {
-        setBottomCardAllowance(this.$refs.bottomCard.offsetHeight);
+        setBottomCardAllowance(
+          (this.$refs.bottomCard as HTMLDivElement).offsetHeight
+        );
       } else {
         setBottomCardAllowance(0);
       }

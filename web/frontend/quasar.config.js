@@ -74,7 +74,6 @@ module.exports = configure(function (/* ctx */) {
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
 
-
       chainWebpack: chain => {
         chain.module
           .rule('i18n-resource')
