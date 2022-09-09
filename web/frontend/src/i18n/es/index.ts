@@ -1,4 +1,3 @@
-
 export default {
-    where_to_question: '¿adonde?'
-  };
+  where_to_question: '¿adonde?',
+};

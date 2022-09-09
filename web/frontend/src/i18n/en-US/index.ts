@@ -1,4 +1,3 @@
-
 export default {
-    where_to_question: 'Where to?'
-  };
+  where_to_question: 'Where to?',
+};

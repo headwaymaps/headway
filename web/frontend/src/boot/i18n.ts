@@ -1,6 +1,6 @@
-import { App } from 'vue'
-import { createI18n } from 'vue-i18n'
-import messages from '../i18n'
+import { App } from 'vue';
+import { createI18n } from 'vue-i18n';
+import messages from '../i18n';
 
 export default ({ app }: { app: App }) => {
   // Create I18n instance
@@ -8,9 +8,9 @@ export default ({ app }: { app: App }) => {
     locale: navigator.language,
     fallbackLocale: 'en-US',
     globalInjection: true,
-    messages
-  })
+    messages,
+  });
 
   // Tell app to use the I18n instance
-  app.use(i18n)
-}
+  app.use(i18n);
+};
