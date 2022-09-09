@@ -18,7 +18,7 @@
 
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
-import { activeMarkers, getBaseMap, map } from 'src/components/BaseMap.vue';
+import { getBaseMap, map } from 'src/components/BaseMap.vue';
 import { POI } from 'src/utils/models';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent, Ref, ref } from 'vue';
@@ -40,20 +40,12 @@ async function loadDroppedPinPage(router: Router, position: LongLat) {
   };
 
   getBaseMap()?.flyTo([position.long, position.lat], 16);
-  if (map) {
-    activeMarkers.forEach((marker) => marker.remove());
-    activeMarkers.length = 0;
-
-    const marker = new Marker({ color: '#111111' }).setLngLat([
-      position.long,
-      position.lat,
-    ]);
-    marker.addTo(map);
-    activeMarkers.push(marker);
-  }
+  getBaseMap()?.pushMarker(
+    'active_marker',
+    new Marker({ color: '#111111' }).setLngLat([position.long, position.lat])
+  );
+  getBaseMap()?.removeMarkersExcept(['active_marker']);
 }
-
-var hoverMarkers: Marker[] = [];
 
 export default defineComponent({
   name: 'DroppedPinPage',
@@ -92,31 +84,24 @@ export default defineComponent({
   },
   methods: {
     poiSelected: function (poi?: POI) {
-      activeMarkers.forEach((marker) => marker.remove());
-      activeMarkers.length = 0;
-      hoverMarkers.forEach((marker) => marker.remove());
-      hoverMarkers = [];
+      getBaseMap()?.removeMarkersExcept(['active_marker']);
       if (poi?.gid) {
         const gidComponent = encodeURIComponent(poi?.gid);
         this.$router.push(`/place/${gidComponent}`);
       } else {
         this.$router.push('/');
       }
-      setTimeout(() => {
-        hoverMarkers.forEach((marker) => marker.remove());
-        hoverMarkers = [];
-      }, 1000);
     },
     poiHovered: function (poi?: POI) {
-      hoverMarkers.forEach((marker) => marker.remove());
-      hoverMarkers = [];
-      if (poi?.position && map) {
-        const marker = new Marker({ color: '#11111155' }).setLngLat([
-          poi.position.long,
-          poi.position.lat,
-        ]);
-        marker.addTo(map);
-        hoverMarkers.push(marker);
+      if (poi?.position) {
+        getBaseMap()?.pushMarker(
+          'hover_marker',
+          new Marker({ color: '#11111155' }).setLngLat([
+            poi.position.long,
+            poi.position.lat,
+          ])
+        );
+        getBaseMap()?.removeMarkersExcept(['hover_marker']);
       }
     },
   },

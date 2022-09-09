@@ -135,7 +135,7 @@
 
 <script lang="ts">
 import {
-  activeMarkers,
+  getBaseMap,
   map,
   setBottomCardAllowance,
 } from 'src/components/BaseMap.vue';
@@ -388,29 +388,20 @@ export default defineComponent({
       await this.rewriteUrl();
       this.resizeMap();
 
-      activeMarkers.forEach((marker) => marker.remove());
-      activeMarkers.length = 0;
       if (this.toPoi?.position) {
-        const marker = new Marker({ color: '#111111' }).setLngLat([
-          this.toPoi.position.long,
-          this.toPoi.position.lat,
-        ]);
-        if (map) {
-          marker.addTo(map);
-          activeMarkers.push(marker);
-        }
+        getBaseMap()?.pushMarker(
+          'active_marker',
+          new Marker({ color: '#111111' }).setLngLat([
+            this.toPoi.position.long,
+            this.toPoi.position.lat,
+          ])
+        );
+        getBaseMap()?.removeMarkersExcept(['active_marker']);
       }
     });
   },
   unmounted: function () {
-    activeMarkers.forEach((marker) => marker.remove());
-    activeMarkers.length = 0;
-    if (map?.getLayer('headway_polyline')) {
-      map?.removeLayer('headway_polyline');
-    }
-    if (map?.getSource('headway_polyline')) {
-      map?.removeSource('headway_polyline');
-    }
+    getBaseMap()?.removeLayersExcept([]);
   },
   setup: function () {
     return {

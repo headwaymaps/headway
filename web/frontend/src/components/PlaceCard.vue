@@ -1,6 +1,6 @@
 <template>
   <q-card class="bottom-card" ref="bottomCard">
-    <q-card-section class="bg-primary text-white">
+    <q-card-section>
       <div class="place-card-conditionally-wrap">
         <q-btn
           flat

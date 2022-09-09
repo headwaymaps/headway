@@ -14,7 +14,7 @@
 
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
-import { activeMarkers, getBaseMap, map } from 'src/components/BaseMap.vue';
+import { getBaseMap } from 'src/components/BaseMap.vue';
 import {
   encodePoi,
   decanonicalizePoi,
@@ -31,14 +31,14 @@ async function loadPlacePage(router: Router, canonicalName: string) {
 
   if (poi?.position) {
     getBaseMap()?.flyTo([poi.position.long, poi.position.lat], 16);
-    if (map) {
-      const marker = new Marker({ color: '#111111' }).setLngLat([
+    getBaseMap()?.pushMarker(
+      'active_marker',
+      new Marker({ color: '#111111' }).setLngLat([
         poi.position.long,
         poi.position.lat,
-      ]);
-      marker.addTo(map);
-      activeMarkers.push(marker);
-    }
+      ])
+    );
+    getBaseMap()?.removeMarkersExcept(['active_marker']);
     return poi;
   }
 }
@@ -70,8 +70,7 @@ export default defineComponent({
   methods: {
     poiDisplayName,
     poiSelected: function (poi?: POI) {
-      activeMarkers.forEach((marker) => marker.remove());
-      activeMarkers.length = 0;
+      getBaseMap()?.removeMarkersExcept([]);
       if (poi?.gid) {
         const gidComponent = encodeURIComponent(poi?.gid);
         this.$router.push(`/place/${gidComponent}`);

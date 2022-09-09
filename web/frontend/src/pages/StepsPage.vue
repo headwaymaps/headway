@@ -30,7 +30,6 @@
 
 <script lang="ts">
 import {
-  activeMarkers,
   getBaseMap,
   map,
   setBottomCardAllowance,
@@ -204,8 +203,7 @@ export default defineComponent({
         }
         this.resizeMap();
 
-        activeMarkers.forEach((marker) => marker.remove());
-        activeMarkers.length = 0;
+        getBaseMap()?.removeMarkersExcept([]);
 
         if (!newValue.position) {
           return;
@@ -214,10 +212,7 @@ export default defineComponent({
           newValue.position.long,
           newValue.position.lat,
         ]);
-        if (map) {
-          marker.addTo(map);
-          activeMarkers.push(marker);
-        }
+        getBaseMap()?.pushMarker('active_marker', marker);
       });
     },
     from(newValue) {
@@ -240,17 +235,13 @@ export default defineComponent({
       await this.rewriteUrl();
       this.resizeMap();
 
-      activeMarkers.forEach((marker) => marker.remove());
-      activeMarkers.length = 0;
+      getBaseMap()?.removeMarkersExcept([]);
       if (this.toPoi?.position) {
         const marker = new Marker({ color: '#111111' }).setLngLat([
           this.toPoi.position.long,
           this.toPoi.position.lat,
         ]);
-        if (map) {
-          marker.addTo(map);
-          activeMarkers.push(marker);
-        }
+        getBaseMap()?.pushMarker('active_marker', marker);
       }
     });
   },

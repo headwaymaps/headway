@@ -8,8 +8,8 @@
 
 <script lang="ts">
 import {
-  activeMarkers,
   addMapHandler,
+  getBaseMap,
   removeMapHandler,
   setBottomCardAllowance,
 } from 'src/components/BaseMap.vue';
@@ -37,8 +37,7 @@ export default defineComponent({
     },
   },
   mounted: function () {
-    activeMarkers.forEach((marker) => marker.remove());
-    activeMarkers.length = 0;
+    getBaseMap()?.removeMarkersExcept([]);
     this.handler = addMapHandler('longpress', (event) => {
       this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
     });

@@ -5,15 +5,15 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import maplibregl, {
+  LayerSpecification,
   LngLatBoundsLike,
   MapMouseEvent,
   Marker,
+  SourceSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 export var map: maplibregl.Map | null = null;
-
-export var activeMarkers: Marker[] = [];
 
 async function loadMap() {
   const response = await fetch('/bbox.txt');
@@ -108,8 +108,6 @@ export function setBottomCardAllowance(pixels?: number) {
     'top-left-card'
   )[0] as HTMLDivElement;
   var topLeftCardAdjustment = 0;
-  console.log(topLeftCard);
-  console.log(topLeftCard.style.position);
   if (
     topLeftCard &&
     window.getComputedStyle(topLeftCard).position !== 'fixed'
@@ -124,12 +122,20 @@ export function setBottomCardAllowance(pixels?: number) {
   map?.resize();
 }
 
-var baseMapMethods:
-  | {
-      flyTo: (location: [number, number], zoom: number) => void;
-      fitBounds: (bounds: LngLatBoundsLike) => void;
-    }
-  | undefined = undefined;
+export interface BaseMapInterface {
+  flyTo: (location: [number, number], zoom: number) => void;
+  fitBounds: (bounds: LngLatBoundsLike) => void;
+  pushMarker: (key: string, marker: Marker) => void;
+  removeMarkersExcept: (keys: string[]) => void;
+  pushLayer: (
+    key: string,
+    source: SourceSpecification,
+    layer: LayerSpecification
+  ) => void;
+  removeLayersExcept: (keys: string[]) => void;
+}
+
+var baseMapMethods: BaseMapInterface | undefined = undefined;
 
 // There really has to be a better way to do this, but we only ever have 1 base map so I guess it works.
 export function getBaseMap() {
@@ -142,14 +148,85 @@ export default defineComponent({
     flyToLocation: { center: [number, number]; zoom: number } | undefined;
     boundsToFit: LngLatBoundsLike | undefined;
     hasGeolocated: boolean;
+    markers: Map<string, Marker>;
+    layers: string[];
+    loaded: boolean;
   } {
     return {
       flyToLocation: undefined,
       boundsToFit: undefined,
       hasGeolocated: false,
+      markers: new Map(),
+      layers: [],
+      loaded: false,
     };
   },
   methods: {
+    ensureMapLoaded(fn: (map: maplibregl.Map) => void) {
+      const mapCapture = map;
+      if (mapCapture && this.loaded) {
+        fn(mapCapture);
+      } else if (mapCapture) {
+        mapCapture.on('load', () => fn(mapCapture));
+      }
+    },
+    pushMarker(key: string, marker: Marker) {
+      let oldMarker = this.markers.get(key);
+      if (oldMarker) {
+        oldMarker.remove();
+      }
+      this.markers.set(key, marker);
+      this.ensureMapLoaded((map) => marker.addTo(map));
+    },
+    removeMarkersExcept(keys: string[]) {
+      this.markers.forEach((marker, key) => {
+        if (keys.indexOf(key) === -1) {
+          marker.remove();
+        }
+      });
+    },
+    pushLayer(
+      key: string,
+      source: SourceSpecification,
+      layer: LayerSpecification
+    ) {
+      let sourceKey = `headway_custom_layer_${key}`;
+      let actualLayer = layer;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((actualLayer as any).source) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (actualLayer as any).source = sourceKey;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((actualLayer as any).id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (actualLayer as any).id = sourceKey;
+      }
+      this.ensureMapLoaded((map) => {
+        if (map.getLayer(sourceKey)) {
+          map.removeLayer(sourceKey);
+        }
+        if (map.getSource(sourceKey)) {
+          map.removeSource(sourceKey);
+        }
+        map.addSource(sourceKey, source);
+        map.addLayer(layer);
+        this.layers.push(sourceKey);
+      });
+    },
+    removeLayersExcept(keys: string[]) {
+      this.layers.forEach((key) => {
+        if (keys.indexOf(key) === -1) {
+          if (map?.getLayer(key)) {
+            map.removeLayer(key);
+          }
+          if (map?.getSource(key)) {
+            map.removeSource(key);
+          }
+        }
+      });
+      this.layers = keys;
+    },
     flyTo: async function (location: [number, number], zoom: number) {
       const permissionResult = await navigator.permissions.query({
         name: 'geolocation',
@@ -182,7 +259,14 @@ export default defineComponent({
   mounted: async function () {
     await loadMap();
     // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
-    baseMapMethods = { flyTo: this.flyTo, fitBounds: this.fitBounds };
+    baseMapMethods = {
+      flyTo: this.flyTo,
+      fitBounds: this.fitBounds,
+      pushMarker: this.pushMarker,
+      removeMarkersExcept: this.removeMarkersExcept,
+      pushLayer: this.pushLayer,
+      removeLayersExcept: this.removeLayersExcept,
+    };
     var nav = new maplibregl.NavigationControl({
       visualizePitch: true,
       showCompass: true,
@@ -195,6 +279,9 @@ export default defineComponent({
       showUserLocation: true,
     });
     map?.addControl(geolocate, 'bottom-right');
+    map?.on('load', () => {
+      this.loaded = true;
+    });
     map?.on('click', (event: MapMouseEvent) => {
       mapTouchHandlers.get('click')?.forEach((value) => value(event));
     });

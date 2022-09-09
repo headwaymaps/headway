@@ -72,12 +72,7 @@
 </template>
 
 <script lang="ts">
-import {
-  activeMarkers,
-  getBaseMap,
-  map,
-  setBottomCardAllowance,
-} from 'src/components/BaseMap.vue';
+import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
 import {
   encodePoi,
   decanonicalizePoi,
@@ -178,12 +173,8 @@ export default defineComponent({
         );
         this.processRoute(routes, 0);
       } else {
-        if (map?.getLayer('headway_polyline')) {
-          map?.removeLayer('headway_polyline');
-        }
-        if (map?.getSource('headway_polyline')) {
-          map?.removeSource('headway_polyline');
-        }
+        getBaseMap()?.removeLayersExcept([]);
+        getBaseMap()?.removeMarkersExcept([]);
       }
     },
     processRoute(
@@ -193,18 +184,12 @@ export default defineComponent({
       this.$data.routes = routes;
       this.activeRoute = routes[selectedIdx];
 
-      for (var i = 0; i < 10; i += 1) {
-        if (map?.getLayer('headway_polyline' + i)) {
-          map?.removeLayer('headway_polyline' + i);
-        }
-        if (map?.getSource('headway_polyline' + i)) {
-          map?.removeSource('headway_polyline' + i);
-        }
-      }
+      let activeLayers = [];
+      getBaseMap()?.removeLayersExcept([]);
       for (let routeIdx = 0; routeIdx < routes.length; routeIdx += 1) {
         const route = routes[routeIdx];
         const leg = route[0]?.legs[0];
-        if (leg && map) {
+        if (leg) {
           var totalTime = 0;
           for (const key in leg.maneuvers) {
             totalTime += leg.maneuvers[key].time;
@@ -215,37 +200,43 @@ export default defineComponent({
             points.push([point[1], point[0]]);
           });
           this.$data.points = points;
-          map?.addSource('headway_polyline' + routeIdx, {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: points,
+
+          let polylineKey = 'headway_polyline' + routeIdx;
+          activeLayers.push(polylineKey);
+          getBaseMap()?.pushLayer(
+            polylineKey,
+            {
+              type: 'geojson',
+              data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'LineString',
+                  coordinates: points,
+                },
               },
             },
-          });
-          map?.addLayer({
-            id: 'headway_polyline' + routeIdx,
-            type: 'line',
-            source: 'headway_polyline' + routeIdx,
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round',
-            },
-            paint:
-              routeIdx === selectedIdx
-                ? {
-                    'line-color': '#1976D2',
-                    'line-width': 6,
-                  }
-                : {
-                    'line-color': '#1976D2',
-                    'line-width': 4,
-                    'line-dasharray': [1, 2],
-                  },
-          });
+            {
+              id: 'headway_polyline' + routeIdx,
+              type: 'line',
+              source: 'headway_polyline' + routeIdx,
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round',
+              },
+              paint:
+                routeIdx === selectedIdx
+                  ? {
+                      'line-color': '#1976D2',
+                      'line-width': 6,
+                    }
+                  : {
+                      'line-color': '#1976D2',
+                      'line-width': 4,
+                      'line-dasharray': [1, 2],
+                    },
+            }
+          );
           setTimeout(() => {
             this.resizeMap();
             getBaseMap()?.fitBounds(
@@ -255,16 +246,6 @@ export default defineComponent({
               )
             );
           });
-        }
-      }
-    },
-    clearPolylines() {
-      for (var i = 0; i < 10; i += 1) {
-        if (map?.getLayer('headway_polyline' + i)) {
-          map?.removeLayer('headway_polyline' + i);
-        }
-        if (map?.getSource('headway_polyline' + i)) {
-          map?.removeSource('headway_polyline' + i);
         }
       }
     },
@@ -282,39 +263,30 @@ export default defineComponent({
     to(newValue) {
       setTimeout(async () => {
         toPoi.value = await decanonicalizePoi(newValue);
-        if (!toPoi.value) {
-          this.clearPolylines();
-        }
         this.resizeMap();
-
-        activeMarkers.forEach((marker) => marker.remove());
-        activeMarkers.length = 0;
 
         if (!newValue.position) {
           return;
         }
-        const marker = new Marker({ color: '#111111' }).setLngLat([
-          newValue.position.long,
-          newValue.position.lat,
-        ]);
-        if (map) {
-          marker.addTo(map);
-          activeMarkers.push(marker);
-        }
+        getBaseMap()?.pushMarker(
+          'active_marker',
+          new Marker({ color: '#111111' }).setLngLat([
+            newValue.position.long,
+            newValue.position.lat,
+          ])
+        );
+        getBaseMap()?.removeMarkersExcept(['active_marker']);
       });
     },
     from(newValue) {
       setTimeout(async () => {
         fromPoi.value = await decanonicalizePoi(newValue);
-        if (!fromPoi.value) {
-          this.clearPolylines();
-        }
         this.resizeMap();
       });
     },
   },
-  beforeUnmount: function () {
-    this.clearPolylines();
+  unmounted: function () {
+    getBaseMap()?.removeLayersExcept([]);
   },
   mounted: async function () {
     setTimeout(async () => {
@@ -323,27 +295,15 @@ export default defineComponent({
       await this.rewriteUrl();
       this.resizeMap();
 
-      activeMarkers.forEach((marker) => marker.remove());
-      activeMarkers.length = 0;
+      getBaseMap()?.removeMarkersExcept([]);
       if (this.toPoi?.position) {
         const marker = new Marker({ color: '#111111' }).setLngLat([
           this.toPoi.position.long,
           this.toPoi.position.lat,
         ]);
-        if (map) {
-          marker.addTo(map);
-          activeMarkers.push(marker);
-        }
+        getBaseMap()?.pushMarker('active_marker', marker);
       }
     });
-  },
-  unmounted: function () {
-    if (map?.getLayer('headway_polyline')) {
-      map?.removeLayer('headway_polyline');
-    }
-    if (map?.getSource('headway_polyline')) {
-      map?.removeSource('headway_polyline');
-    }
   },
   setup: function () {
     return {
