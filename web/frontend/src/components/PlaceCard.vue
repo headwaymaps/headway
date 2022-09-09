@@ -25,7 +25,7 @@
             clickable
             v-on:click="$router.push(`/multimodal/${encodePoi($props.poi)}/_`)"
           >
-            Bus there
+            Transit
           </q-chip>
           <q-chip
             icon="directions_car"
@@ -34,7 +34,7 @@
               $router.push(`/directions/car/${encodePoi($props.poi)}/_`)
             "
           >
-            Drive there
+            Drive
           </q-chip>
           <q-chip
             icon="directions_bike"
@@ -43,7 +43,7 @@
               $router.push(`/directions/bicycle/${encodePoi($props.poi)}/_`)
             "
           >
-            Bike there
+            Bike
           </q-chip>
           <q-chip
             icon="directions_walk"
@@ -52,7 +52,7 @@
               $router.push(`/directions/walk/${encodePoi($props.poi)}/_`)
             "
           >
-            Walk there
+            Walk
           </q-chip>
         </div>
       </div>
@@ -62,9 +62,9 @@
 
 <script lang="ts">
 import { QCard } from 'quasar';
+import { encodePoi } from 'src/utils/models';
 import { defineComponent } from 'vue';
 import { setBottomCardAllowance } from './BaseMap.vue';
-import { encodePoi } from './models';
 
 export default defineComponent({
   name: 'PlaceCard',

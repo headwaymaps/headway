@@ -1,20 +1,37 @@
 <template>
-  <div class="top-left-card" ref="searchCard">
+  <div class="top-left-card">
     <q-card>
-      <search-box
-        ref="searchBox"
-        hint="From"
-        v-model="fromPoi"
-        :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
-        v-on:update:model-value="rewriteUrl"
-      ></search-box>
-      <search-box
-        ref="searchBox"
-        hint="To"
-        v-model="toPoi"
-        :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
-        v-on:update:model-value="rewriteUrl"
-      ></search-box>
+      <q-card-section>
+        <div :style="{ display: 'flex', alignItems: 'center' }">
+          <search-box
+            ref="searchBox"
+            hint="From"
+            :style="{ flex: 1 }"
+            v-model="fromPoi"
+            :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
+            v-on:update:model-value="rewriteUrl"
+          >
+          </search-box>
+          <q-btn
+            size="small"
+            :style="{ marginRight: '0.8em' }"
+            flat
+            round
+            color="primary"
+            icon="gps_fixed"
+            v-on:click="fromUserLocation"
+          />
+        </div>
+      </q-card-section>
+      <q-card-section class="no-top-padding">
+        <search-box
+          ref="searchBox"
+          hint="To"
+          v-model="toPoi"
+          :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
+          v-on:update:model-value="rewriteUrl"
+        ></search-box>
+      </q-card-section>
     </q-card>
   </div>
   <div class="bottom-card" ref="bottomCard" v-if="fromPoi && toPoi">
@@ -127,11 +144,12 @@ import {
   decanonicalizePoi,
   POI,
   poiDisplayName,
-} from 'src/components/models';
+} from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
 import { Marker } from 'maplibre-gl';
+import { useQuasar } from 'quasar';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -183,6 +201,32 @@ export default defineComponent({
     changeItinerary(index: number) {
       this.$data.itineraryIndex = index;
       this.plotPath();
+    },
+    fromUserLocation() {
+      const options = {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+        timeout: 10000,
+      };
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fromPoi.value = {
+            name: 'My Location', // i18n
+            position: {
+              lat: position.coords.latitude,
+              long: position.coords.longitude,
+            },
+          };
+          setTimeout(async () => {
+            await this.rewriteUrl();
+          });
+        },
+        (error) => {
+          useQuasar().notify('Could not get GPS location'); // i18n
+          console.error(error);
+        },
+        options
+      );
     },
     rewriteUrl: async function () {
       if (!fromPoi.value?.position && !toPoi.value?.position) {

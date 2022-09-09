@@ -101,12 +101,25 @@ export function setBottomCardAllowance(pixels?: number) {
   if (pixels !== undefined) {
     bottomCardAllowance = pixels;
   }
-  const maps = document.getElementsByClassName('maplibregl-map');
-  for (var mapIdx = 0; mapIdx < maps.length; mapIdx++) {
-    let map = maps.item(mapIdx) as HTMLDivElement;
-    if (map !== null) {
-      map.style.height = `${window.innerHeight - bottomCardAllowance}px`;
-    }
+  const mapElement = document.getElementsByClassName(
+    'maplibregl-map'
+  )[0] as HTMLDivElement;
+  const topLeftCard = document.getElementsByClassName(
+    'top-left-card'
+  )[0] as HTMLDivElement;
+  var topLeftCardAdjustment = 0;
+  console.log(topLeftCard);
+  console.log(topLeftCard.style.position);
+  if (
+    topLeftCard &&
+    window.getComputedStyle(topLeftCard).position !== 'fixed'
+  ) {
+    topLeftCardAdjustment = topLeftCard.offsetHeight;
+  }
+  if (map !== null) {
+    mapElement.style.height = `${
+      window.innerHeight - bottomCardAllowance - topLeftCardAdjustment
+    }px`;
   }
   map?.resize();
 }
@@ -114,6 +127,7 @@ export function setBottomCardAllowance(pixels?: number) {
 var baseMapMethods:
   | {
       flyTo: (location: [number, number], zoom: number) => void;
+      fitBounds: (bounds: LngLatBoundsLike) => void;
     }
   | undefined = undefined;
 
@@ -126,9 +140,14 @@ export default defineComponent({
   name: 'BaseMap',
   data: function (): {
     flyToLocation: { center: [number, number]; zoom: number } | undefined;
+    boundsToFit: LngLatBoundsLike | undefined;
     hasGeolocated: boolean;
   } {
-    return { flyToLocation: undefined, hasGeolocated: false };
+    return {
+      flyToLocation: undefined,
+      boundsToFit: undefined,
+      hasGeolocated: false,
+    };
   },
   methods: {
     flyTo: async function (location: [number, number], zoom: number) {
@@ -144,11 +163,26 @@ export default defineComponent({
         this.$data.flyToLocation = { center: location, zoom: zoom };
       }
     },
+    fitBounds: async function (bounds: LngLatBoundsLike) {
+      const permissionResult = await navigator.permissions.query({
+        name: 'geolocation',
+      });
+      if (
+        this.$data.hasGeolocated === true ||
+        permissionResult.state !== 'granted'
+      ) {
+        map?.fitBounds(bounds, {
+          padding: Math.min(window.innerWidth, window.innerHeight) / 8,
+        });
+      } else {
+        this.$data.boundsToFit = bounds;
+      }
+    },
   },
   mounted: async function () {
     await loadMap();
     // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
-    baseMapMethods = { flyTo: this.flyTo };
+    baseMapMethods = { flyTo: this.flyTo, fitBounds: this.fitBounds };
     var nav = new maplibregl.NavigationControl({
       visualizePitch: true,
       showCompass: true,
@@ -196,6 +230,9 @@ export default defineComponent({
               if (this.$data.flyToLocation) {
                 map?.flyTo(this.$data.flyToLocation, { flying: true });
                 this.$data.flyToLocation = undefined;
+              } else if (this.$data.boundsToFit) {
+                this.fitBounds(this.$data.boundsToFit);
+                this.$data.boundsToFit = undefined;
               }
             }
             this.$data.hasGeolocated = true;

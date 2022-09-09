@@ -1,11 +1,13 @@
 <template>
   <div class="top-left-card">
     <q-card>
-      <search-box
-        ref="searchBox"
-        v-on:poi_selected="poiSelected"
-        v-on:poi_hovered="poiHovered"
-      ></search-box>
+      <q-card-section>
+        <search-box
+          ref="searchBox"
+          v-on:poi_selected="poiSelected"
+          v-on:poi_hovered="poiHovered"
+        ></search-box>
+      </q-card-section>
     </q-card>
   </div>
 
@@ -17,11 +19,12 @@
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
 import { activeMarkers, getBaseMap, map } from 'src/components/BaseMap.vue';
-import { LongLat, POI } from 'src/components/models';
+import { POI } from 'src/utils/models';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent, Ref, ref } from 'vue';
 import { Router } from 'vue-router';
 import SearchBox from 'src/components/SearchBox.vue';
+import { LongLat } from 'src/utils/geomath';
 
 var poi: Ref<POI | undefined> = ref(undefined);
 

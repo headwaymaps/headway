@@ -1,13 +1,13 @@
 <template>
-  <div class="top-left-card">
-    <q-card>
+  <q-card class="top-left-card">
+    <q-card-section>
       <search-box
         ref="searchBox"
         :force-text="poiDisplayName(poi)"
         v-model="poi"
       ></search-box>
-    </q-card>
-  </div>
+    </q-card-section>
+  </q-card>
 
   <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
 </template>
@@ -20,7 +20,7 @@ import {
   decanonicalizePoi,
   POI,
   poiDisplayName,
-} from 'src/components/models';
+} from 'src/utils/models';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import { Router } from 'vue-router';

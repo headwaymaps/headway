@@ -1,9 +1,9 @@
 <template>
-  <div class="top-left-card">
-    <q-card>
+  <q-card class="top-left-card">
+    <q-card-section>
       <search-box ref="searchBox" v-model="poi"></search-box>
-    </q-card>
-  </div>
+    </q-card-section>
+  </q-card>
 </template>
 
 <script lang="ts">
@@ -13,7 +13,7 @@ import {
   removeMapHandler,
   setBottomCardAllowance,
 } from 'src/components/BaseMap.vue';
-import { mapFeatureToPoi } from 'src/components/models';
+import { mapFeatureToPoi } from 'src/utils/models';
 import SearchBox from 'src/components/SearchBox.vue';
 import { defineComponent } from 'vue';
 
