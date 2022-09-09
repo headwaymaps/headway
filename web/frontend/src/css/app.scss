@@ -36,6 +36,13 @@
   }
 }
 
+.top-left-fab {
+  @extend .over-map;
+  margin-left: 12px;
+  margin-top: 12px;
+  background-color: white;
+}
+
 .place-card-close-button {
   left: 100%;
   position: absolute;

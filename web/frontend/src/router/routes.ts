@@ -57,6 +57,17 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/directions/:mode/:to/:from/:alternateIndex',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: '/directions/:mode/:to/:from/:alternateIndex',
+        props: true,
+        component: () => import('src/pages/StepsPage.vue'),
+      },
+    ],
+  },
+  {
     path: '/multimodal/:to/:from',
     component: () => import('layouts/MainLayout.vue'),
     children: [

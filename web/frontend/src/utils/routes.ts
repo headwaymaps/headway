@@ -6,6 +6,8 @@ export interface RouteLegManeuver {
   cost: number;
   length: number;
   instruction: string;
+  verbal_post_transition_instruction: string;
+  type: number;
 }
 
 export interface RouteSummary {
@@ -53,8 +55,6 @@ export function summarizeRoute(route: Route): ProcessedRouteSummary {
       }
       return 0;
     });
-    console.log(roadCosts);
-    console.log(roads);
     const road = roads[0];
     const roadCost = roadCosts.get(road);
     if (!roadCost) {
@@ -83,8 +83,6 @@ function costliestRoads(
   ignoring: string[]
 ): Map<string, number> {
   const roadCosts = new Map<string, number>();
-
-  console.log(ignoring);
 
   for (const manueverIndex in leg.maneuvers) {
     const maneuver = leg.maneuvers[manueverIndex];
@@ -147,4 +145,63 @@ function formatTime(timeSeconds: number): string {
     timeString = timeStringComponents.join(', ');
   }
   return timeString;
+}
+
+export function valhallaTypeToIcon(type: number) {
+  switch (type) {
+    case 1:
+    case 2:
+    case 3:
+      return 'straight';
+    case 4:
+    case 5:
+    case 6:
+      return 'place';
+    case 7:
+    case 8:
+      return 'straight';
+    case 9:
+      return 'turn_slight_right';
+    case 10:
+      return 'turn_right';
+    case 11:
+      return 'turn_sharp_right';
+    case 12:
+      return 'u_turn_right';
+    case 13:
+      return 'u_turn_left';
+    case 14:
+      return 'turn_sharp_left';
+    case 15:
+      return 'turn_left';
+    case 16:
+      return 'turn_slight_left';
+    case 17:
+      return 'straight';
+    case 18:
+      return 'turn_slight_right';
+    case 19:
+      return 'turn_slight_left';
+    case 20:
+      return 'turn_slight_right';
+    case 21:
+      return 'turn_slight_left';
+    case 22:
+      return 'straight';
+    case 23:
+      return 'turn_slight_right';
+    case 24:
+      return 'turn_slight_left';
+    case 25:
+      return 'merge';
+    case 26:
+      return 'login';
+    case 27:
+      return 'logout';
+    case 28:
+      return 'login';
+    case 29:
+      return 'logout';
+  }
+  return '';
 }

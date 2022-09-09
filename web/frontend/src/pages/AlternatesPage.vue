@@ -96,7 +96,7 @@ var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
 
 export default defineComponent({
-  name: 'DirectionsPage',
+  name: 'AlternatesPage',
   props: {
     mode: String,
     to: String,
@@ -124,9 +124,15 @@ export default defineComponent({
         this.processRoute(this.$data.routes, index);
       }
     },
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     showSteps(route: [Route, ProcessedRouteSummary]) {
-      // TODO: Show the steps screen.
+      let index = this.$data.routes.indexOf(route);
+      if (index !== -1 && this.to && this.from) {
+        this.$router.push(
+          `/directions/${this.mode}/${encodeURIComponent(
+            this.to
+          )}/${encodeURIComponent(this.from)}/${index}`
+        );
+      }
     },
     fromUserLocation() {
       const options = {
@@ -279,7 +285,6 @@ export default defineComponent({
         if (!toPoi.value) {
           this.clearPolylines();
         }
-        // await this.rewriteUrl();
         this.resizeMap();
 
         activeMarkers.forEach((marker) => marker.remove());
@@ -304,7 +309,6 @@ export default defineComponent({
         if (!fromPoi.value) {
           this.clearPolylines();
         }
-        await this.rewriteUrl();
         this.resizeMap();
       });
     },
