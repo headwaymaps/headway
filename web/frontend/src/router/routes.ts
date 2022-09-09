@@ -41,7 +41,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/directions/:mode/:to',
         props: true,
-        component: () => import('pages/DirectionsPage.vue'),
+        component: () => import('src/pages/AlternatesPage.vue'),
       },
     ],
   },
@@ -52,7 +52,18 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/directions/:mode/:to/:from',
         props: true,
-        component: () => import('pages/DirectionsPage.vue'),
+        component: () => import('src/pages/AlternatesPage.vue'),
+      },
+    ],
+  },
+  {
+    path: '/directions/:mode/:to/:from/:alternateIndex',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: '/directions/:mode/:to/:from/:alternateIndex',
+        props: true,
+        component: () => import('src/pages/StepsPage.vue'),
       },
     ],
   },

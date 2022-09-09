@@ -11,9 +11,16 @@
   left: 0px !important;
 }
 
-.main-search-bar {
-  padding: 8px;
+.bg-secondary {
+  background-color: $secondary;
+}
+
+.search-bar {
   flex: 1;
+}
+
+.no-top-padding {
+  padding-top: 0px;
 }
 
 .over-map {
@@ -21,19 +28,37 @@
   position: fixed;
 }
 
-.place-card-close-button {
+.over-map-responsive {
+  z-index: 1;
+  @media screen and (min-width: 800px) {
+    z-index: 100;
+    position: fixed;
+  }
+}
+
+.top-left-fab {
   @extend .over-map;
-  left: 100%;
-  transform: translate(-100%);
-  margin-left: -12px;
+  margin-left: 12px;
   margin-top: 12px;
+  background-color: white;
+}
+
+.place-card-close-button {
+  left: 100%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-100%) translateY(-50%);
+  margin-left: -12px;
   z-index: 101;
 }
 
 .top-left-card {
-  @extend .over-map;
-  margin-top: 12px;
-  margin-left: 12px;
+  @extend .over-map-responsive;
+  @media screen and (min-width: 800px) {
+    margin-top: 12px;
+    margin-left: 12px;
+    min-width: 350px;
+  }
 }
 
 .bottom-card {
@@ -64,6 +89,7 @@
   margin: 0.5em;
   border-radius: 0.5em;
 }
+
 .itinerary-item-selected {
   box-shadow: 0em 0em 0.4em 0.4em #fff;
 }
@@ -87,7 +113,6 @@
 }
 
 .place-card-section {
-  margin-top: 8px;
   @media screen and (min-width: 800px) {
     margin-right: 12px;
     display: inline-block;

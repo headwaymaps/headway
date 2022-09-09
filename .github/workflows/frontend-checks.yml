@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-      - run: cd web/frontend && npm install
-      - run: cd web/frontend && npm run lint
-      - run: cd web/frontend && npm run format-check
+      - run: npm install --global yarn
+      - run: cd web/frontend && yarn install
+      - run: cd web/frontend && yarn lint
+      - run: cd web/frontend && yarn format-check
