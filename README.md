@@ -14,7 +14,7 @@
 </picture>
 </p>
 
-Headway is a maps stack in a box that makes it easy to take your location data into your own hands. With just a few commands you can bring up your own fully functional maps server. This includes a frontend, basemap, geocoder and routing engine. Over 200 different cities are currently supported.
+Headway is a maps stack in a box that makes it easy to take your location data into your own hands. With just a few commands you can bring up your own fully functional maps server. This includes a frontend, basemap, geocoder and routing engine. Choose one of the 200+ predefined cities or provide your own OpenStreetMap extract covering any area: from a neighborhood to the whole planet.
 
 See [BUILD.md](./BUILD.md) for more information about the build process.
 
