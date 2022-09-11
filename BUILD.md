@@ -2,7 +2,7 @@
 
 Setting up your own Headway instance should be fairly straightforward if you follow these docs. Feel free to open bugs if things go wrong, or PRs to improve the project though!
 
-Prerequisintes: [Install earthly.](#install-earthly)
+Prerequisites: [Install earthly.](#install-earthly)
 
 [Option 1: Building from a pre-configured city](#building-headway-from-a-supported-bbbike-extract)
 
