@@ -138,7 +138,7 @@ export default defineComponent({
       navigator.geolocation.getCurrentPosition(
         (position) => {
           fromPoi.value = {
-            name: 'My Location', // i18n
+            name: this.$t('my_location'),
             position: {
               lat: position.coords.latitude,
               long: position.coords.longitude,
@@ -149,7 +149,7 @@ export default defineComponent({
           });
         },
         (error) => {
-          useQuasar().notify('Could not get GPS location'); // i18n
+          useQuasar().notify(this.$t('could_not_get_gps_location'));
           console.error(error);
         },
         options

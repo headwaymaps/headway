@@ -25,6 +25,7 @@ import { defineComponent, Ref, ref } from 'vue';
 import { Router } from 'vue-router';
 import SearchBox from 'src/components/SearchBox.vue';
 import { LongLat } from 'src/utils/geomath';
+import { i18n } from 'src/i18n/lang';
 
 var poi: Ref<POI | undefined> = ref(undefined);
 
@@ -34,7 +35,7 @@ async function loadDroppedPinPage(router: Router, position: LongLat) {
     return;
   }
   poi.value = {
-    name: 'Dropped Pin', // i18n
+    name: i18n('dropped_pin'),
     address: undefined,
     position: position,
   };
