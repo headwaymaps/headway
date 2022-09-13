@@ -129,7 +129,7 @@ services:
     image: pelias/libpostal-service
     restart: always
   pelias_api:
-    image: pelias/api:master
+    image: docker.io/pelias/api:master
     restart: always
     environment:
       PORT: 4000
@@ -142,7 +142,7 @@ services:
       pelias_config_init:
         condition: service_completed_successfully
   peliasplaceholder:
-    image: pelias/placeholder:master
+    image: docker.io/pelias/placeholder:master
     restart: always
     environment:
       PORT: 4100
@@ -155,17 +155,10 @@ services:
       peliasplaceholder_init:
         condition: service_completed_successfully
   peliaselasticsearch:
-    image: pelias/elasticsearch:7.16.1
+    image: docker.io/pelias/elasticsearch:7.16.1
     restart: always
     volumes:
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
     cap_add: ["IPC_LOCK"]
     depends_on:
       pelias_elastic_init:
