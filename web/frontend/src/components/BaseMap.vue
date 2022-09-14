@@ -122,6 +122,22 @@ export function setBottomCardAllowance(pixels?: number) {
   map?.resize();
 }
 
+/**
+ * Polyfill for geolocation permission
+ */
+async function geolocationPermissionState(): string {
+  if (navigator.permissions === undefined) {
+    // assume "unknown" on platforms like Safari 15 which don't
+    // support the permissions API.
+    return 'prompt';
+  } else {
+    const result = await navigator.permissions.query({
+      name: 'geolocation',
+    });
+    return result.state;
+  }
+}
+
 export interface BaseMapInterface {
   flyTo: (location: [number, number], zoom: number) => void;
   fitBounds: (bounds: LngLatBoundsLike) => void;
@@ -228,26 +244,16 @@ export default defineComponent({
       this.layers = keys;
     },
     flyTo: async function (location: [number, number], zoom: number) {
-      const permissionResult = await navigator.permissions.query({
-        name: 'geolocation',
-      });
-      if (
-        this.$data.hasGeolocated === true ||
-        permissionResult.state !== 'granted'
-      ) {
+      const permissionState = await geolocationPermissionState();
+      if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
         map?.flyTo({ center: location, zoom: zoom }, { flying: true });
       } else {
         this.$data.flyToLocation = { center: location, zoom: zoom };
       }
     },
     fitBounds: async function (bounds: LngLatBoundsLike) {
-      const permissionResult = await navigator.permissions.query({
-        name: 'geolocation',
-      });
-      if (
-        this.$data.hasGeolocated === true ||
-        permissionResult.state !== 'granted'
-      ) {
+      const permissionState = await geolocationPermissionState();
+      if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
         map?.fitBounds(bounds, {
           padding: Math.min(window.innerWidth, window.innerHeight) / 8,
         });
@@ -307,12 +313,14 @@ export default defineComponent({
     map?.on('touchend', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
     setTimeout(async () => {
-      const result = await navigator.permissions.query({ name: 'geolocation' });
-      if (result.state === 'granted') {
+      const permissionState = await geolocationPermissionState();
+      if (permissionState === 'granted') {
         map?.on('load', () => {
           geolocate.trigger();
           geolocate.on('geolocate', () => {
             if (!this.$data.hasGeolocated) {
+              // prevent the default "zoom" that occurs when we automatically `trigger`
+              // the geolocate button.
               map?.stop();
               if (this.$data.flyToLocation) {
                 map?.flyTo(this.$data.flyToLocation, { flying: true });
