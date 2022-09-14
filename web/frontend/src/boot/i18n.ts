@@ -6,9 +6,10 @@ export default ({ app }: { app: App }) => {
   app.use(createI18nForApp());
 };
 
-export const createI18nForApp = () => createI18n({
-  locale: navigator.language,
-  fallbackLocale: 'en-US',
-  globalInjection: true,
-  messages,
-});
+export const createI18nForApp = () =>
+  createI18n({
+    locale: navigator.language,
+    fallbackLocale: 'en-US',
+    globalInjection: true,
+    messages,
+  });
