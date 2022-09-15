@@ -125,7 +125,7 @@ export function setBottomCardAllowance(pixels?: number) {
 /**
  * Polyfill for geolocation permission
  */
-async function geolocationPermissionState(): string {
+async function geolocationPermissionState(): Promise<string> {
   if (navigator.permissions === undefined) {
     // assume "unknown" on platforms like Safari 15 which don't
     // support the permissions API.
