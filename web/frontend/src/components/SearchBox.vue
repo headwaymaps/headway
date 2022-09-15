@@ -103,6 +103,8 @@ export default defineComponent({
     const poiSelected: Ref<POI | undefined> = ref(undefined);
     const poiHovered: Ref<POI | undefined> = ref(undefined);
     const autocompleteOptions: Ref<(POI | undefined)[]> = ref([]);
+    let requestIdx = 0;
+    let mostRecentResultsRequestIdx = 0;
 
     var hoverMarker: Marker | undefined = undefined;
 
@@ -123,11 +125,22 @@ export default defineComponent({
       } else {
         url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}`;
       }
+      const thisRequestIdx = requestIdx;
+      requestIdx++;
       const response = await fetch(url);
       if (response.status != 200) {
-        autocompleteOptions.value = [];
+        if (thisRequestIdx > mostRecentResultsRequestIdx) {
+          autocompleteOptions.value = [];
+        }
         return;
       }
+      if (thisRequestIdx < mostRecentResultsRequestIdx) {
+        // console.debug(`not updating autocomplete for req #${thisRequestIdx} because req #${mostRecentResultsRequestIdx} completed in the meanwhile.`);
+        return;
+      }
+      // console.debug(`updating autocomplete for req #${thisRequestIdx}`);
+      mostRecentResultsRequestIdx = thisRequestIdx;
+
       const results = await response.json();
       var options: POI[] = [];
       for (const feature of results.features) {
