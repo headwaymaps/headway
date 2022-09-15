@@ -5,7 +5,7 @@
         <div :style="{ display: 'flex', alignItems: 'center' }">
           <search-box
             ref="searchBox"
-            hint="From"
+            :hint="$t('search.from')"
             :style="{ flex: 1 }"
             v-model="fromPoi"
             :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
@@ -26,7 +26,7 @@
       <q-card-section class="no-top-padding">
         <search-box
           ref="searchBox"
-          hint="To"
+          :hint="$t('search.to')"
           v-model="toPoi"
           :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
           v-on:update:model-value="rewriteUrl"
@@ -53,7 +53,7 @@
               }}</span>
             </q-item-label>
             <q-item-label caption v-if="item[1].viaRoadsFormatted.length !== 0">
-              {{ 'Via ' + item[1].viaRoadsFormatted }}
+              {{ $t('via_$place', { place: item[1].viaRoadsFormatted }) }}
             </q-item-label>
           </q-item-section>
 
