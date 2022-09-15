@@ -6,7 +6,7 @@ Headway should be easy to use. This should inform all decisions made for the pro
 
 ## Privacy
 
-Headway should not persist data about its users on the backend under any circumstances. A user's recourse for decididng that they don't trust maps.earth should always be available, celebrated and encouraged: hosting their own instance.
+Headway should not persist data about its users on the backend under any circumstances. A user's recourse for deciding that they don't trust [maps.earth](https://maps.earth/) should always be available, celebrated and encouraged: hosting their own instance.
 
 ## Responsibility
 
