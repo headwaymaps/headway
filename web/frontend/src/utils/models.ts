@@ -1,5 +1,6 @@
 import addressFormatter from '@fragaria/address-formatter';
 import {} from 'maplibre-gl';
+import { LongLat } from './geomath';
 
 const addressKeys = [
   'archipelago',
@@ -71,11 +72,6 @@ export interface POI {
   address?: string | null;
   position?: LongLat;
   gid?: string;
-}
-
-export interface LongLat {
-  long: number;
-  lat: number;
 }
 
 export function poiDisplayName(poi: POI | undefined): string {
@@ -210,4 +206,8 @@ export function localizeAddress(properties: any, oneLine = true): string {
     return address.trim().replaceAll('\n', ', ');
   }
   return address;
+}
+
+export function isDense(): boolean {
+  return window.innerWidth <= 800;
 }

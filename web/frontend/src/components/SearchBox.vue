@@ -2,13 +2,14 @@
   <div>
     <q-input
       ref="autoCompleteInput"
-      class="main-search-bar"
-      :label="$props.hint ? $props.hint : 'Where to?'"
+      class="search-bar"
+      :label="$props.hint ? $props.hint : $t('where_to_question')"
       v-model="inputText"
       :clearable="true"
       :input-style="{ color: 'black' }"
       :outlined="true"
       :debounce="0"
+      :dense="true"
       v-on:clear="() => selectPoi(undefined)"
       v-on:blur="deferHide(castToMenu($refs.autoCompleteMenu))"
       v-on:beforeinput="
@@ -57,15 +58,15 @@
 import { defineComponent, Ref, ref } from 'vue';
 import {
   localizeAddress,
-  LongLat,
   POI,
   poiDisplayName,
   decanonicalizePoi,
   canonicalizePoi,
-} from 'src/components/models';
+} from 'src/utils/models';
 import { Event, Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
 import { QMenu } from 'quasar';
+import { LongLat } from 'src/utils/geomath';
 
 const isAndroid = /(android)/i.test(navigator.userAgent);
 
