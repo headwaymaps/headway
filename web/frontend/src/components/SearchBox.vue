@@ -130,15 +130,15 @@ export default defineComponent({
       const response = await fetch(url);
       if (response.status != 200) {
         if (thisRequestIdx > mostRecentResultsRequestIdx) {
+          // Don't clobber existing good results with an error from a stale request
           autocompleteOptions.value = [];
         }
         return;
       }
       if (thisRequestIdx < mostRecentResultsRequestIdx) {
-        // console.debug(`not updating autocomplete for req #${thisRequestIdx} because req #${mostRecentResultsRequestIdx} completed in the meanwhile.`);
+        // not updating autocomplete for a stale req
         return;
       }
-      // console.debug(`updating autocomplete for req #${thisRequestIdx}`);
       mostRecentResultsRequestIdx = thisRequestIdx;
 
       const results = await response.json();
