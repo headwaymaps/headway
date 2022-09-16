@@ -224,9 +224,11 @@ pelias-import:
             --service pelias_schema \
             --service pelias_elasticsearch \
             --service pelias_openstreetmap \
+            --service pelias_whosonfirst \
             --service pelias_polylines_import
         RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index" && \
             docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start" && \
+            docker-compose run -T 'pelias_whosonfirst' bash -c "/tools/wait.sh && ./bin/start" && \
             docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
     END
     SAVE ARTIFACT /data/elasticsearch /elasticsearch

@@ -13,6 +13,7 @@ services:
     container_name: pelias_whosonfirst
     volumes:
       - "./pelias.json:/code/pelias.json"
+      - "./tools:/tools:ro"
       - "${DATA_DIR}:/data"
   pelias_polylines_prepare:
     image: pelias/polylines:master
@@ -32,7 +33,7 @@ services:
   pelias_placeholder:
     image: pelias/placeholder:master
     container_name: pelias_placeholder
-    environment: ["PORT=4100"]
+    environment: [ "PORT=4100" ]
     volumes:
       - "./pelias.json:/code/pelias.json"
       - "${DATA_DIR}:/data"
@@ -59,7 +60,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    cap_add: ["IPC_LOCK"]
+    cap_add: [ "IPC_LOCK" ]
     networks:
       default:
         aliases:
