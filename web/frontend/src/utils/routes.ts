@@ -1,3 +1,5 @@
+import { i18n } from 'src/i18n/lang';
+
 export interface RouteLegManeuver {
   begin_shape_index: number;
   end_shape_index: number;
@@ -70,11 +72,15 @@ export function summarizeRoute(route: Route): ProcessedRouteSummary {
     timeSeconds: route.summary.time,
     viaRoads: viaRoads,
     timeFormatted: formatTime(route.summary.time),
-    viaRoadsFormatted: viaRoads.join(', '), // i18n
+    viaRoadsFormatted: viaRoads.join(
+      i18n.global.t('punctuation_list_seperator')
+    ),
     lengthFormatted:
       route.summary.length.toFixed(1) +
       ' ' +
-      route.units.replace('kilometers', 'km').replace('miles', 'mi'), // i18n
+      route.units
+        .replace('kilometers', i18n.global.t('shortened_distances.kilometers'))
+        .replace('miles', i18n.global.t('shortened_distances.miles')),
   };
 }
 
@@ -119,30 +125,38 @@ function formatTime(timeSeconds: number): string {
   const totalMinutes = Math.round(timeSeconds / 60);
   let timeString = '';
   if (totalMinutes < 1) {
-    timeString = Math.round(timeSeconds) + ' seconds'; // i18n
+    timeString = i18n.global.t('times.$n_seconds', {
+      n: Math.round(timeSeconds),
+    });
   } else if (totalMinutes < 60) {
-    timeString = totalMinutes + ' minutes'; // i18n
+    timeString = i18n.global.t('times.$n_minutes', { n: totalMinutes });
   } else {
     const days = Math.floor(totalMinutes / 60 / 24);
     const hours = Math.floor((totalMinutes - days * 24 * 60) / 60);
     const minutes = Math.round(totalMinutes - days * 24 * 60 - hours * 60);
     const timeStringComponents = [];
     if (days == 1) {
-      timeStringComponents.push(days + ' day');
+      timeStringComponents.push(i18n.global.t('times.$n_day', { n: days }));
     } else if (days > 1) {
-      timeStringComponents.push(days + ' days');
+      timeStringComponents.push(i18n.global.t('times.$n_days', { n: days }));
     }
     if (hours == 1) {
-      timeStringComponents.push(hours + ' hour');
+      timeStringComponents.push(i18n.global.t('times.$n_hour', { n: hours }));
     } else if (hours > 1) {
-      timeStringComponents.push(hours + ' hours');
+      timeStringComponents.push(i18n.global.t('times.$n_hours', { n: hours }));
     }
     if (minutes == 1) {
-      timeStringComponents.push(minutes + ' minute');
+      timeStringComponents.push(
+        i18n.global.t('times.$n_minute', { n: minutes })
+      );
     } else if (minutes > 1) {
-      timeStringComponents.push(minutes + ' minutes');
+      timeStringComponents.push(
+        i18n.global.t('times.$n_minutes', { n: minutes })
+      );
     }
-    timeString = timeStringComponents.join(', ');
+    timeString = timeStringComponents.join(
+      i18n.global.t('punctuation_list_seperator')
+    );
   }
   return timeString;
 }
