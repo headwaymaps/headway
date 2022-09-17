@@ -25,7 +25,7 @@
             clickable
             v-on:click="$router.push(`/multimodal/${encodePoi($props.poi)}/_`)"
           >
-            Transit
+            {{ $t('modes.transit') }}
           </q-chip>
           <q-chip
             icon="directions_car"
@@ -34,7 +34,7 @@
               $router.push(`/directions/car/${encodePoi($props.poi)}/_`)
             "
           >
-            Drive
+            {{ $t('modes.drive') }}
           </q-chip>
           <q-chip
             icon="directions_bike"
@@ -43,7 +43,7 @@
               $router.push(`/directions/bicycle/${encodePoi($props.poi)}/_`)
             "
           >
-            Bike
+            {{ $t('modes.bike') }}
           </q-chip>
           <q-chip
             icon="directions_walk"
@@ -52,7 +52,7 @@
               $router.push(`/directions/walk/${encodePoi($props.poi)}/_`)
             "
           >
-            Walk
+            {{ $t('modes.walk') }}
           </q-chip>
         </div>
       </div>

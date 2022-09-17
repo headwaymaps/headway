@@ -35,7 +35,7 @@ async function loadDroppedPinPage(router: Router, position: LongLat) {
     return;
   }
   poi.value = {
-    name: i18n('dropped_pin'),
+    name: i18n.global.t('dropped_pin'),
     address: undefined,
     position: position,
   };

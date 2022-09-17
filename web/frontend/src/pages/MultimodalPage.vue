@@ -5,7 +5,7 @@
         <div :style="{ display: 'flex', alignItems: 'center' }">
           <search-box
             ref="searchBox"
-            hint="From"
+            :hint="$t('search.from')"
             :style="{ flex: 1 }"
             v-model="fromPoi"
             :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
@@ -26,7 +26,7 @@
       <q-card-section class="no-top-padding">
         <search-box
           ref="searchBox"
-          hint="To"
+          :hint="$t('search.to')"
           v-model="toPoi"
           :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
           v-on:update:model-value="rewriteUrl"
@@ -211,7 +211,7 @@ export default defineComponent({
       navigator.geolocation.getCurrentPosition(
         (position) => {
           fromPoi.value = {
-            name: 'My Location', // i18n
+            name: this.$t('my_location'),
             position: {
               lat: position.coords.latitude,
               long: position.coords.longitude,
@@ -222,7 +222,7 @@ export default defineComponent({
           });
         },
         (error) => {
-          useQuasar().notify('Could not get GPS location'); // i18n
+          useQuasar().notify(this.$t('could_not_get_gps_location'));
           console.error(error);
         },
         options
