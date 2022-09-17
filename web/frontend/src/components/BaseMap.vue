@@ -251,12 +251,18 @@ export default defineComponent({
         this.$data.flyToLocation = { center: location, zoom: zoom };
       }
     },
-    fitBounds: async function (bounds: LngLatBoundsLike) {
+    fitBounds: async function (
+      bounds: LngLatBoundsLike,
+      options: FitBoundsOptions = {}
+    ) {
       const permissionState = await geolocationPermissionState();
+      const defaultOptions = {
+        padding: Math.min(window.innerWidth, window.innerHeight) / 8,
+      };
+      options = { ...defaultOptions, ...(options || {}) };
+
       if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
-        map?.fitBounds(bounds, {
-          padding: Math.min(window.innerWidth, window.innerHeight) / 8,
-        });
+        map?.fitBounds(bounds, options);
       } else {
         this.$data.boundsToFit = bounds;
       }

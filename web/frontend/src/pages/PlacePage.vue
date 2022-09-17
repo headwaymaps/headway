@@ -35,7 +35,7 @@ async function loadPlacePage(router: Router, canonicalName: string) {
   if (poi.bbox) {
     // prefer bounds when available so we don't "overzoom" on a large
     // entity like an entire city.
-    getBaseMap()?.fitBounds(poi.bbox);
+    getBaseMap()?.fitBounds(poi.bbox, { maxZoom: 16 });
   } else if (poi.position) {
     getBaseMap()?.flyTo([poi.position.long, poi.position.lat], 16);
   }
