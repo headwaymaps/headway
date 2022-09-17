@@ -155,6 +155,7 @@ export default defineComponent({
           address: address,
           key: feature.properties.osm_id,
           position: position,
+          bbox: feature.bbox,
           gid: feature?.properties?.gid,
         });
       }

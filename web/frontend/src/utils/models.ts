@@ -72,6 +72,7 @@ export interface POI {
   name?: string | null;
   address?: string | null;
   position?: LongLat;
+  bbox?: [number, number, number, number];
   gid?: string;
 }
 
@@ -137,6 +138,7 @@ export async function decanonicalizePoi(
         address: address,
         key: feature.properties.osm_id,
         position: position,
+        bbox: feature.bbox,
         gid: feature?.properties?.gid,
       };
     }
