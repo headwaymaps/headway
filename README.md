@@ -28,4 +28,4 @@ Headway has been confirmed working on amd64 machines running Linux and macOS. Th
 
 ### License
 
-Headway is available freely under the terms of the Apache License, verion 2.0. Please consider opening a PR for any enhancements or bugfixes!
+Headway is available freely under the terms of the Apache License, version 2.0. Please consider opening a PR for any enhancements or bugfixes!
