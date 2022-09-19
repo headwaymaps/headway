@@ -22,13 +22,13 @@ fdm('Zero fast distance at 30, 30', () => {
 fdm('E/W fast distance at 0, 0', () => {
   result = fastDistanceMeters({ long: 0, lat: 0 }, { long: 0.0001, lat: 0 });
 
-  is(result.toFixed(2), (11.12).toFixed(2));
+  is(result, 11.119492664455873);
 });
 
 fdm('N/S fast distance at 0, 0', () => {
   result = fastDistanceMeters({ long: 0, lat: 0.0001 }, { long: 0, lat: 0 });
 
-  is(result.toFixed(2), (11.12).toFixed(2));
+  is(result, 11.119492664455873);
 });
 
 fdm('Diagonal fast distance at 0, 0', () => {
@@ -37,7 +37,7 @@ fdm('Diagonal fast distance at 0, 0', () => {
     { long: -0.0001, lat: 0 }
   );
 
-  is(result.toFixed(2), (15.73).toFixed(2));
+  is(result, 15.725337332778645);
 });
 
 fdm('E/W fast distance at 30, 30', () => {
@@ -46,7 +46,7 @@ fdm('E/W fast distance at 30, 30', () => {
     { long: 30.0001, lat: 30 }
   );
 
-  is(result.toFixed(2), (9.63).toFixed(2));
+  is(result, 9.629763124591058);
 });
 
 fdm('N/S fast distance at 30, 30', () => {
@@ -55,7 +55,7 @@ fdm('N/S fast distance at 30, 30', () => {
     { long: 30, lat: 30 }
   );
 
-  is(result.toFixed(2), (11.12).toFixed(2));
+  is(result, 11.11949266442996);
 });
 
 fdm('Diagonal fast distance at 30, 30', () => {
@@ -64,7 +64,7 @@ fdm('Diagonal fast distance at 30, 30', () => {
     { long: 29.9999, lat: 30 }
   );
 
-  is(result.toFixed(2), (14.71).toFixed(2));
+  is(result, 14.709702971397666);
 });
 
 fdm.run();
@@ -98,7 +98,7 @@ fpdm('Singe-segment polyline distance', () => {
     { long: 30.0001, lat: 30 },
   ]);
 
-  is(result.toFixed(2), (9.63).toFixed(2));
+  is(result, 9.629763124591058);
 });
 
 fpdm('Two-segment polyline distance', () => {
@@ -108,7 +108,7 @@ fpdm('Two-segment polyline distance', () => {
     { long: 30.0002, lat: 30.0001 },
   ]);
 
-  is(result.toFixed(2), (24.34).toFixed(2));
+  is(result, 24.339466095988726);
 });
 
 fpdm.run();
