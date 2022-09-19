@@ -1,5 +1,5 @@
 import addressFormatter from '@fragaria/address-formatter';
-import {} from 'maplibre-gl';
+import { LngLatBoundsLike } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import { LongLat } from './geomath';
 
@@ -72,7 +72,7 @@ export interface POI {
   name?: string | null;
   address?: string | null;
   position?: LongLat;
-  bbox?: [number, number, number, number];
+  bbox?: LngLatBoundsLike;
   gid?: string;
 }
 
