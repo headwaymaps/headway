@@ -1,84 +1,114 @@
-import { expect, test } from '@jest/globals';
+import { suite } from 'uvu';
+import { is } from 'uvu/assert';
+
 import { fastDistanceMeters, fastPolylineDistanceMeters } from './geomath';
 
-test('Zero fast distance at 0, 0', () => {
-  expect(fastDistanceMeters({ long: 0, lat: 0 }, { long: 0, lat: 0 })).toBe(0);
+let result;
+
+const fdm = suite('fastDistanceMeters');
+
+fdm('Zero fast distance at 0, 0', () => {
+  result = fastDistanceMeters({ long: 0, lat: 0 }, { long: 0, lat: 0 });
+
+  is(result, 0);
 });
 
-test('Zero fast distance at 30, 30', () => {
-  expect(fastDistanceMeters({ long: 30, lat: 30 }, { long: 30, lat: 30 })).toBe(
-    0
+fdm('Zero fast distance at 30, 30', () => {
+  result = fastDistanceMeters({ long: 30, lat: 30 }, { long: 30, lat: 30 });
+
+  is(result, 0);
+});
+
+fdm('E/W fast distance at 0, 0', () => {
+  result = fastDistanceMeters({ long: 0, lat: 0 }, { long: 0.0001, lat: 0 });
+
+  is(result.toFixed(2), (11.12).toFixed(2));
+});
+
+fdm('N/S fast distance at 0, 0', () => {
+  result = fastDistanceMeters({ long: 0, lat: 0.0001 }, { long: 0, lat: 0 });
+
+  is(result.toFixed(2), (11.12).toFixed(2));
+});
+
+fdm('Diagonal fast distance at 0, 0', () => {
+  result = fastDistanceMeters(
+    { long: 0, lat: 0.0001 },
+    { long: -0.0001, lat: 0 }
   );
+
+  is(result.toFixed(2), (15.73).toFixed(2));
 });
 
-test('E/W fast distance at 0, 0', () => {
-  expect(
-    fastDistanceMeters({ long: 0, lat: 0 }, { long: 0.0001, lat: 0 })
-  ).toBeCloseTo(11.12);
+fdm('E/W fast distance at 30, 30', () => {
+  result = fastDistanceMeters(
+    { long: 30, lat: 30 },
+    { long: 30.0001, lat: 30 }
+  );
+
+  is(result.toFixed(2), (9.63).toFixed(2));
 });
 
-test('N/S fast distance at 0, 0', () => {
-  expect(
-    fastDistanceMeters({ long: 0, lat: 0.0001 }, { long: 0, lat: 0 })
-  ).toBeCloseTo(11.12);
+fdm('N/S fast distance at 30, 30', () => {
+  result = fastDistanceMeters(
+    { long: 30, lat: 30.0001 },
+    { long: 30, lat: 30 }
+  );
+
+  is(result.toFixed(2), (11.12).toFixed(2));
 });
 
-test('Diagonal fast distance at 0, 0', () => {
-  expect(
-    fastDistanceMeters({ long: 0, lat: 0.0001 }, { long: -0.0001, lat: 0 })
-  ).toBeCloseTo(15.73);
+fdm('Diagonal fast distance at 30, 30', () => {
+  result = fastDistanceMeters(
+    { long: 30, lat: 30.0001 },
+    { long: 29.9999, lat: 30 }
+  );
+
+  is(result.toFixed(2), (14.71).toFixed(2));
 });
 
-test('E/W fast distance at 30, 30', () => {
-  expect(
-    fastDistanceMeters({ long: 30, lat: 30 }, { long: 30.0001, lat: 30 })
-  ).toBeCloseTo(9.63);
+fdm.run();
+
+const fpdm = suite('fastPolylineDistanceMeters');
+
+fpdm('Empty polyline distance zero', () => {
+  result = fastPolylineDistanceMeters([]);
+
+  is(result, 0);
 });
 
-test('N/S fast distance at 30, 30', () => {
-  expect(
-    fastDistanceMeters({ long: 30, lat: 30.0001 }, { long: 30, lat: 30 })
-  ).toBeCloseTo(11.12);
+fpdm('Single-point polyline distance zero', () => {
+  result = fastPolylineDistanceMeters([{ long: 70, lat: 70 }]);
+
+  is(result, 0);
 });
 
-test('Diagonal fast distance at 30, 30', () => {
-  expect(
-    fastDistanceMeters({ long: 30, lat: 30.0001 }, { long: 29.9999, lat: 30 })
-  ).toBeCloseTo(14.71);
+fpdm('Colocated polyline distance zero', () => {
+  result = fastPolylineDistanceMeters([
+    { long: 70, lat: -70 },
+    { long: 70, lat: -70 },
+  ]);
+
+  is(result, 0);
 });
 
-test('Empty polyline distance zero', () => {
-  expect(fastPolylineDistanceMeters([])).toBe(0);
+fpdm('Singe-segment polyline distance', () => {
+  result = fastPolylineDistanceMeters([
+    { long: 30, lat: 30 },
+    { long: 30.0001, lat: 30 },
+  ]);
+
+  is(result.toFixed(2), (9.63).toFixed(2));
 });
 
-test('Single-point polyline distance zero', () => {
-  expect(fastPolylineDistanceMeters([{ long: 70, lat: 70 }])).toBe(0);
+fpdm('Two-segment polyline distance', () => {
+  result = fastPolylineDistanceMeters([
+    { long: 30, lat: 30 },
+    { long: 30.0001, lat: 30 },
+    { long: 30.0002, lat: 30.0001 },
+  ]);
+
+  is(result.toFixed(2), (24.34).toFixed(2));
 });
 
-test('Colocated polyline distance zero', () => {
-  expect(
-    fastPolylineDistanceMeters([
-      { long: 70, lat: -70 },
-      { long: 70, lat: -70 },
-    ])
-  ).toBe(0);
-});
-
-test('Singe-segment polyline distance', () => {
-  expect(
-    fastPolylineDistanceMeters([
-      { long: 30, lat: 30 },
-      { long: 30.0001, lat: 30 },
-    ])
-  ).toBeCloseTo(9.63);
-});
-
-test('Two-segment polyline distance', () => {
-  expect(
-    fastPolylineDistanceMeters([
-      { long: 30, lat: 30 },
-      { long: 30.0001, lat: 30 },
-      { long: 30.0002, lat: 30.0001 },
-    ])
-  ).toBeCloseTo(24.34);
-});
+fpdm.run();
