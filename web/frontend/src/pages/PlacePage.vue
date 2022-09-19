@@ -28,9 +28,19 @@ import SearchBox from 'src/components/SearchBox.vue';
 
 async function loadPlacePage(router: Router, canonicalName: string) {
   const poi = await decanonicalizePoi(canonicalName);
+  if (poi === undefined) {
+    return poi;
+  }
 
-  if (poi?.position) {
+  if (poi.bbox) {
+    // prefer bounds when available so we don't "overzoom" on a large
+    // entity like an entire city.
+    getBaseMap()?.fitBounds(poi.bbox, { maxZoom: 16 });
+  } else if (poi.position) {
     getBaseMap()?.flyTo([poi.position.long, poi.position.lat], 16);
+  }
+
+  if (poi.position) {
     getBaseMap()?.pushMarker(
       'active_marker',
       new Marker({ color: '#111111' }).setLngLat([
@@ -39,8 +49,9 @@ async function loadPlacePage(router: Router, canonicalName: string) {
       ])
     );
     getBaseMap()?.removeMarkersExcept(['active_marker']);
-    return poi;
   }
+
+  return poi;
 }
 
 export default defineComponent({

@@ -1,5 +1,5 @@
 import addressFormatter from '@fragaria/address-formatter';
-import {} from 'maplibre-gl';
+import { LngLatBoundsLike } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import { LongLat } from './geomath';
 
@@ -72,6 +72,7 @@ export interface POI {
   name?: string | null;
   address?: string | null;
   position?: LongLat;
+  bbox?: LngLatBoundsLike;
   gid?: string;
 }
 
@@ -137,6 +138,7 @@ export async function decanonicalizePoi(
         address: address,
         key: feature.properties.osm_id,
         position: position,
+        bbox: feature.bbox,
         gid: feature?.properties?.gid,
       };
     }
