@@ -15,6 +15,10 @@ spec:
       initContainers:
         - name: opentripplanner-init
           image: ghcr.io/headwaymaps/opentripplanner-init:maps-dot-earth
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
           imagePullPolicy: Always
           volumeMounts:
             - name: opentripplanner-volume
@@ -35,6 +39,10 @@ spec:
       containers:
         - name: opentripplanner
           image: ghcr.io/headwaymaps/opentripplanner:maps-dot-earth
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
