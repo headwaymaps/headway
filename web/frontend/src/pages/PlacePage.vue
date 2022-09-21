@@ -20,7 +20,7 @@ import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 
-async function loadPlacePage(poi: POI | undefined) {
+async function renderOnMap(poi: POI | undefined) {
   if (poi === undefined) {
     return;
   }
@@ -57,29 +57,25 @@ export default defineComponent({
       poi: {},
     };
   },
-  watch: {
-    poi(newValue, oldValue) {
-      setTimeout(async () => {
-        if (newValue) {
-          // Update the path if the POI has changed _after_ the initial page
-          // load.
-          if (oldValue?.gid) {
-            const gidComponent = encodeURIComponent(newValue.gid);
-            this.$router.push(`/place/${gidComponent}`);
-          }
-          await loadPlacePage(newValue);
-          this.$emit('loadedPoi', this.$data.poi);
-        } else {
-          this.$router.push('/');
-        }
-      });
-    },
-  },
+  watch: {},
   methods: {
     poiDisplayName,
   },
   mounted: async function () {
-    this.$data.poi = await decanonicalizePoi(this.$props.osm_id);
+    const poi = await decanonicalizePoi(this.$props.osm_id);
+    this.$data.poi = poi;
+
+    await renderOnMap(poi);
+    this.$emit('loadedPoi', poi);
+
+    // watch *after* initial render
+    this.$watch('poi', async (newValue) => {
+      const gidComponent = encodeURIComponent(newValue.gid);
+      this.$router.push(`/place/${gidComponent}`);
+
+      await renderOnMap(newValue);
+      this.$emit('loadedPoi', newValue);
+    });
   },
   setup: function () {
     return {};
