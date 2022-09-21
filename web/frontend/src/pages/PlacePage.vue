@@ -15,21 +15,14 @@
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
-import {
-  encodePoi,
-  decanonicalizePoi,
-  POI,
-  poiDisplayName,
-} from 'src/utils/models';
+import { decanonicalizePoi, POI, poiDisplayName } from 'src/utils/models';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
-import { Router } from 'vue-router';
 import SearchBox from 'src/components/SearchBox.vue';
 
-async function loadPlacePage(router: Router, canonicalName: string) {
-  const poi = await decanonicalizePoi(canonicalName);
+async function loadPlacePage(poi: POI | undefined) {
   if (poi === undefined) {
-    return poi;
+    return;
   }
 
   if (poi.bbox) {
@@ -50,8 +43,6 @@ async function loadPlacePage(router: Router, canonicalName: string) {
     );
     getBaseMap()?.removeMarkersExcept(['active_marker']);
   }
-
-  return poi;
 }
 
 export default defineComponent({
@@ -70,7 +61,7 @@ export default defineComponent({
     poi(newValue) {
       setTimeout(async () => {
         if (newValue) {
-          await loadPlacePage(this.$router, encodePoi(newValue));
+          await loadPlacePage(this.$router, newValue);
           this.$emit('loadedPoi', this.$data.poi);
         } else {
           this.$router.push('/');
@@ -92,9 +83,10 @@ export default defineComponent({
   },
   mounted: async function () {
     setTimeout(async () => {
+      const poi = await decanonicalizePoi(this.$props.osm_id);
       this.$data.poi = (await loadPlacePage(
         this.$router,
-        this.$props.osm_id as string
+        poi
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       )) as any;
       this.$emit('loadedPoi', this.$data.poi);
