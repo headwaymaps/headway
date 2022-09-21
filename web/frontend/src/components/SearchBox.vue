@@ -56,6 +56,7 @@
 
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
+import { throttle } from 'lodash';
 import {
   localizeAddress,
   POI,
@@ -108,7 +109,7 @@ export default defineComponent({
 
     var hoverMarker: Marker | undefined = undefined;
 
-    const updateAutocomplete = async function (
+    const _updateAutocomplete = async function (
       currentTextValue: string,
       target?: HTMLInputElement
     ) {
@@ -161,6 +162,11 @@ export default defineComponent({
       }
       autocompleteOptions.value = options;
     };
+    const throttleMs = 200;
+    const updateAutocomplete = throttle(_updateAutocomplete, throttleMs, {
+      trailing: true,
+    });
+
     return {
       inputText,
       autocompleteOptions,
