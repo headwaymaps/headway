@@ -20,11 +20,7 @@ import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 
-async function renderOnMap(poi: POI | undefined) {
-  if (poi === undefined) {
-    return;
-  }
-
+async function renderOnMap(poi: POI) {
   if (poi.bbox) {
     // prefer bounds when available so we don't "overzoom" on a large
     // entity like an entire city.
@@ -65,8 +61,12 @@ export default defineComponent({
     const poi = await decanonicalizePoi(this.$props.osm_id);
     this.$data.poi = poi;
 
-    await renderOnMap(poi);
-    this.$emit('loadedPoi', poi);
+    if (poi) {
+      await renderOnMap(poi);
+      this.$emit('loadedPoi', poi);
+    } else {
+      console.warn(`unable to find POI with osm_id: ${this.$props.osm_id}`);
+    }
 
     // watch *after* initial render
     this.$watch('poi', async (newValue) => {
