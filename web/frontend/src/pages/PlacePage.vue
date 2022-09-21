@@ -58,10 +58,16 @@ export default defineComponent({
     };
   },
   watch: {
-    poi(newValue) {
+    poi(newValue, oldValue) {
       setTimeout(async () => {
         if (newValue) {
-          await loadPlacePage(this.$router, newValue);
+          // Update the path if the POI has changed _after_ the initial page
+          // load.
+          if (oldValue?.gid) {
+            const gidComponent = encodeURIComponent(newValue.gid);
+            this.$router.push(`/place/${gidComponent}`);
+          }
+          await loadPlacePage(newValue);
           this.$emit('loadedPoi', this.$data.poi);
         } else {
           this.$router.push('/');
@@ -71,26 +77,9 @@ export default defineComponent({
   },
   methods: {
     poiDisplayName,
-    poiSelected: function (poi?: POI) {
-      getBaseMap()?.removeMarkersExcept([]);
-      if (poi?.gid) {
-        const gidComponent = encodeURIComponent(poi?.gid);
-        this.$router.push(`/place/${gidComponent}`);
-      } else {
-        this.$router.push('/');
-      }
-    },
   },
   mounted: async function () {
-    setTimeout(async () => {
-      const poi = await decanonicalizePoi(this.$props.osm_id);
-      this.$data.poi = (await loadPlacePage(
-        this.$router,
-        poi
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      )) as any;
-      this.$emit('loadedPoi', this.$data.poi);
-    });
+    this.$data.poi = await decanonicalizePoi(this.$props.osm_id);
   },
   setup: function () {
     return {};
