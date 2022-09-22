@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Run formatting and linting checks.
+#
+# The checks should align with our CI checks in .github/workflows/frontend-checks.yml
+#
+# To automatically run before each commit, copy or symlink this into .git/hooks/
+#
+# You can commit without running the checks by running `git commit --no-verify` if need be.
+
+set -e
+
+cd web/frontend
+
+yarn lint
+yarn format-check
