@@ -12,10 +12,24 @@ import maplibregl, {
   SourceSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import Prefs from 'src/utils/Prefs';
+import { debounce } from 'lodash';
 
 export var map: maplibregl.Map | null = null;
 
 async function loadMap() {
+  let initialCenter = [0, 0];
+  let initialZoom = 1;
+
+  const mostRecentMapCenter = Prefs.stored().mostRecentMapCenter();
+  if (mostRecentMapCenter) {
+    initialCenter = mostRecentMapCenter;
+    const mostRecentMapZoom = Prefs.stored().mostRecentMapZoom();
+    if (mostRecentMapZoom) {
+      initialZoom = Math.min(10, mostRecentMapZoom);
+    }
+  }
+
   const response = await fetch('/bbox.txt');
   if (response.status != 200) {
     // TODO surface error
@@ -27,7 +41,8 @@ async function loadMap() {
     map = new maplibregl.Map({
       container: 'map', // container id
       style: '/styles/style/style.json', // style URL
-      zoom: 1, // starting zoom
+      center: initialCenter, // starting position [lng, lat]
+      zoom: initialZoom, // starting zoom
       trackResize: true,
     });
   } else {
@@ -50,9 +65,9 @@ async function loadMap() {
     map = new maplibregl.Map({
       container: 'map', // container id
       style: '/styles/style/style.json', // style URL
-      center: [0, 0], // starting position [lng, lat]
+      center: initialCenter, // starting position [lng, lat]
       maxBounds: maxBounds,
-      zoom: 1, // starting zoom
+      zoom: initialZoom, // starting zoom
       trackResize: true,
     });
   }
@@ -318,6 +333,14 @@ export default defineComponent({
     map?.on('touchup', () => clearAllTimeouts());
     map?.on('touchend', () => clearAllTimeouts());
     map?.on('move', () => clearAllTimeouts());
+
+    map?.on(
+      'moveend',
+      debounce(() => {
+        Prefs.stored().setMostRecentMapCenter(map.getCenter());
+        Prefs.stored().setMostRecentMapZoom(map.getZoom());
+      }, 2000)
+    );
     setTimeout(async () => {
       const permissionState = await geolocationPermissionState();
       if (permissionState === 'granted') {
