@@ -15,6 +15,7 @@
     "@fragaria/address-formatter": "^3.0.1",
     "@quasar/extras": "^1.0.0",
     "@types/vue-i18n": "^7.0.0",
+    "lodash": "^4.17.21",
     "maplibre-gl": "^2.3.0",
     "quasar": "^2.6.0",
     "vite-plugin-rewrite-all": "^1.0.0",
