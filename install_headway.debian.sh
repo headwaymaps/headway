@@ -140,7 +140,7 @@ git config pull.ff only
 git pull" > /usr/local/bin/upgrade_and_recreate_headway.sh
 if [ "$CUSTOM_EXTRACT" = true ] ; then
   echo "# Uncomment the next line and modify the URL to enable the automatic daily download of your fresh custom extract."
-  echo "#wget -nv https://custom.site/customextract.pbf -O mycustomextract.osm.pbf" >> /usr/local/bin/upgrade_and_recreate_headway.sh
+  echo "#wget -nv https://custom.site/customextract.pbf -O /home/${USER}/headway/mycustomextract.osm.pbf" >> /usr/local/bin/upgrade_and_recreate_headway.sh
   echo "earthly prune && earthly build -P +build --area=${AREA} --countries=${COUNTRIES}"  >> /usr/local/bin/upgrade_and_recreate_headway.sh
 else
    echo "earthly prune && earthly build -P +build --area=${AREA}" >> /usr/local/bin/upgrade_and_recreate_headway.sh
