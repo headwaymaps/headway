@@ -187,7 +187,7 @@ if wget -nv ${PUBLIC_URL} -O /tmp/test ; then
 else
   echo "Headway is installed! 🥳 But it is not accessible at ${PUBLIC_URL} ☝️ 🤔"
   GUESSED_IP=`ip a s | grep inet | grep -v inet6 | head -n2 | tail -n1 | awk '{print $2}' | awk -F '/' '{print $1}'`
-  echo "⚠️ Check that your proxy is properly configured to redirect the web traffic to the port 8080 on this machine. Try http://${IP}:8080 and http://localhost:8080"
+  echo "⚠️ Check that your proxy is properly configured to redirect the web traffic to the port 8080 on this machine. Try http://${GUESSED_IP}:8080 and http://localhost:8080"
 fi
 
 if [ "$CUSTOM_EXTRACT" = true ] ; then
