@@ -35,7 +35,7 @@ Run the script without arguments to get the list of available cities.
 
 Place your .osm.pbf file in the same directory as the script. The extension .osm.pbf is important! And the name of this file should not match any of the cities with predefined extracts. You'll need to specify a list of the comma separated country codes that your extract will cover.
 
-`sudo ./install_headway.debian.sh PUBLIC_URL [COUNTRY_CODES]`
+`sudo ./install_headway.debian.sh PUBLIC_URL COUNTRY_CODES`
 
 Example:
 
