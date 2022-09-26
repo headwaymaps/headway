@@ -15,7 +15,7 @@ This script will automatically:
 
 Download the script and make it executable:
 
-`wget https://raw.githubusercontent.com/headwaymaps/headway/main/install_headway.debian.sh`
+`wget https://raw.githubusercontent.com/headwaymaps/headway/main/contrib/install_headway.debian.sh`
 
 `chmod +x install_headway.debian.sh`
 
