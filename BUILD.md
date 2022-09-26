@@ -2,7 +2,7 @@
 
 Setting up your own Headway instance should be fairly straightforward if you follow these docs. Feel free to open bugs if things go wrong, or PRs to improve the project though!
 
-There is a script contributed by Santiago Crespo that will automatically deploy Headway as a systemd service on Debian. It has not been widely tested yet. See [DEBIAN_BUILD.md](./DEBIAN_BUILD.md) for details.
+There is a script contributed by Santiago Crespo that will automatically deploy Headway as a systemd service on Debian, but it has not been widely tested yet. See [contrib/DEBIAN_BUILD.md](./contrib/DEBIAN_BUILD.md) for details.
 
 Prerequisites: [Install earthly.](#install-earthly)
 
