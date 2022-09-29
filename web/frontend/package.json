@@ -27,6 +27,7 @@
     "@quasar/app-vite": "^1.0.0",
     "@quasar/quasar-app-extension-testing": "^2.0.4",
     "@types/jest": "^29.0.0",
+    "@types/lodash": "^4.14.186",
     "@types/node": "^12.20.21",
     "@typescript-eslint/eslint-plugin": "^5.10.0",
     "@typescript-eslint/parser": "^5.10.0",
