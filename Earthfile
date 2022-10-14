@@ -370,7 +370,7 @@ otp-serve-image:
 ##############################
 
 valhalla-base-image:
-    FROM gisops/valhalla:latest
+    FROM michaelkirk/valhalla:date-2022-10-10
 
     USER root
     WORKDIR /tiles
