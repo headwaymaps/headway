@@ -16,8 +16,11 @@ build:
     # Use the special value `ALL` when doing a planet build.
     ARG countries
 
+    # tag for created docker containers
+    ARG tag="latest"
+
     BUILD +save --area=${area} --countries=${countries}
-    BUILD +images
+    BUILD +images --tag=${tag}
 
 save:
     ARG area
