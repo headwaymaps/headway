@@ -6,8 +6,16 @@ VERSION --use-copy-link 0.6
 ##############################
 
 build:
+    # The name of <area>.osm.pbf if you've downloaded a custom extract, or the
+    # name of one of the pre-configured downloadable extracts available from
+    # bbike.org
     ARG area
+
+    # `countries is uses by whosonfirst dataset.
+    # If left blank we try to guess the country based on the area argument.
+    # Use the special value `ALL` when doing a planet build.
     ARG countries
+
     BUILD +save --area=${area} --countries=${countries}
     BUILD +images
 
