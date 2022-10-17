@@ -1,4 +1,5 @@
 .tmp_*
+*.swp
 *.osm.pbf
 *.mbtiles
 **/.DS_Store
