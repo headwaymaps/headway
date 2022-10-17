@@ -1,7 +1,7 @@
 version: "3"
 services:
   mbtileserver_init:
-    image: ghcr.io/headwaymaps/tileserver-init:latest
+    image: ghcr.io/michaelkirk/tileserver-init:latest
     env_file: .env
     environment:
       MBTILES_ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.mbtiles
@@ -12,7 +12,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "mbtileserver_data:/data/:rw"
   mbtileserver:
-    image: ghcr.io/headwaymaps/tileserver:latest
+    image: ghcr.io/michaelkirk/tileserver:latest
     restart: always
     env_file: .env
     environment:
@@ -25,7 +25,7 @@ services:
     ports:
       - "9000:8000"
   otp_init:
-    image: ghcr.io/headwaymaps/opentripplanner-init:latest
+    image: ghcr.io/michaelkirk/opentripplanner-init:latest
     env_file: .env
     environment:
       ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.graph.obj
@@ -34,7 +34,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "otp_data:/data/:rw"
   otp:
-    image: ghcr.io/headwaymaps/opentripplanner:latest
+    image: ghcr.io/michaelkirk/opentripplanner:latest
     restart: always
     env_file: .env
     volumes:
@@ -43,7 +43,7 @@ services:
       otp_init:
         condition: service_completed_successfully
   valhalla_init:
-    image: ghcr.io/headwaymaps/valhalla-init:latest
+    image: ghcr.io/michaelkirk/valhalla-init:latest
     env_file: .env
     volumes:
       - "valhalla_data:/data/:rw"
@@ -56,7 +56,7 @@ services:
         soft: 8192
         hard: 8192
   valhalla:
-    image: ghcr.io/headwaymaps/valhalla:latest
+    image: ghcr.io/michaelkirk/valhalla:latest
     restart: always
     env_file: .env
     volumes:
@@ -69,7 +69,7 @@ services:
       valhalla_init:
         condition: service_completed_successfully
   nginx_init:
-    image: ghcr.io/headwaymaps/headway-init:latest
+    image: ghcr.io/michaelkirk/headway-init:latest
     env_file: .env
     environment:
       FONT_ARTIFACT_SOURCE_PATH: /bootstrap/fonts.tar
@@ -80,7 +80,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "nginx_data:/data/:rw"
   nginx:
-    image: ghcr.io/headwaymaps/headway:latest
+    image: ghcr.io/michaelkirk/headway:latest
     restart: always
     env_file: .env
     environment:
@@ -99,7 +99,7 @@ services:
       - "pelias_api"
       - "mbtileserver"
   pelias_config_init:
-    image: ghcr.io/headwaymaps/pelias-init:latest
+    image: ghcr.io/michaelkirk/pelias-init:latest
     env_file: .env
     environment:
       PELIAS_CONFIG_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.pelias.json
@@ -108,7 +108,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "pelias_config_data:/config"
   pelias_elastic_init:
-    image: ghcr.io/headwaymaps/pelias-init:latest
+    image: ghcr.io/michaelkirk/pelias-init:latest
     env_file: .env
     environment:
       ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar
@@ -117,7 +117,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
   peliasplaceholder_init:
-    image: ghcr.io/headwaymaps/pelias-init:latest
+    image: ghcr.io/michaelkirk/pelias-init:latest
     env_file: .env
     environment:
       PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar

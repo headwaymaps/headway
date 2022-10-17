@@ -1,0 +1,24 @@
+#!/bin/bash -ex
+
+function usage() {
+cat << EOF
+usage: $0 <release-tag>
+e.g.: $0 seattle-latest
+e.g.: $0 planet-v1.18
+EOF
+}
+
+TAG=$1
+if [ -z "${TAG}" ]; then
+  echo "missing tag"
+  usage
+  exit 1
+fi
+
+registry_root=ghcr.io/michaelkirk
+
+images=( tileserver valhalla-init opentripplanner-init pelias-init valhalla headway tileserver-init headway-init opentripplanner )
+
+for image in "${images[@]}"; do
+docker push "${registry_root}/${image}:${TAG}"
+done

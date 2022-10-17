@@ -22,7 +22,7 @@ spec:
     spec:
       initContainers:
         - name: pelias-init
-          image: ghcr.io/headwaymaps/pelias-init:maps-dot-earth
+          image: ghcr.io/michaelkirk/pelias-init:planet-v1.18
           imagePullPolicy: Always
           volumeMounts:
             - name: config-volume
