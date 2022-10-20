@@ -237,18 +237,31 @@ pelias-import:
     COPY services/pelias/wait.sh ./tools/wait.sh
     RUN mkdir /data/elasticsearch
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_schema \
-            --service pelias_elasticsearch \
-            --service pelias_openstreetmap \
-            --service pelias_whosonfirst \
-            --service pelias_polylines_import
-        RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index" && \
-            docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start" && \
-            docker-compose run -T 'pelias_whosonfirst' bash -c "/tools/wait.sh && ./bin/start" && \
-            docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+
+    WITH DOCKER --compose compose.yaml --service pelias_schema
+        RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index"
     END
+
+    WITH DOCKER --compose compose.yaml --service pelias_openstreetmap
+        RUN docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start"
+    END
+
+    # This usually fails for planet builts due to: https://github.com/pelias/docker/issues/217
+    # Interestingly it usually (always?) succeeds for smaller builds like Seattle.
+    #
+    # For production, I've done a manual import of the planet data including WOF based on
+    # manually running the steps in https://github.com/pelias/docker/tree/master/projects/planet
+    # I was actually seeing the same error initially, and in the process of debugging, but then
+    # it just succeeded on the billionth attempt, so I decided we might as well use the artifact
+    # for now while waiting for a proper fix.
+    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
+        RUN docker-compose run -T 'pelias_whosonfirst' bash -c "/tools/wait.sh && ./bin/start"
+    END
+
+    WITH DOCKER --compose compose.yaml --service pelias_polylines_import
+        RUN docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+    END
+
     SAVE ARTIFACT /data/elasticsearch /elasticsearch
 
 ##############################
