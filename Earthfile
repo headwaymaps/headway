@@ -35,6 +35,13 @@ save:
     BUILD +save-pelias-config --area=${area} --countries=${countries}
     BUILD +save-tileserver-natural-earth
 
+save-polylines:
+    FROM +save-base
+    ARG area
+    RUN mkdir -p /data
+    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines.0sv
+    SAVE ARTIFACT /data/polylines.0sv AS LOCAL ./data/${area}-polylines.0sv
+
 save-extract:
     FROM +save-base
     ARG area
