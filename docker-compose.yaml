@@ -49,8 +49,8 @@ services:
       - "valhalla_data:/data/:rw"
       - "./data/:/bootstrap/:ro"
     environment:
-      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar
-      ARTIFACT_LOCK: /data/imported
+      VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar
+      VALHALLA_ARTIFACT_LOCK: /data/imported
     ulimits:
       nofile:
         soft: 8192

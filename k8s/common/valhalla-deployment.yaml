@@ -20,9 +20,9 @@ spec:
             - name: valhalla-volume
               mountPath: /data
           env:
-            - name: ARTIFACT_LOCK
+            - name: VALHALLA_ARTIFACT_LOCK
               value: /data/imported
-            - name: ARTIFACT_URL
+            - name: VALHALLA_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config

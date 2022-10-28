@@ -20,9 +20,9 @@ spec:
             - name: opentripplanner-volume
               mountPath: /data
           env:
-            - name: ARTIFACT_DEST_PATH
+            - name: OTP_ARTIFACT_DEST_PATH
               value: /data/area.graph.obj
-            - name: ARTIFACT_URL
+            - name: OTP_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
