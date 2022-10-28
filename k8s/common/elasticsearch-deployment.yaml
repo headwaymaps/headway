@@ -78,7 +78,7 @@ spec:
             limits:
               memory: 16Gi
             requests:
-              memory: 16Gi
+              memory: 8Gi
           livenessProbe:
             httpGet:
               path: /
