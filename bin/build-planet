@@ -10,7 +10,7 @@ log_file="${log_dir}/${log_filename}"
 ARGS=${@:1}
 
 # This job assumes you've already downloaded the planet file into the repository root
-PLANET=planet-v1.18
+PLANET=planet-v1.19
 CMD="earthly $ARGS -P +build --area=$PLANET --countries=ALL --tag=$PLANET"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
