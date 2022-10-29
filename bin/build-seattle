@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -x
 
 bin_name=$(basename $0)
@@ -9,4 +11,5 @@ ARGS=${@:1}
 
 # This job will download its own osm file from the bbike extract
 CMD="earthly $ARGS -P +build --area=Seattle --tag=seattle-latest"
-$CMD 2> "${log_file}.err" > "${log_file}.out"
+
+$CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")

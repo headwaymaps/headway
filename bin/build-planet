@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -x
 
 bin_name=$(basename $0)
@@ -8,5 +10,7 @@ log_file="${log_dir}/${log_filename}"
 ARGS=${@:1}
 
 # This job assumes you've already downloaded the planet file into the repository root
-CMD="earthly $ARGS -P +build --area=planet-v1.18 --countries=ALL --tag=planet-v1.18"
-$CMD 2> "${log_file}.err" > "${log_file}.out"
+PLANET=planet-v1.18
+CMD="earthly $ARGS -P +build --area=$PLANET --countries=ALL --tag=$PLANET"
+
+$CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
