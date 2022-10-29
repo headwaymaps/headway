@@ -70,24 +70,24 @@ save-valhalla:
     FROM +save-base
     ARG area
     COPY (+valhalla-build/tiles --area=${area}) /valhalla
-    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - > /valhalla.tar'
-    SAVE ARTIFACT /valhalla.tar AS LOCAL ./data/${area}.valhalla.tar
+    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - | xz -z - > /valhalla.tar.xz'
+    SAVE ARTIFACT /valhalla.tar.xz AS LOCAL ./data/${area}.valhalla.tar.xz
 
 save-elasticsearch:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
-    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - > /elasticsearch.tar'
-    SAVE ARTIFACT /elasticsearch.tar AS LOCAL ./data/${area}.elasticsearch.tar
+    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - | xz -z - > /elasticsearch.tar.xz'
+    SAVE ARTIFACT /elasticsearch.tar.xz AS LOCAL ./data/${area}.elasticsearch.tar.xz
 
 save-placeholder:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
-    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - > /placeholder.tar'
-    SAVE ARTIFACT /placeholder.tar AS LOCAL ./data/${area}.placeholder.tar
+    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | xz -z - > /placeholder.tar.xz'
+    SAVE ARTIFACT /placeholder.tar.xz AS LOCAL ./data/${area}.placeholder.tar.xz
 
 save-pelias-config:
     FROM +save-base
@@ -586,7 +586,7 @@ downloader-base:
     FROM debian:bullseye-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends wget ca-certificates
+        && apt-get install -y --no-install-recommends wget ca-certificates xz-utils
     RUN mkdir /data
 
 java-base:
@@ -605,3 +605,5 @@ save-base:
     FROM debian:bullseye-slim
     ARG area
     ARG countries
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends xz-utils

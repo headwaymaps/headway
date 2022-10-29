@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 
 export S3_ROOT=https://s3.us-west-004.backblazeb2.com/maps-eotw

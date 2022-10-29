@@ -9,8 +9,8 @@ data:
   sprite-source-url: ${S3_ROOT}/${HEADWAY_VERSION}/sprite.tar
   natural-earth-source-url: ${S3_ROOT}/${HEADWAY_VERSION}/natural_earth.mbtiles
   mbtiles-source-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.mbtiles
-  valhalla-artifact-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.valhalla.tar
+  valhalla-artifact-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.valhalla.tar.xz
   pelias-config-artifact-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.pelias.json
-  placeholder-artifact-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.placeholder.tar
-  elasticsearch-artifact-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar
+  placeholder-artifact-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.placeholder.tar.xz
+  elasticsearch-artifact-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar.xz
   otp-graph-url: ${S3_ROOT}/${HEADWAY_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.graph.obj
