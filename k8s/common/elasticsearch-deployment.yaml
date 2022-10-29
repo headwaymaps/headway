@@ -32,11 +32,7 @@ spec:
                     storage: 1Mi
       initContainers:
         - name: pelias-init
-          image: ghcr.io/headwaymaps/pelias-init:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+          image: ghcr.io/michaelkirk/pelias-init:planet-v1.18
           imagePullPolicy: Always
           volumeMounts:
             - name: elasticsearch-volume
@@ -68,10 +64,6 @@ spec:
       containers:
         - name: pelias-elasticsearch
           image: pelias/elasticsearch:7.16.1
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           volumeMounts:
             - name: elasticsearch-volume
               mountPath: /usr/share/elasticsearch/data
@@ -86,7 +78,7 @@ spec:
             limits:
               memory: 16Gi
             requests:
-              memory: 16Gi
+              memory: 8Gi
           livenessProbe:
             httpGet:
               path: /

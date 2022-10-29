@@ -14,11 +14,7 @@ spec:
     spec:
       initContainers:
         - name: valhalla-init
-          image: ghcr.io/headwaymaps/valhalla-init:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+          image: ghcr.io/michaelkirk/valhalla-init:planet-v1.18
           imagePullPolicy: Always
           volumeMounts:
             - name: valhalla-volume
@@ -43,11 +39,7 @@ spec:
               memory: 100Mi
       containers:
         - name: valhalla
-          image: ghcr.io/headwaymaps/valhalla:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+          image: ghcr.io/michaelkirk/valhalla:planet-v1.18
           ports:
           - containerPort: 8002
           volumeMounts:
@@ -61,7 +53,7 @@ spec:
                 key: area
           resources:
             limits:
-              memory: 4Gi
+              memory: 8Gi
             requests:
               memory: 4Gi
       volumes:

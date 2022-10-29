@@ -6,10 +6,21 @@ VERSION --use-copy-link 0.6
 ##############################
 
 build:
+    # The name of <area>.osm.pbf if you've downloaded a custom extract, or the
+    # name of one of the pre-configured downloadable extracts available from
+    # bbike.org
     ARG area
+
+    # `countries is uses by whosonfirst dataset.
+    # If left blank we try to guess the country based on the area argument.
+    # Use the special value `ALL` when doing a planet build.
     ARG countries
+
+    # tag for created docker containers
+    ARG tag="latest"
+
     BUILD +save --area=${area} --countries=${countries}
-    BUILD +images
+    BUILD +images --tag=${tag}
 
 save:
     ARG area
@@ -23,6 +34,13 @@ save:
     BUILD +save-placeholder --area=${area} --countries=${countries}
     BUILD +save-pelias-config --area=${area} --countries=${countries}
     BUILD +save-tileserver-natural-earth
+
+save-polylines:
+    FROM +save-base
+    ARG area
+    RUN mkdir -p /data
+    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines.0sv
+    SAVE ARTIFACT /data/polylines.0sv AS LOCAL ./data/${area}-polylines.0sv
 
 save-extract:
     FROM +save-base
@@ -120,7 +138,7 @@ pelias-init-image:
     COPY ./services/pelias/init* /app/
     CMD ["echo", "run a specific command"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/pelias-init:${tag}
 
 pelias-guess-country:
     FROM debian:bullseye-slim
@@ -219,18 +237,31 @@ pelias-import:
     COPY services/pelias/wait.sh ./tools/wait.sh
     RUN mkdir /data/elasticsearch
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_schema \
-            --service pelias_elasticsearch \
-            --service pelias_openstreetmap \
-            --service pelias_whosonfirst \
-            --service pelias_polylines_import
-        RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index" && \
-            docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start" && \
-            docker-compose run -T 'pelias_whosonfirst' bash -c "/tools/wait.sh && ./bin/start" && \
-            docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+
+    WITH DOCKER --compose compose.yaml --service pelias_schema
+        RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index"
     END
+
+    WITH DOCKER --compose compose.yaml --service pelias_openstreetmap
+        RUN docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start"
+    END
+
+    # This usually fails for planet builts due to: https://github.com/pelias/docker/issues/217
+    # Interestingly it usually (always?) succeeds for smaller builds like Seattle.
+    #
+    # For production, I've done a manual import of the planet data including WOF based on
+    # manually running the steps in https://github.com/pelias/docker/tree/master/projects/planet
+    # I was actually seeing the same error initially, and in the process of debugging, but then
+    # it just succeeded on the billionth attempt, so I decided we might as well use the artifact
+    # for now while waiting for a proper fix.
+    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
+        RUN docker-compose run -T 'pelias_whosonfirst' bash -c "/tools/wait.sh && ./bin/start"
+    END
+
+    WITH DOCKER --compose compose.yaml --service pelias_polylines_import
+        RUN docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+    END
+
     SAVE ARTIFACT /data/elasticsearch /elasticsearch
 
 ##############################
@@ -351,7 +382,7 @@ otp-init-image:
     COPY ./services/otp/init.sh /app/init.sh
     CMD ["/app/init.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/opentripplanner-init:${tag}
 
 otp-serve-image:
     FROM +otp-base
@@ -363,14 +394,14 @@ otp-serve-image:
 
     CMD ["/otp/run_otp.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/opentripplanner:${tag}
 
 ##############################
 # Valhalla
 ##############################
 
 valhalla-base-image:
-    FROM gisops/valhalla:latest
+    FROM michaelkirk/valhalla:date-2022-10-10
 
     USER root
     WORKDIR /tiles
@@ -408,7 +439,7 @@ valhalla-init-image:
     USER root
     CMD ["/app/init.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla-init:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/valhalla-init:${tag}
 
 valhalla-serve-image:
     FROM +valhalla-base-image
@@ -416,7 +447,7 @@ valhalla-serve-image:
     USER valhalla
     CMD ["/data/valhalla.json"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/valhalla:${tag}
 
 ##############################
 # tileserver-gl-light
@@ -471,7 +502,7 @@ tileserver-init-image:
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/tileserver-init:${tag}
 
 tileserver-serve-image:
     FROM node:16
@@ -494,7 +525,7 @@ tileserver-serve-image:
 
     CMD ["/app/configure_run.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/tileserver:${tag}
 
 ##############################
 # Web
@@ -517,7 +548,7 @@ web-init-image:
     COPY ./services/nginx/init.sh /app/init.sh
     CMD ["/app/init.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/headway-init:${tag}
 
 web-serve-image:
     FROM nginx
@@ -545,7 +576,7 @@ web-serve-image:
     ENTRYPOINT ["/frontend/init.sh"]
 
     ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/headway:${tag}
+    SAVE IMAGE --push ghcr.io/michaelkirk/headway:${tag}
 
 ##############################
 # Generic base images

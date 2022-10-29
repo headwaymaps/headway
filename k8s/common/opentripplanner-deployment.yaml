@@ -14,11 +14,7 @@ spec:
     spec:
       initContainers:
         - name: opentripplanner-init
-          image: ghcr.io/headwaymaps/opentripplanner-init:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+          image: ghcr.io/michaelkirk/opentripplanner-init:planet-v1.18
           imagePullPolicy: Always
           volumeMounts:
             - name: opentripplanner-volume
@@ -33,16 +29,12 @@ spec:
                   key: otp-graph-url
           resources:
             limits:
-              memory: 5Mi
+              memory: 128Mi
             requests:
-              memory: 1Mi
+              memory: 128Mi
       containers:
         - name: opentripplanner
-          image: ghcr.io/headwaymaps/opentripplanner:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+          image: ghcr.io/michaelkirk/opentripplanner:planet-v1.18
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

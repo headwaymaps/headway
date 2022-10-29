@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-config
+data:
+  area: Seattle
+  public-url: https://seattle.endworld.org
+  font-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/fonts.tar
+  sprite-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/sprite.tar
+  natural-earth-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/natural_earth.mbtiles
+  mbtiles-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/Seattle.mbtiles
+  valhalla-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/Seattle.valhalla.tar
+  pelias-config-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/Seattle.pelias.json
+  placeholder-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/Seattle.placeholder.tar
+  elasticsearch-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/Seattle.elasticsearch.tar
+  otp-graph-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/seattle-latest/Seattle.graph.obj

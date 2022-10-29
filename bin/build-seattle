@@ -1,0 +1,12 @@
+set -x
+
+bin_name=$(basename $0)
+log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
+log_dir=/pool1/logs
+log_file="${log_dir}/${log_filename}"
+
+ARGS=${@:1}
+
+# This job will download its own osm file from the bbike extract
+CMD="earthly $ARGS -P +build --area=Seattle --tag=seattle-latest"
+$CMD 2> "${log_file}.err" > "${log_file}.out"

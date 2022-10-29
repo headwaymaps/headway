@@ -23,11 +23,7 @@ spec:
                     storage: 50Mi
       initContainers:
         - name: headway-init
-          image: ghcr.io/headwaymaps/headway-init:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+          image: ghcr.io/michaelkirk/headway-init:planet-v1.18
           imagePullPolicy: Always
           volumeMounts:
             - name: headway-volume
@@ -54,11 +50,7 @@ spec:
               memory: 100Mi
       containers:
         - name: headway
-          image: ghcr.io/headwaymaps/headway:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
+          image: ghcr.io/michaelkirk/headway:planet-v1.18
           imagePullPolicy: Always
           volumeMounts:
             - name: headway-volume
