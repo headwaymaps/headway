@@ -1,19 +1,28 @@
 #!/bin/bash -ex
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 function usage() {
 cat << EOF
-usage: $0 <release-tag>
-e.g.: $0 seattle-latest
-e.g.: $0 planet-v1.18
+usage: $0
+
+# use tag from bin/_headway_version.sh
+e.g.: $0
+
+# specify custom tag
+e.g.: HEADWAY_VERSION=latest $0
 EOF
 }
 
-TAG=$1
-if [ -z "${TAG}" ]; then
-  echo "missing tag"
+if [ ! $# -eq 0 ]; then
   usage
   exit 1
 fi
+
+if [ -z "${HEADWAY_VERSION}" ]; then
+  source "${SCRIPT_DIR}/_headway_version.sh"
+fi
+TAG="${HEADWAY_VERSION}"
 
 registry_root=ghcr.io/michaelkirk
 

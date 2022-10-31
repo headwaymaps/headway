@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
         - name: tileserver-init
-          image: ghcr.io/michaelkirk/tileserver-init:planet-v1.18
+          image: ghcr.io/michaelkirk/tileserver-init:0.1.0
           imagePullPolicy: Always
           volumeMounts:
             - name: tileserver-volume
@@ -43,7 +43,7 @@ spec:
               memory: 100Mi
       containers:
         - name: tileserver
-          image: ghcr.io/michaelkirk/tileserver:planet-v1.18
+          image: ghcr.io/michaelkirk/tileserver:0.1.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

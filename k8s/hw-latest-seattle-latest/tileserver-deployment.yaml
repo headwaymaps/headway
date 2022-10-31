@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headway-tileserver-deployment
+spec:
+  selector:
+    matchLabels:
+      app: tileserver
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tileserver
+    spec:
+      initContainers:
+        - name: tileserver-init
+          image: ghcr.io/michaelkirk/tileserver-init:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: tileserver-volume
+              mountPath: /data
+          env:
+            - name: HEADWAY_AREA
+              value: area
+            - name: NATURAL_EARTH_ARTIFACT_DEST_PATH
+              value: /data/natural_earth.mbtiles
+            - name: NATURAL_EARTH_ARTIFACT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: natural-earth-source-url
+            - name: MBTILES_ARTIFACT_DEST_PATH
+              value: /data/area.mbtiles
+            - name: MBTILES_ARTIFACT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: mbtiles-source-url
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              memory: 100Mi
+      containers:
+        - name: tileserver
+          image: ghcr.io/michaelkirk/tileserver:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: tileserver-volume
+              mountPath: /data
+          env:
+            - name: HEADWAY_PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: public-url
+            - name: HEADWAY_AREA
+              value: area
+            - name: PORT
+              value: "8000"
+          resources:
+            limits:
+              memory: 500Mi
+            requests:
+              memory: 200Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
+      volumes:
+        - name: tileserver-volume
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 200Gi

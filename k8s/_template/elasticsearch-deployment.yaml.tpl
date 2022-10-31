@@ -32,7 +32,7 @@ spec:
                     storage: 1Mi
       initContainers:
         - name: pelias-init
-          image: ghcr.io/michaelkirk/pelias-init:planet-v1.18
+          image: ghcr.io/michaelkirk/pelias-init:${HEADWAY_VERSION}
           imagePullPolicy: Always
           volumeMounts:
             - name: elasticsearch-volume

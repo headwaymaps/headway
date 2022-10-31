@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: pelias-init
-          image: ghcr.io/michaelkirk/pelias-init:planet-v1.18
+          image: ghcr.io/michaelkirk/pelias-init:latest
           imagePullPolicy: Always
           volumeMounts:
             - name: placeholder-volume

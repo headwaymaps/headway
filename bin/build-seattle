@@ -2,14 +2,22 @@
 
 set -x
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 bin_name=$(basename $0)
 log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
 log_dir=/pool1/logs
 log_file="${log_dir}/${log_filename}"
 
-ARGS=${@:1}
+EARTHLY_ARGS=${@:1}
 
-# This job will download its own osm file from the bbike extract
-CMD="earthly $ARGS -P +build --area=Seattle --tag=seattle-latest"
+if [ -z "$HEADWAY_VERSION" ]
+then
+source ${SCRIPT_DIR}/_headway_version.sh
+fi
+
+# This job will download the seattle.osm data from bbike
+AREA=Seattle
+CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_VERSION"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")

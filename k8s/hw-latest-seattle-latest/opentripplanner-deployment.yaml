@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
         - name: opentripplanner-init
-          image: ghcr.io/michaelkirk/opentripplanner-init:planet-v1.18
+          image: ghcr.io/michaelkirk/opentripplanner-init:latest
           imagePullPolicy: Always
           volumeMounts:
             - name: opentripplanner-volume
@@ -34,7 +34,7 @@ spec:
               memory: 128Mi
       containers:
         - name: opentripplanner
-          image: ghcr.io/michaelkirk/opentripplanner:planet-v1.18
+          image: ghcr.io/michaelkirk/opentripplanner:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

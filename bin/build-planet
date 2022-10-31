@@ -2,15 +2,22 @@
 
 set -x
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 bin_name=$(basename $0)
 log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
 log_dir=/pool1/logs
 log_file="${log_dir}/${log_filename}"
 
-ARGS=${@:1}
+EARTHLY_ARGS=${@:1}
+
+if [ -z "$HEADWAY_VERSION" ]
+then
+source ${SCRIPT_DIR}/_headway_version.sh
+fi
 
 # This job assumes you've already downloaded the planet file into the repository root
-PLANET=planet-v1.19
-CMD="earthly $ARGS -P +build --area=$PLANET --countries=ALL --tag=$PLANET"
+AREA=planet-v1.19
+CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=$ALL --tag=$HEADWAY_VERSION"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")

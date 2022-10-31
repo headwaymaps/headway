@@ -2,12 +2,13 @@
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${APP_ROOT}/data"
+SCRIPT_DIR="${APP_ROOT}/bin"
 
 function upload() {
-  TAG=$1
-  INPUT=$2
+  INPUT=$1
+  OUTPUT_PREFIX=$2
 
-  RESOURCE="${TAG}/$(basename $INPUT)"
+  RESOURCE="${OUTPUT_PREFIX}/$(basename $INPUT)"
   BUCKET=maps-eotw
   ENDPOINT=https://s3.us-west-004.backblazeb2.com
   aws s3 --endpoint=$ENDPOINT cp "${DATA_ROOT}/${INPUT}" "s3://${BUCKET}/${RESOURCE}"
@@ -15,20 +16,24 @@ function upload() {
 
 function usage() {
 cat << EOF
-usage: $0 <release-tag> <area>
+usage: $0 <area-tag> <area>
 e.g.: $0 seattle-latest Seattle
-e.g.: $0 planet-v1.18 planet-v1.18
+e.g.: $0 planet-v1.19 planet-v1.18
+
+# use a release other than what's in bin/_headway_version.sh
+HEADWAY_VERSION=latest $0 seattle-latest Seattle
+HEADWAY_VERSION=latest $0 planet-v1.18 planet-v1.18
 EOF
 }
 
-TAG=$1
-if [ -z "${TAG}" ]; then
+AREA_TAG=$1
+if [ -z "${AREA_TAG}" ]; then
   echo "missing tag"
   usage
   exit 1
 fi
 
-# These files depend on the area of the map
+# These files depend on the area of the map (seattle, planet, etc.)
 AREA=$2
 if [ -z "${AREA}" ]; then
   echo "missing area"
@@ -36,16 +41,20 @@ if [ -z "${AREA}" ]; then
   exit 1
 fi
 
-upload "${TAG}" "${AREA}.graph.obj"  
-upload "${TAG}" "${AREA}.osm.pbf"
-upload "${TAG}" "${AREA}.valhalla.tar"
-upload "${TAG}" "${AREA}.gtfs.tar"
-upload "${TAG}" "${AREA}.pelias.json"
-upload "${TAG}" "${AREA}.elasticsearch.tar"
-upload "${TAG}" "${AREA}.mbtiles"
-upload "${TAG}" "${AREA}.placeholder.tar"
+if [ -z "${HEADWAY_VERSION}" ]; then
+    source "${SCRIPT_DIR}/_headway_version.sh"
+fi
+
+upload "${AREA}.graph.obj"         "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.osm.pbf"           "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.valhalla.tar"      "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.gtfs.tar"          "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.pelias.json"       "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.elasticsearch.tar" "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.mbtiles"           "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.placeholder.tar"   "${HEADWAY_VERSION}/${AREA_TAG}"
 
 # These files are generic across all areas
-upload "${TAG}" fonts.tar
-upload "${TAG}" sprite.tar                                      
-upload "${TAG}" natural_earth.mbtiles      
+upload fonts.tar                   "${HEADWAY_VERSION}"
+upload sprite.tar                  "${HEADWAY_VERSION}"
+upload natural_earth.mbtiles       "${HEADWAY_VERSION}"
