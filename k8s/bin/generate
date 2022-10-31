@@ -1,7 +1,6 @@
 #!/bin/bash -ex
 
-
-export S3_ROOT=https://s3.us-west-004.backblazeb2.com/maps-eotw
+REPO_ROOT=$(git rev-parse --show-toplevel)
 
 function usage() {
 cat << EOF
@@ -31,7 +30,7 @@ export HEADWAY_SERVICE_PORT=$3
 
 if [ -z "${HEADWAY_VERSION}" ]
 then
-    source ../../bin/_headway_version.sh
+    source "${REPO_ROOT}/bin/_headway_version.sh"
 fi
 
 OUTPUT_DIR="hw-${HEADWAY_VERSION}-${HEADWAY_AREA_TAG}"

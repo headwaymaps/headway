@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-config
+data:
+  area: 0.1.0-dev
+  public-url: https://maps.endworld.org
+  font-source-url: /0.1.0-dev/fonts.tar
+  sprite-source-url: /0.1.0-dev/sprite.tar
+  natural-earth-source-url: /0.1.0-dev/natural_earth.mbtiles
+  mbtiles-source-url: /0.1.0-dev/seattle-latest/Seattle.mbtiles
+  valhalla-artifact-url: /0.1.0-dev/seattle-latest/Seattle.valhalla.tar.xz
+  pelias-config-artifact-url: /0.1.0-dev/seattle-latest/Seattle.pelias.json
+  placeholder-artifact-url: /0.1.0-dev/seattle-latest/Seattle.placeholder.tar.xz
+  elasticsearch-artifact-url: /0.1.0-dev/seattle-latest/Seattle.elasticsearch.tar.xz
+  otp-graph-url: /0.1.0-dev/seattle-latest/Seattle.graph.obj
