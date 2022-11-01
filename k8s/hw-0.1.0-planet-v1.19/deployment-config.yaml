@@ -4,7 +4,7 @@ metadata:
   name: deployment-config
 data:
   area: 0.1.0
-  public-url: https://maps.endworld.org
+  public-url: maps.endworld.org
   font-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/fonts.tar
   sprite-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/sprite.tar
   natural-earth-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/natural_earth.mbtiles

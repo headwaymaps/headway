@@ -5,20 +5,19 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 function usage() {
 cat << EOF
 usage: $0 <headway-area> <headway-area-tag> <headway-service-port>
-e.g.: $0 planet-v1.19 planet-v1.19 30400
-e.g.: $0 Seattle seattle-latest 30401
+e.g.: $0 planet-v1.19 planet-v1.19 https://maps.endworld.org 30400
+e.g.: $0 Seattle seattle-latest https://seattle.endworld.org 30401
 
 To overide HEADWAY_VERSION:
-e.g.: HEADWAY_VERSION=latest $0 Seattle seattle-latest 30401
+e.g.: HEADWAY_VERSION=latest $0 Seattle seattle-latest https://seattle.endworld.org 30401
 EOF
 }
 
-if [ ! $# -eq 3 ]
+if [ ! $# -eq 4 ]
 then
     usage
     exit 1
 fi
-
 
 # export HEADWAY_VERSION=latest
 # export HEADWAY_AREA=Seattle
@@ -26,7 +25,9 @@ fi
 # export HEADWAY_SERVICE_PORT=30401
 export HEADWAY_AREA=$1
 export HEADWAY_AREA_TAG=$2
-export HEADWAY_SERVICE_PORT=$3
+export HEADWAY_PUBLIC_URL=$3
+export HEADWAY_SERVICE_PORT=$4
+export HEADWAY_S3_ROOT=https://s3.us-west-004.backblazeb2.com/maps-eotw
 
 if [ -z "${HEADWAY_VERSION}" ]
 then
