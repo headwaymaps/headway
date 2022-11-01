@@ -53,7 +53,7 @@ spec:
                 key: area
           resources:
             limits:
-              memory: 4Gi
+              memory: 8Gi
             requests:
               memory: 4Gi
       volumes:
