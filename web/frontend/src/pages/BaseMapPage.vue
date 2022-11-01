@@ -7,13 +7,7 @@
 </template>
 
 <script lang="ts">
-import {
-  addMapHandler,
-  getBaseMap,
-  removeMapHandler,
-  setBottomCardAllowance,
-} from 'src/components/BaseMap.vue';
-import { mapFeatureToPoi } from 'src/utils/models';
+import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import { defineComponent } from 'vue';
 
@@ -38,26 +32,7 @@ export default defineComponent({
   },
   mounted: function () {
     getBaseMap()?.removeMarkersExcept([]);
-    this.handler = addMapHandler('longpress', (event) => {
-      this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
-    });
-    this.handler = addMapHandler('poi_click', async (event) => {
-      if (!event?.features) {
-        console.warn('poi_click without features');
-        return;
-      }
-      let poi = await mapFeatureToPoi(event?.features[0]);
-      if (!poi?.gid) {
-        console.error('Could not canonicalize map feature.');
-        return;
-      }
-      const gidComponent = encodeURIComponent(poi?.gid);
-      this.$router.push(`/place/${gidComponent}`);
-    });
     setTimeout(() => setBottomCardAllowance(0));
-  },
-  unmounted: function () {
-    removeMapHandler('longpress', this.handler);
   },
   setup: function () {
     return {};

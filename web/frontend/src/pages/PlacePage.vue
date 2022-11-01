@@ -57,6 +57,17 @@ export default defineComponent({
   methods: {
     poiDisplayName,
   },
+  beforeRouteUpdate: async function (to, from, next) {
+    const newOsmId = to.params.osm_id;
+    const poi = await decanonicalizePoi(newOsmId);
+    if (poi) {
+      this.poi = poi;
+    } else {
+      console.warn(`unable to find POI with osm_id: ${this.$props.osm_id}`);
+    }
+
+    next();
+  },
   mounted: async function () {
     const poi = await decanonicalizePoi(this.$props.osm_id);
     this.$data.poi = poi;
@@ -69,9 +80,23 @@ export default defineComponent({
     }
 
     // watch *after* initial render
-    this.$watch('poi', async (newValue) => {
+    this.$watch('poi', async (newValue, oldValue) => {
       const gidComponent = encodeURIComponent(newValue.gid);
-      this.$router.push(`/place/${gidComponent}`);
+
+      // The flow control of selecting a POI is a bit complex.
+      //   - clicking a POI from BaseMap will push a route mounting this component
+      //   - clicking another POI while PlacePage is already active, will update
+      //     the route, but because this component is already mounted, we won't
+      //     call mont. We handle it in beforeRouteUpdate.
+      //   - 2-way data binding in the searchbar component
+      //
+      // So, in case we came here by way of beforeRouteUpdate, we don't want to
+      // update the route *again*, else we'll infinite loop.
+      //
+      // TODO: Would it be simpler to do 1-way data binding + events bubbling up? e.g. a delegate composition
+      if (newValue?.gid != oldValue?.gid) {
+        this.$router.push(`/place/${gidComponent}`);
+      }
 
       await renderOnMap(newValue);
       this.$emit('loadedPoi', newValue);
