@@ -7,6 +7,7 @@ import { defineComponent } from 'vue';
 import maplibregl, {
   LayerSpecification,
   LngLatBoundsLike,
+  LngLatLike,
   MapMouseEvent,
   Marker,
   SourceSpecification,
@@ -18,7 +19,7 @@ import { debounce } from 'lodash';
 export var map: maplibregl.Map | null = null;
 
 async function loadMap() {
-  let initialCenter = [0, 0];
+  let initialCenter: LngLatLike = [0, 0];
   let initialZoom = 1;
 
   const mostRecentMapCenter = Prefs.stored().mostRecentMapCenter();
