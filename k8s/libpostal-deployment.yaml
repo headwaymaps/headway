@@ -16,10 +16,6 @@ spec:
       containers:
         - name: pelias-libpostal
           image: pelias/libpostal-service:latest
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           imagePullPolicy: Always
           ports:
             - containerPort: 4400

@@ -17,10 +17,6 @@ spec:
       initContainers:
         - name: pelias-init
           image: ghcr.io/headwaymaps/pelias-init:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           imagePullPolicy: Always
           volumeMounts:
             - name: placeholder-volume
@@ -52,10 +48,6 @@ spec:
       containers:
         - name: pelias-placeholder
           image: pelias/placeholder:latest
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           ports:
             - containerPort: 4100
           volumeMounts:

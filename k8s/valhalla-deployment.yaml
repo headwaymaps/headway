@@ -15,10 +15,6 @@ spec:
       initContainers:
         - name: valhalla-init
           image: ghcr.io/headwaymaps/valhalla-init:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           imagePullPolicy: Always
           volumeMounts:
             - name: valhalla-volume
@@ -44,10 +40,6 @@ spec:
       containers:
         - name: valhalla
           image: ghcr.io/headwaymaps/valhalla:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           ports:
           - containerPort: 8002
           volumeMounts:

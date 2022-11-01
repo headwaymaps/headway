@@ -15,10 +15,6 @@ spec:
       initContainers:
         - name: tileserver-init
           image: ghcr.io/headwaymaps/tileserver-init:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           imagePullPolicy: Always
           volumeMounts:
             - name: tileserver-volume
@@ -48,10 +44,6 @@ spec:
       containers:
         - name: tileserver
           image: ghcr.io/headwaymaps/tileserver:maps-dot-earth
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
