@@ -29,9 +29,9 @@ spec:
                   key: otp-graph-url
           resources:
             limits:
-              memory: 5Mi
+              memory: 128Mi
             requests:
-              memory: 1Mi
+              memory: 128Mi
       containers:
         - name: opentripplanner
           image: ghcr.io/headwaymaps/opentripplanner:maps-dot-earth
