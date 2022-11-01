@@ -10,6 +10,8 @@
 
 const { configure } = require('quasar/wrappers');
 
+const HEADWAY_HOST = 'https://maps.earth';
+
 module.exports = configure(function (/* ctx */) {
   return {
     eslint: {
@@ -98,35 +100,35 @@ module.exports = configure(function (/* ctx */) {
       open: true, // opens browser window automatically
       proxy: {
         '/data': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
         '/styles': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
         '/fonts': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
         '/pelias': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
         '/otp': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
         '/valhalla': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
         '/bbox.txt': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
         '/capabilities.txt': {
-          target: 'https://maps.earth',
+          target: HEADWAY_HOST,
           changeOrigin: true,
         },
       },
