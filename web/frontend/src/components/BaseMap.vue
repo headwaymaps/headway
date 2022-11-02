@@ -5,10 +5,12 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import maplibregl, {
+  FitBoundsOptions,
   LayerSpecification,
   LngLatBoundsLike,
   LngLatLike,
   MapMouseEvent,
+  MapOptions,
   Marker,
   SourceSpecification,
 } from 'maplibre-gl';
@@ -32,23 +34,22 @@ async function loadMap() {
     }
   }
 
+  let mapOptions: MapOptions = {
+    container: 'map', // container id
+    style: '/styles/style/style.json', // style URL
+    center: initialCenter, // starting position [lng, lat]
+    zoom: initialZoom, // starting zoom
+    trackResize: true,
+  };
+
   const response = await fetch('/bbox.txt');
   if (response.status != 200) {
-    // TODO surface error
-    return;
+    console.error('faied to fetch bbox with response', response);
   }
+
   const bbox_strings = (await response.text()).split(' ');
-  let bounds = undefined;
-  if (bbox_strings.length !== 4) {
-    map = new maplibregl.Map({
-      container: 'map', // container id
-      style: '/styles/style/style.json', // style URL
-      center: initialCenter, // starting position [lng, lat]
-      zoom: initialZoom, // starting zoom
-      trackResize: true,
-    });
-  } else {
-    bounds = [
+  if (bbox_strings.length === 4) {
+    let bounds = [
       parseFloat(bbox_strings[0]),
       parseFloat(bbox_strings[1]),
       parseFloat(bbox_strings[2]),
@@ -64,15 +65,10 @@ async function loadMap() {
       center[0] + maxExtent,
       center[1] + maxExtent,
     ];
-    map = new maplibregl.Map({
-      container: 'map', // container id
-      style: '/styles/style/style.json', // style URL
-      center: initialCenter, // starting position [lng, lat]
-      maxBounds: maxBounds,
-      zoom: initialZoom, // starting zoom
-      trackResize: true,
-    });
+    mapOptions.maxBounds = maxBounds;
   }
+
+  map = new maplibregl.Map(mapOptions);
 }
 
 const mapTouchTimeouts: NodeJS.Timeout[] = [];
