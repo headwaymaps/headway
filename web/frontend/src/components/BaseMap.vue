@@ -14,6 +14,7 @@ import maplibregl, {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Prefs from 'src/utils/Prefs';
+import { mapFeatureToPoi } from 'src/utils/models';
 import { debounce } from 'lodash';
 
 export var map: maplibregl.Map | null = null;
@@ -82,29 +83,6 @@ type BaseMapEventHandler = (
     features?: GeoJSON.Feature[] | undefined;
   }
 ) => void;
-type BaseMapEventHandlerHandle = number;
-
-const mapTouchHandlers: Map<
-  BaseMapEventType,
-  Map<number, BaseMapEventHandler>
-> = new Map();
-var eventHandlerCount = 0;
-
-export function addMapHandler(
-  event: BaseMapEventType,
-  handler: BaseMapEventHandler
-): BaseMapEventHandlerHandle {
-  if (!mapTouchHandlers.get(event)) {
-    mapTouchHandlers.set(event, new Map());
-  }
-  eventHandlerCount++;
-  mapTouchHandlers.get(event)?.set(eventHandlerCount, handler);
-  return eventHandlerCount;
-}
-
-export function removeMapHandler(event: BaseMapEventType, handle: number) {
-  mapTouchHandlers.get(event)?.delete(handle);
-}
 
 function clearAllTimeouts() {
   mapTouchTimeouts.forEach((timeout) => clearTimeout(timeout));
@@ -183,6 +161,8 @@ export default defineComponent({
     markers: Map<string, Marker>;
     layers: string[];
     loaded: boolean;
+    touchHandlers: Map<BaseMapEventType, Array<BaseMapEventHandler>>;
+    touchHandlerIdx: number;
   } {
     return {
       flyToLocation: undefined,
@@ -191,6 +171,8 @@ export default defineComponent({
       markers: new Map(),
       layers: [],
       loaded: false,
+      touchHandlers: new Map(),
+      touchHandlerIdx: 0,
     };
   },
   methods: {
@@ -283,6 +265,17 @@ export default defineComponent({
         this.$data.boundsToFit = bounds;
       }
     },
+    pushTouchHandler: function (
+      event: BaseMapEventType,
+      handler: BaseMapEventHandler
+    ): void {
+      let eventList = this.touchHandlers.get(event);
+      if (!eventList) {
+        eventList = [];
+        this.touchHandlers.set(event, eventList);
+      }
+      eventList.push(handler);
+    },
   },
   mounted: async function () {
     await loadMap();
@@ -311,13 +304,13 @@ export default defineComponent({
       this.loaded = true;
     });
     map?.on('click', (event: MapMouseEvent) => {
-      mapTouchHandlers.get('click')?.forEach((value) => value(event));
+      this.touchHandlers.get('click')?.forEach((value) => value(event));
     });
     map?.on('mousedown', (event: MapMouseEvent) => {
       clearAllTimeouts();
       mapTouchTimeouts.push(
         setTimeout(() => {
-          mapTouchHandlers.get('longpress')?.forEach((value) => value(event));
+          this.touchHandlers.get('longpress')?.forEach((value) => value(event));
         }, 700)
       );
     });
@@ -325,7 +318,7 @@ export default defineComponent({
       clearAllTimeouts();
       mapTouchTimeouts.push(
         setTimeout(() => {
-          mapTouchHandlers.get('longpress')?.forEach((value) => value(event));
+          this.touchHandlers.get('longpress')?.forEach((value) => value(event));
         }, 700)
       );
     });
@@ -342,6 +335,24 @@ export default defineComponent({
         Prefs.stored().setMostRecentMapZoom(map.getZoom());
       }, 2000)
     );
+
+    this.pushTouchHandler('longpress', (event) => {
+      this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
+    });
+    this.pushTouchHandler('poi_click', async (event) => {
+      if (!event?.features) {
+        console.warn('poi_click without features');
+        return;
+      }
+      let poi = await mapFeatureToPoi(event?.features[0]);
+      if (!poi?.gid) {
+        console.error('Could not canonicalize map feature.');
+        return;
+      }
+      const gidComponent = encodeURIComponent(poi?.gid);
+      this.$router.push(`/place/${gidComponent}`);
+    });
+
     setTimeout(async () => {
       const permissionState = await geolocationPermissionState();
       if (permissionState === 'granted') {
@@ -373,7 +384,7 @@ export default defineComponent({
           if (layer.id.startsWith('place_') || layer.id.startsWith('poi_')) {
             map?.on('click', layer.id, (event) => {
               if (event.features && event.features[0]) {
-                mapTouchHandlers
+                this.touchHandlers
                   .get('poi_click')
                   ?.forEach((value) => value(event));
               }

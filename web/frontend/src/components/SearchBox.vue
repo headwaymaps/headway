@@ -57,13 +57,7 @@
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
-import {
-  localizeAddress,
-  POI,
-  poiDisplayName,
-  decanonicalizePoi,
-  canonicalizePoi,
-} from 'src/utils/models';
+import { localizeAddress, POI } from 'src/utils/models';
 import { Event, Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
 import { QMenu } from 'quasar';
@@ -87,21 +81,15 @@ export default defineComponent({
       },
     },
   },
-  emits: ['update:modelValue'],
-  data: function () {
-    return {
-      poi: this.poiSelected,
-    };
-  },
+  emits: ['didSelectPoi'],
   unmounted: function () {
     this.onUnmounted();
   },
   beforeUnmount: function () {
     this.onUnmounted();
   },
-  setup: function (props, context) {
+  setup: function (props, ctx) {
     const inputText = ref('');
-    const poiSelected: Ref<POI | undefined> = ref(undefined);
     const poiHovered: Ref<POI | undefined> = ref(undefined);
     const autocompleteOptions: Ref<(POI | undefined)[]> = ref([]);
     let requestIdx = 0;
@@ -151,6 +139,7 @@ export default defineComponent({
         const position: LongLat | undefined = coordinates
           ? { long: coordinates[0], lat: coordinates[1] }
           : undefined;
+
         options.push({
           name: feature.properties.name,
           address: address,
@@ -170,7 +159,6 @@ export default defineComponent({
     return {
       inputText,
       autocompleteOptions,
-      poiSelected,
       poiHovered,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       castToTarget(target: any) {
@@ -197,9 +185,6 @@ export default defineComponent({
       },
       updateAutocompleteEventRawString(menu: QMenu) {
         menu.show();
-        if (poiSelected.value) {
-          poiSelected.value = undefined;
-        }
         if (poiHovered.value) {
           poiHovered.value = undefined;
         }
@@ -210,9 +195,6 @@ export default defineComponent({
       updateAutocompleteEventBeforeInput(event: Event, menu: QMenu) {
         const inputEvent = event as InputEvent;
         menu.show();
-        if (poiSelected.value) {
-          poiSelected.value = undefined;
-        }
         if (poiHovered.value) {
           poiHovered.value = undefined;
         }
@@ -225,19 +207,11 @@ export default defineComponent({
           );
         }
       },
-      async selectPoi(poi: POI | undefined) {
-        poiSelected.value = poi
-          ? await decanonicalizePoi(canonicalizePoi(poi))
-          : undefined;
-        if (poi) {
-          inputText.value = poiDisplayName(poi);
-        } else {
-          inputText.value = '';
-        }
+      async selectPoi(poi?: POI) {
+        ctx.emit('didSelectPoi', poi);
         setTimeout(() => {
           if (hoverMarker) hoverMarker.remove();
         });
-        context.emit('update:modelValue', poi);
       },
       hoverPoi(poi: POI | undefined) {
         poiHovered.value = poi;

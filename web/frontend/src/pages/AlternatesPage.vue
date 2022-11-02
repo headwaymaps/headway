@@ -7,9 +7,8 @@
             ref="searchBox"
             :hint="$t('search.from')"
             :style="{ flex: 1 }"
-            v-model="fromPoi"
             :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
-            v-on:update:model-value="rewriteUrl"
+            v-on:did-select-poi="searchBoxDidSelectFromPoi"
           >
           </search-box>
           <q-btn
@@ -27,9 +26,8 @@
         <search-box
           ref="searchBox"
           :hint="$t('search.to')"
-          v-model="toPoi"
           :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
-          v-on:update:model-value="rewriteUrl"
+          v-on:did-select-poi="searchBoxDidSelectToPoi"
         ></search-box>
       </q-card-section>
     </q-card>
@@ -118,6 +116,14 @@ export default defineComponent({
       if (index !== -1) {
         this.processRoute(this.$data.routes, index);
       }
+    },
+    searchBoxDidSelectFromPoi(poi?: POI) {
+      this.fromPoi = poi;
+      this.rewriteUrl();
+    },
+    searchBoxDidSelectToPoi(poi?: POI) {
+      this.toPoi = poi;
+      this.rewriteUrl();
     },
     showSteps(route: [Route, ProcessedRouteSummary]) {
       let index = this.$data.routes.indexOf(route);
@@ -261,6 +267,7 @@ export default defineComponent({
   },
   watch: {
     to(newValue) {
+      // NOTE: this doesn't seem to be called
       setTimeout(async () => {
         toPoi.value = await decanonicalizePoi(newValue);
         this.resizeMap();
@@ -279,6 +286,7 @@ export default defineComponent({
       });
     },
     from(newValue) {
+      // NOTE: this doesn't seem to be called
       setTimeout(async () => {
         fromPoi.value = await decanonicalizePoi(newValue);
         this.resizeMap();

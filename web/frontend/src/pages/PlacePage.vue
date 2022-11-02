@@ -4,7 +4,7 @@
       <search-box
         ref="searchBox"
         :force-text="poiDisplayName(poi)"
-        v-model="poi"
+        v-on:did-select-poi="searchBoxDidSelectPoi"
       ></search-box>
     </q-card-section>
   </q-card>
@@ -46,36 +46,45 @@ export default defineComponent({
   props: {
     osm_id: String,
   },
-  emits: ['loadedPoi'],
   components: { PlaceCard, SearchBox },
   data: function () {
     return {
       poi: {},
     };
   },
-  watch: {},
+  watch: {
+    poi: async function (newValue): Promise<void> {
+      await renderOnMap(newValue);
+    },
+  },
   methods: {
     poiDisplayName,
+    searchBoxDidSelectPoi(poi?: POI) {
+      if (poi) {
+        this.poi = poi;
+      } else {
+        this.$router.push('/');
+      }
+    },
   },
-  mounted: async function () {
-    const poi = await decanonicalizePoi(this.$props.osm_id);
-    this.$data.poi = poi;
-
+  beforeRouteUpdate: async function (to, from, next) {
+    const newOsmId = to.params.osm_id;
+    const poi = await decanonicalizePoi(newOsmId);
     if (poi) {
-      await renderOnMap(poi);
-      this.$emit('loadedPoi', poi);
+      this.poi = poi;
     } else {
       console.warn(`unable to find POI with osm_id: ${this.$props.osm_id}`);
     }
 
-    // watch *after* initial render
-    this.$watch('poi', async (newValue) => {
-      const gidComponent = encodeURIComponent(newValue.gid);
-      this.$router.push(`/place/${gidComponent}`);
-
-      await renderOnMap(newValue);
-      this.$emit('loadedPoi', newValue);
-    });
+    next();
+  },
+  mounted: async function () {
+    const poi = await decanonicalizePoi(this.$props.osm_id);
+    if (poi) {
+      this.$data.poi = poi;
+    } else {
+      console.warn(`unable to find POI with osm_id: ${this.$props.osm_id}`);
+    }
   },
   setup: function () {
     return {};
