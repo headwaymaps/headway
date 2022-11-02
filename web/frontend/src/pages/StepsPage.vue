@@ -139,29 +139,9 @@ export default defineComponent({
         decodeValhallaPath(leg.shape, 6).forEach((point) => {
           points.push([point[1], point[0]]);
         });
-        map?.addSource('headway_polyline' + selectedIdx, {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: points,
-            },
-          },
-        });
-        map?.addLayer({
-          id: 'headway_polyline' + selectedIdx,
-          type: 'line',
-          source: 'headway_polyline' + selectedIdx,
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
-          paint: {
-            'line-color': '#1976D2',
-            'line-width': 6,
-          },
+        getBaseMap()?.pushRouteLayer(leg, 'headway_polyline' + selectedIdx, {
+          'line-color': '#1976D2',
+          'line-width': 6,
         });
         setTimeout(() => {
           this.resizeMap();

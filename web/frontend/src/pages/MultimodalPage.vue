@@ -183,14 +183,12 @@ export default defineComponent({
     itineraryIndex: number;
     earliestStart: number;
     latestArrival: number;
-    points: [];
   } {
     return {
       itineraries: [],
       itineraryIndex: 0,
       earliestStart: 0,
       latestArrival: 0,
-      points: [],
     };
   },
   components: { SearchBox },
@@ -322,32 +320,9 @@ export default defineComponent({
             bbox[3] = points[point][1];
           }
         }
-        map?.addSource(layerName, {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: points,
-            },
-          },
-        });
-        map?.addLayer({
-          id: layerName,
-          type: 'line',
-          source: layerName,
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
-          paint: {
-            'line-color': itinerary.legs[index].transitLeg
-              ? '#E21919'
-              : '#1976D2',
-            'line-width': itinerary.legs[index].transitLeg ? 6 : 4,
-            'line-dasharray': itinerary.legs[index].transitLeg ? [1] : [1, 2],
-          },
+        getBaseMap()?.pushRouteLayer(leg, layerName, {
+          'line-color': '#1976D2',
+          'line-width': 6,
         });
         setTimeout(() => {
           map?.fitBounds(bbox, {

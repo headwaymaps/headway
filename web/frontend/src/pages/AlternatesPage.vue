@@ -79,7 +79,6 @@ import {
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
-import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import { useQuasar } from 'quasar';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
@@ -98,12 +97,10 @@ export default defineComponent({
   data: function (): {
     routes: [Route, ProcessedRouteSummary][];
     activeRoute: [Route, ProcessedRouteSummary] | undefined;
-    points: [number, number][];
   } {
     return {
       routes: [],
       activeRoute: undefined,
-      points: [],
     };
   },
   components: { SearchBox },
@@ -114,7 +111,7 @@ export default defineComponent({
       this.$data.activeRoute = route;
       let index = this.$data.routes.indexOf(route);
       if (index !== -1) {
-        this.processRoute(this.$data.routes, index);
+        this.renderRoutes(this.$data.routes, index);
       }
     },
     searchBoxDidSelectFromPoi(poi?: POI) {
@@ -177,83 +174,57 @@ export default defineComponent({
           toPoi.value,
           this.mode as CacheableMode
         );
-        this.processRoute(routes, 0);
+        this.renderRoutes(routes, 0);
       } else {
         getBaseMap()?.removeLayersExcept([]);
         getBaseMap()?.removeMarkersExcept([]);
       }
     },
-    processRoute(
+    renderRoutes(
       routes: [Route, ProcessedRouteSummary][],
       selectedIdx: number
     ) {
       this.$data.routes = routes;
       this.activeRoute = routes[selectedIdx];
 
-      let activeLayers = [];
       getBaseMap()?.removeLayersExcept([]);
-      for (let routeIdx = 0; routeIdx < routes.length; routeIdx += 1) {
-        const route = routes[routeIdx];
-        const leg = route[0]?.legs[0];
-        if (leg) {
-          var totalTime = 0;
-          for (const key in leg.maneuvers) {
-            totalTime += leg.maneuvers[key].time;
-            leg.maneuvers[key].time = totalTime;
-          }
-          var points: [number, number][] = [];
-          decodeValhallaPath(leg.shape, 6).forEach((point) => {
-            points.push([point[1], point[0]]);
-          });
-          this.$data.points = points;
-
-          let polylineKey = 'headway_polyline' + routeIdx;
-          activeLayers.push(polylineKey);
-          getBaseMap()?.pushLayer(
-            polylineKey,
-            {
-              type: 'geojson',
-              data: {
-                type: 'Feature',
-                properties: {},
-                geometry: {
-                  type: 'LineString',
-                  coordinates: points,
-                },
-              },
-            },
-            {
-              id: 'headway_polyline' + routeIdx,
-              type: 'line',
-              source: 'headway_polyline' + routeIdx,
-              layout: {
-                'line-join': 'round',
-                'line-cap': 'round',
-              },
-              paint:
-                routeIdx === selectedIdx
-                  ? {
-                      'line-color': '#1976D2',
-                      'line-width': 6,
-                    }
-                  : {
-                      'line-color': '#1976D2',
-                      'line-width': 4,
-                      'line-dasharray': [1, 2],
-                    },
-            }
-          );
-          setTimeout(() => {
-            this.resizeMap();
-            getBaseMap()?.fitBounds(
-              new LngLatBounds(
-                new LngLat(route[0].summary.min_lon, route[0].summary.min_lat),
-                new LngLat(route[0].summary.max_lon, route[0].summary.max_lat)
-              )
-            );
-          });
+      for (let routeIdx = 0; routeIdx < routes.length; routeIdx++) {
+        // Add selected route last to be sure it's on top of the others
+        if (routeIdx == selectedIdx) {
+          continue;
         }
+        const route = routes[routeIdx][0];
+        const leg = route.legs[0];
+        if (!leg) {
+          console.error('unexpectedly missing route leg');
+          continue;
+        }
+
+        getBaseMap()?.pushRouteLayer(leg, 'headway_polyline' + routeIdx, {
+          'line-color': '#777',
+          'line-width': 4,
+          'line-dasharray': [0.5, 2],
+        });
       }
+      const selectedRoute = routes[selectedIdx][0];
+      const selectedLeg = selectedRoute.legs[0];
+      getBaseMap()?.pushRouteLayer(
+        selectedLeg,
+        'headway_polyline' + selectedIdx,
+        {
+          'line-color': '#1976D2',
+          'line-width': 6,
+        }
+      );
+
+      this.resizeMap();
+      const summary = selectedRoute.summary;
+      getBaseMap()?.fitBounds(
+        new LngLatBounds(
+          new LngLat(summary.min_lon, summary.min_lat),
+          new LngLat(summary.max_lon, summary.max_lat)
+        )
+      );
     },
     resizeMap() {
       if (this.$refs.bottomCard && this.$refs.bottomCard) {

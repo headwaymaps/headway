@@ -5,10 +5,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import maplibregl, {
+  FitBoundsOptions,
   LayerSpecification,
+  LineLayerSpecification,
   LngLatBoundsLike,
   LngLatLike,
   MapMouseEvent,
+  MapOptions,
   Marker,
   SourceSpecification,
 } from 'maplibre-gl';
@@ -16,6 +19,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import Prefs from 'src/utils/Prefs';
 import { mapFeatureToPoi } from 'src/utils/models';
 import { debounce } from 'lodash';
+import { decodeValhallaPath } from 'src/third_party/decodePath';
+import { RouteLeg } from 'src/utils/routes';
 
 export var map: maplibregl.Map | null = null;
 
@@ -32,23 +37,22 @@ async function loadMap() {
     }
   }
 
+  let mapOptions: MapOptions = {
+    container: 'map', // container id
+    style: '/styles/style/style.json', // style URL
+    center: initialCenter, // starting position [lng, lat]
+    zoom: initialZoom, // starting zoom
+    trackResize: true,
+  };
+
   const response = await fetch('/bbox.txt');
   if (response.status != 200) {
-    // TODO surface error
-    return;
+    console.error('faied to fetch bbox with response', response);
   }
+
   const bbox_strings = (await response.text()).split(' ');
-  let bounds = undefined;
-  if (bbox_strings.length !== 4) {
-    map = new maplibregl.Map({
-      container: 'map', // container id
-      style: '/styles/style/style.json', // style URL
-      center: initialCenter, // starting position [lng, lat]
-      zoom: initialZoom, // starting zoom
-      trackResize: true,
-    });
-  } else {
-    bounds = [
+  if (bbox_strings.length === 4) {
+    let bounds = [
       parseFloat(bbox_strings[0]),
       parseFloat(bbox_strings[1]),
       parseFloat(bbox_strings[2]),
@@ -64,15 +68,10 @@ async function loadMap() {
       center[0] + maxExtent,
       center[1] + maxExtent,
     ];
-    map = new maplibregl.Map({
-      container: 'map', // container id
-      style: '/styles/style/style.json', // style URL
-      center: initialCenter, // starting position [lng, lat]
-      maxBounds: maxBounds,
-      zoom: initialZoom, // starting zoom
-      trackResize: true,
-    });
+    mapOptions.maxBounds = maxBounds;
   }
+
+  map = new maplibregl.Map(mapOptions);
 }
 
 const mapTouchTimeouts: NodeJS.Timeout[] = [];
@@ -140,7 +139,13 @@ export interface BaseMapInterface {
   pushLayer: (
     key: string,
     source: SourceSpecification,
-    layer: LayerSpecification
+    layer: LayerSpecification,
+    beforeLayerType: string
+  ) => void;
+  pushRouteLayer: (
+    leg: RouteLeg,
+    layerId: string,
+    paint: LineLayerSpecification['paint']
   ) => void;
   removeLayersExcept: (keys: string[]) => void;
 }
@@ -199,10 +204,52 @@ export default defineComponent({
         }
       });
     },
+    pushRouteLayer(
+      leg: RouteLeg,
+      layerId: string,
+      paint: LineLayerSpecification['paint']
+    ): void {
+      var totalTime = 0;
+      for (const key in leg.maneuvers) {
+        totalTime += leg.maneuvers[key].time;
+        leg.maneuvers[key].time = totalTime;
+      }
+      var points: [number, number][] = [];
+      decodeValhallaPath(leg.shape, 6).forEach((point) => {
+        points.push([point[1], point[0]]);
+      });
+
+      this.pushLayer(
+        layerId,
+        {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: points,
+            },
+          },
+        },
+        {
+          id: layerId,
+          type: 'line',
+          source: layerId,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint,
+        },
+        'symbol'
+      );
+    },
     pushLayer(
       key: string,
       source: SourceSpecification,
-      layer: LayerSpecification
+      layer: LayerSpecification,
+      beforeLayerType: string
     ) {
       let sourceKey = `headway_custom_layer_${key}`;
       let actualLayer = layer;
@@ -224,7 +271,17 @@ export default defineComponent({
           map.removeSource(sourceKey);
         }
         map.addSource(sourceKey, source);
-        map.addLayer(layer);
+        let beforeLayerId = undefined;
+        if (beforeLayerType) {
+          for (key in map.style._layers) {
+            let layer = map.style._layers[key];
+            if (layer.type == beforeLayerType) {
+              beforeLayerId = layer.id;
+              break;
+            }
+          }
+        }
+        map.addLayer(layer, beforeLayerId);
         this.layers.push(sourceKey);
       });
     },
@@ -286,6 +343,7 @@ export default defineComponent({
       pushMarker: this.pushMarker,
       removeMarkersExcept: this.removeMarkersExcept,
       pushLayer: this.pushLayer,
+      pushRouteLayer: this.pushRouteLayer,
       removeLayersExcept: this.removeLayersExcept,
     };
     var nav = new maplibregl.NavigationControl({
