@@ -1,4 +1,4 @@
-name: Build
+name: Build Check
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  earthly_build:
     name: Run a build for Adelaide
     runs-on: ubuntu-latest
     steps:
@@ -21,3 +21,19 @@ jobs:
         run: earthly --version
       - name: Build Adelaide
         run: earthly -P +build --area=Adelaide --countries=AU
+  www_checks:
+    defaults:
+      run:
+        working-directory: web/frontend
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: npm install --global yarn
+      - run: yarn install
+      - run: yarn lint
+      - run: yarn format-check
+      - run: yarn test

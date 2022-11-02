@@ -14,7 +14,7 @@ jobs:
           version: "latest"
       - uses: actions/checkout@v2
       - name: Docker login
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u headwaymaps --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u michaelkirk --password-stdin
       - name: Earthly version check
         run: earthly --version
       - name: Push images
