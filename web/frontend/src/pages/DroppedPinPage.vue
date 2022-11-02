@@ -4,8 +4,7 @@
       <q-card-section>
         <search-box
           ref="searchBox"
-          v-on:poi_selected="poiSelected"
-          v-on:poi_hovered="poiHovered"
+          v-on:did-select-poi="searchBoxDidSelectPoi"
         ></search-box>
       </q-card-section>
     </q-card>
@@ -84,25 +83,16 @@ export default defineComponent({
     },
   },
   methods: {
-    poiSelected: function (poi?: POI) {
-      getBaseMap()?.removeMarkersExcept(['active_marker']);
-      if (poi?.gid) {
-        const gidComponent = encodeURIComponent(poi?.gid);
-        this.$router.push(`/place/${gidComponent}`);
+    searchBoxDidSelectPoi: function (poi?: POI) {
+      if (poi) {
+        if (poi.gid) {
+          const gidComponent = encodeURIComponent(poi.gid);
+          this.$router.push(`/place/${gidComponent}`);
+        } else {
+          console.warn('search box POI had no GID', poi);
+        }
       } else {
         this.$router.push('/');
-      }
-    },
-    poiHovered: function (poi?: POI) {
-      if (poi?.position) {
-        getBaseMap()?.pushMarker(
-          'hover_marker',
-          new Marker({ color: '#11111155' }).setLngLat([
-            poi.position.long,
-            poi.position.lat,
-          ])
-        );
-        getBaseMap()?.removeMarkersExcept(['hover_marker']);
       }
     },
   },
