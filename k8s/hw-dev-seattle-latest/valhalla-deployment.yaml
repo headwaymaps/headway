@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
         - name: valhalla-init
-          image: ghcr.io/michaelkirk/valhalla-init:0.1.0-dev
+          image: ghcr.io/michaelkirk/valhalla-init:dev
           imagePullPolicy: Always
           volumeMounts:
             - name: valhalla-volume
@@ -39,7 +39,7 @@ spec:
               memory: 100Mi
       containers:
         - name: valhalla
-          image: ghcr.io/michaelkirk/valhalla:0.1.0-dev
+          image: ghcr.io/michaelkirk/valhalla:dev
           ports:
           - containerPort: 8002
           volumeMounts:

@@ -5,11 +5,14 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 function usage() {
 cat << EOF
 usage: $0 <headway-area> <headway-area-tag> <headway-service-port>
-e.g.: $0 planet-v1.19 planet-v1.19 https://maps.endworld.org 30400
-e.g.: $0 Seattle seattle-latest https://seattle.endworld.org 30401
+examples:
+    $0 planet-v1.19 planet-v1.19 https://maps.endworld.org 30400
+    $0 Seattle seattle-latest https://seattle.endworld.org 30401
 
-To overide HEADWAY_VERSION:
-e.g.: HEADWAY_VERSION=latest $0 Seattle seattle-latest https://seattle.endworld.org 30401
+Use a release other than what's in bin/_headway_version.sh
+    HEADWAY_VERSION=latest $0 Seattle seattle-latest https://seattle.endworld.org 30401
+    HEADWAY_VERSION=dev $0 Seattle seattle-latest https://seattle.endworld.org 30401
+    HEADWAY_VERSION=0.1.0 $0 planet-v1.19 planet-v1.19 https://maps.endworld.org 30400
 EOF
 }
 

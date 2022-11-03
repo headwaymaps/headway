@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: deployment-config
 data:
-  area: ${HEADWAY_VERSION}
+  area: ${HEADWAY_AREA}
   public-url: ${HEADWAY_PUBLIC_URL}
   font-source-url: ${HEADWAY_S3_ROOT}/${HEADWAY_VERSION}/fonts.tar
   sprite-source-url: ${HEADWAY_S3_ROOT}/${HEADWAY_VERSION}/sprite.tar
