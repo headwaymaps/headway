@@ -893,28 +893,6 @@
       }
     },
     {
-      "id": "road_one_way_arrow",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "minzoom": 15,
-      "filter": ["==", "oneway", 1],
-      "layout": {"icon-image": "arrow", "symbol-placement": "line"}
-    },
-    {
-      "id": "road_one_way_arrow_opposite",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "minzoom": 15,
-      "filter": ["==", "oneway", -1],
-      "layout": {
-        "icon-image": "arrow",
-        "symbol-placement": "line",
-        "icon-rotate": 180
-      }
-    },
-    {
       "id": "bridge_motorway_link_casing",
       "type": "line",
       "source": "openmaptiles",
@@ -1294,6 +1272,28 @@
         "line-color": "hsl(248, 1%, 41%)",
         "line-opacity": {"base": 1, "stops": [[0, 0.4], [4, 1]]},
         "line-width": {"base": 1, "stops": [[3, 1], [5, 1.2], [12, 3]]}
+      }
+    },
+    {
+      "id": "road_one_way_arrow",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": ["==", "oneway", 1],
+      "layout": {"icon-image": "arrow", "symbol-placement": "line"}
+    },
+    {
+      "id": "road_one_way_arrow_opposite",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 15,
+      "filter": ["==", "oneway", -1],
+      "layout": {
+        "icon-image": "arrow",
+        "symbol-placement": "line",
+        "icon-rotate": 180
       }
     },
     {
