@@ -18,6 +18,6 @@ fi
 
 # This job assumes you've already downloaded the planet file into the repository root
 AREA=planet-v1.19
-CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=$ALL --tag=$HEADWAY_VERSION"
+CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_VERSION"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
