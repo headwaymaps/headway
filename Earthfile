@@ -153,7 +153,9 @@ pelias-guess-country:
 
 pelias-config:
     FROM debian:bullseye-slim
-    RUN apt-get update -y && apt-get install -y --no-install-recommends gettext-base
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends gettext-base \
+        && rm -rf /var/lib/apt/lists/*
     WORKDIR /config
     COPY services/pelias/pelias.json.template pelias.json.template
     ARG countries
@@ -435,7 +437,9 @@ valhalla-init-image:
     FROM +valhalla-base-image
     USER root
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget
+        && apt-get install -y --no-install-recommends ca-certificates wget \
+        && rm -rf /var/lib/apt/lists/*
+
     USER valhalla
     COPY ./services/valhalla/init.sh /app/init.sh
     ENTRYPOINT ["/bin/bash"]
@@ -500,7 +504,8 @@ tileserver-build:
 tileserver-init-image:
     FROM debian:bullseye-slim
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget
+        && apt-get install -y --no-install-recommends ca-certificates wget \
+        && rm -rf /var/lib/apt/lists/*
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
@@ -514,7 +519,9 @@ tileserver-serve-image:
 
     USER root
 
-    RUN apt-get update -y && apt-get install -y gettext-base
+    RUN apt-get update \
+        && apt-get install -y gettext-base \
+        && rm -rf /var/lib/apt/lists/*
 
     RUN mkdir -p /app/styles
     RUN mkdir -p /styles
@@ -589,24 +596,28 @@ downloader-base:
     FROM debian:bullseye-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends wget ca-certificates xz-utils
+        && apt-get install -y --no-install-recommends wget ca-certificates xz-utils \
+        && rm -rf /var/lib/apt/lists/*
     RUN mkdir /data
 
 java-base:
     FROM debian:bullseye-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-17-jre-headless sudo
+        && apt-get install -y --no-install-recommends openjdk-17-jre-headless sudo \
+        && rm -rf /var/lib/apt/lists/*
 
 java11-base:
     FROM debian:bullseye-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo
+        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo \
+        && rm -rf /var/lib/apt/lists/*
 
 save-base:
     FROM debian:bullseye-slim
     ARG area
     ARG countries
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends xz-utils
+        && apt-get install -y --no-install-recommends xz-utils \
+        && rm -rf /var/lib/apt/lists/*
