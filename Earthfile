@@ -40,12 +40,15 @@ save-polylines:
     ARG area
     RUN mkdir -p /data
     COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines.0sv
+    # This isn't used at runtime, but it can be useful when doing a
+    # planet-scale import of pelias outside of earthly.
     SAVE ARTIFACT /data/polylines.0sv AS LOCAL ./data/${area}-polylines.0sv
 
 save-extract:
     FROM +save-base
     ARG area
     COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
+    # This isn't used at runtime, but it might be useful to archive the input
     SAVE ARTIFACT /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
 
 save-gtfs:
@@ -123,7 +126,7 @@ extract:
     FROM +downloader-base
     ARG area
     COPY --if-exists ${area}.osm.pbf /data/data.osm.pbf
-	IF [ ! -f "/data/data.osm.pbf" ]
+    IF [ ! -f "/data/data.osm.pbf" ]
         RUN wget -nv -U headway/1.0 -O /data/data.osm.pbf "https://download.bbbike.org/osm/bbbike/${area}/${area}.osm.pbf"
     END
     SAVE ARTIFACT /data/data.osm.pbf /data.osm.pbf
