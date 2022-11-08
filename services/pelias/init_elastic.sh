@@ -8,8 +8,8 @@ if [ ! -z "$(find /usr/share/elasticsearch/data -type f)" ]; then
     echo "Nothing to do, already have elasticsearch data"
 elif [ -f "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Extracting artifact."
-    cd /usr/share/elasticsearch/data && cat "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" | xz --decompress --stdout | tar -x
+    tar -xJf "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" -C /usr/share/elasticsearch/data
 else
     echo "Downloading and extracting artifact."
-    cd /usr/share/elasticsearch/data && wget -O- "${ELASTICSEARCH_ARTIFACT_URL}" | xz --decompress --stdout | tar -x
+    wget -O- "${ELASTICSEARCH_ARTIFACT_URL}" | tar -xJ -C /usr/share/elasticsearch/data
 fi

@@ -73,7 +73,7 @@ save-valhalla:
     FROM +save-base
     ARG area
     COPY (+valhalla-build/tiles --area=${area}) /valhalla
-    RUN bash -c 'cd /valhalla && ls | tar -c --files-from - | xz -z - > /valhalla.tar.xz'
+    RUN tar -cJf /valhalla.tar.xz -C /valhalla .
     SAVE ARTIFACT /valhalla.tar.xz AS LOCAL ./data/${area}.valhalla.tar.xz
 
 save-elasticsearch:
@@ -81,7 +81,7 @@ save-elasticsearch:
     ARG area
     ARG countries
     COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
-    RUN bash -c 'cd /elasticsearch && ls | tar -c --files-from - | xz -z - > /elasticsearch.tar.xz'
+    RUN tar -cJf /elasticsearch.tar.xz -C /elasticsearch .
     SAVE ARTIFACT /elasticsearch.tar.xz AS LOCAL ./data/${area}.elasticsearch.tar.xz
 
 save-placeholder:
@@ -89,7 +89,7 @@ save-placeholder:
     ARG area
     ARG countries
     COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
-    RUN bash -c 'cd /placeholder && ls | tar -c --files-from - | xz -z - > /placeholder.tar.xz'
+    RUN tar -cJf /placeholder.tar.xz -C /placeholder .
     SAVE ARTIFACT /placeholder.tar.xz AS LOCAL ./data/${area}.placeholder.tar.xz
 
 save-pelias-config:
