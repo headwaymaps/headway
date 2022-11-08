@@ -611,13 +611,11 @@ java11-base:
     FROM debian:bullseye-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo \
+        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo xz-utils \
         && rm -rf /var/lib/apt/lists/*
 
 save-base:
     FROM debian:bullseye-slim
-    ARG area
-    ARG countries
     RUN apt-get update \
         && apt-get install -y --no-install-recommends xz-utils \
         && rm -rf /var/lib/apt/lists/*
