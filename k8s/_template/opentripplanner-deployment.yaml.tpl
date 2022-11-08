@@ -37,7 +37,7 @@ spec:
           image: ghcr.io/michaelkirk/opentripplanner:${HEADWAY_VERSION}
           imagePullPolicy: Always
           ports:
-            - containerPort: 8000
+            - containerPort: 8080
           volumeMounts:
             - name: opentripplanner-volume
               mountPath: /data
