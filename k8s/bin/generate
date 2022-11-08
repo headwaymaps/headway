@@ -4,44 +4,42 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 function usage() {
 cat << EOF
-usage: $0 <headway-area> <headway-area-tag> <headway-service-port>
+usage: $0 <env-file>
 examples:
-    $0 planet-v1.19 planet-v1.19 https://maps.endworld.org 30400
-    $0 Seattle seattle-latest https://seattle.endworld.org 30401
+    $0 seattle.env
 
 Use a release other than what's in bin/_headway_version.sh
-    HEADWAY_VERSION=latest $0 Seattle seattle-latest https://seattle.endworld.org 30401
-    HEADWAY_VERSION=dev $0 Seattle seattle-latest https://seattle.endworld.org 30401
-    HEADWAY_VERSION=0.1.0 $0 planet-v1.19 planet-v1.19 https://maps.endworld.org 30400
+    HEADWAY_VERSION=latest $0 seattle.env
+    HEADWAY_VERSION=0.1.0 $0 planet.env
 EOF
 }
 
-if [ ! $# -eq 4 ]
-then
+if [ ! $# -eq 1 ]; then
     usage
     exit 1
 fi
 
-# export HEADWAY_VERSION=latest
-# export HEADWAY_AREA=Seattle
-# export HEADWAY_AREA_TAG=seattle-latest
-# export HEADWAY_SERVICE_PORT=30401
-export HEADWAY_AREA=$1
-export HEADWAY_AREA_TAG=$2
-export HEADWAY_PUBLIC_URL=$3
-export HEADWAY_SERVICE_PORT=$4
-export HEADWAY_S3_ROOT=https://s3.us-west-004.backblazeb2.com/maps-eotw
+ENV_FILE=$1
+source $ENV_FILE
 
 if [ -z "${HEADWAY_VERSION}" ]
 then
     source "${REPO_ROOT}/bin/_headway_version.sh"
 fi
+export HEADWAY_S3_ROOT=https://s3.us-west-004.backblazeb2.com/maps-eotw
+
+set -o nounset
 
 OUTPUT_DIR="hw-${HEADWAY_VERSION}-${HEADWAY_AREA_TAG}"
 mkdir -p "$OUTPUT_DIR"
 
 for file in _template/*.tpl
 do
+    set -x
+    if [[ $file =~ opentripplanner && "$HEADWAY_ENABLE_TRANSIT_ROUTING" == 0 ]]; then
+        echo "skipping transit routing"
+        continue
+    fi
     output=$(basename $file | sed 's/.tpl$//')
     echo $output
     envsubst < "$file" > "$OUTPUT_DIR/$output"

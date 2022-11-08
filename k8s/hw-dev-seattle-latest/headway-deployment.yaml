@@ -33,6 +33,16 @@ spec:
               value: /data/fonts/fonts.tar
             - name: SPRITE_ARTIFACT_DEST_PATH
               value: /data/sprite/sprite.tar
+            - name: HEADWAY_BBOX
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: bbox
+            - name: HEADWAY_ENABLE_TRANSIT_ROUTING
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: enable-transit-routing
             - name: FONT_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:

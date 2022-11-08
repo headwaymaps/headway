@@ -19,16 +19,24 @@ build:
     # tag for created docker containers
     ARG tag="latest"
 
-    BUILD +save --area=${area} --countries=${countries}
+    # Run +gtfs-enumerate to build an appropriate input for transit_feeds.
+    # If omitted, you cannot enable transit routing.
+    ARG transit_feeds
+
+    BUILD +save --area=${area} --countries=${countries} --transit_feeds=${transit_feeds}
     BUILD +images --tag=${tag}
 
 save:
+    FROM +save-base
     ARG area
     ARG countries
+    ARG transit_feeds
     BUILD +save-extract --area=${area}
     BUILD +save-mbtiles --area=${area}
-    BUILD +save-gtfs --area=${area}
-    BUILD +save-otp --area=${area}
+    IF [ ! -z "${transit_feeds}" ]
+        BUILD +save-gtfs --area=${area} --transit_feeds=${transit_feeds}
+        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds}
+    END
     BUILD +save-valhalla --area=${area}
     BUILD +save-elasticsearch --area=${area} --countries=${countries}
     BUILD +save-placeholder --area=${area} --countries=${countries}
@@ -53,15 +61,20 @@ save-extract:
 
 save-gtfs:
     FROM +save-base
-    ARG area
-    COPY (+gtfs-build/gtfs.tar --area=${area}) /gtfs.tar
-    SAVE ARTIFACT /gtfs.tar AS LOCAL ./data/${area}.gtfs.tar
+    ARG --required area
+    ARG --required transit_feeds
+    COPY (+gtfs-build/gtfs.tar.xz --transit_feeds=${transit_feeds}) /gtfs.tar.xz
+    # This isn't used at runtime, but it might be useful to archive the input
+    SAVE ARTIFACT /gtfs.tar.xz AS LOCAL ./data/${area}.gtfs.tar.xz
 
 save-otp:
     FROM +save-base
-    ARG area
-    COPY (+otp-build/graph.obj --area=${area}) /graph.obj
-    SAVE ARTIFACT /graph.obj AS LOCAL ./data/${area}.graph.obj
+    ARG --required area
+    ARG --required transit_feeds
+
+    COPY (+otp-build/graph.obj --area=${area} --transit_feeds=${transit_feeds}) /graph.obj
+    RUN xz /graph.obj
+    SAVE ARTIFACT /graph.obj.xz AS LOCAL ./data/${area}.graph.obj.xz
 
 save-mbtiles:
     FROM +save-base
@@ -151,6 +164,8 @@ pelias-guess-country:
     RUN grep "^${HEADWAY_AREA}:" /data/cities_to_countries.csv | cut -d':' -f2 > /data/guessed_country
     SAVE ARTIFACT /data/guessed_country /guessed_country
 
+# We use this both for import and for production pelias instances.
+# But we might want to try a longer timeout for the import process?
 pelias-config:
     FROM debian:bullseye-slim
     RUN apt-get update \
@@ -334,13 +349,14 @@ gtfs-enumerate:
 
 gtfs-build:
     FROM +gtfs-base
+    ARG --required transit_feeds
+
+    COPY "${transit_feeds}" /gtfs/gtfs_feeds.csv
+
     COPY ./services/gtfs/download_gtfs_feeds.py /gtfs/
-    ARG area
-    COPY --if-exists data/${area}.gtfs_feeds.csv /gtfs/gtfs_feeds.csv
-    RUN touch /gtfs/gtfs_feeds.csv # Just in case the GTFS feeds weren't enumerated earlier.
     RUN python /gtfs/download_gtfs_feeds.py
-    RUN bash -c "cd /gtfs_feeds && ls *.zip | tar -cf /gtfs/gtfs.tar --files-from -"
-    SAVE ARTIFACT /gtfs/gtfs.tar /gtfs.tar
+    RUN cd /gtfs_feeds && ls *.zip | tar -cJf /gtfs/gtfs.tar.xz --files-from -
+    SAVE ARTIFACT /gtfs/gtfs.tar.xz /gtfs.tar.xz
 
 ##############################
 # OpenTripPlanner
@@ -368,17 +384,15 @@ otp-base:
 otp-build:
     FROM +otp-base
 
-    ARG area
+    ARG --required transit_feeds
+    ARG --required area
 
-    COPY (+gtfs-build/gtfs.tar --area=${area}) /data/
+    COPY (+gtfs-build/gtfs.tar.xz --transit_feeds=${transit_feeds}) /data/
     COPY (+extract/data.osm.pbf --area=${area}) /data/
+
     WORKDIR /data
-    RUN tar xvf gtfs.tar
-
-    ARG javaMemArgs=-Xmx4G
-    COPY ./services/otp/maybe_build.sh /otp
-
-    RUN /otp/maybe_build.sh
+    RUN tar xvJf gtfs.tar.xz
+    RUN java -Xmx4G -jar /otp/otp-shaded.jar --build --save .
 
     SAVE ARTIFACT /data/graph.obj /graph.obj
 
@@ -392,12 +406,7 @@ otp-init-image:
 otp-serve-image:
     FROM +otp-base
 
-    RUN apt-get update -y && apt-get install -y --no-install-recommends netcat
-
-    ARG javaMemArgs=-Xmx4G
-    COPY ./services/otp/run_otp.sh /otp
-
-    CMD ["/otp/run_otp.sh"]
+    CMD java -Xmx4G -jar /otp/otp-shaded.jar --load /data
     ARG tag
     SAVE IMAGE --push ghcr.io/michaelkirk/opentripplanner:${tag}
 
@@ -555,24 +564,23 @@ web-build:
 
 web-init-image:
     FROM +downloader-base
-    COPY ./services/nginx/init.sh /app/init.sh
+
+    COPY ./services/nginx/init.sh ./services/nginx/generate_config.sh /app/
+    ENV HEADWAY_SHARED_VOL=/data
     CMD ["/app/init.sh"]
+
     ARG tag
     SAVE IMAGE --push ghcr.io/michaelkirk/headway-init:${tag}
 
 web-serve-image:
     FROM nginx
 
-    COPY web/init.sh web/bboxes.csv /frontend/
-
     ARG branding
     COPY (+web-build/spa --branding=${branding}) /usr/share/nginx/html/
 
-    COPY web/nginx.conf.template /etc/nginx/templates/nginx.conf.template
+    COPY services/nginx/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
     ENV HEADWAY_PUBLIC_URL=http://127.0.0.1:8080
-    ENV HEADWAY_BBOX_PATH=/frontend/bbox.txt
-    ENV HEADWAY_CAPABILITIES_PATH=/frontend/capabilities.txt
     ENV HEADWAY_SHARED_VOL=/data
     ENV HEADWAY_HTTP_PORT=8080
     ENV HEADWAY_RESOLVER=127.0.0.11
@@ -583,7 +591,6 @@ web-serve-image:
     # for escaping $ in nginx template
     ENV ESC=$
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
-    ENTRYPOINT ["/frontend/init.sh"]
 
     ARG tag
     SAVE IMAGE --push ghcr.io/michaelkirk/headway:${tag}

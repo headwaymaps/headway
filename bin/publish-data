@@ -46,10 +46,10 @@ if [ -z "${HEADWAY_VERSION}" ]; then
     source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
-upload "${AREA}.graph.obj"            "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.graph.obj.xz"         "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.valhalla.tar.xz"      "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.gtfs.tar"             "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.gtfs.tar.xz"          "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.pelias.json"          "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.elasticsearch.tar.xz" "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.mbtiles"              "${HEADWAY_VERSION}/${AREA_TAG}"

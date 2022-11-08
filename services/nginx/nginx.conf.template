@@ -70,14 +70,6 @@ http {
     location /fonts/  {
       proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;
     }
-    location /bbox.txt {
-      add_header Content-Type text/plain;
-      alias ${HEADWAY_BBOX_PATH};
-    }
-    location /capabilities.txt {
-      add_header Content-Type text/plain;
-      alias ${HEADWAY_CAPABILITIES_PATH};
-    }
     location / {
       try_files ${ESC}uri /index.html;
     }

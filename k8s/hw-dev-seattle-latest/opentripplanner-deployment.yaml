@@ -20,8 +20,6 @@ spec:
             - name: opentripplanner-volume
               mountPath: /data
           env:
-            - name: OTP_ARTIFACT_DEST_PATH
-              value: /data/area.graph.obj
             - name: OTP_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
@@ -41,26 +39,23 @@ spec:
           volumeMounts:
             - name: opentripplanner-volume
               mountPath: /data
-          env:
-            - name: HEADWAY_AREA
-              value: area
           resources:
             limits:
-              memory: 50Mi
-          # livenessProbe:
-          #   httpGet:
-          #     path: /
-          #     port: 8080
-          #   initialDelaySeconds: 15
-          #   periodSeconds: 15
-          #   failureThreshold: 10
-          # readinessProbe:
-          #   httpGet:
-          #     path: /
-          #     port: 8080
-          #   initialDelaySeconds: 15
-          #   periodSeconds: 15
-          #   failureThreshold: 10
+              memory: 4.5Gi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
       volumes:
         - name: opentripplanner-volume
           ephemeral:

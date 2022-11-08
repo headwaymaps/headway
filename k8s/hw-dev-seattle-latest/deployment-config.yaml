@@ -5,6 +5,8 @@ metadata:
 data:
   area: Seattle
   public-url: https://seattle.endworld.org
+  bbox: "-122.462 47.394 -122.005 47.831"
+  enable-transit-routing: "1"
   font-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/fonts.tar
   sprite-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/sprite.tar
   natural-earth-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/natural_earth.mbtiles
@@ -13,4 +15,4 @@ data:
   pelias-config-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/seattle-latest/Seattle.pelias.json
   placeholder-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/seattle-latest/Seattle.placeholder.tar.xz
   elasticsearch-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/seattle-latest/Seattle.elasticsearch.tar.xz
-  otp-graph-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/seattle-latest/Seattle.graph.obj
+  otp-graph-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/dev/seattle-latest/Seattle.graph.obj.xz

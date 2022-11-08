@@ -63,6 +63,7 @@
 <script lang="ts">
 import { QCard } from 'quasar';
 import { encodePoi } from 'src/utils/models';
+import Config from 'src/utils/Config';
 import { defineComponent } from 'vue';
 import { setBottomCardAllowance } from './BaseMap.vue';
 
@@ -93,14 +94,7 @@ export default defineComponent({
     setTimeout(() => {
       setBottomCardAllowance((this.$refs.bottomCard as QCard).$el.offsetHeight);
     });
-    let response = await fetch('/capabilities.txt');
-    if (response.status != 200) {
-      // TODO surface error
-      return false;
-    }
-    const capabilities = (await response.text()).split('\n');
-    this.haveTransit =
-      capabilities.find((val: string) => val === 'OTP') !== undefined;
+    this.haveTransit = Config.transitRoutingEnabled;
   },
   components: {},
 });
