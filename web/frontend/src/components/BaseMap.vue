@@ -123,7 +123,7 @@ async function geolocationPermissionState(): Promise<string> {
 
 export interface BaseMapInterface {
   flyTo: (location: [number, number], zoom: number) => void;
-  fitBounds: (bounds: LngLatBoundsLike) => void;
+  fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   pushMarker: (key: string, marker: Marker) => void;
   removeMarkersExcept: (keys: string[]) => void;
   pushLayer: (
