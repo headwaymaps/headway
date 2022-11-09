@@ -146,7 +146,7 @@ import {
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
-import { Marker } from 'maplibre-gl';
+import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import { useQuasar } from 'quasar';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
@@ -320,26 +320,47 @@ export default defineComponent({
             bbox[3] = points[point][1];
           }
         }
-        getBaseMap()?.pushRouteLayer(leg, layerName, {
-          'line-color': '#1976D2',
-          'line-width': 6,
-        });
-        setTimeout(() => {
-          map?.fitBounds(bbox, {
-            padding: {
-              top: (this.$refs.searchCard as HTMLDivElement).offsetHeight + 20,
-              bottom: 20,
-              left: 10,
-              right: 10,
+        map?.addSource(layerName, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: points,
             },
-          });
-        }, 100);
+          },
+        });
+        map?.addLayer({
+          id: layerName,
+          type: 'line',
+          source: layerName,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': itinerary.legs[index].transitLeg
+              ? '#E21919'
+              : '#1976D2',
+            'line-width': itinerary.legs[index].transitLeg ? 6 : 4,
+            'line-dasharray': itinerary.legs[index].transitLeg ? [1] : [1, 2],
+          },
+        });
       }
+      getBaseMap()?.fitBounds(
+        new LngLatBounds(
+          new LngLat(bbox[0], bbox[1]),
+          new LngLat(bbox[2], bbox[3])
+        )
+      );
     },
     resizeMap() {
+      // TODO: this impl copied from AlternatesPage.vue. I'm not sure if its correct
+      // but what was before was erroring due to referencing non-existant members.
       if (this.$refs.bottomCard && this.$refs.bottomCard) {
         setBottomCardAllowance(
-          (this.$refs.searchCard as HTMLDivElement).offsetHeight
+          (this.$refs.bottomCard as HTMLDivElement).offsetHeight
         );
       } else {
         setBottomCardAllowance(0);

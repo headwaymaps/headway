@@ -5,6 +5,8 @@ metadata:
 data:
   area: planet-v1.19
   public-url: https://maps.endworld.org
+  bbox: ""
+  enable-transit-routing: "0"
   font-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/fonts.tar
   sprite-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/sprite.tar
   natural-earth-source-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/natural_earth.mbtiles
@@ -13,4 +15,4 @@ data:
   pelias-config-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/planet-v1.19/planet-v1.19.pelias.json
   placeholder-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/planet-v1.19/planet-v1.19.placeholder.tar.xz
   elasticsearch-artifact-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/planet-v1.19/planet-v1.19.elasticsearch.tar.xz
-  otp-graph-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/planet-v1.19/planet-v1.19.graph.obj
+  otp-graph-url: https://s3.us-west-004.backblazeb2.com/maps-eotw/0.1.0/planet-v1.19/planet-v1.19.graph.obj.xz

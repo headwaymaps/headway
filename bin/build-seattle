@@ -18,6 +18,7 @@ fi
 
 # This job will download the seattle.osm data from bbike
 AREA=Seattle
-CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_VERSION"
+TRANSIT_FEEDS=data/Seattle.gtfs_feeds.csv
+CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_VERSION --transit_feeds=$TRANSIT_FEEDS"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")

@@ -10,7 +10,3 @@ spec:
       name: service
       port: 8080
       targetPort: 8080
-    - protocol: TCP
-      name: havegraph
-      port: 9999
-      targetPort: 9999

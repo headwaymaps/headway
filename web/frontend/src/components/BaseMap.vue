@@ -17,6 +17,7 @@ import maplibregl, {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Prefs from 'src/utils/Prefs';
+import Config from 'src/utils/Config';
 import { mapFeatureToPoi } from 'src/utils/models';
 import { debounce } from 'lodash';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
@@ -45,19 +46,8 @@ async function loadMap() {
     trackResize: true,
   };
 
-  const response = await fetch('/bbox.txt');
-  if (response.status != 200) {
-    console.error('faied to fetch bbox with response', response);
-  }
-
-  const bbox_strings = (await response.text()).split(' ');
-  if (bbox_strings.length === 4) {
-    let bounds = [
-      parseFloat(bbox_strings[0]),
-      parseFloat(bbox_strings[1]),
-      parseFloat(bbox_strings[2]),
-      parseFloat(bbox_strings[3]),
-    ];
+  let bounds = Config.maxBounds;
+  if (bounds) {
     const center = [(bounds[2] + bounds[0]) / 2, (bounds[3] + bounds[1]) / 2];
     const scaleFactor = 1.0 / Math.cos((3.14159 / 180) * center[1]);
     const extents = [bounds[2] - bounds[0], bounds[3] - bounds[1]];

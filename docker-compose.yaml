@@ -28,8 +28,7 @@ services:
     image: ghcr.io/michaelkirk/opentripplanner-init:latest
     env_file: .env
     environment:
-      ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.graph.obj
-      ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj
+      OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.xz
     volumes:
       - "./data/:/bootstrap/:ro"
       - "otp_data:/data/:rw"
@@ -85,7 +84,6 @@ services:
     env_file: .env
     environment:
       HEADWAY_RESOLVER: 127.0.0.11
-      HEADWAY_FORCE_BBOX: ${HEADWAY_FORCE_BBOX}
       HEADWAY_TILESERVER_URL: http://mbtileserver:8000
       HEADWAY_PELIAS_URL: http://pelias_api:4000
       HEADWAY_VALHALLA_URL: http://valhalla:8002

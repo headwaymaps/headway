@@ -1,0 +1,9 @@
+#!/bin/bash
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+cd "$REPO_ROOT/k8s"
+
+bin/generate seattle.env
+HEADWAY_VERSION=latest bin/generate seattle.env
+HEADWAY_VERSION=0.1.0 bin/generate planet.env

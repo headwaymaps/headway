@@ -2,6 +2,8 @@
 
 set -xe
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 mkdir -p $(dirname ${FONT_ARTIFACT_DEST_PATH})
 mkdir -p $(dirname ${SPRITE_ARTIFACT_DEST_PATH})
 
@@ -29,3 +31,8 @@ fi
 
 cd $(dirname ${SPRITE_ARTIFACT_DEST_PATH}) && tar xvf ${SPRITE_ARTIFACT_DEST_PATH}
 
+if [ -z $HEADWAY_SHARED_VOL ]; then
+    echo "Expecting HEADWAY_SHARED_VOL to be set."
+    exit 1;
+fi
+"$SCRIPT_DIR/generate_config.sh" > $HEADWAY_SHARED_VOL/headway-config.json

@@ -29,7 +29,7 @@ module.exports = configure(function (/* ctx */) {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['i18n'],
+    boot: ['config', 'i18n'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#css
     css: ['app.scss'],
@@ -120,14 +120,6 @@ module.exports = configure(function (/* ctx */) {
           changeOrigin: true,
         },
         '/valhalla': {
-          target: HEADWAY_HOST,
-          changeOrigin: true,
-        },
-        '/bbox.txt': {
-          target: HEADWAY_HOST,
-          changeOrigin: true,
-        },
-        '/capabilities.txt': {
           target: HEADWAY_HOST,
           changeOrigin: true,
         },
