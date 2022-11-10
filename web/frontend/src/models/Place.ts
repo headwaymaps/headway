@@ -99,9 +99,9 @@ export class Place {
       'unexpected geometry found for feature',
       geometry
     );
-    const [lat, lng] = geometry.coordinates;
-    console.assert(lat, 'missing lat');
+    const [lng, lat] = geometry.coordinates;
     console.assert(lng, 'missing lng');
+    console.assert(lat, 'missing lat');
     const location = new LngLat(lng, lat);
 
     const countryCode = feature.properties?.country_code;
