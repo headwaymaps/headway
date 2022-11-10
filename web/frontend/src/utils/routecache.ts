@@ -1,4 +1,4 @@
-import { POI } from './models';
+import { POI, DistanceUnits } from './models';
 import { ProcessedRouteSummary, Route, summarizeRoute } from './routes';
 
 export type CacheableMode = 'walk' | 'bicycle' | 'car';
@@ -17,13 +17,21 @@ function modeToCostingModel(mode: CacheableMode): string {
 export async function getRoutes(
   from: POI,
   to: POI,
-  mode: CacheableMode
+  mode: CacheableMode,
+  units?: DistanceUnits
 ): Promise<[Route, ProcessedRouteSummary][]> {
   if (!from.position || !to.position) {
     console.error("Can't request without fully specified endpoints");
     return [];
   }
-  const requestObject = {
+
+  type RouteRequest = {
+    locations: Array<{ lat: number; lon: number }>;
+    costing: string;
+    alternates: number;
+    units?: DistanceUnits;
+  };
+  const requestObject: RouteRequest = {
     locations: [
       {
         lat: from.position.lat,
@@ -37,6 +45,9 @@ export async function getRoutes(
     costing: modeToCostingModel(mode),
     alternates: 3,
   };
+  if (units) {
+    requestObject.units = units;
+  }
   const response = await fetch(
     `/valhalla/route?json=${JSON.stringify(requestObject)}`
   );

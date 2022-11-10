@@ -72,8 +72,8 @@
 <script lang="ts">
 import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
 import {
-  encodePoi,
   decanonicalizePoi,
+  canonicalizePoi,
   POI,
   poiDisplayName,
 } from 'src/utils/models';
@@ -83,6 +83,7 @@ import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import { useQuasar } from 'quasar';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
+import { Place } from 'src/models/Place';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -163,16 +164,27 @@ export default defineComponent({
         this.$router.push('/');
         return;
       }
-      const fromCanonical = fromPoi.value ? encodePoi(fromPoi.value) : '_';
-      const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
+      const fromCanonical = fromPoi.value
+        ? canonicalizePoi(fromPoi.value)
+        : '_';
+      const toCanonical = toPoi.value ? canonicalizePoi(toPoi.value) : '_';
       this.$router.push(
-        `/directions/${this.mode}/${toCanonical}/${fromCanonical}`
+        '/directions/' +
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          encodeURIComponent(this.mode!) +
+          '/' +
+          encodeURIComponent(toCanonical) +
+          '/' +
+          encodeURIComponent(fromCanonical)
       );
       if (fromPoi.value?.position && toPoi.value?.position) {
+        // TODO: replace POI with Place so we don't have to hit pelias twice?
+        let place = await Place.fetchFromSerializedId(fromCanonical);
         const routes = await getRoutes(
           fromPoi.value,
           toPoi.value,
-          this.mode as CacheableMode
+          this.mode as CacheableMode,
+          place.preferredDistanceUnits()
         );
         this.renderRoutes(routes, 0);
       } else {
@@ -238,7 +250,6 @@ export default defineComponent({
   },
   watch: {
     to(newValue) {
-      // NOTE: this doesn't seem to be called
       setTimeout(async () => {
         toPoi.value = await decanonicalizePoi(newValue);
         this.resizeMap();
@@ -257,7 +268,6 @@ export default defineComponent({
       });
     },
     from(newValue) {
-      // NOTE: this doesn't seem to be called
       setTimeout(async () => {
         fromPoi.value = await decanonicalizePoi(newValue);
         this.resizeMap();

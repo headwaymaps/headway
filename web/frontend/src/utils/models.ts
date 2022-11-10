@@ -214,3 +214,8 @@ export function localizeAddress(properties: any, oneLine = true): string {
 export function isDense(): boolean {
   return window.innerWidth <= 800;
 }
+
+export enum DistanceUnits {
+  Miles = 'miles',
+  Kilometers = 'kilometers',
+}
