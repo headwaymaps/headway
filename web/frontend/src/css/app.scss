@@ -82,7 +82,6 @@
 .itinerary-item {
   flex-grow: 1;
   position: static;
-  background-color: $dark;
   min-width: calc(max(40%, 300px));
   height: 0;
   padding: 2.5em;
@@ -96,7 +95,7 @@
 
 .itinerary-item-line {
   position: relative;
-  background-color: #fff;
+  background-color: #ddd;
   top: -0.25em;
   height: 0.5em;
   border-radius: 0.25em;

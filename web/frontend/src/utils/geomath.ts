@@ -1,6 +1,15 @@
+import { LngLat } from 'maplibre-gl';
+
 export interface LongLat {
   long: number;
   lat: number;
+}
+
+/// Unfortunately we use (at least) two different objects for storing latitude and longitude.
+/// So this is a helper to convert between two of them.
+/// Long term I'd like to consolidate around fewer.
+export function toLngLat(longLat: LongLat): LngLat {
+  return new LngLat(longLat.long, longLat.lat);
 }
 
 export function fastDistanceMeters(p1: LongLat, p2: LongLat): number {

@@ -1,4 +1,5 @@
 import { i18n } from 'src/i18n/lang';
+import { DistanceUnits } from './models';
 
 export interface RouteLegManeuver {
   begin_shape_index: number;
@@ -33,9 +34,9 @@ export interface Route {
 }
 
 export interface ProcessedRouteSummary {
-  timeSeconds: number;
+  durationSeconds: number;
   viaRoads: string[];
-  timeFormatted: string;
+  durationFormatted: string;
   viaRoadsFormatted: string;
   lengthFormatted: string;
 }
@@ -69,9 +70,9 @@ export function summarizeRoute(route: Route): ProcessedRouteSummary {
     viaRoads.push(road);
   }
   return {
-    timeSeconds: route.summary.time,
+    durationSeconds: route.summary.time,
     viaRoads: viaRoads,
-    timeFormatted: formatTime(route.summary.time),
+    durationFormatted: formatDuration(route.summary.time),
     viaRoadsFormatted: viaRoads.join(
       i18n.global.t('punctuation_list_seperator')
     ),
@@ -121,12 +122,12 @@ function costliestRoads(
   return roadCosts;
 }
 
-function formatTime(timeSeconds: number): string {
-  const totalMinutes = Math.round(timeSeconds / 60);
+export function formatDuration(durationSeconds: number): string {
+  const totalMinutes = Math.round(durationSeconds / 60);
   let timeString = '';
   if (totalMinutes < 1) {
     timeString = i18n.global.t('times.$n_seconds', {
-      n: Math.round(timeSeconds),
+      n: Math.round(durationSeconds),
     });
   } else if (totalMinutes < 60) {
     timeString = i18n.global.t('times.$n_minutes', { n: totalMinutes });
@@ -159,6 +160,23 @@ function formatTime(timeSeconds: number): string {
     );
   }
   return timeString;
+}
+
+export function kilometersToMiles(kilometers: number): number {
+  return kilometers * 0.62137119;
+}
+
+export function formatDistance(
+  distance: number,
+  units: DistanceUnits,
+  precision = 1
+): string {
+  const rounded = distance.toFixed(precision);
+  if (units == DistanceUnits.Kilometers) {
+    return `${rounded} ${i18n.global.t('shortened_distances.kilometers')}`;
+  } else {
+    return `${rounded} ${i18n.global.t('shortened_distances.miles')}`;
+  }
 }
 
 export function valhallaTypeToIcon(type: number) {

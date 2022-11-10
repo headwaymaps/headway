@@ -13,7 +13,7 @@
           </search-box>
           <q-btn
             size="small"
-            :style="{ marginRight: '0.8em' }"
+            :style="{ marginLeft: '0.5em', marginRight: 0 }"
             flat
             round
             color="primary"
@@ -32,106 +32,50 @@
       </q-card-section>
     </q-card>
   </div>
-  <div class="bottom-card" ref="bottomCard" v-if="fromPoi && toPoi">
-    <q-card>
-      <q-card-section class="bg-primary text-white">
-        <ul class="itinerary-container">
-          <li
-            :class="
-              index == itineraryIndex
-                ? 'itinerary-item itinerary-item-selected'
-                : 'itinerary-item'
-            "
-            :key="itinerary.generalizedCost + '' + itinerary.startTime"
-            v-for="(itinerary, index) in itineraries"
-            v-on:click="() => changeItinerary(index)"
-          >
-            <div class="itinerary-item-line"></div>
-            <div
-              v-for="leg in itinerary.legs"
-              :key="leg.startTime"
-              :style="{ position: 'relative' }"
-            >
-              <div
-                :style="{
-                  position: 'absolute',
-                  backgroundColor: leg.transitLeg ? '#d11' : '#aaa',
-                  left: `${
-                    100 *
-                    ((leg.startTime - earliestStart) /
-                      (latestArrival - earliestStart))
-                  }%`,
-                  right: `${Math.round(
-                    100 *
-                      ((latestArrival - leg.endTime) /
-                        (latestArrival - earliestStart))
-                  )}%`,
-                  height: '3em',
-                  top: '-2em',
-                  marginLeft: '0.2em',
-                  marginRight: '0.2em',
-                  borderRadius: '0.5em',
-                }"
-              >
-                <q-icon
-                  v-if="
-                    leg.mode === 'BUS' &&
-                    (leg.endTime - leg.startTime) /
-                      (latestArrival - earliestStart) >
-                      0.1
-                  "
-                  name="directions_bus"
-                  color="black"
-                  size="sm"
-                  :style="{
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                  }"
-                ></q-icon>
-                <q-icon
-                  v-if="
-                    leg.mode === 'WALK' &&
-                    (leg.endTime - leg.startTime) /
-                      (latestArrival - earliestStart) >
-                      0.1
-                  "
-                  name="directions_walk"
-                  color="black"
-                  size="sm"
-                  :style="{
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                  }"
-                ></q-icon>
-                <q-icon
-                  v-if="
-                    (leg.mode === 'TRAIN' || leg.mode === 'TRAM') &&
-                    (leg.endTime - leg.startTime) /
-                      (latestArrival - earliestStart) >
-                      0.1
-                  "
-                  name="directions_train"
-                  color="black"
-                  size="sm"
-                  :style="{
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                  }"
-                ></q-icon>
-              </div>
-            </div>
-          </li>
-        </ul>
-        <div></div>
-      </q-card-section>
-    </q-card>
+  <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
+    <q-list>
+      <route-list-item
+        :click-handler="() => changeItinerary(index)"
+        v-for="(item, index) in itineraries"
+        :duration-formatted="item.durationFormatted()"
+        distance-formatted=""
+        v-bind:key="JSON.stringify(item)"
+      >
+        <q-item-label>
+          {{ item.startStopTimesFormatted() }}
+        </q-item-label>
+        <q-item-label caption>
+          {{ item.viaRouteFormatted }}
+        </q-item-label>
+        <q-item-label caption>
+          {{ walkText(item) }}
+        </q-item-label>
+        <q-item-label
+          :hidden="$data.itineraryIndex === index && areStepsVisible(index)"
+        >
+          <q-btn
+            style="margin-left: -6px"
+            padding="6px"
+            flat
+            icon="directions"
+            label="Details"
+            size="sm"
+            v-on:click="showSteps(index)"
+          />
+        </q-item-label>
+        <transit-timeline
+          :hidden="!($data.itineraryIndex === index && areStepsVisible(index))"
+          :itinerary="item"
+          :earliest-start="earliestStart"
+          :latest-arrival="latestArrival"
+        />
+      </route-list-item>
+    </q-list>
   </div>
 </template>
 
 <script lang="ts">
+import { i18n } from 'src/i18n/lang';
 import {
   getBaseMap,
   map,
@@ -145,31 +89,17 @@ import {
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
+import TransitTimeline from 'src/components/TransitTimeline.vue';
+import RouteListItem from 'src/components/RouteListItem.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
+import Itinerary from 'src/models/Itinerary';
 import { useQuasar } from 'quasar';
+import { toLngLat } from 'src/utils/geomath';
+import { DistanceUnits } from 'src/utils/models';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
-
-type LegGeometry = {
-  points: string;
-};
-
-type ItineraryLeg = {
-  startTime: number;
-  endTime: number;
-  mode: 'WALK' | 'BUS' | 'TRAIN' | 'TRAM';
-  transitLeg: boolean;
-  legGeometry: LegGeometry;
-};
-
-type Itinerary = {
-  generalizedCost: number;
-  startTime: number;
-  endTime: number;
-  legs: ItineraryLeg[];
-};
 
 export default defineComponent({
   name: 'TransitPage',
@@ -183,16 +113,24 @@ export default defineComponent({
     itineraryIndex: number;
     earliestStart: number;
     latestArrival: number;
+    visibleSteps: { [key: number]: boolean };
   } {
     return {
       itineraries: [],
       itineraryIndex: 0,
       earliestStart: 0,
       latestArrival: 0,
+      visibleSteps: {},
     };
   },
-  components: { SearchBox },
+  components: { SearchBox, RouteListItem, TransitTimeline },
   methods: {
+    showSteps(index: number) {
+      this.$data.visibleSteps[index] = true;
+    },
+    areStepsVisible(index: number): boolean {
+      return this.$data.visibleSteps[index] === true;
+    },
     poiDisplayName,
     changeItinerary(index: number) {
       this.$data.itineraryIndex = index;
@@ -232,6 +170,11 @@ export default defineComponent({
       this.toPoi = poi;
       this.rewriteUrl();
     },
+    walkText(item: Itinerary): string {
+      return i18n.global.t('walk_distance', {
+        preformattedDistance: item.walkingDistanceFormatted(),
+      });
+    },
     rewriteUrl: async function () {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
         this.$router.push('/');
@@ -241,13 +184,10 @@ export default defineComponent({
       const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
       this.$router.push(`/multimodal/${toCanonical}/${fromCanonical}`);
       if (fromPoi.value?.position && toPoi.value?.position) {
-        const rawResponse = await fetch(
-          `/otp/routers/default/plan?fromPlace=${fromPoi.value?.position.lat},${fromPoi.value?.position.long}&toPlace=${toPoi.value?.position.lat},${toPoi.value?.position.long}&numItineraries=8`
-        );
-        const response = await rawResponse.json();
-        this.$data.itineraries = response.plan.itineraries.sort(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (a: any, b: any) => a.endTime - b.endTime
+        this.$data.itineraries = await Itinerary.fetchBest(
+          toLngLat(fromPoi.value.position),
+          toLngLat(toPoi.value.position),
+          DistanceUnits.Miles
         );
         this.calculateStats();
         this.plotPath();

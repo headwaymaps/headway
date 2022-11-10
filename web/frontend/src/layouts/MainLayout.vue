@@ -1,8 +1,8 @@
 <template>
   <q-layout view="lHh Lpr lFf">
     <div class="mainContainer">
-      <router-view></router-view>
-      <base-map ref="basemap"></base-map>
+      <router-view />
+      <base-map ref="basemap" />
     </div>
   </q-layout>
 </template>
