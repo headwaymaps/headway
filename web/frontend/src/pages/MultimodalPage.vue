@@ -35,8 +35,9 @@
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <route-list-item
-        :click-handler="() => changeItinerary(index)"
         v-for="(item, index) in itineraries"
+        :click-handler="() => changeItinerary(index)"
+        :active="$data.itineraryIndex === index"
         :duration-formatted="item.durationFormatted()"
         distance-formatted=""
         v-bind:key="JSON.stringify(item)"

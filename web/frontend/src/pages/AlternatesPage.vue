@@ -35,11 +35,11 @@
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <route-list-item
+        v-for="item in $data.routes"
         :click-handler="() => clickRoute(item)"
         :active="$data.activeRoute === item"
         :duration-formatted="item[1].durationFormatted"
         :distance-formatted="item[1].lengthFormatted"
-        v-for="item in $data.routes"
         v-bind:key="JSON.stringify(item)"
       >
         <q-item-label>

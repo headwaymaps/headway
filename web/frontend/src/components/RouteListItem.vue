@@ -1,9 +1,9 @@
 <template>
   <q-item
-    class="q-my-sm"
+    class="route-list-item"
     clickable
     v-ripple
-    active-class="bg-blue-1"
+    active-class="route-list-item--selected"
     :active="$props.active"
     v-on:click="$props.clickHandler"
   >
@@ -19,7 +19,6 @@
       </q-item-label>
     </q-item-section>
   </q-item>
-  <q-separator spaced />
 </template>
 
 <script lang="ts">
