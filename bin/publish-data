@@ -23,7 +23,7 @@ examples:
 
 Use a release other than what's in bin/_headway_version.sh
     HEADWAY_VERSION=latest $0 seattle-latest Seattle
-    HEADWAY_VERSION=0.1.0 $0 planet-v1.18 planet-v1.18
+    HEADWAY_VERSION=0.1.0 $0 planet-v1.19 planet-v1.19
 EOF
 }
 
@@ -46,14 +46,18 @@ if [ -z "${HEADWAY_VERSION}" ]; then
     source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
-upload "${AREA}.graph.obj.xz"         "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.valhalla.tar.xz"      "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.gtfs.tar.xz"          "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.pelias.json"          "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.elasticsearch.tar.xz" "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.mbtiles"              "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.placeholder.tar.xz"   "${HEADWAY_VERSION}/${AREA_TAG}"
+
+# transit files only exist when transit is enabled
+if [ -f "${AREA}.graph.obj.xz" ]; then
+upload "${AREA}.graph.obj.xz"         "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.gtfs.tar.xz"          "${HEADWAY_VERSION}/${AREA_TAG}"
+fi
 
 # These files are generic across all areas
 upload fonts.tar                      "${HEADWAY_VERSION}"
