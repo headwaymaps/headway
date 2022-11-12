@@ -135,7 +135,7 @@ export default defineComponent({
     poiDisplayName,
     changeItinerary(index: number) {
       this.$data.itineraryIndex = index;
-      this.plotPath();
+      this.plotPaths();
     },
     fromUserLocation() {
       const options = {
@@ -191,7 +191,7 @@ export default defineComponent({
           DistanceUnits.Miles
         );
         this.calculateStats();
-        this.plotPath();
+        this.plotPaths();
       } else {
         // FIXME: Here and below, don't hardcode a credible maximum number of legs, it's very silly, just store it.
         for (var index = 0; index < 100; index++) {
@@ -219,32 +219,22 @@ export default defineComponent({
         );
       }
     },
-    plotPath() {
-      const itinerary = this.$data.itineraries[this.$data.itineraryIndex];
-      // FIXME: Here and above, don't hardcode a credible maximum number of legs, it's very silly, just store it.
-      for (
-        var credibleMaxIndex = 0;
-        credibleMaxIndex < 100;
-        credibleMaxIndex++
-      ) {
-        const layerName = `headway_polyline${credibleMaxIndex}`;
-        if (map?.getLayer(layerName)) {
-          map?.removeLayer(layerName);
+    plotPaths() {
+      for (let i = 0; i < this.$data.itineraries.length; i++) {
+        if (i == this.$data.itineraryIndex) {
+          // plot the selected one last
+          continue;
         }
-        if (map?.getSource(layerName)) {
-          map?.removeSource(layerName);
-        }
+        this.plotPath(this.$data.itineraries[i], i, false);
       }
+      const itinerary = this.$data.itineraries[this.$data.itineraryIndex];
+      this.plotPath(itinerary, this.$data.itineraryIndex, true);
+    },
+    plotPath(itinerary: Itinerary, route_idx: number, active: boolean) {
       const bbox = new LngLatBounds();
-      for (var index in itinerary.legs) {
-        const leg = itinerary.legs[index];
-        const layerName = `headway_polyline${index}`;
-        if (map?.getLayer(layerName)) {
-          map?.removeLayer(layerName);
-        }
-        if (map?.getSource(layerName)) {
-          map?.removeSource(layerName);
-        }
+      for (var leg_idx in itinerary.legs) {
+        const leg = itinerary.legs[leg_idx];
+        const layerName = `headway_transit_route_${route_idx}_leg_${leg_idx}`;
         const points: [number, number][] = decodeOtpPath(
           leg.legGeometry.points
         );
@@ -273,7 +263,11 @@ export default defineComponent({
               'line-cap': 'round',
             },
             paint: {
-              'line-color': leg.transitLeg ? '#E21919' : '#1976D2',
+              'line-color': active
+                ? leg.transitLeg
+                  ? '#E21919'
+                  : '#1976D2'
+                : '#777',
               'line-width': leg.transitLeg ? 6 : 4,
               'line-dasharray': leg.transitLeg ? [1] : [1, 2],
             },
