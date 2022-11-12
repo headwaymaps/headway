@@ -379,6 +379,10 @@ export default defineComponent({
     map?.on(
       'moveend',
       debounce(() => {
+        if (!map) {
+          console.error('mas was unexpectedly null');
+          return;
+        }
         Prefs.stored().setMostRecentMapCenter(map.getCenter());
         Prefs.stored().setMostRecentMapZoom(map.getZoom());
       }, 2000)
