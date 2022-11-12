@@ -93,7 +93,7 @@ import SearchBox from 'src/components/SearchBox.vue';
 import TransitTimeline from 'src/components/TransitTimeline.vue';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
-import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
+import { LngLatBounds, Marker } from 'maplibre-gl';
 import Itinerary from 'src/models/Itinerary';
 import { useQuasar } from 'quasar';
 import { toLngLat } from 'src/utils/geomath';
@@ -235,8 +235,9 @@ export default defineComponent({
           map?.removeSource(layerName);
         }
       }
-      var bbox: [number, number, number, number] = [1000, 1000, -1000, -1000];
+      const bbox = new LngLatBounds();
       for (var index in itinerary.legs) {
+        const leg = itinerary.legs[index];
         const layerName = `headway_polyline${index}`;
         if (map?.getLayer(layerName)) {
           map?.removeLayer(layerName);
@@ -244,57 +245,43 @@ export default defineComponent({
         if (map?.getSource(layerName)) {
           map?.removeSource(layerName);
         }
-        const points: number[][] = decodeOtpPath(
-          itinerary.legs[index].legGeometry.points
+        const points: [number, number][] = decodeOtpPath(
+          leg.legGeometry.points
         );
-        for (var point in points) {
-          if (points[point][0] < bbox[0]) {
-            bbox[0] = points[point][0];
-          }
-          if (points[point][1] < bbox[1]) {
-            bbox[1] = points[point][1];
-          }
-          if (points[point][0] > bbox[2]) {
-            bbox[2] = points[point][0];
-          }
-          if (points[point][1] > bbox[3]) {
-            bbox[3] = points[point][1];
-          }
+        for (const lngLat of points) {
+          bbox.extend(lngLat);
         }
-        map?.addSource(layerName, {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: points,
+        getBaseMap()?.pushLayer(
+          layerName,
+          {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: points,
+              },
             },
           },
-        });
-        map?.addLayer({
-          id: layerName,
-          type: 'line',
-          source: layerName,
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
+          {
+            id: layerName,
+            type: 'line',
+            source: layerName,
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': leg.transitLeg ? '#E21919' : '#1976D2',
+              'line-width': leg.transitLeg ? 6 : 4,
+              'line-dasharray': leg.transitLeg ? [1] : [1, 2],
+            },
           },
-          paint: {
-            'line-color': itinerary.legs[index].transitLeg
-              ? '#E21919'
-              : '#1976D2',
-            'line-width': itinerary.legs[index].transitLeg ? 6 : 4,
-            'line-dasharray': itinerary.legs[index].transitLeg ? [1] : [1, 2],
-          },
-        });
+          'symbol'
+        );
       }
-      getBaseMap()?.fitBounds(
-        new LngLatBounds(
-          new LngLat(bbox[0], bbox[1]),
-          new LngLat(bbox[2], bbox[3])
-        )
-      );
+      getBaseMap()?.fitBounds(bbox);
     },
     resizeMap() {
       // TODO: this impl copied from AlternatesPage.vue. I'm not sure if its correct
