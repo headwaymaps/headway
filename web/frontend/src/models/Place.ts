@@ -1,5 +1,5 @@
 import { DistanceUnits } from '../utils/models';
-import { PeliasClient } from '../services/PeliasClient';
+import PeliasClient from 'src/services/PeliasClient';
 import { LngLat } from 'maplibre-gl';
 
 /// PlaceId can be either a LngLat or a gid (but not both).

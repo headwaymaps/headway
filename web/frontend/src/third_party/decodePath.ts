@@ -1,10 +1,10 @@
 // This function is copied from GraphHopper's web client, licensed under the terms of the Apache License, version 2.0
 // Copyright 2012-2013 Peter Karich
-export function decodeOtpPath(encoded: string) {
+export function decodeOtpPath(encoded: string): [number, number][] {
   // var start = new Date().getTime();
   const len = encoded.length;
   let index = 0;
-  const array = [];
+  const array: [number, number][] = [];
   let lat = 0;
   let lng = 0;
 

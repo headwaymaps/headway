@@ -4,6 +4,7 @@ export default {
   could_not_get_gps_location: 'Could not get GPS location',
   dropped_pin: 'Dropped Pin',
   via_$place: 'Via {place}',
+  via$transit_route: 'Via route {transitRoute}',
   times: {
     $n_seconds: '{n} seconds',
     $n_minute: '{n} minute',
@@ -13,6 +14,7 @@ export default {
     $n_hour: '{n} hour',
     $n_hours: '{n} hours',
   },
+  time_range$startTime$endTime: '{startTime} - {endTime}',
   go_home: 'Go Home',
   oops_nothing_here: 'Oops. Nothing here...',
   search: {
@@ -30,4 +32,5 @@ export default {
     kilometers: 'km',
     miles: 'mi',
   },
+  walk_distance: '{preformattedDistance} walk',
 };

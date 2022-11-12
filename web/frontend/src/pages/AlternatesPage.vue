@@ -34,37 +34,29 @@
   </div>
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
-      <div v-for="item in $data.routes" v-bind:key="JSON.stringify(item)">
-        <q-item
-          class="q-my-sm"
-          clickable
-          v-ripple
-          :active="$data.activeRoute === item"
-          v-on:click="clickRoute(item)"
-          active-class="bg-blue-1"
-        >
-          <q-item-section>
-            <q-item-label>
-              {{ item[1].timeFormatted }}
-              <span class="text-weight-light">{{
-                ' (' + item[1].lengthFormatted + ')'
-              }}</span>
-            </q-item-label>
-            <q-item-label caption v-if="item[1].viaRoadsFormatted.length !== 0">
-              {{ $t('via_$place', { place: item[1].viaRoadsFormatted }) }}
-            </q-item-label>
-          </q-item-section>
-
-          <q-item-section side>
-            <q-icon
-              name="directions"
-              v-on:click="showSteps(item)"
-              :color="item === $data.activeRoute ? 'blue' : ''"
-            />
-          </q-item-section>
-        </q-item>
-        <q-separator spaced />
-      </div>
+      <route-list-item
+        v-for="item in $data.routes"
+        :click-handler="() => clickRoute(item)"
+        :active="$data.activeRoute === item"
+        :duration-formatted="item[1].durationFormatted"
+        :distance-formatted="item[1].lengthFormatted"
+        v-bind:key="JSON.stringify(item)"
+      >
+        <q-item-label>
+          {{ $t('via_$place', { place: item[1].viaRoadsFormatted }) }}
+        </q-item-label>
+        <q-item-label>
+          <q-btn
+            style="margin-left: -6px"
+            padding="6px"
+            flat
+            icon="directions"
+            label="Details"
+            size="sm"
+            v-on:click="showSteps(item)"
+          />
+        </q-item-label>
+      </route-list-item>
     </q-list>
   </div>
 </template>
@@ -84,6 +76,7 @@ import { useQuasar } from 'quasar';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
 import { Place } from 'src/models/Place';
+import RouteListItem from 'src/components/RouteListItem.vue';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -104,7 +97,7 @@ export default defineComponent({
       activeRoute: undefined,
     };
   },
-  components: { SearchBox },
+  components: { SearchBox, RouteListItem },
   methods: {
     poiDisplayName,
     summarizeRoute,

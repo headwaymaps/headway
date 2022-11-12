@@ -2,7 +2,7 @@ import { LngLat } from 'maplibre-gl';
 
 type PlaceResponse = GeoJSON.FeatureCollection;
 
-export class PeliasClient {
+export default class PeliasClient {
   static async findByGid(gid: string): Promise<PlaceResponse> {
     const response = await fetch(`/pelias/v1/place?ids=${gid}`);
     if (response.ok) {
