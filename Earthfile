@@ -429,9 +429,13 @@ valhalla-build:
     RUN valhalla_build_timezones > /tiles/timezones.sqlite
 
     ARG area
-    COPY (+extract/data.osm.pbf --area=${area}) /tiles/data.osm.pbf
 
-    RUN valhalla_build_tiles -c valhalla.json /tiles/data.osm.pbf
+    USER root
+    RUN mkdir -p /data/osm
+    COPY (+extract/data.osm.pbf --area=${area}) /data/osm/data.osm.pbf
+
+    USER valhalla
+    RUN valhalla_build_tiles -c valhalla.json /data/osm/data.osm.pbf
 
     SAVE ARTIFACT /tiles /tiles
 
