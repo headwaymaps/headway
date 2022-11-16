@@ -43,7 +43,7 @@ export default class Itinerary {
   }
 
   public durationFormatted(): string {
-    return formatDuration(this.raw.duration);
+    return formatDuration(this.raw.duration, 'shortform');
   }
 
   public get startTime(): number {
