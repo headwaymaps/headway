@@ -42,7 +42,7 @@ spec:
             limits:
               memory: 8Gi
             requests:
-              memory: 4Gi
+              memory: ${VALHALLA_MEMORY_REQUEST}
       volumes:
         - name: valhalla-volume
           ephemeral:

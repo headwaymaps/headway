@@ -78,7 +78,7 @@ spec:
             limits:
               memory: 16Gi
             requests:
-              memory: 8Gi
+              memory: ${PELIAS_ELASTICSEARCH_MEMORY_REQUEST}
           livenessProbe:
             httpGet:
               path: /
