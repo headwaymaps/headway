@@ -48,7 +48,7 @@
         <q-item-label caption>
           {{ item.viaRouteFormatted }}
         </q-item-label>
-        <q-item-label caption>
+        <q-item-label caption :hidden="$data.itineraryIndex !== index">
           {{
             $t('walk_distance', {
               preformattedDistance: item.walkingDistanceFormatted(),
