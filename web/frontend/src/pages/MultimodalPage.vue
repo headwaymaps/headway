@@ -30,6 +30,18 @@
           v-on:did-select-poi="searchBoxDidSelectToPoi"
         ></search-box>
       </q-card-section>
+      <q-card-section class="no-top-padding">
+        <!-- 
+          Annoyingly, using `current-mode="transit"` doesn't satisfy the type checker
+              > Type '"transit"' is not assignable to type 'TravelMode | undefined'.
+          So instead it's passed via a typed variable.
+        -->
+        <travel-mode-bar
+          :current-mode="transitMode"
+          :to-poi="toPoi"
+          :from-poi="fromPoi"
+        />
+      </q-card-section>
     </q-card>
   </div>
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
@@ -80,7 +92,6 @@
 </template>
 
 <script lang="ts">
-import { i18n } from 'src/i18n/lang';
 import {
   getBaseMap,
   map,
@@ -91,11 +102,13 @@ import {
   decanonicalizePoi,
   POI,
   poiDisplayName,
+  TravelMode,
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import TransitTimeline from 'src/components/TransitTimeline.vue';
 import RouteListItem from 'src/components/RouteListItem.vue';
+import TravelModeBar from 'src/components/TravelModeBar.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
 import { LngLatBounds, Marker } from 'maplibre-gl';
 import Itinerary from 'src/models/Itinerary';
@@ -109,7 +122,6 @@ var fromPoi: Ref<POI | undefined> = ref(undefined);
 export default defineComponent({
   name: 'TransitPage',
   props: {
-    mode: String,
     to: String,
     from: String,
   },
@@ -128,7 +140,7 @@ export default defineComponent({
       visibleSteps: {},
     };
   },
-  components: { SearchBox, RouteListItem, TransitTimeline },
+  components: { SearchBox, RouteListItem, TransitTimeline, TravelModeBar },
   methods: {
     showSteps(index: number) {
       this.$data.visibleSteps[index] = true;
@@ -332,6 +344,7 @@ export default defineComponent({
     return {
       toPoi,
       fromPoi,
+      transitMode: TravelMode.Transit,
     };
   },
 });

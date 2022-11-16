@@ -218,3 +218,10 @@ export enum DistanceUnits {
   Miles = 'miles',
   Kilometers = 'kilometers',
 }
+
+export enum TravelMode {
+  Bike = 'bicycle',
+  Walk = 'walk',
+  Drive = 'car',
+  Transit = 'transit',
+}

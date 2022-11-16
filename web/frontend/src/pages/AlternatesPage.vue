@@ -30,6 +30,13 @@
           v-on:did-select-poi="searchBoxDidSelectToPoi"
         ></search-box>
       </q-card-section>
+      <q-card-section class="no-top-padding">
+        <travel-mode-bar
+          :current-mode="mode"
+          :to-poi="toPoi"
+          :from-poi="fromPoi"
+        />
+      </q-card-section>
     </q-card>
   </div>
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
@@ -64,8 +71,8 @@
 <script lang="ts">
 import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
 import {
-  decanonicalizePoi,
   canonicalizePoi,
+  decanonicalizePoi,
   POI,
   poiDisplayName,
 } from 'src/utils/models';
@@ -76,7 +83,9 @@ import { useQuasar } from 'quasar';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
 import { Place } from 'src/models/Place';
+import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
+import TravelModeBar from 'src/components/TravelModeBar.vue';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -84,7 +93,7 @@ var fromPoi: Ref<POI | undefined> = ref(undefined);
 export default defineComponent({
   name: 'AlternatesPage',
   props: {
-    mode: String,
+    mode: String as () => TravelMode,
     to: String,
     from: String,
   },
@@ -97,7 +106,7 @@ export default defineComponent({
       activeRoute: undefined,
     };
   },
-  components: { SearchBox, RouteListItem },
+  components: { SearchBox, RouteListItem, TravelModeBar },
   methods: {
     poiDisplayName,
     summarizeRoute,
@@ -170,7 +179,12 @@ export default defineComponent({
           '/' +
           encodeURIComponent(fromCanonical)
       );
+      await this.updateRoutes();
+    },
+
+    async updateRoutes(): Promise<void> {
       if (fromPoi.value?.position && toPoi.value?.position) {
+        const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let place = await Place.fetchFromSerializedId(fromCanonical);
         const routes = await getRoutes(
@@ -265,6 +279,10 @@ export default defineComponent({
         fromPoi.value = await decanonicalizePoi(newValue);
         this.resizeMap();
       });
+    },
+    mode: async function (): Promise<void> {
+      await this.updateRoutes();
+      this.resizeMap();
     },
   },
   unmounted: function () {
