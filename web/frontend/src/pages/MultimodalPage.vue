@@ -48,8 +48,12 @@
         <q-item-label caption>
           {{ item.viaRouteFormatted }}
         </q-item-label>
-        <q-item-label caption>
-          {{ walkText(item) }}
+        <q-item-label caption :hidden="$data.itineraryIndex !== index">
+          {{
+            $t('walk_distance', {
+              preformattedDistance: item.walkingDistanceFormatted(),
+            })
+          }}
         </q-item-label>
         <q-item-label
           :hidden="$data.itineraryIndex === index && areStepsVisible(index)"
@@ -170,11 +174,6 @@ export default defineComponent({
     searchBoxDidSelectToPoi(poi?: POI) {
       this.toPoi = poi;
       this.rewriteUrl();
-    },
-    walkText(item: Itinerary): string {
-      return i18n.global.t('walk_distance', {
-        preformattedDistance: item.walkingDistanceFormatted(),
-      });
     },
     rewriteUrl: async function () {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
