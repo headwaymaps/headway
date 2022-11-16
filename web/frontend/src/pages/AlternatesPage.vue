@@ -51,7 +51,7 @@
             padding="6px"
             flat
             icon="directions"
-            label="Details"
+            :label="$t('route_picker_show_route_details_btn')"
             size="sm"
             v-on:click="showSteps(item)"
           />

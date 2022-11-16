@@ -42,4 +42,5 @@ export default {
     miles: 'mi',
   },
   walk_distance: '{preformattedDistance} walk',
+  route_picker_show_route_details_btn: 'Details',
 };
