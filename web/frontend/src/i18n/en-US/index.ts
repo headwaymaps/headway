@@ -14,6 +14,15 @@ export default {
     $n_hour: '{n} hour',
     $n_hours: '{n} hours',
   },
+  times_shortform: {
+    $n_seconds: '{n}sec',
+    $n_minute: '{n}min',
+    $n_minutes: '{n}min',
+    $n_day: '{n}day',
+    $n_days: '{n}day',
+    $n_hour: '{n}hr',
+    $n_hours: '{n}hr',
+  },
   time_range$startTime$endTime: '{startTime} - {endTime}',
   go_home: 'Go Home',
   oops_nothing_here: 'Oops. Nothing here...',
@@ -33,4 +42,5 @@ export default {
     miles: 'mi',
   },
   walk_distance: '{preformattedDistance} walk',
+  route_picker_show_route_details_btn: 'Details',
 };

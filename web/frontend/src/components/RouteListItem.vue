@@ -7,10 +7,10 @@
     :active="$props.active"
     v-on:click="$props.clickHandler"
   >
-    <q-item-section class="col-10" top>
+    <q-item-section class="col-9" top>
       <slot />
     </q-item-section>
-    <q-item-section class="col-2" top style="text-align: right">
+    <q-item-section class="col-3" top style="text-align: right">
       <q-item-label>
         {{ durationFormatted }}
       </q-item-label>
