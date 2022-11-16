@@ -17,7 +17,7 @@ build:
     ARG countries
 
     # tag for created docker containers
-    ARG tag="latest"
+    ARG tag="dev"
 
     # Run +gtfs-enumerate to build an appropriate input for transit_feeds.
     # If omitted, you cannot enable transit routing.
@@ -119,7 +119,7 @@ save-tileserver-natural-earth:
 
 images:
     FROM debian:bullseye-slim
-    ARG tag="latest"
+    ARG tag="dev"
     ARG branding
     COPY (+tileserver-build/fonts.tar) /fonts.tar
     COPY (+tileserver-build/sprite.tar) /sprite.tar
@@ -429,9 +429,13 @@ valhalla-build:
     RUN valhalla_build_timezones > /tiles/timezones.sqlite
 
     ARG area
-    COPY (+extract/data.osm.pbf --area=${area}) /tiles/data.osm.pbf
 
-    RUN valhalla_build_tiles -c valhalla.json /tiles/data.osm.pbf
+    USER root
+    RUN mkdir -p /data/osm
+    COPY (+extract/data.osm.pbf --area=${area}) /data/osm/data.osm.pbf
+
+    USER valhalla
+    RUN valhalla_build_tiles -c valhalla.json /data/osm/data.osm.pbf
 
     SAVE ARTIFACT /tiles /tiles
 

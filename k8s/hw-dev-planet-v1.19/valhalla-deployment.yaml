@@ -14,24 +14,17 @@ spec:
     spec:
       initContainers:
         - name: valhalla-init
-          image: ghcr.io/michaelkirk/valhalla-init:latest
+          image: ghcr.io/michaelkirk/valhalla-init:dev
           imagePullPolicy: Always
           volumeMounts:
             - name: valhalla-volume
               mountPath: /data
           env:
-            - name: VALHALLA_ARTIFACT_LOCK
-              value: /data/imported
             - name: VALHALLA_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
                   key: valhalla-artifact-url
-            - name: HEADWAY_AREA
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: area
           resources:
             limits:
               memory: 200Mi
@@ -39,18 +32,12 @@ spec:
               memory: 100Mi
       containers:
         - name: valhalla
-          image: ghcr.io/michaelkirk/valhalla:latest
+          image: ghcr.io/michaelkirk/valhalla:dev
           ports:
           - containerPort: 8002
           volumeMounts:
           - name: valhalla-volume
             mountPath: /data
-          env:
-          - name: HEADWAY_AREA
-            valueFrom:
-              configMapKeyRef:
-                name: deployment-config
-                key: area
           resources:
             limits:
               memory: 8Gi

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -xe
+set -o pipefail
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -14,7 +15,8 @@ elif [ -f "${FONT_ARTIFACT_SOURCE_PATH}" ]; then
     cp "${FONT_ARTIFACT_SOURCE_PATH}" "${FONT_ARTIFACT_DEST_PATH}"
 else
     echo "Downloading font artifact."
-    wget -O "${FONT_ARTIFACT_DEST_PATH}" "${FONT_ARTIFACT_URL}"
+    wget -O "${FONT_ARTIFACT_DEST_PATH}.download" "${FONT_ARTIFACT_URL}"
+    mv "${FONT_ARTIFACT_DEST_PATH}.download" "${FONT_ARTIFACT_DEST_PATH}"
 fi
 
 cd $(dirname ${FONT_ARTIFACT_DEST_PATH}) && tar xvf ${FONT_ARTIFACT_DEST_PATH}
@@ -26,7 +28,8 @@ elif [ -f "${SPRITE_ARTIFACT_SOURCE_PATH}" ]; then
     cp "${SPRITE_ARTIFACT_SOURCE_PATH}" "${SPRITE_ARTIFACT_DEST_PATH}"
 else
     echo "Downloading sprite artifact."
-    wget -O "${SPRITE_ARTIFACT_DEST_PATH}" "${SPRITE_ARTIFACT_URL}"
+    wget -O "${SPRITE_ARTIFACT_DEST_PATH}.download" "${SPRITE_ARTIFACT_URL}"
+    mv "${SPRITE_ARTIFACT_DEST_PATH}.download" "${SPRITE_ARTIFACT_DEST_PATH}"
 fi
 
 cd $(dirname ${SPRITE_ARTIFACT_DEST_PATH}) && tar xvf ${SPRITE_ARTIFACT_DEST_PATH}

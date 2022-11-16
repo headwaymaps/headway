@@ -23,7 +23,7 @@ spec:
                     storage: 50Mi
       initContainers:
         - name: headway-init
-          image: ghcr.io/michaelkirk/headway-init:latest
+          image: ghcr.io/michaelkirk/headway-init:dev
           imagePullPolicy: Always
           volumeMounts:
             - name: headway-volume
@@ -60,7 +60,7 @@ spec:
               memory: 100Mi
       containers:
         - name: headway
-          image: ghcr.io/michaelkirk/headway:latest
+          image: ghcr.io/michaelkirk/headway:dev
           imagePullPolicy: Always
           volumeMounts:
             - name: headway-volume
@@ -84,6 +84,11 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: public-url
+            - name: HEADWAY_ENABLE_TRANSIT_ROUTING
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: enable-transit-routing
           resources:
             limits:
               memory: 300Mi

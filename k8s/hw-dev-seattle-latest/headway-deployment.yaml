@@ -84,6 +84,11 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: public-url
+            - name: HEADWAY_ENABLE_TRANSIT_ROUTING
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: enable-transit-routing
           resources:
             limits:
               memory: 300Mi

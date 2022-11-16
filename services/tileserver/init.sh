@@ -1,8 +1,7 @@
 #!/bin/bash
 
 set -xe
-
-sleep 5
+set -o pipefail
 
 mkdir -p $(dirname ${MBTILES_ARTIFACT_DEST_PATH})
 
@@ -13,7 +12,12 @@ elif [ -f "${MBTILES_ARTIFACT_SOURCE_PATH}" ]; then
     cp "${MBTILES_ARTIFACT_SOURCE_PATH}" "${MBTILES_ARTIFACT_DEST_PATH}"
 else
     echo "Downloading mbtiles artifact."
-    wget -O "${MBTILES_ARTIFACT_DEST_PATH}" "${MBTILES_ARTIFACT_URL}"
+
+    wget --tries=100 --continue -O "${MBTILES_ARTIFACT_DEST_PATH}.download" "${MBTILES_ARTIFACT_URL}"
+    WGET_STATUS=$?
+    echo "wget exit code was: ${WGET_STATUS}"
+    echo "Downloaded mbtiles artifact."
+    mv "${MBTILES_ARTIFACT_DEST_PATH}.download" "${MBTILES_ARTIFACT_DEST_PATH}"
 fi
 
 mkdir -p $(dirname ${NATURAL_EARTH_ARTIFACT_DEST_PATH})
@@ -25,5 +29,6 @@ elif [ -f "${NATURAL_EARTH_ARTIFACT_SOURCE_PATH}" ]; then
     cp "${NATURAL_EARTH_ARTIFACT_SOURCE_PATH}" "${NATURAL_EARTH_ARTIFACT_DEST_PATH}"
 else
     echo "Downloading natural earth artifact."
-    wget -O "${NATURAL_EARTH_ARTIFACT_DEST_PATH}" "${NATURAL_EARTH_ARTIFACT_URL}"
+    wget --tries=100 --continue -O "${NATURAL_EARTH_ARTIFACT_DEST_PATH}.download" "${NATURAL_EARTH_ARTIFACT_URL}"
+    mv "${NATURAL_EARTH_ARTIFACT_DEST_PATH}.download" "${NATURAL_EARTH_ARTIFACT_DEST_PATH}"
 fi

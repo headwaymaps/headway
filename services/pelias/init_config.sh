@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -xe
+set -o pipefail
 
 mkdir -p /config
 
@@ -11,5 +12,6 @@ elif [ -f "${PELIAS_CONFIG_ARTIFACT_SOURCE_PATH}" ]; then
     cp "${PELIAS_CONFIG_ARTIFACT_SOURCE_PATH}" /config/pelias.json
 else
     echo "Downloading artifact."
-    wget -O /config/pelias.json "${PELIAS_CONFIG_ARTIFACT_URL}"
+    wget -O /config/pelias.json.download "${PELIAS_CONFIG_ARTIFACT_URL}"
+    mv /config/pelias.json.download /config/pelias.json
 fi
