@@ -5,6 +5,7 @@
       v-if="transitRoutingEnabled"
       unelevated
       rounded
+      :ripple="false"
       size="sm"
       :to="`/multimodal/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
       :color="currentMode === 'transit' ? 'primary' : undefined"
@@ -15,6 +16,7 @@
       icon="directions_car"
       unelevated
       rounded
+      :ripple="false"
       size="sm"
       :to="`/directions/car/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
       :color="currentMode === 'car' ? 'primary' : undefined"
@@ -25,6 +27,7 @@
       icon="directions_bike"
       unelevated
       rounded
+      :ripple="false"
       size="sm"
       :to="`/directions/bicycle/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
       :color="currentMode === 'bicycle' ? 'primary' : undefined"
@@ -35,6 +38,7 @@
       icon="directions_walk"
       unelevated
       rounded
+      :ripple="false"
       size="sm"
       :to="`/directions/walk/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
       :color="currentMode === 'walk' ? 'primary' : undefined"

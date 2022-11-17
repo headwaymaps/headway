@@ -9,7 +9,7 @@
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <div v-for="item in $data.steps" v-bind:key="JSON.stringify(item)">
-        <q-item class="q-my-sm" v-ripple active-class="bg-blue-1">
+        <q-item class="q-my-sm" active-class="bg-blue-1">
           <q-item-section avatar>
             <q-icon :name="valhallaTypeToIcon(item.type)" />
           </q-item-section>

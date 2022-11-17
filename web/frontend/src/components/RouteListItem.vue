@@ -2,7 +2,6 @@
   <q-item
     class="route-list-item"
     clickable
-    v-ripple
     active-class="route-list-item--selected"
     :active="$props.active"
     v-on:click="$props.clickHandler"
