@@ -60,7 +60,7 @@ class PlaceId {
 }
 
 /// Wrapper around a pelias response
-export class Place {
+export default class Place {
   id: PlaceId;
   point: LngLat;
   countryCode?: string;

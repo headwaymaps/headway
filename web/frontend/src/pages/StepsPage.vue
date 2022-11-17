@@ -40,6 +40,7 @@ import {
   POI,
   poiDisplayName,
 } from 'src/utils/models';
+import Place from 'src/models/Place';
 import { defineComponent, Ref, ref } from 'vue';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
@@ -96,10 +97,13 @@ export default defineComponent({
         `/directions/${this.mode}/${toCanonical}/${fromCanonical}/${this.alternateIndex}`
       );
       if (fromPoi.value?.position && toPoi.value?.position) {
+        // TODO: replace POI with Place so we don't have to hit pelias twice?
+        let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
         const routes = await getRoutes(
           fromPoi.value,
           toPoi.value,
-          this.mode as CacheableMode
+          this.mode as CacheableMode,
+          fromPlace.preferredDistanceUnits()
         );
         if (this.alternateIndex) {
           let idx = parseInt(this.alternateIndex);

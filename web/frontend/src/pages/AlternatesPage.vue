@@ -82,7 +82,7 @@ import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import { useQuasar } from 'quasar';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
-import { Place } from 'src/models/Place';
+import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TravelModeBar from 'src/components/TravelModeBar.vue';
@@ -186,12 +186,12 @@ export default defineComponent({
       if (fromPoi.value?.position && toPoi.value?.position) {
         const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
-        let place = await Place.fetchFromSerializedId(fromCanonical);
+        let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
         const routes = await getRoutes(
           fromPoi.value,
           toPoi.value,
           this.mode as CacheableMode,
-          place.preferredDistanceUnits()
+          fromPlace.preferredDistanceUnits()
         );
         this.renderRoutes(routes, 0);
       } else {
