@@ -128,10 +128,7 @@ export function formatDuration(
 ): string {
   let formatModifier = '';
   if (format) {
-    console.log('format was definfed');
     formatModifier = '_' + format;
-  } else {
-    console.log('format was not definfed');
   }
   const totalMinutes = Math.round(durationSeconds / 60);
   let timeString = '';
