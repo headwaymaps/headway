@@ -4,7 +4,7 @@ import { DistanceUnits } from './models';
 export interface RouteLegManeuver {
   begin_shape_index: number;
   end_shape_index: number;
-  street_names: string[];
+  street_names?: string[];
   time: number;
   cost: number;
   length: number;
@@ -35,43 +35,15 @@ export interface Route {
 
 export interface ProcessedRouteSummary {
   durationSeconds: number;
-  viaRoads: string[];
   durationFormatted: string;
   viaRoadsFormatted: string;
   lengthFormatted: string;
 }
 
 export function summarizeRoute(route: Route): ProcessedRouteSummary {
-  const viaRoads = [];
-  let cumulativeRoadCost = 0;
-  for (let i = 0; i < 4; i++) {
-    const roadCosts = costliestRoads(route.legs[0], viaRoads);
-    const roads: string[] = [];
-    roadCosts.forEach((roadTime: number, roadName: string) => {
-      roads.push(roadName);
-    });
-    roads.sort((a: string, b: string) => {
-      const aCost = roadCosts.get(a);
-      const bCost = roadCosts.get(b);
-      if (aCost && bCost) {
-        return bCost - aCost;
-      }
-      return 0;
-    });
-    const road = roads[0];
-    const roadCost = roadCosts.get(road);
-    if (!roadCost) {
-      continue;
-    }
-    if (roadCost < 0.5 || roadCost < 0.25 * cumulativeRoadCost) {
-      break;
-    }
-    cumulativeRoadCost += roadCost;
-    viaRoads.push(road);
-  }
+  const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
   return {
     durationSeconds: route.summary.time,
-    viaRoads: viaRoads,
     durationFormatted: formatDuration(route.summary.time, 'shortform'),
     viaRoadsFormatted: viaRoads.join(
       i18n.global.t('punctuation_list_seperator')
@@ -85,41 +57,33 @@ export function summarizeRoute(route: Route): ProcessedRouteSummary {
   };
 }
 
-function costliestRoads(
-  leg: RouteLeg,
-  ignoring: string[]
-): Map<string, number> {
-  const roadCosts = new Map<string, number>();
-
-  for (const manueverIndex in leg.maneuvers) {
-    const maneuver = leg.maneuvers[manueverIndex];
-    let mustIgnore = false;
-    if (!maneuver.street_names) {
-      continue;
-    }
-    for (const idx in maneuver.street_names) {
-      const road = maneuver.street_names[idx];
-      if (ignoring.indexOf(road) !== -1) {
-        mustIgnore = true;
-        break;
-      }
-    }
-    if (mustIgnore) {
-      continue;
-    }
-    for (const idx in maneuver.street_names) {
-      const key = maneuver.street_names[idx];
-      const oldCost = roadCosts.get(key);
-      // Penalize long names slightly.
-      const mult = 10000.0 / (10000.0 + key.length);
-      if (oldCost) {
-        roadCosts.set(key, oldCost + mult * maneuver.length);
-      } else {
-        roadCosts.set(key, mult * maneuver.length);
-      }
+function substantialRoadNames(
+  maneuvers: RouteLegManeuver[],
+  limit: number
+): string[] {
+  const roadLengths = [];
+  let cumulativeRoadLength = 0.0;
+  for (const maneuver of maneuvers) {
+    const length = maneuver.length;
+    cumulativeRoadLength += length;
+    if (maneuver.street_names) {
+      const name = maneuver.street_names[0];
+      roadLengths.push({ name, length });
     }
   }
-  return roadCosts;
+  roadLengths.sort((a, b) => b.length - a.length).slice(0, limit);
+
+  // Don't include tiny segments in the description of the route
+  const inclusionThreshold = cumulativeRoadLength / (limit + 1);
+  let substantialRoads = roadLengths.filter(
+    (r) => r.length > inclusionThreshold
+  );
+
+  if (substantialRoads.length == 0) {
+    substantialRoads = [roadLengths[0]];
+  }
+
+  return substantialRoads.map((r) => r.name);
 }
 
 export function formatDuration(

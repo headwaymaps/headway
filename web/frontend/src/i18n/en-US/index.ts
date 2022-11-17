@@ -3,8 +3,8 @@ export default {
   my_location: 'My Location',
   could_not_get_gps_location: 'Could not get GPS location',
   dropped_pin: 'Dropped Pin',
-  via_$place: 'Via {place}',
-  via$transit_route: 'Via route {transitRoute}',
+  via_$place: 'via {place}',
+  via$transit_route: 'via route {transitRoute}',
   times: {
     $n_seconds: '{n} seconds',
     $n_minute: '{n} minute',
