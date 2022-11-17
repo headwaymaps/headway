@@ -9,8 +9,9 @@ function upload() {
   OUTPUT_PREFIX=$2
 
   RESOURCE="${OUTPUT_PREFIX}/$(basename $INPUT)"
-  BUCKET=maps-eotw
-  ENDPOINT=https://s3.us-west-004.backblazeb2.com
+  BUCKET=$HEADWAY_S3_BUCKET
+  ENDPOINT=$HEADWAY_S3_ENDPOINT_URL
+
   aws s3 --endpoint=$ENDPOINT cp "${DATA_ROOT}/${INPUT}" "s3://${BUCKET}/${RESOURCE}"
 }
 
@@ -44,6 +45,14 @@ fi
 
 if [ -z "${HEADWAY_VERSION}" ]; then
     source "${SCRIPT_DIR}/_headway_version.sh"
+fi
+
+CONFIG_FILE="${SCRIPT_DIR}/_config.sh"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Missing ${CONFIG_FILE}. See ${CONFIG_FILE}.example"
+    exit 1
 fi
 
 upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
