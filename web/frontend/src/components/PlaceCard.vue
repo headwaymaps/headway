@@ -18,43 +18,11 @@
             {{ $props.poi?.address }}
           </div>
         </div>
-        <div class="place-card-section">
-          <q-chip
-            icon="directions_bus"
-            v-if="haveTransit"
-            clickable
-            v-on:click="$router.push(`/multimodal/${encodePoi($props.poi)}/_`)"
-          >
-            {{ $t('modes.transit') }}
-          </q-chip>
-          <q-chip
-            icon="directions_car"
-            clickable
-            v-on:click="
-              $router.push(`/directions/car/${encodePoi($props.poi)}/_`)
-            "
-          >
-            {{ $t('modes.drive') }}
-          </q-chip>
-          <q-chip
-            icon="directions_bike"
-            clickable
-            v-on:click="
-              $router.push(`/directions/bicycle/${encodePoi($props.poi)}/_`)
-            "
-          >
-            {{ $t('modes.bike') }}
-          </q-chip>
-          <q-chip
-            icon="directions_walk"
-            clickable
-            v-on:click="
-              $router.push(`/directions/walk/${encodePoi($props.poi)}/_`)
-            "
-          >
-            {{ $t('modes.walk') }}
-          </q-chip>
-        </div>
+      </div>
+    </q-card-section>
+    <q-card-section>
+      <div class="place-card-section">
+        <travel-mode-bar :to-poi="$props.poi" />
       </div>
     </q-card-section>
   </q-card>
@@ -63,20 +31,15 @@
 <script lang="ts">
 import { QCard } from 'quasar';
 import { encodePoi } from 'src/utils/models';
-import Config from 'src/utils/Config';
 import { defineComponent } from 'vue';
 import { setBottomCardAllowance } from './BaseMap.vue';
+import TravelModeBar from './TravelModeBar.vue';
 
 export default defineComponent({
   name: 'PlaceCard',
   emits: ['close'],
   props: {
     poi: Object,
-  },
-  data() {
-    return {
-      haveTransit: false,
-    };
   },
   methods: {
     encodePoi,
@@ -94,8 +57,7 @@ export default defineComponent({
     setTimeout(() => {
       setBottomCardAllowance((this.$refs.bottomCard as QCard).$el.offsetHeight);
     });
-    this.haveTransit = Config.transitRoutingEnabled;
   },
-  components: {},
+  components: { TravelModeBar },
 });
 </script>

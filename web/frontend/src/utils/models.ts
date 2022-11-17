@@ -178,7 +178,6 @@ export async function mapFeatureToPoi(
 
   const results = await response.json();
   for (const id in results.features) {
-    console.log(results.features[id]);
     if (results.features[id]?.properties?.name !== feature?.properties?.name) {
       continue;
     }
@@ -218,4 +217,11 @@ export function isDense(): boolean {
 export enum DistanceUnits {
   Miles = 'miles',
   Kilometers = 'kilometers',
+}
+
+export enum TravelMode {
+  Bike = 'bicycle',
+  Walk = 'walk',
+  Drive = 'car',
+  Transit = 'transit',
 }
