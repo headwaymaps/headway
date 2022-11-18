@@ -36,6 +36,7 @@ import {
 } from 'src/components/BaseMap.vue';
 import {
   encodePoi,
+  canonicalizePoi,
   decanonicalizePoi,
   POI,
   poiDisplayName,
@@ -91,10 +92,14 @@ export default defineComponent({
         this.$router.push('/');
         return;
       }
-      const fromCanonical = fromPoi.value ? encodePoi(fromPoi.value) : '_';
-      const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
+      const fromCanonical = fromPoi.value
+        ? canonicalizePoi(fromPoi.value)
+        : '_';
+      const toEncoded = toPoi.value ? encodePoi(toPoi.value) : '_';
       this.$router.push(
-        `/directions/${this.mode}/${toCanonical}/${fromCanonical}/${this.alternateIndex}`
+        `/directions/${this.mode}/${toEncoded}/${encodeURIComponent(
+          fromCanonical
+        )}/${this.alternateIndex}`
       );
       if (fromPoi.value?.position && toPoi.value?.position) {
         // TODO: replace POI with Place so we don't have to hit pelias twice?
