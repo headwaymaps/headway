@@ -235,8 +235,9 @@ export default defineComponent({
           'line-width': 6,
         }
       );
-
-      this.resizeMap();
+      setTimeout(async () => {
+        this.resizeMap();
+      });
       const summary = selectedRoute.summary;
       getBaseMap()?.fitBounds(
         new LngLatBounds(
