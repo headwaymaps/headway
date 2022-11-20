@@ -154,7 +154,7 @@ pelias-init-image:
     COPY ./services/pelias/init* /app/
     CMD ["echo", "run a specific command"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/pelias-init:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:${tag}
 
 pelias-guess-country:
     FROM debian:bullseye-slim
@@ -401,14 +401,14 @@ otp-init-image:
     COPY ./services/otp/init.sh /app/init.sh
     CMD ["/app/init.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/opentripplanner-init:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:${tag}
 
 otp-serve-image:
     FROM +otp-base
 
     CMD java -Xmx4G -jar /otp/otp-shaded.jar --load /data
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/opentripplanner:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:${tag}
 
 ##############################
 # Valhalla
@@ -459,7 +459,7 @@ valhalla-init-image:
     USER root
     CMD ["/app/init.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/valhalla-init:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla-init:${tag}
 
 valhalla-serve-image:
     FROM +valhalla-base-image
@@ -467,7 +467,7 @@ valhalla-serve-image:
     USER valhalla
     CMD ["/data/valhalla.json"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/valhalla:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla:${tag}
 
 ##############################
 # tileserver-gl-light
@@ -523,7 +523,7 @@ tileserver-init-image:
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/tileserver-init:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:${tag}
 
 tileserver-serve-image:
     FROM node:16
@@ -548,7 +548,7 @@ tileserver-serve-image:
 
     CMD ["/app/configure_run.sh"]
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/tileserver:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:${tag}
 
 ##############################
 # Web
@@ -574,7 +574,7 @@ web-init-image:
     CMD ["/app/init.sh"]
 
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/headway-init:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:${tag}
 
 web-serve-image:
     FROM nginx
@@ -597,7 +597,7 @@ web-serve-image:
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
 
     ARG tag
-    SAVE IMAGE --push ghcr.io/michaelkirk/headway:${tag}
+    SAVE IMAGE --push ghcr.io/headwaymaps/headway:${tag}
 
 ##############################
 # Generic base images

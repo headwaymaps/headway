@@ -24,7 +24,7 @@ if [ -z "${HEADWAY_VERSION}" ]; then
 fi
 TAG="${HEADWAY_VERSION}"
 
-registry_root=ghcr.io/michaelkirk
+registry_root=ghcr.io/headwaymaps
 
 images=( tileserver valhalla-init opentripplanner-init pelias-init valhalla headway tileserver-init headway-init opentripplanner )
 
