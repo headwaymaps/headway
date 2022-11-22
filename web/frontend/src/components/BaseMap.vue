@@ -125,6 +125,8 @@ export interface BaseMapInterface {
   flyTo: (location: [number, number], zoom: number) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   pushMarker: (key: string, marker: Marker) => void;
+  removeMarker: (key: string) => void;
+  removeAllMarkers: () => void;
   removeMarkersExcept: (keys: string[]) => void;
   pushLayer: (
     key: string,
@@ -191,10 +193,25 @@ export default defineComponent({
       this.markers.set(key, marker);
       this.ensureMapLoaded((map) => marker.addTo(map));
     },
+    removeMarker(key: string): boolean {
+      let marker = this.markers.get(key);
+      if (marker) {
+        this.markers.delete(key);
+        marker.remove();
+        return true;
+      } else {
+        return false;
+      }
+    },
+    removeAllMarkers() {
+      this.markers.forEach((marker) => marker.remove());
+      this.markers = new Map();
+    },
     removeMarkersExcept(keys: string[]) {
       this.markers.forEach((marker, key) => {
         if (keys.indexOf(key) === -1) {
           marker.remove();
+          this.markers.delete(key);
         }
       });
     },
@@ -210,7 +227,10 @@ export default defineComponent({
         return false;
       } else {
         this.layers.splice(index, 1);
-        this.ensureMapLoaded((map) => map.removeLayer(key));
+        this.ensureMapLoaded((map) => {
+          map.removeLayer(key);
+          map.removeSource(key);
+        });
         return true;
       }
     },
@@ -351,6 +371,8 @@ export default defineComponent({
       flyTo: this.flyTo,
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
+      removeMarker: this.removeMarker,
+      removeAllMarkers: this.removeAllMarkers,
       removeMarkersExcept: this.removeMarkersExcept,
       pushLayer: this.pushLayer,
       pushRouteLayer: this.pushRouteLayer,

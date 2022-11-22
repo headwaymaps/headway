@@ -1,44 +1,12 @@
 <template>
-  <div class="top-left-card">
-    <q-card>
-      <q-card-section>
-        <div :style="{ display: 'flex', alignItems: 'center' }">
-          <search-box
-            ref="searchBox"
-            :hint="$t('search.from')"
-            :style="{ flex: 1 }"
-            :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
-            v-on:did-select-poi="searchBoxDidSelectFromPoi"
-          >
-          </search-box>
-          <q-btn
-            size="small"
-            :style="{ marginLeft: '0.5em', marginRight: 0 }"
-            flat
-            round
-            color="primary"
-            icon="gps_fixed"
-            v-on:click="fromUserLocation"
-          />
-        </div>
-      </q-card-section>
-      <q-card-section class="no-top-padding">
-        <search-box
-          ref="searchBox"
-          :hint="$t('search.to')"
-          :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
-          v-on:did-select-poi="searchBoxDidSelectToPoi"
-        ></search-box>
-      </q-card-section>
-      <q-card-section class="no-top-padding">
-        <travel-mode-bar
-          :current-mode="mode"
-          :to-poi="toPoi"
-          :from-poi="fromPoi"
-        />
-      </q-card-section>
-    </q-card>
-  </div>
+  <trip-search
+    :from-poi="fromPoi"
+    :to-poi="toPoi"
+    :current-mode="mode"
+    :did-select-from-poi="searchBoxDidSelectFromPoi"
+    :did-select-to-poi="searchBoxDidSelectToPoi"
+    :did-swap-pois="clickedSwap"
+  />
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <route-list-item
@@ -77,15 +45,13 @@ import {
   poiDisplayName,
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
-import SearchBox from 'src/components/SearchBox.vue';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
-import { useQuasar } from 'quasar';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
-import TravelModeBar from 'src/components/TravelModeBar.vue';
+import TripSearch from 'src/components/TripSearch.vue';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -109,7 +75,7 @@ export default defineComponent({
       activeRoute: undefined,
     };
   },
-  components: { SearchBox, RouteListItem, TravelModeBar },
+  components: { RouteListItem, TripSearch },
   methods: {
     poiDisplayName,
     summarizeRoute,
@@ -138,31 +104,10 @@ export default defineComponent({
         );
       }
     },
-    fromUserLocation() {
-      const options = {
-        enableHighAccuracy: true,
-        maximumAge: 60000,
-        timeout: 10000,
-      };
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fromPoi.value = {
-            name: this.$t('my_location'),
-            position: {
-              lat: position.coords.latitude,
-              long: position.coords.longitude,
-            },
-          };
-          setTimeout(async () => {
-            await this.rewriteUrl();
-          });
-        },
-        (error) => {
-          useQuasar().notify(this.$t('could_not_get_gps_location'));
-          console.error(error);
-        },
-        options
-      );
+    clickedSwap(newFromValue?: POI, newToValue?: POI) {
+      fromPoi.value = newFromValue;
+      toPoi.value = newToValue;
+      this.rewriteUrl();
     },
     rewriteUrl: async function () {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
@@ -186,6 +131,7 @@ export default defineComponent({
     },
 
     async updateRoutes(): Promise<void> {
+      getBaseMap()?.removeAllLayers();
       if (fromPoi.value?.position && toPoi.value?.position) {
         const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
@@ -198,7 +144,6 @@ export default defineComponent({
         );
         this.renderRoutes(routes, 0);
       } else {
-        getBaseMap()?.removeLayersExcept([]);
         getBaseMap()?.removeMarkersExcept([]);
       }
     },
@@ -213,6 +158,16 @@ export default defineComponent({
       }
       this.$data.routes = routes;
       this.activeRoute = routes[selectedIdx];
+
+      if (toPoi.value?.position) {
+        map.pushMarker(
+          'active_marker',
+          new Marker({ color: '#111111' }).setLngLat([
+            toPoi.value.position.long,
+            toPoi.value.position.lat,
+          ])
+        );
+      }
 
       const unselectedLayerName = (routeIdx: number) =>
         `aleternate_${this.mode}_${routeIdx}_unselected`;
@@ -280,32 +235,7 @@ export default defineComponent({
     },
   },
   watch: {
-    to(newValue: string) {
-      setTimeout(async () => {
-        toPoi.value = await decanonicalizePoi(newValue);
-        this.resizeMap();
-
-        if (!toPoi.value?.position) {
-          return;
-        }
-        getBaseMap()?.pushMarker(
-          'active_marker',
-          new Marker({ color: '#111111' }).setLngLat([
-            toPoi.value.position.long,
-            toPoi.value.position.lat,
-          ])
-        );
-        getBaseMap()?.removeMarkersExcept(['active_marker']);
-      });
-    },
-    from(newValue: string) {
-      setTimeout(async () => {
-        fromPoi.value = await decanonicalizePoi(newValue);
-        this.resizeMap();
-      });
-    },
     mode: async function (): Promise<void> {
-      getBaseMap()?.removeAllLayers();
       await this.updateRoutes();
       this.resizeMap();
     },
