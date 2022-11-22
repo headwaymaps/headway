@@ -1,7 +1,7 @@
 import { formatDuration } from 'src/utils/format';
 import { i18n } from 'src/i18n/lang';
 
-export interface RouteLegManeuver {
+export interface ValhallaRouteLegManeuver {
   begin_shape_index: number;
   end_shape_index: number;
   street_names?: string[];
@@ -13,7 +13,7 @@ export interface RouteLegManeuver {
   type: number;
 }
 
-export interface RouteSummary {
+export interface ValhallaRouteSummary {
   time: number;
   length: number;
   min_lat: number;
@@ -22,14 +22,14 @@ export interface RouteSummary {
   max_lon: number;
 }
 
-export interface RouteLeg {
-  maneuvers: RouteLegManeuver[];
+export interface ValhallaRouteLeg {
+  maneuvers: ValhallaRouteLegManeuver[];
   shape: string;
 }
 
-export interface Route {
-  legs: RouteLeg[];
-  summary: RouteSummary;
+export interface ValhallaRoute {
+  legs: ValhallaRouteLeg[];
+  summary: ValhallaRouteSummary;
   units: string;
 }
 
@@ -119,7 +119,7 @@ export async function getRoutes(
   to: POI,
   mode: CacheableMode,
   units?: DistanceUnits
-): Promise<[Route, ProcessedRouteSummary][]> {
+): Promise<[ValhallaRoute, ProcessedRouteSummary][]> {
   if (!from.position || !to.position) {
     console.error("Can't request without fully specified endpoints");
     return [];
@@ -156,13 +156,13 @@ export async function getRoutes(
     return [];
   }
   const responseJson = await response.json();
-  const routes: [Route, ProcessedRouteSummary][] = [];
-  const route = responseJson.trip as Route;
+  const routes: [ValhallaRoute, ProcessedRouteSummary][] = [];
+  const route = responseJson.trip as ValhallaRoute;
   if (route) {
     routes.push([route, summarizeRoute(route)]);
   }
   for (const altIdx in responseJson.alternates) {
-    const route = responseJson.alternates[altIdx].trip as Route;
+    const route = responseJson.alternates[altIdx].trip as ValhallaRoute;
     if (route) {
       routes.push([route, summarizeRoute(route)]);
     }
@@ -170,7 +170,7 @@ export async function getRoutes(
   return routes;
 }
 
-export function summarizeRoute(route: Route): ProcessedRouteSummary {
+export function summarizeRoute(route: ValhallaRoute): ProcessedRouteSummary {
   const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
   return {
     durationSeconds: route.summary.time,
@@ -188,7 +188,7 @@ export function summarizeRoute(route: Route): ProcessedRouteSummary {
 }
 
 function substantialRoadNames(
-  maneuvers: RouteLegManeuver[],
+  maneuvers: ValhallaRouteLegManeuver[],
   limit: number
 ): string[] {
   const roadLengths = [];

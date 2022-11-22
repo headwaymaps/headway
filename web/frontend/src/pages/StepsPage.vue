@@ -46,10 +46,10 @@ import { defineComponent, Ref, ref } from 'vue';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import {
-  RouteLegManeuver,
+  ValhallaRouteLegManeuver,
   CacheableMode,
   getRoutes,
-  Route,
+  ValhallaRoute,
   ProcessedRouteSummary,
   summarizeRoute,
   valhallaTypeToIcon,
@@ -67,7 +67,7 @@ export default defineComponent({
     alternateIndex: String,
   },
   data: function (): {
-    steps: RouteLegManeuver[];
+    steps: ValhallaRouteLegManeuver[];
   } {
     return {
       steps: [],
@@ -125,7 +125,7 @@ export default defineComponent({
       }
     },
     processRoute(
-      routes: [Route, ProcessedRouteSummary][],
+      routes: [ValhallaRoute, ProcessedRouteSummary][],
       selectedIdx: number
     ) {
       for (var i = 0; i < 10; i += 1) {

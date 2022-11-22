@@ -54,7 +54,7 @@ import { LngLat, LngLatBounds } from 'maplibre-gl';
 import {
   CacheableMode,
   getRoutes,
-  Route,
+  ValhallaRoute,
   ProcessedRouteSummary,
   summarizeRoute,
 } from 'src/services/ValhallaClient';
@@ -77,8 +77,8 @@ export default defineComponent({
     from: String,
   },
   data: function (): {
-    routes: [Route, ProcessedRouteSummary][];
-    activeRoute: [Route, ProcessedRouteSummary] | undefined;
+    routes: [ValhallaRoute, ProcessedRouteSummary][];
+    activeRoute: [ValhallaRoute, ProcessedRouteSummary] | undefined;
   } {
     return {
       routes: [],
@@ -89,7 +89,7 @@ export default defineComponent({
   methods: {
     poiDisplayName,
     summarizeRoute,
-    clickRoute(route: [Route, ProcessedRouteSummary]) {
+    clickRoute(route: [ValhallaRoute, ProcessedRouteSummary]) {
       this.$data.activeRoute = route;
       let index = this.$data.routes.indexOf(route);
       if (index !== -1) {
@@ -104,7 +104,7 @@ export default defineComponent({
       this.toPoi = poi;
       this.rewriteUrl();
     },
-    showSteps(route: [Route, ProcessedRouteSummary]) {
+    showSteps(route: [ValhallaRoute, ProcessedRouteSummary]) {
       let index = this.$data.routes.indexOf(route);
       if (index !== -1 && this.to && this.from) {
         this.$router.push(
@@ -157,7 +157,7 @@ export default defineComponent({
       }
     },
     renderRoutes(
-      routes: [Route, ProcessedRouteSummary][],
+      routes: [ValhallaRoute, ProcessedRouteSummary][],
       selectedIdx: number
     ) {
       const map = getBaseMap();

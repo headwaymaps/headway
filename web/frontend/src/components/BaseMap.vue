@@ -21,7 +21,7 @@ import Config from 'src/utils/Config';
 import { mapFeatureToPoi } from 'src/utils/models';
 import { debounce } from 'lodash';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
-import { RouteLeg } from 'src/services/ValhallaClient';
+import { ValhallaRouteLeg } from 'src/services/ValhallaClient';
 
 export var map: maplibregl.Map | null = null;
 
@@ -135,7 +135,7 @@ export interface BaseMapInterface {
     beforeLayerType: string
   ) => void;
   pushRouteLayer: (
-    leg: RouteLeg,
+    leg: ValhallaRouteLeg,
     layerId: string,
     paint: LineLayerSpecification['paint']
   ) => void;
@@ -235,7 +235,7 @@ export default defineComponent({
       }
     },
     pushRouteLayer(
-      leg: RouteLeg,
+      leg: ValhallaRouteLeg,
       layerId: string,
       paint: LineLayerSpecification['paint']
     ): void {
