@@ -37,7 +37,7 @@ export default defineComponent({
     };
   },
   mounted: function () {
-    getBaseMap()?.removeMarkersExcept([]);
+    getBaseMap()?.removeAllMarkers();
     setTimeout(() => setBottomCardAllowance(0));
   },
   setup: function () {

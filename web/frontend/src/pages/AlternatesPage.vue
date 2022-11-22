@@ -1,44 +1,12 @@
 <template>
-  <div class="top-left-card">
-    <q-card>
-      <q-card-section>
-        <div :style="{ display: 'flex', alignItems: 'center' }">
-          <search-box
-            ref="searchBox"
-            :hint="$t('search.from')"
-            :style="{ flex: 1 }"
-            :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
-            v-on:did-select-poi="searchBoxDidSelectFromPoi"
-          >
-          </search-box>
-          <q-btn
-            size="small"
-            :style="{ marginLeft: '0.5em', marginRight: 0 }"
-            flat
-            round
-            color="primary"
-            icon="gps_fixed"
-            v-on:click="fromUserLocation"
-          />
-        </div>
-      </q-card-section>
-      <q-card-section class="no-top-padding">
-        <search-box
-          ref="searchBox"
-          :hint="$t('search.to')"
-          :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
-          v-on:did-select-poi="searchBoxDidSelectToPoi"
-        ></search-box>
-      </q-card-section>
-      <q-card-section class="no-top-padding">
-        <travel-mode-bar
-          :current-mode="mode"
-          :to-poi="toPoi"
-          :from-poi="fromPoi"
-        />
-      </q-card-section>
-    </q-card>
-  </div>
+  <trip-search
+    :from-poi="fromPoi"
+    :to-poi="toPoi"
+    :current-mode="mode"
+    :did-select-from-poi="searchBoxDidSelectFromPoi"
+    :did-select-to-poi="searchBoxDidSelectToPoi"
+    :did-swap-pois="clickedSwap"
+  />
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <route-list-item
@@ -69,7 +37,12 @@
 </template>
 
 <script lang="ts">
-import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
+import {
+  destinationMarker,
+  sourceMarker,
+  getBaseMap,
+  setBottomCardAllowance,
+} from 'src/components/BaseMap.vue';
 import {
   canonicalizePoi,
   decanonicalizePoi,
@@ -77,15 +50,13 @@ import {
   poiDisplayName,
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
-import SearchBox from 'src/components/SearchBox.vue';
-import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
-import { useQuasar } from 'quasar';
+import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
-import TravelModeBar from 'src/components/TravelModeBar.vue';
+import TripSearch from 'src/components/TripSearch.vue';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -93,7 +64,10 @@ var fromPoi: Ref<POI | undefined> = ref(undefined);
 export default defineComponent({
   name: 'AlternatesPage',
   props: {
-    mode: String as () => TravelMode,
+    mode: {
+      type: String as () => TravelMode,
+      required: true,
+    },
     to: String,
     from: String,
   },
@@ -106,7 +80,7 @@ export default defineComponent({
       activeRoute: undefined,
     };
   },
-  components: { SearchBox, RouteListItem, TravelModeBar },
+  components: { RouteListItem, TripSearch },
   methods: {
     poiDisplayName,
     summarizeRoute,
@@ -135,31 +109,10 @@ export default defineComponent({
         );
       }
     },
-    fromUserLocation() {
-      const options = {
-        enableHighAccuracy: true,
-        maximumAge: 60000,
-        timeout: 10000,
-      };
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fromPoi.value = {
-            name: this.$t('my_location'),
-            position: {
-              lat: position.coords.latitude,
-              long: position.coords.longitude,
-            },
-          };
-          setTimeout(async () => {
-            await this.rewriteUrl();
-          });
-        },
-        (error) => {
-          useQuasar().notify(this.$t('could_not_get_gps_location'));
-          console.error(error);
-        },
-        options
-      );
+    clickedSwap(newFromValue?: POI, newToValue?: POI) {
+      fromPoi.value = newFromValue;
+      toPoi.value = newToValue;
+      this.rewriteUrl();
     },
     rewriteUrl: async function () {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
@@ -183,6 +136,8 @@ export default defineComponent({
     },
 
     async updateRoutes(): Promise<void> {
+      getBaseMap()?.removeAllLayers();
+      getBaseMap()?.removeAllMarkers();
       if (fromPoi.value?.position && toPoi.value?.position) {
         const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
@@ -194,24 +149,60 @@ export default defineComponent({
           fromPlace.preferredDistanceUnits()
         );
         this.renderRoutes(routes, 0);
-      } else {
-        getBaseMap()?.removeLayersExcept([]);
-        getBaseMap()?.removeMarkersExcept([]);
       }
     },
     renderRoutes(
       routes: [Route, ProcessedRouteSummary][],
       selectedIdx: number
     ) {
+      const map = getBaseMap();
+      if (!map) {
+        console.error('basemap was unexpectedly empty');
+        return;
+      }
       this.$data.routes = routes;
       this.activeRoute = routes[selectedIdx];
 
-      getBaseMap()?.removeLayersExcept([]);
+      if (fromPoi.value?.position) {
+        map.pushMarker(
+          'source_marker',
+          sourceMarker().setLngLat([
+            fromPoi.value.position.long,
+            fromPoi.value.position.lat,
+          ])
+        );
+      }
+      if (toPoi.value?.position) {
+        map.pushMarker(
+          'destination_marker',
+          destinationMarker().setLngLat([
+            toPoi.value.position.long,
+            toPoi.value.position.lat,
+          ])
+        );
+      }
+
+      const unselectedLayerName = (routeIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}_unselected`;
+      const selectedLayerName = (routeIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}_selected`;
+
       for (let routeIdx = 0; routeIdx < routes.length; routeIdx++) {
-        // Add selected route last to be sure it's on top of the others
         if (routeIdx == selectedIdx) {
+          if (map.hasLayer(unselectedLayerName(routeIdx))) {
+            map.removeLayer(unselectedLayerName(routeIdx));
+          }
           continue;
         }
+
+        if (map.hasLayer(selectedLayerName(routeIdx))) {
+          map.removeLayer(selectedLayerName(routeIdx));
+        }
+
+        if (map.hasLayer(unselectedLayerName(routeIdx))) {
+          continue;
+        }
+
         const route = routes[routeIdx][0];
         const leg = route.legs[0];
         if (!leg) {
@@ -219,22 +210,22 @@ export default defineComponent({
           continue;
         }
 
-        getBaseMap()?.pushRouteLayer(leg, 'headway_polyline' + routeIdx, {
+        map.pushRouteLayer(leg, unselectedLayerName(routeIdx), {
           'line-color': '#777',
           'line-width': 4,
           'line-dasharray': [0.5, 2],
         });
       }
+
       const selectedRoute = routes[selectedIdx][0];
       const selectedLeg = selectedRoute.legs[0];
-      getBaseMap()?.pushRouteLayer(
-        selectedLeg,
-        'headway_polyline' + selectedIdx,
-        {
+      if (!map.hasLayer(selectedLayerName(selectedIdx))) {
+        // Add selected route last to be sure it's on top of the unselected routes
+        map.pushRouteLayer(selectedLeg, selectedLayerName(selectedIdx), {
           'line-color': '#1976D2',
           'line-width': 6,
-        }
-      );
+        });
+      }
       setTimeout(async () => {
         this.resizeMap();
       });
@@ -257,30 +248,6 @@ export default defineComponent({
     },
   },
   watch: {
-    to(newValue) {
-      setTimeout(async () => {
-        toPoi.value = await decanonicalizePoi(newValue);
-        this.resizeMap();
-
-        if (!newValue.position) {
-          return;
-        }
-        getBaseMap()?.pushMarker(
-          'active_marker',
-          new Marker({ color: '#111111' }).setLngLat([
-            newValue.position.long,
-            newValue.position.lat,
-          ])
-        );
-        getBaseMap()?.removeMarkersExcept(['active_marker']);
-      });
-    },
-    from(newValue) {
-      setTimeout(async () => {
-        fromPoi.value = await decanonicalizePoi(newValue);
-        this.resizeMap();
-      });
-    },
     mode: async function (): Promise<void> {
       await this.updateRoutes();
       this.resizeMap();
@@ -295,15 +262,6 @@ export default defineComponent({
       fromPoi.value = await decanonicalizePoi(this.$props.from as string);
       await this.rewriteUrl();
       this.resizeMap();
-
-      getBaseMap()?.removeMarkersExcept([]);
-      if (this.toPoi?.position) {
-        const marker = new Marker({ color: '#111111' }).setLngLat([
-          this.toPoi.position.long,
-          this.toPoi.position.lat,
-        ]);
-        getBaseMap()?.pushMarker('active_marker', marker);
-      }
     });
   },
   setup: function () {

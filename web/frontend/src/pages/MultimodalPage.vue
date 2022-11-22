@@ -1,49 +1,12 @@
 <template>
-  <div class="top-left-card">
-    <q-card>
-      <q-card-section>
-        <div :style="{ display: 'flex', alignItems: 'center' }">
-          <search-box
-            ref="searchBox"
-            :hint="$t('search.from')"
-            :style="{ flex: 1 }"
-            :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
-            v-on:did-select-poi="searchBoxDidSelectFromPoi"
-          >
-          </search-box>
-          <q-btn
-            size="small"
-            :style="{ marginLeft: '0.5em', marginRight: 0 }"
-            flat
-            round
-            color="primary"
-            icon="gps_fixed"
-            v-on:click="fromUserLocation"
-          />
-        </div>
-      </q-card-section>
-      <q-card-section class="no-top-padding">
-        <search-box
-          ref="searchBox"
-          :hint="$t('search.to')"
-          :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
-          v-on:did-select-poi="searchBoxDidSelectToPoi"
-        ></search-box>
-      </q-card-section>
-      <q-card-section class="no-top-padding">
-        <!-- 
-          Annoyingly, using `current-mode="transit"` doesn't satisfy the type checker
-              > Type '"transit"' is not assignable to type 'TravelMode | undefined'.
-          So instead it's passed via a typed variable.
-        -->
-        <travel-mode-bar
-          :current-mode="transitMode"
-          :to-poi="toPoi"
-          :from-poi="fromPoi"
-        />
-      </q-card-section>
-    </q-card>
-  </div>
+  <trip-search
+    :from-poi="fromPoi"
+    :to-poi="toPoi"
+    :current-mode="transitMode"
+    :did-select-from-poi="searchBoxDidSelectFromPoi"
+    :did-select-to-poi="searchBoxDidSelectToPoi"
+    :did-swap-pois="clickedSwap"
+  />
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <route-list-item
@@ -93,9 +56,10 @@
 
 <script lang="ts">
 import {
+  destinationMarker,
   getBaseMap,
-  map,
   setBottomCardAllowance,
+  sourceMarker,
 } from 'src/components/BaseMap.vue';
 import {
   encodePoi,
@@ -105,14 +69,12 @@ import {
   TravelMode,
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
-import SearchBox from 'src/components/SearchBox.vue';
 import TransitTimeline from 'src/components/TransitTimeline.vue';
 import RouteListItem from 'src/components/RouteListItem.vue';
-import TravelModeBar from 'src/components/TravelModeBar.vue';
+import TripSearch from 'src/components/TripSearch.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
-import { LngLatBounds, Marker } from 'maplibre-gl';
+import { LngLatBounds } from 'maplibre-gl';
 import Itinerary from 'src/models/Itinerary';
-import { useQuasar } from 'quasar';
 import { toLngLat } from 'src/utils/geomath';
 import { DistanceUnits } from 'src/utils/models';
 
@@ -140,7 +102,7 @@ export default defineComponent({
       visibleSteps: {},
     };
   },
-  components: { SearchBox, RouteListItem, TransitTimeline, TravelModeBar },
+  components: { RouteListItem, TripSearch, TransitTimeline },
   methods: {
     showSteps(index: number) {
       this.$data.visibleSteps[index] = true;
@@ -153,31 +115,10 @@ export default defineComponent({
       this.$data.itineraryIndex = index;
       this.plotPaths();
     },
-    fromUserLocation() {
-      const options = {
-        enableHighAccuracy: true,
-        maximumAge: 60000,
-        timeout: 10000,
-      };
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fromPoi.value = {
-            name: this.$t('my_location'),
-            position: {
-              lat: position.coords.latitude,
-              long: position.coords.longitude,
-            },
-          };
-          setTimeout(async () => {
-            await this.rewriteUrl();
-          });
-        },
-        (error) => {
-          useQuasar().notify(this.$t('could_not_get_gps_location'));
-          console.error(error);
-        },
-        options
-      );
+    clickedSwap(newFromValue?: POI, newToValue?: POI) {
+      fromPoi.value = newFromValue;
+      toPoi.value = newToValue;
+      this.rewriteUrl();
     },
     searchBoxDidSelectFromPoi(poi?: POI) {
       this.fromPoi = poi;
@@ -188,9 +129,37 @@ export default defineComponent({
       this.rewriteUrl();
     },
     rewriteUrl: async function () {
+      let map = getBaseMap();
+      if (!map) {
+        console.error('basemap was unexpectedly empty');
+        return;
+      }
       if (!fromPoi.value?.position && !toPoi.value?.position) {
         this.$router.push('/');
         return;
+      }
+
+      if (fromPoi.value?.position) {
+        map.pushMarker(
+          'source_marker',
+          sourceMarker().setLngLat([
+            fromPoi.value.position.long,
+            fromPoi.value.position.lat,
+          ])
+        );
+      } else {
+        map.removeMarker('source_marker');
+      }
+      if (toPoi.value?.position) {
+        map.pushMarker(
+          'destination_marker',
+          destinationMarker().setLngLat([
+            toPoi.value.position.long,
+            toPoi.value.position.lat,
+          ])
+        );
+      } else {
+        map.removeMarker('destination_marker');
       }
       const fromCanonical = fromPoi.value ? encodePoi(fromPoi.value) : '_';
       const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
@@ -204,16 +173,7 @@ export default defineComponent({
         this.calculateStats();
         this.plotPaths();
       } else {
-        // FIXME: Here and below, don't hardcode a credible maximum number of legs, it's very silly, just store it.
-        for (var index = 0; index < 100; index++) {
-          const layerName = `headway_polyline${index}`;
-          if (map?.getLayer(layerName)) {
-            map?.removeLayer(layerName);
-          }
-          if (map?.getSource(layerName)) {
-            map?.removeSource(layerName);
-          }
-        }
+        map.removeAllLayers();
       }
     },
     calculateStats() {
@@ -231,6 +191,9 @@ export default defineComponent({
       }
     },
     plotPaths() {
+      // TODO: avoid flicker when switching between selected like
+      // we do in alternates
+      getBaseMap()?.removeAllLayers();
       for (let i = 0; i < this.$data.itineraries.length; i++) {
         if (i == this.$data.itineraryIndex) {
           // plot the selected one last
@@ -324,17 +287,6 @@ export default defineComponent({
       fromPoi.value = await decanonicalizePoi(this.$props.from as string);
       await this.rewriteUrl();
       this.resizeMap();
-
-      if (this.toPoi?.position) {
-        getBaseMap()?.pushMarker(
-          'active_marker',
-          new Marker({ color: '#111111' }).setLngLat([
-            this.toPoi.position.long,
-            this.toPoi.position.lat,
-          ])
-        );
-        getBaseMap()?.removeMarkersExcept(['active_marker']);
-      }
     });
   },
   unmounted: function () {

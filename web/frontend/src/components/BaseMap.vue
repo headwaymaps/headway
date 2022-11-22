@@ -125,6 +125,8 @@ export interface BaseMapInterface {
   flyTo: (location: [number, number], zoom: number) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   pushMarker: (key: string, marker: Marker) => void;
+  removeMarker: (key: string) => void;
+  removeAllMarkers: () => void;
   removeMarkersExcept: (keys: string[]) => void;
   pushLayer: (
     key: string,
@@ -138,6 +140,10 @@ export interface BaseMapInterface {
     paint: LineLayerSpecification['paint']
   ) => void;
   removeLayersExcept: (keys: string[]) => void;
+  /// returns wether a layer was removed
+  removeLayer: (key: string) => boolean;
+  removeAllLayers(): void;
+  hasLayer: (key: string) => boolean;
 }
 
 var baseMapMethods: BaseMapInterface | undefined = undefined;
@@ -187,12 +193,46 @@ export default defineComponent({
       this.markers.set(key, marker);
       this.ensureMapLoaded((map) => marker.addTo(map));
     },
+    removeMarker(key: string): boolean {
+      let marker = this.markers.get(key);
+      if (marker) {
+        this.markers.delete(key);
+        marker.remove();
+        return true;
+      } else {
+        return false;
+      }
+    },
+    removeAllMarkers() {
+      this.markers.forEach((marker) => marker.remove());
+      this.markers = new Map();
+    },
     removeMarkersExcept(keys: string[]) {
       this.markers.forEach((marker, key) => {
         if (keys.indexOf(key) === -1) {
           marker.remove();
+          this.markers.delete(key);
         }
       });
+    },
+    hasLayer(key: string): boolean {
+      return this.layers.includes(key);
+    },
+    removeAllLayers(): void {
+      this.removeLayersExcept([]);
+    },
+    removeLayer(key: string): boolean {
+      const index = this.layers.indexOf(key);
+      if (index === -1) {
+        return false;
+      } else {
+        this.layers.splice(index, 1);
+        this.ensureMapLoaded((map) => {
+          map.removeLayer(key);
+          map.removeSource(key);
+        });
+        return true;
+      }
     },
     pushRouteLayer(
       leg: RouteLeg,
@@ -241,7 +281,7 @@ export default defineComponent({
       layer: LayerSpecification,
       beforeLayerType: string
     ) {
-      let sourceKey = `headway_custom_layer_${key}`;
+      let sourceKey = key;
       let actualLayer = layer;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((actualLayer as any).source) {
@@ -331,10 +371,15 @@ export default defineComponent({
       flyTo: this.flyTo,
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
+      removeMarker: this.removeMarker,
+      removeAllMarkers: this.removeAllMarkers,
       removeMarkersExcept: this.removeMarkersExcept,
       pushLayer: this.pushLayer,
       pushRouteLayer: this.pushRouteLayer,
+      hasLayer: this.hasLayer,
+      removeLayer: this.removeLayer,
       removeLayersExcept: this.removeLayersExcept,
+      removeAllLayers: this.removeAllLayers,
     };
     var nav = new maplibregl.NavigationControl({
       visualizePitch: true,
@@ -448,4 +493,15 @@ export default defineComponent({
     window.addEventListener('resize', () => setBottomCardAllowance());
   },
 });
+
+export function sourceMarker(): Marker {
+  let element = document.createElement('div');
+  element.innerHTML =
+    '<svg display="block" height="20" width="20"><circle cx="10" cy="10" r="7" stroke="#111" stroke-width="2" fill="white" /></svg>';
+  return new Marker({ element });
+}
+
+export function destinationMarker(): Marker {
+  return new Marker({ color: '#111111' });
+}
 </script>
