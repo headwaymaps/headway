@@ -280,25 +280,25 @@ export default defineComponent({
     },
   },
   watch: {
-    to(newValue) {
+    to(newValue: string) {
       setTimeout(async () => {
         toPoi.value = await decanonicalizePoi(newValue);
         this.resizeMap();
 
-        if (!newValue.position) {
+        if (!toPoi.value?.position) {
           return;
         }
         getBaseMap()?.pushMarker(
           'active_marker',
           new Marker({ color: '#111111' }).setLngLat([
-            newValue.position.long,
-            newValue.position.lat,
+            toPoi.value.position.long,
+            toPoi.value.position.lat,
           ])
         );
         getBaseMap()?.removeMarkersExcept(['active_marker']);
       });
     },
-    from(newValue) {
+    from(newValue: string) {
       setTimeout(async () => {
         fromPoi.value = await decanonicalizePoi(newValue);
         this.resizeMap();
