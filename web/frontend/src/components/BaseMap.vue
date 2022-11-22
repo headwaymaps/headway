@@ -138,6 +138,10 @@ export interface BaseMapInterface {
     paint: LineLayerSpecification['paint']
   ) => void;
   removeLayersExcept: (keys: string[]) => void;
+  /// returns wether a layer was removed
+  removeLayer: (key: string) => boolean;
+  removeAllLayers(): void;
+  hasLayer: (key: string) => boolean;
 }
 
 var baseMapMethods: BaseMapInterface | undefined = undefined;
@@ -194,6 +198,22 @@ export default defineComponent({
         }
       });
     },
+    hasLayer(key: string): boolean {
+      return this.layers.includes(key);
+    },
+    removeAllLayers(): void {
+      this.removeLayersExcept([]);
+    },
+    removeLayer(key: string): boolean {
+      const index = this.layers.indexOf(key);
+      if (index === -1) {
+        return false;
+      } else {
+        this.layers.splice(index, 1);
+        this.ensureMapLoaded((map) => map.removeLayer(key));
+        return true;
+      }
+    },
     pushRouteLayer(
       leg: RouteLeg,
       layerId: string,
@@ -241,7 +261,7 @@ export default defineComponent({
       layer: LayerSpecification,
       beforeLayerType: string
     ) {
-      let sourceKey = `headway_custom_layer_${key}`;
+      let sourceKey = key;
       let actualLayer = layer;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((actualLayer as any).source) {
@@ -334,7 +354,10 @@ export default defineComponent({
       removeMarkersExcept: this.removeMarkersExcept,
       pushLayer: this.pushLayer,
       pushRouteLayer: this.pushRouteLayer,
+      hasLayer: this.hasLayer,
+      removeLayer: this.removeLayer,
       removeLayersExcept: this.removeLayersExcept,
+      removeAllLayers: this.removeAllLayers,
     };
     var nav = new maplibregl.NavigationControl({
       visualizePitch: true,

@@ -93,7 +93,10 @@ var fromPoi: Ref<POI | undefined> = ref(undefined);
 export default defineComponent({
   name: 'AlternatesPage',
   props: {
-    mode: String as () => TravelMode,
+    mode: {
+      type: String as () => TravelMode,
+      required: true,
+    },
     to: String,
     from: String,
   },
@@ -203,15 +206,35 @@ export default defineComponent({
       routes: [Route, ProcessedRouteSummary][],
       selectedIdx: number
     ) {
+      const map = getBaseMap();
+      if (!map) {
+        console.error('basemap was unexpectedly empty');
+        return;
+      }
       this.$data.routes = routes;
       this.activeRoute = routes[selectedIdx];
 
-      getBaseMap()?.removeLayersExcept([]);
+      const unselectedLayerName = (routeIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}_unselected`;
+      const selectedLayerName = (routeIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}_selected`;
+
       for (let routeIdx = 0; routeIdx < routes.length; routeIdx++) {
-        // Add selected route last to be sure it's on top of the others
         if (routeIdx == selectedIdx) {
+          if (map.hasLayer(unselectedLayerName(routeIdx))) {
+            map.removeLayer(unselectedLayerName(routeIdx));
+          }
           continue;
         }
+
+        if (map.hasLayer(selectedLayerName(routeIdx))) {
+          map.removeLayer(selectedLayerName(routeIdx));
+        }
+
+        if (map.hasLayer(unselectedLayerName(routeIdx))) {
+          continue;
+        }
+
         const route = routes[routeIdx][0];
         const leg = route.legs[0];
         if (!leg) {
@@ -219,22 +242,22 @@ export default defineComponent({
           continue;
         }
 
-        getBaseMap()?.pushRouteLayer(leg, 'headway_polyline' + routeIdx, {
+        map.pushRouteLayer(leg, unselectedLayerName(routeIdx), {
           'line-color': '#777',
           'line-width': 4,
           'line-dasharray': [0.5, 2],
         });
       }
+
       const selectedRoute = routes[selectedIdx][0];
       const selectedLeg = selectedRoute.legs[0];
-      getBaseMap()?.pushRouteLayer(
-        selectedLeg,
-        'headway_polyline' + selectedIdx,
-        {
+      if (!map.hasLayer(selectedLayerName(selectedIdx))) {
+        // Add selected route last to be sure it's on top of the unselected routes
+        map.pushRouteLayer(selectedLeg, selectedLayerName(selectedIdx), {
           'line-color': '#1976D2',
           'line-width': 6,
-        }
-      );
+        });
+      }
       setTimeout(async () => {
         this.resizeMap();
       });
@@ -282,6 +305,7 @@ export default defineComponent({
       });
     },
     mode: async function (): Promise<void> {
+      getBaseMap()?.removeAllLayers();
       await this.updateRoutes();
       this.resizeMap();
     },
