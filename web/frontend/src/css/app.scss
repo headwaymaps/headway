@@ -118,7 +118,7 @@
   }
 }
 
-.travel-mode-bar a {
+.travel-mode-bar a:not(:last-child) {
   margin-right: 8px;
 }
 
