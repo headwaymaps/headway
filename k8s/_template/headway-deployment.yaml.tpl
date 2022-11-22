@@ -23,7 +23,7 @@ spec:
                     storage: 50Mi
       initContainers:
         - name: headway-init
-          image: ghcr.io/michaelkirk/headway-init:${HEADWAY_VERSION}
+          image: ghcr.io/headwaymaps/headway-init:${HEADWAY_VERSION}
           imagePullPolicy: Always
           volumeMounts:
             - name: headway-volume
@@ -60,7 +60,7 @@ spec:
               memory: 100Mi
       containers:
         - name: headway
-          image: ghcr.io/michaelkirk/headway:${HEADWAY_VERSION}
+          image: ghcr.io/headwaymaps/headway:${HEADWAY_VERSION}
           imagePullPolicy: Always
           volumeMounts:
             - name: headway-volume

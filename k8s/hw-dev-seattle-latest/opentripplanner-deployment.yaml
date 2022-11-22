@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
         - name: opentripplanner-init
-          image: ghcr.io/michaelkirk/opentripplanner-init:dev
+          image: ghcr.io/headwaymaps/opentripplanner-init:dev
           imagePullPolicy: Always
           volumeMounts:
             - name: opentripplanner-volume
@@ -32,7 +32,7 @@ spec:
               memory: 128Mi
       containers:
         - name: opentripplanner
-          image: ghcr.io/michaelkirk/opentripplanner:dev
+          image: ghcr.io/headwaymaps/opentripplanner:dev
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

@@ -24,6 +24,23 @@ services:
         condition: service_completed_successfully
     ports:
       - "9000:8000"
+  otp_init:
+    image: ghcr.io/headwaymaps/opentripplanner-init:latest
+    env_file: .env
+    environment:
+      OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.xz
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "otp_data:/data/:rw"
+  otp:
+    image: ghcr.io/headwaymaps/opentripplanner:latest
+    restart: always
+    env_file: .env
+    volumes:
+      - "otp_data:/data/:ro"
+    depends_on:
+      otp_init:
+        condition: service_completed_successfully
   valhalla_init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
@@ -73,10 +90,9 @@ services:
       - "8080:8080"
     volumes:
       - "nginx_data:/data/:ro"
-    extra_hosts:
-      - "otp:0.0.0.0"
     depends_on:
       - "valhalla"
+      - "otp"
       - "pelias_api"
       - "mbtileserver"
   pelias_config_init:
@@ -160,5 +176,6 @@ volumes:
   pelias_placeholder_data:
   pelias_elasticsearch_data:
   mbtileserver_data:
+  otp_data:
   valhalla_data:
   nginx_data:

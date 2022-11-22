@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: pelias-init
-          image: ghcr.io/michaelkirk/pelias-init:${HEADWAY_VERSION}
+          image: ghcr.io/headwaymaps/pelias-init:${HEADWAY_VERSION}
           imagePullPolicy: Always
           volumeMounts:
             - name: placeholder-volume
