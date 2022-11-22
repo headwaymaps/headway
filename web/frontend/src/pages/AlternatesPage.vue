@@ -37,7 +37,12 @@
 </template>
 
 <script lang="ts">
-import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
+import {
+  destinationMarker,
+  sourceMarker,
+  getBaseMap,
+  setBottomCardAllowance,
+} from 'src/components/BaseMap.vue';
 import {
   canonicalizePoi,
   decanonicalizePoi,
@@ -45,7 +50,7 @@ import {
   poiDisplayName,
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
-import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
+import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
 import Place from 'src/models/Place';
@@ -132,6 +137,7 @@ export default defineComponent({
 
     async updateRoutes(): Promise<void> {
       getBaseMap()?.removeAllLayers();
+      getBaseMap()?.removeAllMarkers();
       if (fromPoi.value?.position && toPoi.value?.position) {
         const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
@@ -143,8 +149,6 @@ export default defineComponent({
           fromPlace.preferredDistanceUnits()
         );
         this.renderRoutes(routes, 0);
-      } else {
-        getBaseMap()?.removeMarkersExcept([]);
       }
     },
     renderRoutes(
@@ -159,10 +163,19 @@ export default defineComponent({
       this.$data.routes = routes;
       this.activeRoute = routes[selectedIdx];
 
+      if (fromPoi.value?.position) {
+        map.pushMarker(
+          'source_marker',
+          sourceMarker().setLngLat([
+            fromPoi.value.position.long,
+            fromPoi.value.position.lat,
+          ])
+        );
+      }
       if (toPoi.value?.position) {
         map.pushMarker(
-          'active_marker',
-          new Marker({ color: '#111111' }).setLngLat([
+          'destination_marker',
+          destinationMarker().setLngLat([
             toPoi.value.position.long,
             toPoi.value.position.lat,
           ])
@@ -249,15 +262,6 @@ export default defineComponent({
       fromPoi.value = await decanonicalizePoi(this.$props.from as string);
       await this.rewriteUrl();
       this.resizeMap();
-
-      getBaseMap()?.removeMarkersExcept([]);
-      if (this.toPoi?.position) {
-        const marker = new Marker({ color: '#111111' }).setLngLat([
-          this.toPoi.position.long,
-          this.toPoi.position.lat,
-        ]);
-        getBaseMap()?.pushMarker('active_marker', marker);
-      }
     });
   },
   setup: function () {

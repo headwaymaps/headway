@@ -493,4 +493,15 @@ export default defineComponent({
     window.addEventListener('resize', () => setBottomCardAllowance());
   },
 });
+
+export function sourceMarker(): Marker {
+  let element = document.createElement('div');
+  element.innerHTML =
+    '<svg display="block" height="20" width="20"><circle cx="10" cy="10" r="7" stroke="#111" stroke-width="2" fill="white" /></svg>';
+  return new Marker({ element });
+}
+
+export function destinationMarker(): Marker {
+  return new Marker({ color: '#111111' });
+}
 </script>

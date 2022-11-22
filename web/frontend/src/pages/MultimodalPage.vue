@@ -55,7 +55,12 @@
 </template>
 
 <script lang="ts">
-import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
+import {
+  destinationMarker,
+  getBaseMap,
+  setBottomCardAllowance,
+  sourceMarker,
+} from 'src/components/BaseMap.vue';
 import {
   encodePoi,
   decanonicalizePoi,
@@ -68,7 +73,7 @@ import TransitTimeline from 'src/components/TransitTimeline.vue';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import { decodeOtpPath } from 'src/third_party/decodePath';
-import { LngLatBounds, Marker } from 'maplibre-gl';
+import { LngLatBounds } from 'maplibre-gl';
 import Itinerary from 'src/models/Itinerary';
 import { toLngLat } from 'src/utils/geomath';
 import { DistanceUnits } from 'src/utils/models';
@@ -133,16 +138,28 @@ export default defineComponent({
         this.$router.push('/');
         return;
       }
-      if (this.toPoi?.position) {
+
+      if (fromPoi.value?.position) {
         map.pushMarker(
-          'active_marker',
-          new Marker({ color: '#111111' }).setLngLat([
-            this.toPoi.position.long,
-            this.toPoi.position.lat,
+          'source_marker',
+          sourceMarker().setLngLat([
+            fromPoi.value.position.long,
+            fromPoi.value.position.lat,
           ])
         );
       } else {
-        map.removeMarker('active_marker');
+        map.removeMarker('source_marker');
+      }
+      if (toPoi.value?.position) {
+        map.pushMarker(
+          'destination_marker',
+          destinationMarker().setLngLat([
+            toPoi.value.position.long,
+            toPoi.value.position.lat,
+          ])
+        );
+      } else {
+        map.removeMarker('destination_marker');
       }
       const fromCanonical = fromPoi.value ? encodePoi(fromPoi.value) : '_';
       const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
