@@ -13,12 +13,12 @@
         v-for="item in $data.routes"
         :click-handler="() => clickRoute(item)"
         :active="$data.activeRoute === item"
-        :duration-formatted="item[1].durationFormatted"
-        :distance-formatted="item[1].lengthFormatted"
+        :duration-formatted="item.durationFormatted"
+        :distance-formatted="item.lengthFormatted"
         v-bind:key="JSON.stringify(item)"
       >
         <q-item-label>
-          {{ $t('via_$place', { place: item[1].viaRoadsFormatted }) }}
+          {{ $t('via_$place', { place: item.viaRoadsFormatted }) }}
         </q-item-label>
         <q-item-label>
           <q-btn
@@ -51,12 +51,7 @@ import {
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
 import { LngLat, LngLatBounds } from 'maplibre-gl';
-import {
-  CacheableMode,
-  getRoutes,
-  ValhallaRoute,
-  summarizeRoute,
-} from 'src/services/ValhallaClient';
+import { CacheableMode } from 'src/services/ValhallaClient';
 import Route from 'src/models/Route';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
@@ -77,8 +72,8 @@ export default defineComponent({
     from: String,
   },
   data: function (): {
-    routes: [ValhallaRoute, Route][];
-    activeRoute: [ValhallaRoute, Route] | undefined;
+    routes: Route[];
+    activeRoute: Route | undefined;
   } {
     return {
       routes: [],
@@ -88,8 +83,7 @@ export default defineComponent({
   components: { RouteListItem, TripSearch },
   methods: {
     poiDisplayName,
-    summarizeRoute,
-    clickRoute(route: [ValhallaRoute, Route]) {
+    clickRoute(route: Route) {
       this.$data.activeRoute = route;
       let index = this.$data.routes.indexOf(route);
       if (index !== -1) {
@@ -104,7 +98,7 @@ export default defineComponent({
       this.toPoi = poi;
       this.rewriteUrl();
     },
-    showSteps(route: [ValhallaRoute, Route]) {
+    showSteps(route: Route) {
       let index = this.$data.routes.indexOf(route);
       if (index !== -1 && this.to && this.from) {
         this.$router.push(
@@ -147,7 +141,7 @@ export default defineComponent({
         const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
-        const routes = await getRoutes(
+        const routes = await Route.getRoutes(
           fromPoi.value,
           toPoi.value,
           this.mode as CacheableMode,
@@ -156,7 +150,7 @@ export default defineComponent({
         this.renderRoutes(routes, 0);
       }
     },
-    renderRoutes(routes: [ValhallaRoute, Route][], selectedIdx: number) {
+    renderRoutes(routes: Route[], selectedIdx: number) {
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');
@@ -205,7 +199,7 @@ export default defineComponent({
           continue;
         }
 
-        const route = routes[routeIdx][0];
+        const route = routes[routeIdx].valhallaRoute;
         const leg = route.legs[0];
         if (!leg) {
           console.error('unexpectedly missing route leg');
@@ -219,7 +213,7 @@ export default defineComponent({
         });
       }
 
-      const selectedRoute = routes[selectedIdx][0];
+      const selectedRoute = routes[selectedIdx].valhallaRoute;
       const selectedLeg = selectedRoute.legs[0];
       if (!map.hasLayer(selectedLayerName(selectedIdx))) {
         // Add selected route last to be sure it's on top of the unselected routes

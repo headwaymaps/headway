@@ -1,7 +1,3 @@
-import { formatDuration } from 'src/utils/format';
-import { i18n } from 'src/i18n/lang';
-import Route from 'src/models/Route';
-
 export interface ValhallaRouteLegManeuver {
   begin_shape_index: number;
   end_shape_index: number;
@@ -113,7 +109,7 @@ export async function getRoutes(
   to: POI,
   mode: CacheableMode,
   units?: DistanceUnits
-): Promise<[ValhallaRoute, Route][]> {
+): Promise<ValhallaRoute[]> {
   if (!from.position || !to.position) {
     console.error("Can't request without fully specified endpoints");
     return [];
@@ -150,63 +146,16 @@ export async function getRoutes(
     return [];
   }
   const responseJson = await response.json();
-  const routes: [ValhallaRoute, Route][] = [];
+  const routes: ValhallaRoute[] = [];
   const route = responseJson.trip as ValhallaRoute;
   if (route) {
-    routes.push([route, summarizeRoute(route)]);
+    routes.push(route);
   }
   for (const altIdx in responseJson.alternates) {
     const route = responseJson.alternates[altIdx].trip as ValhallaRoute;
     if (route) {
-      routes.push([route, summarizeRoute(route)]);
+      routes.push(route);
     }
   }
   return routes;
-}
-
-export function summarizeRoute(route: ValhallaRoute): Route {
-  const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
-  return {
-    valhallaRoute: route,
-    durationSeconds: route.summary.time,
-    durationFormatted: formatDuration(route.summary.time, 'shortform'),
-    viaRoadsFormatted: viaRoads.join(
-      i18n.global.t('punctuation_list_seperator')
-    ),
-    lengthFormatted:
-      route.summary.length.toFixed(1) +
-      ' ' +
-      route.units
-        .replace('kilometers', i18n.global.t('shortened_distances.kilometers'))
-        .replace('miles', i18n.global.t('shortened_distances.miles')),
-  };
-}
-
-function substantialRoadNames(
-  maneuvers: ValhallaRouteLegManeuver[],
-  limit: number
-): string[] {
-  const roadLengths = [];
-  let cumulativeRoadLength = 0.0;
-  for (const maneuver of maneuvers) {
-    const length = maneuver.length;
-    cumulativeRoadLength += length;
-    if (maneuver.street_names) {
-      const name = maneuver.street_names[0];
-      roadLengths.push({ name, length });
-    }
-  }
-  roadLengths.sort((a, b) => b.length - a.length).slice(0, limit);
-
-  // Don't include tiny segments in the description of the route
-  const inclusionThreshold = cumulativeRoadLength / (limit + 1);
-  let substantialRoads = roadLengths.filter(
-    (r) => r.length > inclusionThreshold
-  );
-
-  if (substantialRoads.length == 0) {
-    substantialRoads = [roadLengths[0]];
-  }
-
-  return substantialRoads.map((r) => r.name);
 }

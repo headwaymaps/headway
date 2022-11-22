@@ -49,9 +49,6 @@ import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import {
   ValhallaRouteLegManeuver,
   CacheableMode,
-  getRoutes,
-  ValhallaRoute,
-  summarizeRoute,
   valhallaTypeToIcon,
 } from 'src/services/ValhallaClient';
 
@@ -75,7 +72,6 @@ export default defineComponent({
   },
   methods: {
     poiDisplayName,
-    summarizeRoute,
     valhallaTypeToIcon,
     onBackClicked() {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
@@ -105,7 +101,7 @@ export default defineComponent({
       if (fromPoi.value?.position && toPoi.value?.position) {
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
-        const routes = await getRoutes(
+        const routes = await Route.getRoutes(
           fromPoi.value,
           toPoi.value,
           this.mode as CacheableMode,
@@ -124,7 +120,7 @@ export default defineComponent({
         }
       }
     },
-    processRoute(routes: [ValhallaRoute, Route][], selectedIdx: number) {
+    processRoute(routes: Route[], selectedIdx: number) {
       for (var i = 0; i < 10; i += 1) {
         if (map?.getLayer('headway_polyline' + i)) {
           map?.removeLayer('headway_polyline' + i);
@@ -134,7 +130,7 @@ export default defineComponent({
         }
       }
       const route = routes[selectedIdx];
-      const leg = route[0]?.legs[0];
+      const leg = route.valhallaRoute.legs[0];
       this.$data.steps = leg.maneuvers;
       if (leg && map) {
         var totalTime = 0;
@@ -154,8 +150,14 @@ export default defineComponent({
           this.resizeMap();
           getBaseMap()?.fitBounds(
             new LngLatBounds(
-              new LngLat(route[0].summary.min_lon, route[0].summary.min_lat),
-              new LngLat(route[0].summary.max_lon, route[0].summary.max_lat)
+              new LngLat(
+                route.valhallaRoute.summary.min_lon,
+                route.valhallaRoute.summary.min_lat
+              ),
+              new LngLat(
+                route.valhallaRoute.summary.max_lon,
+                route.valhallaRoute.summary.max_lat
+              )
             )
           );
         });
