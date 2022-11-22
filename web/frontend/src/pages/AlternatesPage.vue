@@ -55,9 +55,9 @@ import {
   CacheableMode,
   getRoutes,
   ValhallaRoute,
-  ProcessedRouteSummary,
   summarizeRoute,
 } from 'src/services/ValhallaClient';
+import Route from 'src/models/Route';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
@@ -77,8 +77,8 @@ export default defineComponent({
     from: String,
   },
   data: function (): {
-    routes: [ValhallaRoute, ProcessedRouteSummary][];
-    activeRoute: [ValhallaRoute, ProcessedRouteSummary] | undefined;
+    routes: [ValhallaRoute, Route][];
+    activeRoute: [ValhallaRoute, Route] | undefined;
   } {
     return {
       routes: [],
@@ -89,7 +89,7 @@ export default defineComponent({
   methods: {
     poiDisplayName,
     summarizeRoute,
-    clickRoute(route: [ValhallaRoute, ProcessedRouteSummary]) {
+    clickRoute(route: [ValhallaRoute, Route]) {
       this.$data.activeRoute = route;
       let index = this.$data.routes.indexOf(route);
       if (index !== -1) {
@@ -104,7 +104,7 @@ export default defineComponent({
       this.toPoi = poi;
       this.rewriteUrl();
     },
-    showSteps(route: [ValhallaRoute, ProcessedRouteSummary]) {
+    showSteps(route: [ValhallaRoute, Route]) {
       let index = this.$data.routes.indexOf(route);
       if (index !== -1 && this.to && this.from) {
         this.$router.push(
@@ -156,10 +156,7 @@ export default defineComponent({
         this.renderRoutes(routes, 0);
       }
     },
-    renderRoutes(
-      routes: [ValhallaRoute, ProcessedRouteSummary][],
-      selectedIdx: number
-    ) {
+    renderRoutes(routes: [ValhallaRoute, Route][], selectedIdx: number) {
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');

@@ -42,6 +42,7 @@ import {
   poiDisplayName,
 } from 'src/utils/models';
 import Place from 'src/models/Place';
+import Route from 'src/models/Route';
 import { defineComponent, Ref, ref } from 'vue';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
@@ -50,7 +51,6 @@ import {
   CacheableMode,
   getRoutes,
   ValhallaRoute,
-  ProcessedRouteSummary,
   summarizeRoute,
   valhallaTypeToIcon,
 } from 'src/services/ValhallaClient';
@@ -124,10 +124,7 @@ export default defineComponent({
         }
       }
     },
-    processRoute(
-      routes: [ValhallaRoute, ProcessedRouteSummary][],
-      selectedIdx: number
-    ) {
+    processRoute(routes: [ValhallaRoute, Route][], selectedIdx: number) {
       for (var i = 0; i < 10; i += 1) {
         if (map?.getLayer('headway_polyline' + i)) {
           map?.removeLayer('headway_polyline' + i);

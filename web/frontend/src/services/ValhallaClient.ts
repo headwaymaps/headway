@@ -1,5 +1,6 @@
 import { formatDuration } from 'src/utils/format';
 import { i18n } from 'src/i18n/lang';
+import Route from 'src/models/Route';
 
 export interface ValhallaRouteLegManeuver {
   begin_shape_index: number;
@@ -31,13 +32,6 @@ export interface ValhallaRoute {
   legs: ValhallaRouteLeg[];
   summary: ValhallaRouteSummary;
   units: string;
-}
-
-export interface ProcessedRouteSummary {
-  durationSeconds: number;
-  durationFormatted: string;
-  viaRoadsFormatted: string;
-  lengthFormatted: string;
 }
 
 export function valhallaTypeToIcon(type: number) {
@@ -119,7 +113,7 @@ export async function getRoutes(
   to: POI,
   mode: CacheableMode,
   units?: DistanceUnits
-): Promise<[ValhallaRoute, ProcessedRouteSummary][]> {
+): Promise<[ValhallaRoute, Route][]> {
   if (!from.position || !to.position) {
     console.error("Can't request without fully specified endpoints");
     return [];
@@ -156,7 +150,7 @@ export async function getRoutes(
     return [];
   }
   const responseJson = await response.json();
-  const routes: [ValhallaRoute, ProcessedRouteSummary][] = [];
+  const routes: [ValhallaRoute, Route][] = [];
   const route = responseJson.trip as ValhallaRoute;
   if (route) {
     routes.push([route, summarizeRoute(route)]);
@@ -170,9 +164,10 @@ export async function getRoutes(
   return routes;
 }
 
-export function summarizeRoute(route: ValhallaRoute): ProcessedRouteSummary {
+export function summarizeRoute(route: ValhallaRoute): Route {
   const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
   return {
+    valhallaRoute: route,
     durationSeconds: route.summary.time,
     durationFormatted: formatDuration(route.summary.time, 'shortform'),
     viaRoadsFormatted: viaRoads.join(
