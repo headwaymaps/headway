@@ -12,7 +12,7 @@ import {
   formatDistance,
   formatDuration,
   kilometersToMiles,
-} from 'src/utils/routes';
+} from 'src/utils/format';
 
 export default class Itinerary {
   private raw: OTPItinerary;

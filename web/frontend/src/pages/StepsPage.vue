@@ -45,14 +45,15 @@ import Place from 'src/models/Place';
 import { defineComponent, Ref, ref } from 'vue';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
-import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import {
+  RouteLegManeuver,
+  CacheableMode,
+  getRoutes,
   Route,
   ProcessedRouteSummary,
   summarizeRoute,
   valhallaTypeToIcon,
-} from 'src/utils/routes';
-import { RouteLegManeuver } from 'src/utils/routes';
+} from 'src/services/ValhallaClient';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);

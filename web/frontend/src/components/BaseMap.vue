@@ -21,7 +21,7 @@ import Config from 'src/utils/Config';
 import { mapFeatureToPoi } from 'src/utils/models';
 import { debounce } from 'lodash';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
-import { RouteLeg } from 'src/utils/routes';
+import { RouteLeg } from 'src/services/ValhallaClient';
 
 export var map: maplibregl.Map | null = null;
 

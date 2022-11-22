@@ -51,8 +51,13 @@ import {
 } from 'src/utils/models';
 import { defineComponent, Ref, ref } from 'vue';
 import { LngLat, LngLatBounds } from 'maplibre-gl';
-import { CacheableMode, getRoutes } from 'src/utils/routecache';
-import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
+import {
+  CacheableMode,
+  getRoutes,
+  Route,
+  ProcessedRouteSummary,
+  summarizeRoute,
+} from 'src/services/ValhallaClient';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
