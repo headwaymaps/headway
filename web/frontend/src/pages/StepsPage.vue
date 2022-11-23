@@ -51,6 +51,7 @@ import {
   CacheableMode,
   valhallaTypeToIcon,
 } from 'src/services/ValhallaClient';
+import { toLngLat } from 'src/utils/geomath';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -102,8 +103,8 @@ export default defineComponent({
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
         const routes = await Route.getRoutes(
-          fromPoi.value,
-          toPoi.value,
+          toLngLat(fromPoi.value.position),
+          toLngLat(toPoi.value.position),
           this.mode as CacheableMode,
           fromPlace.preferredDistanceUnits()
         );
@@ -144,7 +145,8 @@ export default defineComponent({
         });
         getBaseMap()?.pushRouteLayer(
           'headway_polyline' + selectedIdx,
-          route.geometry(),
+          // currently valhalla routes only ever have 1 leg.
+          route.legs[0].geometry(),
           {
             'line-color': '#1976D2',
             'line-width': 6,

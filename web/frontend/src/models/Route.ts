@@ -8,9 +8,10 @@ import {
 import { formatDuration } from 'src/utils/format';
 import { POI, DistanceUnits } from 'src/utils/models';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
-import { LngLatBounds, LngLat } from 'maplibre-gl';
+import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
+import Trip, { TripLeg } from './Trip';
 
-export default class Route {
+export default class Route implements Trip {
   durationSeconds: number;
   durationFormatted: string;
   viaRoadsFormatted: string;
@@ -30,17 +31,6 @@ export default class Route {
     this.valhallaRoute = args.valhallaRoute;
   }
 
-  public geometry(): GeoJSON.Geometry {
-    const points: [number, number][] = [];
-    decodeValhallaPath(this.valhallaRoute.legs[0].shape, 6).forEach((point) => {
-      points.push([point[1], point[0]]);
-    });
-    return {
-      type: 'LineString',
-      coordinates: points,
-    };
-  }
-
   public get bounds(): LngLatBounds {
     const summary = this.valhallaRoute.summary;
     return new LngLatBounds(
@@ -49,9 +39,40 @@ export default class Route {
     );
   }
 
+  public get legs(): TripLeg[] {
+    return this.valhallaRoute.legs.map((vLeg): TripLeg => {
+      return {
+        geometry(): GeoJSON.LineString {
+          const points: [number, number][] = [];
+          decodeValhallaPath(vLeg.shape, 6).forEach((point) => {
+            points.push([point[1], point[0]]);
+          });
+          return {
+            type: 'LineString',
+            coordinates: points,
+          };
+        },
+        paintStyle(active: boolean): LineLayerSpecification['paint'] {
+          if (active) {
+            return {
+              'line-color': '#1976D2',
+              'line-width': 6,
+            };
+          } else {
+            return {
+              'line-color': '#777',
+              'line-width': 4,
+              'line-dasharray': [0.5, 2],
+            };
+          }
+        },
+      };
+    });
+  }
+
   public static async getRoutes(
-    from: POI,
-    to: POI,
+    from: LngLat,
+    to: LngLat,
     mode: CacheableMode,
     units?: DistanceUnits
   ): Promise<Route[]> {

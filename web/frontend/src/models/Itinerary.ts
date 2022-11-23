@@ -13,8 +13,9 @@ import {
   kilometersToMiles,
 } from 'src/utils/format';
 import { decodeOtpPath } from 'src/third_party/decodePath';
+import Trip from './Trip';
 
-export default class Itinerary {
+export default class Itinerary implements Trip {
   private raw: OTPItinerary;
   legs: ItineraryLeg[];
   private distanceUnits: DistanceUnits;
@@ -42,7 +43,7 @@ export default class Itinerary {
     return this.raw.duration;
   }
 
-  public durationFormatted(): string {
+  public get durationFormatted(): string {
     return formatDuration(this.raw.duration, 'shortform');
   }
 

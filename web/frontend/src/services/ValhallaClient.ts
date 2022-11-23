@@ -89,6 +89,7 @@ export function valhallaTypeToIcon(type: number) {
   return '';
 }
 
+import { LngLat } from 'maplibre-gl';
 import { POI, DistanceUnits } from 'src/utils/models';
 
 export type CacheableMode = 'walk' | 'bicycle' | 'car';
@@ -105,16 +106,11 @@ function modeToCostingModel(mode: CacheableMode): string {
 }
 
 export async function getRoutes(
-  from: POI,
-  to: POI,
+  from: LngLat,
+  to: LngLat,
   mode: CacheableMode,
   units?: DistanceUnits
 ): Promise<ValhallaRoute[]> {
-  if (!from.position || !to.position) {
-    console.error("Can't request without fully specified endpoints");
-    return [];
-  }
-
   type RouteRequest = {
     locations: Array<{ lat: number; lon: number }>;
     costing: string;
@@ -124,12 +120,12 @@ export async function getRoutes(
   const requestObject: RouteRequest = {
     locations: [
       {
-        lat: from.position.lat,
-        lon: from.position.long,
+        lat: from.lat,
+        lon: from.lng,
       },
       {
-        lat: to.position.lat,
-        lon: to.position.long,
+        lat: to.lat,
+        lon: to.lng,
       },
     ],
     costing: modeToCostingModel(mode),

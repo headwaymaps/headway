@@ -48,6 +48,8 @@ import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
+import Trip from 'src/models/Trip';
+import { toLngLat } from 'src/utils/geomath';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -63,8 +65,8 @@ export default defineComponent({
     from: String,
   },
   data: function (): {
-    routes: Route[];
-    activeRoute: Route | undefined;
+    routes: Trip[];
+    activeRoute: Trip | undefined;
   } {
     return {
       routes: [],
@@ -84,7 +86,7 @@ export default defineComponent({
       }
     },
     poiDisplayName,
-    clickRoute(route: Route) {
+    clickRoute(route: Trip) {
       this.$data.activeRoute = route;
       let index = this.$data.routes.indexOf(route);
       if (index !== -1) {
@@ -147,15 +149,15 @@ export default defineComponent({
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
         const routes = await Route.getRoutes(
-          fromPoi.value,
-          toPoi.value,
+          toLngLat(fromPoi.value.position),
+          toLngLat(toPoi.value.position),
           this.mode as CacheableMode,
           fromPlace.preferredDistanceUnits()
         );
         this.renderRoutes(routes, 0);
       }
     },
-    renderRoutes(routes: Route[], selectedIdx: number) {
+    renderRoutes(routes: Trip[], selectedIdx: number) {
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');
@@ -205,24 +207,25 @@ export default defineComponent({
         }
 
         const route = routes[routeIdx];
-        map.pushRouteLayer(unselectedLayerName(routeIdx), route.geometry(), {
-          'line-color': '#777',
-          'line-width': 4,
-          'line-dasharray': [0.5, 2],
-        });
+        for (const leg of route.legs) {
+          map.pushRouteLayer(
+            unselectedLayerName(routeIdx),
+            leg.geometry(),
+            leg.paintStyle(false)
+          );
+        }
       }
 
+      // Add selected route last to be sure it's on top of the unselected routes
       const selectedRoute = routes[selectedIdx];
       if (!map.hasLayer(selectedLayerName(selectedIdx))) {
-        // Add selected route last to be sure it's on top of the unselected routes
-        map.pushRouteLayer(
-          selectedLayerName(selectedIdx),
-          selectedRoute.geometry(),
-          {
-            'line-color': '#1976D2',
-            'line-width': 6,
-          }
-        );
+        for (const leg of selectedRoute.legs) {
+          map.pushRouteLayer(
+            selectedLayerName(selectedIdx),
+            leg.geometry(),
+            leg.paintStyle(true)
+          );
+        }
       }
       setTimeout(async () => {
         this.resizeMap();

@@ -13,7 +13,7 @@
         v-for="(item, index) in itineraries"
         :click-handler="() => changeItinerary(index)"
         :active="$data.itineraryIndex === index"
-        :duration-formatted="item.durationFormatted()"
+        :duration-formatted="item.durationFormatted"
         distance-formatted=""
         v-bind:key="JSON.stringify(item)"
       >
@@ -48,6 +48,7 @@ import TransitTimeline from 'src/components/TransitTimeline.vue';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import Itinerary from 'src/models/Itinerary';
+import Trip, { fetchBestTrips } from 'src/models/Trip';
 import { toLngLat } from 'src/utils/geomath';
 import { DistanceUnits } from 'src/utils/models';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
@@ -62,7 +63,7 @@ export default defineComponent({
     from: String,
   },
   data: function (): {
-    itineraries: Itinerary[];
+    itineraries: Trip[];
     itineraryIndex: number;
     earliestStart: number;
     latestArrival: number;
@@ -143,28 +144,35 @@ export default defineComponent({
       const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
       this.$router.push(`/multimodal/${toCanonical}/${fromCanonical}`);
       if (fromPoi.value?.position && toPoi.value?.position) {
-        this.$data.itineraries = await Itinerary.fetchBest(
+        this.$data.itineraries = await fetchBestTrips(
           toLngLat(fromPoi.value.position),
           toLngLat(toPoi.value.position),
+          TravelMode.Transit,
           DistanceUnits.Miles
         );
-        this.calculateStats();
+        this.calculateTransitStats();
         this.plotPaths();
       } else {
         map.removeAllLayers();
       }
     },
-    calculateStats() {
+    calculateTransitStats() {
       this.$data.earliestStart = Number.MAX_SAFE_INTEGER;
       this.$data.latestArrival = 0;
-      for (var index = 0; index < this.$data.itineraries.length; index++) {
+      // terrible hack.
+      if (this.transitMode != TravelMode.Transit) {
+        return;
+      }
+      let itineraries: Itinerary[] = this.$data.itineraries as Itinerary[];
+
+      for (var index = 0; index < itineraries.length; index++) {
         this.$data.earliestStart = Math.min(
           this.$data.earliestStart,
-          this.$data.itineraries[index].startTime
+          itineraries[index].startTime
         );
         this.$data.latestArrival = Math.max(
           this.$data.latestArrival,
-          this.$data.itineraries[index].endTime
+          itineraries[index].endTime
         );
       }
     },
@@ -182,7 +190,7 @@ export default defineComponent({
       const itinerary = this.$data.itineraries[this.$data.itineraryIndex];
       this.plotPath(itinerary, this.$data.itineraryIndex, true);
     },
-    plotPath(itinerary: Itinerary, route_idx: number, active: boolean) {
+    plotPath(itinerary: Trip, route_idx: number, active: boolean) {
       for (const legIdx in itinerary.legs) {
         let leg = itinerary.legs[legIdx];
         const layerName = `headway_transit_route_${route_idx}_leg_${legIdx}`;
