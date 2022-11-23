@@ -164,6 +164,7 @@ export default defineComponent({
           this.mode,
           fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
+        this.calculateTransitStats(routes);
         this.renderRoutes(routes, 0);
       }
     },
@@ -253,7 +254,7 @@ export default defineComponent({
         setBottomCardAllowance(0);
       }
     },
-    calculateTransitStats() {
+    calculateTransitStats(routes: Trip[]) {
       this.$data.earliestStart = Number.MAX_SAFE_INTEGER;
       this.$data.latestArrival = 0;
       // terrible hack.
@@ -261,7 +262,7 @@ export default defineComponent({
         return;
       }
 
-      let itineraries: Itinerary[] = this.$data.routes as Itinerary[];
+      let itineraries: Itinerary[] = routes as Itinerary[];
 
       for (var index = 0; index < itineraries.length; index++) {
         this.$data.earliestStart = Math.min(
