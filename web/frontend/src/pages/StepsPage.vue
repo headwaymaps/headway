@@ -142,10 +142,14 @@ export default defineComponent({
         decodeValhallaPath(leg.shape, 6).forEach((point) => {
           points.push([point[1], point[0]]);
         });
-        getBaseMap()?.pushRouteLayer(leg, 'headway_polyline' + selectedIdx, {
-          'line-color': '#1976D2',
-          'line-width': 6,
-        });
+        getBaseMap()?.pushRouteLayer(
+          'headway_polyline' + selectedIdx,
+          route.geometry(),
+          {
+            'line-color': '#1976D2',
+            'line-width': 6,
+          }
+        );
         setTimeout(() => {
           this.resizeMap();
           getBaseMap()?.fitBounds(

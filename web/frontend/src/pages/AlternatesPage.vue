@@ -205,33 +205,30 @@ export default defineComponent({
           continue;
         }
 
-        const route = routes[routeIdx].valhallaRoute;
-        const leg = route.legs[0];
-        if (!leg) {
-          console.error('unexpectedly missing route leg');
-          continue;
-        }
-
-        map.pushRouteLayer(leg, unselectedLayerName(routeIdx), {
+        const route = routes[routeIdx];
+        map.pushRouteLayer(unselectedLayerName(routeIdx), route.geometry(), {
           'line-color': '#777',
           'line-width': 4,
           'line-dasharray': [0.5, 2],
         });
       }
 
-      const selectedRoute = routes[selectedIdx].valhallaRoute;
-      const selectedLeg = selectedRoute.legs[0];
+      const selectedRoute = routes[selectedIdx];
       if (!map.hasLayer(selectedLayerName(selectedIdx))) {
         // Add selected route last to be sure it's on top of the unselected routes
-        map.pushRouteLayer(selectedLeg, selectedLayerName(selectedIdx), {
-          'line-color': '#1976D2',
-          'line-width': 6,
-        });
+        map.pushRouteLayer(
+          selectedLayerName(selectedIdx),
+          selectedRoute.geometry(),
+          {
+            'line-color': '#1976D2',
+            'line-width': 6,
+          }
+        );
       }
       setTimeout(async () => {
         this.resizeMap();
       });
-      const summary = selectedRoute.summary;
+      const summary = selectedRoute.valhallaRoute.summary;
       getBaseMap()?.fitBounds(
         new LngLatBounds(
           new LngLat(summary.min_lon, summary.min_lat),

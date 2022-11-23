@@ -20,8 +20,6 @@ import Prefs from 'src/utils/Prefs';
 import Config from 'src/utils/Config';
 import { mapFeatureToPoi } from 'src/utils/models';
 import { debounce } from 'lodash';
-import { decodeValhallaPath } from 'src/third_party/decodePath';
-import { ValhallaRouteLeg } from 'src/services/ValhallaClient';
 
 export var map: maplibregl.Map | null = null;
 
@@ -135,8 +133,8 @@ export interface BaseMapInterface {
     beforeLayerType: string
   ) => void;
   pushRouteLayer: (
-    leg: ValhallaRouteLeg,
     layerId: string,
+    geometry: GeoJSON.Geometry,
     paint: LineLayerSpecification['paint']
   ) => void;
   removeLayersExcept: (keys: string[]) => void;
@@ -235,20 +233,10 @@ export default defineComponent({
       }
     },
     pushRouteLayer(
-      leg: ValhallaRouteLeg,
       layerId: string,
+      geometry: GeoJSON.Geometry,
       paint: LineLayerSpecification['paint']
     ): void {
-      var totalTime = 0;
-      for (const key in leg.maneuvers) {
-        totalTime += leg.maneuvers[key].time;
-        leg.maneuvers[key].time = totalTime;
-      }
-      var points: [number, number][] = [];
-      decodeValhallaPath(leg.shape, 6).forEach((point) => {
-        points.push([point[1], point[0]]);
-      });
-
       this.pushLayer(
         layerId,
         {
@@ -256,10 +244,7 @@ export default defineComponent({
           data: {
             type: 'Feature',
             properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: points,
-            },
+            geometry,
           },
         },
         {

@@ -215,38 +215,21 @@ export default defineComponent({
         for (const lngLat of points) {
           bbox.extend(lngLat);
         }
-        getBaseMap()?.pushLayer(
+        getBaseMap()?.pushRouteLayer(
           layerName,
           {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: points,
-              },
-            },
+            type: 'LineString',
+            coordinates: points,
           },
           {
-            id: layerName,
-            type: 'line',
-            source: layerName,
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round',
-            },
-            paint: {
-              'line-color': active
-                ? leg.transitLeg
-                  ? '#E21919'
-                  : '#1976D2'
-                : '#777',
-              'line-width': leg.transitLeg ? 6 : 4,
-              'line-dasharray': leg.transitLeg ? [1] : [1, 2],
-            },
-          },
-          'symbol'
+            'line-color': active
+              ? leg.transitLeg
+                ? '#E21919'
+                : '#1976D2'
+              : '#777',
+            'line-width': leg.transitLeg ? 6 : 4,
+            'line-dasharray': leg.transitLeg ? [1] : [1, 2],
+          }
         );
       }
       getBaseMap()?.fitBounds(bbox);

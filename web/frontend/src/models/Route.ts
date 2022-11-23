@@ -7,6 +7,7 @@ import {
 } from 'src/services/ValhallaClient';
 import { formatDuration } from 'src/utils/format';
 import { POI, DistanceUnits } from 'src/utils/models';
+import { decodeValhallaPath } from 'src/third_party/decodePath';
 
 export default class Route {
   durationSeconds: number;
@@ -26,6 +27,17 @@ export default class Route {
     this.viaRoadsFormatted = args.viaRoadsFormatted;
     this.lengthFormatted = args.lengthFormatted;
     this.valhallaRoute = args.valhallaRoute;
+  }
+
+  public geometry(): GeoJSON.Geometry {
+    const points: [number, number][] = [];
+    decodeValhallaPath(this.valhallaRoute.legs[0].shape, 6).forEach((point) => {
+      points.push([point[1], point[0]]);
+    });
+    return {
+      type: 'LineString',
+      coordinates: points,
+    };
   }
 
   public static async getRoutes(
