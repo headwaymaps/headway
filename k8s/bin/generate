@@ -19,8 +19,10 @@ if [ ! $# -eq 1 ]; then
     exit 1
 fi
 
-ENV_FILE="$1"
-source "$ENV_FILE"
+source "${REPO_ROOT}/.env"
+
+DEPLOYMENT_ENV_FILE="$1"
+source "$DEPLOYMENT_ENV_FILE"
 
 if [ -z "${HEADWAY_VERSION}" ]
 then
@@ -31,8 +33,6 @@ if [ -z "${ASSET_VERSION}" ]
 then
     export ASSET_VERSION="${HEADWAY_VERSION}"
 fi
-
-export HEADWAY_S3_ROOT=https://s3.us-west-004.backblazeb2.com/maps-eotw
 
 set -o nounset
 

@@ -51,11 +51,11 @@ if [ -z "${HEADWAY_VERSION}" ]; then
     source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
-CONFIG_FILE="${SCRIPT_DIR}/_config.sh"
+CONFIG_FILE="${APP_ROOT}/.env"
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 else
-    echo "Missing ${CONFIG_FILE}. See ${CONFIG_FILE}.example"
+    echo "Missing ${CONFIG_FILE}. See ${CONFIG_FILE}-example"
     exit 1
 fi
 
