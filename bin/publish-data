@@ -20,7 +20,7 @@ cat << EOF
 usage: $0 <area-tag> <area>
 examples:
     $0 seattle-latest Seattle
-    $0 planet-v1.19 planet-v1.18
+    $0 planet-v1.19 planet-v1.19
 
 Use a release other than what's in bin/_headway_version.sh
     HEADWAY_VERSION=latest $0 seattle-latest Seattle
