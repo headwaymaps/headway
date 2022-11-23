@@ -1,8 +1,2 @@
-# Specify any other necessary aws config in your ~/.aws/config|credentials
-export AWS_PROFILE=default
-
-# If non-aws, specify the endpoint url
-export HEADWAY_S3_ENDPOINT_URL=""
-
 # The bucket to upload your map data to
 export HEADWAY_S3_BUCKET=""
