@@ -17,35 +17,10 @@
         distance-formatted=""
         v-bind:key="JSON.stringify(item)"
       >
-        <q-item-label>
-          {{ item.startStopTimesFormatted() }}
-        </q-item-label>
-        <q-item-label caption>
-          {{ item.viaRouteFormatted }}
-        </q-item-label>
-        <q-item-label caption :hidden="$data.itineraryIndex !== index">
-          {{
-            $t('walk_distance', {
-              preformattedDistance: item.walkingDistanceFormatted(),
-            })
-          }}
-        </q-item-label>
-        <q-item-label
-          :hidden="$data.itineraryIndex === index && areStepsVisible(index)"
-        >
-          <q-btn
-            style="margin-left: -6px"
-            padding="6px"
-            flat
-            icon="directions"
-            label="Details"
-            size="sm"
-            v-on:click="showSteps(index)"
-          />
-        </q-item-label>
-        <transit-timeline
-          :hidden="!($data.itineraryIndex === index && areStepsVisible(index))"
-          :itinerary="item"
+        <component
+          :is="componentForMode('transit')"
+          :item="item"
+          :active="index === itineraryIndex"
           :earliest-start="earliestStart"
           :latest-arrival="latestArrival"
         />
@@ -68,7 +43,7 @@ import {
   poiDisplayName,
   TravelMode,
 } from 'src/utils/models';
-import { defineComponent, Ref, ref } from 'vue';
+import { Component, defineComponent, Ref, ref } from 'vue';
 import TransitTimeline from 'src/components/TransitTimeline.vue';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
@@ -77,6 +52,7 @@ import { LngLatBounds } from 'maplibre-gl';
 import Itinerary from 'src/models/Itinerary';
 import { toLngLat } from 'src/utils/geomath';
 import { DistanceUnits } from 'src/utils/models';
+import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -109,6 +85,10 @@ export default defineComponent({
     },
     areStepsVisible(index: number): boolean {
       return this.$data.visibleSteps[index] === true;
+    },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    componentForMode(mode: 'transit'): Component {
+      return MultiModalListItem;
     },
     poiDisplayName,
     changeItinerary(index: number) {
