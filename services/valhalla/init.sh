@@ -13,10 +13,13 @@ mkdir -p /data/valhalla/
 if [ -f "${VALHALLA_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Copying artifact."
     xz --decompress --stdout ${VALHALLA_ARTIFACT_SOURCE_PATH} > /data/valhalla/tiles.tar
-else
+elif [ ! -z "${VALHALLA_ARTIFACT_URL}" ]; then
     echo "Downloading artifact."
     wget --tries=100 -O- "${VALHALLA_ARTIFACT_URL}" | xz --decompress --stdout > /data/valhalla/tiles.tar.download
     mv /data/valhalla/tiles.tar.download /data/valhalla/tiles.tar
+else
+    echo "No valhalla artifact available."
+    exit 1
 fi
 
 valhalla_build_config --mjolnir-timezone /data/timezones.sqlite --mjolnir-admin /data/admins.sqlite > /data/valhalla.json
