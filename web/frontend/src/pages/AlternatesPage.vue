@@ -41,7 +41,6 @@ import {
   poiDisplayName,
 } from 'src/utils/models';
 import { Component, defineComponent, Ref, ref } from 'vue';
-import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { CacheableMode } from 'src/services/ValhallaClient';
 import Route from 'src/models/Route';
 import Place from 'src/models/Place';
@@ -228,13 +227,7 @@ export default defineComponent({
       setTimeout(async () => {
         this.resizeMap();
       });
-      const summary = selectedRoute.valhallaRoute.summary;
-      getBaseMap()?.fitBounds(
-        new LngLatBounds(
-          new LngLat(summary.min_lon, summary.min_lat),
-          new LngLat(summary.max_lon, summary.max_lat)
-        )
-      );
+      getBaseMap()?.fitBounds(selectedRoute.bounds);
     },
     resizeMap() {
       if (this.$refs.bottomCard && this.$refs.bottomCard) {

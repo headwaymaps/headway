@@ -8,6 +8,7 @@ import {
 import { formatDuration } from 'src/utils/format';
 import { POI, DistanceUnits } from 'src/utils/models';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
+import { LngLatBounds, LngLat } from 'maplibre-gl';
 
 export default class Route {
   durationSeconds: number;
@@ -38,6 +39,14 @@ export default class Route {
       type: 'LineString',
       coordinates: points,
     };
+  }
+
+  public get bounds(): LngLatBounds {
+    const summary = this.valhallaRoute.summary;
+    return new LngLatBounds(
+      new LngLat(summary.min_lon, summary.min_lat),
+      new LngLat(summary.max_lon, summary.max_lat)
+    );
   }
 
   public static async getRoutes(
