@@ -47,8 +47,6 @@ import { Component, defineComponent, Ref, ref } from 'vue';
 import TransitTimeline from 'src/components/TransitTimeline.vue';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
-import { decodeOtpPath } from 'src/third_party/decodePath';
-import { LngLatBounds } from 'maplibre-gl';
 import Itinerary from 'src/models/Itinerary';
 import { toLngLat } from 'src/utils/geomath';
 import { DistanceUnits } from 'src/utils/models';
@@ -185,34 +183,16 @@ export default defineComponent({
       this.plotPath(itinerary, this.$data.itineraryIndex, true);
     },
     plotPath(itinerary: Itinerary, route_idx: number, active: boolean) {
-      const bbox = new LngLatBounds();
-      for (var leg_idx in itinerary.legs) {
-        const leg = itinerary.legs[leg_idx];
-        const layerName = `headway_transit_route_${route_idx}_leg_${leg_idx}`;
-        const points: [number, number][] = decodeOtpPath(
-          leg.legGeometry.points
-        );
-        for (const lngLat of points) {
-          bbox.extend(lngLat);
-        }
+      for (const legIdx in itinerary.legs) {
+        let leg = itinerary.legs[legIdx];
+        const layerName = `headway_transit_route_${route_idx}_leg_${legIdx}`;
         getBaseMap()?.pushRouteLayer(
           layerName,
-          {
-            type: 'LineString',
-            coordinates: points,
-          },
-          {
-            'line-color': active
-              ? leg.transitLeg
-                ? '#E21919'
-                : '#1976D2'
-              : '#777',
-            'line-width': leg.transitLeg ? 6 : 4,
-            'line-dasharray': leg.transitLeg ? [1] : [1, 2],
-          }
+          leg.geometry(),
+          leg.paintStyle(active)
         );
       }
-      getBaseMap()?.fitBounds(bbox);
+      getBaseMap()?.fitBounds(itinerary.bounds);
     },
     resizeMap() {
       // TODO: this impl copied from AlternatesPage.vue. I'm not sure if its correct
