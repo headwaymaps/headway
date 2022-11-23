@@ -17,20 +17,11 @@
         :distance-formatted="item.lengthFormatted"
         v-bind:key="JSON.stringify(item)"
       >
-        <q-item-label>
-          {{ $t('via_$place', { place: item.viaRoadsFormatted }) }}
-        </q-item-label>
-        <q-item-label>
-          <q-btn
-            style="margin-left: -6px"
-            padding="6px"
-            flat
-            icon="directions"
-            :label="$t('route_picker_show_route_details_btn')"
-            size="sm"
-            v-on:click="showSteps(item)"
-          />
-        </q-item-label>
+        <component
+          :is="componentForMode(mode)"
+          :item="item"
+          :showRouteSteps="showRouteSteps"
+        />
       </route-list-item>
     </q-list>
   </div>
@@ -49,7 +40,7 @@ import {
   POI,
   poiDisplayName,
 } from 'src/utils/models';
-import { defineComponent, Ref, ref } from 'vue';
+import { Component, defineComponent, Ref, ref } from 'vue';
 import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { CacheableMode } from 'src/services/ValhallaClient';
 import Route from 'src/models/Route';
@@ -57,6 +48,7 @@ import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
+import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -82,6 +74,16 @@ export default defineComponent({
   },
   components: { RouteListItem, TripSearch },
   methods: {
+    componentForMode(mode: TravelMode): Component {
+      switch (mode) {
+        case TravelMode.Walk:
+        case TravelMode.Bike:
+        case TravelMode.Drive:
+          return SingleModeListItem;
+        case TravelMode.Transit:
+          throw 'todo';
+      }
+    },
     poiDisplayName,
     clickRoute(route: Route) {
       this.$data.activeRoute = route;
@@ -98,7 +100,11 @@ export default defineComponent({
       this.toPoi = poi;
       this.rewriteUrl();
     },
-    showSteps(route: Route) {
+    showRouteSteps(route: Route) {
+      console.assert(
+        this.mode != TravelMode.Transit,
+        'show route steps should only be availble for non-transit'
+      );
       let index = this.$data.routes.indexOf(route);
       if (index !== -1 && this.to && this.from) {
         this.$router.push(
