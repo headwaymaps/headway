@@ -8,6 +8,7 @@ export default interface Trip {
   lengthFormatted?: string;
   bounds: LngLatBounds;
   legs: TripLeg[];
+  mode: TravelMode;
 }
 
 export interface TripLeg {

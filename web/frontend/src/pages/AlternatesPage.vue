@@ -10,7 +10,7 @@
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <route-list-item
-        v-for="(item, index) in $data.routes"
+        v-for="item in $data.routes"
         :click-handler="() => clickRoute(item)"
         :active="$data.activeRoute === item"
         :duration-formatted="item.durationFormatted"
@@ -18,10 +18,10 @@
         v-bind:key="JSON.stringify(item)"
       >
         <component
-          :is="componentForMode(mode)"
+          :is="componentForMode(item.mode)"
           :item="item"
           :showRouteSteps="showRouteSteps"
-          :active="index === index"
+          :active="item === activeRoute"
           :earliest-start="earliestStart"
           :latest-arrival="latestArrival"
         />

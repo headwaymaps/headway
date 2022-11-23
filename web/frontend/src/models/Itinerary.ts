@@ -6,7 +6,7 @@ import {
   OTPItineraryLeg,
   OTPMode,
 } from 'src/services/OTPClient';
-import { DistanceUnits } from 'src/utils/models';
+import { DistanceUnits, TravelMode } from 'src/utils/models';
 import {
   formatDistance,
   formatDuration,
@@ -25,6 +25,10 @@ export default class Itinerary implements Trip {
     this.legs = otp.legs.map((otpLeg) => new ItineraryLeg(otpLeg));
     this.distanceUnits = distanceUnits;
   }
+  // We leave this blank for transit itineraries. It's not really relevant to
+  // picking a trip, so we don't clutter the screen with it.
+  lengthFormatted?: string | undefined;
+  mode: TravelMode = TravelMode.Transit;
 
   public static async fetchBest(
     from: LngLat,
