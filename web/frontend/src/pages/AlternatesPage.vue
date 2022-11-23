@@ -13,24 +13,18 @@
         v-for="item in $data.routes"
         :click-handler="() => clickRoute(item)"
         :active="$data.activeRoute === item"
-        :duration-formatted="item[1].durationFormatted"
-        :distance-formatted="item[1].lengthFormatted"
+        :duration-formatted="item.durationFormatted"
+        :distance-formatted="item.lengthFormatted"
         v-bind:key="JSON.stringify(item)"
       >
-        <q-item-label>
-          {{ $t('via_$place', { place: item[1].viaRoadsFormatted }) }}
-        </q-item-label>
-        <q-item-label>
-          <q-btn
-            style="margin-left: -6px"
-            padding="6px"
-            flat
-            icon="directions"
-            :label="$t('route_picker_show_route_details_btn')"
-            size="sm"
-            v-on:click="showSteps(item)"
-          />
-        </q-item-label>
+        <component
+          :is="componentForMode(item.mode)"
+          :item="item"
+          :showRouteSteps="showRouteSteps"
+          :active="item === activeRoute"
+          :earliest-start="earliestStart"
+          :latest-arrival="latestArrival"
+        />
       </route-list-item>
     </q-list>
   </div>
@@ -46,17 +40,21 @@ import {
 import {
   canonicalizePoi,
   decanonicalizePoi,
+  DistanceUnits,
   POI,
   poiDisplayName,
 } from 'src/utils/models';
-import { defineComponent, Ref, ref } from 'vue';
-import { LngLat, LngLatBounds } from 'maplibre-gl';
-import { CacheableMode, getRoutes } from 'src/utils/routecache';
-import { Route, ProcessedRouteSummary, summarizeRoute } from 'src/utils/routes';
+import { Component, defineComponent, Ref, ref } from 'vue';
+import Route from 'src/models/Route';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
+import SingleModeListItem from 'src/components/SingleModeListItem.vue';
+import MultiModalListItem from 'src/components/MultiModalListItem.vue';
+import Trip, { fetchBestTrips } from 'src/models/Trip';
+import { toLngLat } from 'src/utils/geomath';
+import Itinerary from 'src/models/Itinerary';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -72,19 +70,33 @@ export default defineComponent({
     from: String,
   },
   data: function (): {
-    routes: [Route, ProcessedRouteSummary][];
-    activeRoute: [Route, ProcessedRouteSummary] | undefined;
+    routes: Trip[];
+    activeRoute: Trip | undefined;
+    // only used by transit
+    earliestStart: number;
+    latestArrival: number;
   } {
     return {
       routes: [],
       activeRoute: undefined,
+      earliestStart: 0,
+      latestArrival: 0,
     };
   },
   components: { RouteListItem, TripSearch },
   methods: {
+    componentForMode(mode: TravelMode): Component {
+      switch (mode) {
+        case TravelMode.Walk:
+        case TravelMode.Bike:
+        case TravelMode.Drive:
+          return SingleModeListItem;
+        case TravelMode.Transit:
+          return MultiModalListItem;
+      }
+    },
     poiDisplayName,
-    summarizeRoute,
-    clickRoute(route: [Route, ProcessedRouteSummary]) {
+    clickRoute(route: Trip) {
       this.$data.activeRoute = route;
       let index = this.$data.routes.indexOf(route);
       if (index !== -1) {
@@ -99,7 +111,11 @@ export default defineComponent({
       this.toPoi = poi;
       this.rewriteUrl();
     },
-    showSteps(route: [Route, ProcessedRouteSummary]) {
+    showRouteSteps(route: Route) {
+      console.assert(
+        this.mode != TravelMode.Transit,
+        'show route steps should only be availble for non-transit'
+      );
       let index = this.$data.routes.indexOf(route);
       if (index !== -1 && this.to && this.from) {
         this.$router.push(
@@ -142,19 +158,17 @@ export default defineComponent({
         const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
-        const routes = await getRoutes(
-          fromPoi.value,
-          toPoi.value,
-          this.mode as CacheableMode,
-          fromPlace.preferredDistanceUnits()
+        const routes = await fetchBestTrips(
+          toLngLat(fromPoi.value.position),
+          toLngLat(toPoi.value.position),
+          this.mode,
+          fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
+        this.calculateTransitStats(routes);
         this.renderRoutes(routes, 0);
       }
     },
-    renderRoutes(
-      routes: [Route, ProcessedRouteSummary][],
-      selectedIdx: number
-    ) {
+    renderRoutes(routes: Trip[], selectedIdx: number) {
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');
@@ -182,60 +196,54 @@ export default defineComponent({
         );
       }
 
-      const unselectedLayerName = (routeIdx: number) =>
-        `aleternate_${this.mode}_${routeIdx}_unselected`;
-      const selectedLayerName = (routeIdx: number) =>
-        `aleternate_${this.mode}_${routeIdx}_selected`;
+      const unselectedLayerName = (routeIdx: number, legIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}.${legIdx}_unselected`;
+      const selectedLayerName = (routeIdx: number, legIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}.${legIdx}_selected`;
 
       for (let routeIdx = 0; routeIdx < routes.length; routeIdx++) {
-        if (routeIdx == selectedIdx) {
-          if (map.hasLayer(unselectedLayerName(routeIdx))) {
-            map.removeLayer(unselectedLayerName(routeIdx));
+        const route = routes[routeIdx];
+        for (let legIdx = 0; legIdx < route.legs.length; legIdx++) {
+          const leg = route.legs[legIdx];
+          if (routeIdx == selectedIdx) {
+            if (map.hasLayer(unselectedLayerName(routeIdx, legIdx))) {
+              map.removeLayer(unselectedLayerName(routeIdx, legIdx));
+            }
+            continue;
           }
-          continue;
-        }
 
-        if (map.hasLayer(selectedLayerName(routeIdx))) {
-          map.removeLayer(selectedLayerName(routeIdx));
-        }
+          if (map.hasLayer(selectedLayerName(routeIdx, legIdx))) {
+            map.removeLayer(selectedLayerName(routeIdx, legIdx));
+          }
 
-        if (map.hasLayer(unselectedLayerName(routeIdx))) {
-          continue;
-        }
+          if (map.hasLayer(unselectedLayerName(routeIdx, legIdx))) {
+            continue;
+          }
 
-        const route = routes[routeIdx][0];
-        const leg = route.legs[0];
-        if (!leg) {
-          console.error('unexpectedly missing route leg');
-          continue;
+          map.pushRouteLayer(
+            unselectedLayerName(routeIdx, legIdx),
+            leg.geometry(),
+            leg.paintStyle(false)
+          );
         }
-
-        map.pushRouteLayer(leg, unselectedLayerName(routeIdx), {
-          'line-color': '#777',
-          'line-width': 4,
-          'line-dasharray': [0.5, 2],
-        });
       }
 
-      const selectedRoute = routes[selectedIdx][0];
-      const selectedLeg = selectedRoute.legs[0];
-      if (!map.hasLayer(selectedLayerName(selectedIdx))) {
-        // Add selected route last to be sure it's on top of the unselected routes
-        map.pushRouteLayer(selectedLeg, selectedLayerName(selectedIdx), {
-          'line-color': '#1976D2',
-          'line-width': 6,
-        });
+      // Add selected route last to be sure it's on top of the unselected routes
+      const selectedRoute = routes[selectedIdx];
+      for (let legIdx = 0; legIdx < selectedRoute.legs.length; legIdx++) {
+        const leg = selectedRoute.legs[legIdx];
+        if (!map.hasLayer(selectedLayerName(selectedIdx, legIdx))) {
+          map.pushRouteLayer(
+            selectedLayerName(selectedIdx, legIdx),
+            leg.geometry(),
+            leg.paintStyle(true)
+          );
+        }
       }
       setTimeout(async () => {
         this.resizeMap();
       });
-      const summary = selectedRoute.summary;
-      getBaseMap()?.fitBounds(
-        new LngLatBounds(
-          new LngLat(summary.min_lon, summary.min_lat),
-          new LngLat(summary.max_lon, summary.max_lat)
-        )
-      );
+      getBaseMap()?.fitBounds(selectedRoute.bounds);
     },
     resizeMap() {
       if (this.$refs.bottomCard && this.$refs.bottomCard) {
@@ -244,6 +252,27 @@ export default defineComponent({
         );
       } else {
         setBottomCardAllowance(0);
+      }
+    },
+    calculateTransitStats(routes: Trip[]) {
+      this.$data.earliestStart = Number.MAX_SAFE_INTEGER;
+      this.$data.latestArrival = 0;
+      // terrible hack.
+      if (this.mode != TravelMode.Transit) {
+        return;
+      }
+
+      let itineraries: Itinerary[] = routes as Itinerary[];
+
+      for (var index = 0; index < itineraries.length; index++) {
+        this.$data.earliestStart = Math.min(
+          this.$data.earliestStart,
+          itineraries[index].startTime
+        );
+        this.$data.latestArrival = Math.max(
+          this.$data.latestArrival,
+          itineraries[index].endTime
+        );
       }
     },
   },

@@ -1,20 +1,21 @@
-import { LngLat } from 'maplibre-gl';
+import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import {
   OTPClient,
   OTPItinerary,
   OTPItineraryLeg,
   OTPMode,
-  OTPLegGeometry,
 } from 'src/services/OTPClient';
-import { DistanceUnits } from 'src/utils/models';
+import { DistanceUnits, TravelMode } from 'src/utils/models';
 import {
   formatDistance,
   formatDuration,
   kilometersToMiles,
-} from 'src/utils/routes';
+} from 'src/utils/format';
+import { decodeOtpPath } from 'src/third_party/decodePath';
+import Trip from './Trip';
 
-export default class Itinerary {
+export default class Itinerary implements Trip {
   private raw: OTPItinerary;
   legs: ItineraryLeg[];
   private distanceUnits: DistanceUnits;
@@ -24,6 +25,10 @@ export default class Itinerary {
     this.legs = otp.legs.map((otpLeg) => new ItineraryLeg(otpLeg));
     this.distanceUnits = distanceUnits;
   }
+  // We leave this blank for transit itineraries. It's not really relevant to
+  // picking a trip, so we don't clutter the screen with it.
+  lengthFormatted?: string | undefined;
+  mode: TravelMode = TravelMode.Transit;
 
   public static async fetchBest(
     from: LngLat,
@@ -42,7 +47,7 @@ export default class Itinerary {
     return this.raw.duration;
   }
 
-  public durationFormatted(): string {
+  public get durationFormatted(): string {
     return formatDuration(this.raw.duration, 'shortform');
   }
 
@@ -77,6 +82,17 @@ export default class Itinerary {
   public get viaRouteFormatted(): string | undefined {
     return this.legs.map((leg) => leg.shortName).join('→');
   }
+
+  public get bounds(): LngLatBounds {
+    const bounds = new LngLatBounds();
+    for (const leg of this.legs) {
+      const lineString = leg.geometry();
+      for (const coord of lineString.coordinates) {
+        bounds.extend([coord[0], coord[1]]);
+      }
+    }
+    return bounds;
+  }
 }
 
 function formatTime(millis: number): string {
@@ -106,8 +122,22 @@ class ItineraryLeg {
     return this.raw.mode;
   }
 
-  get legGeometry(): OTPLegGeometry {
-    return this.raw.legGeometry;
+  geometry(): GeoJSON.LineString {
+    const points: [number, number][] = decodeOtpPath(
+      this.raw.legGeometry.points
+    );
+    return {
+      type: 'LineString',
+      coordinates: points,
+    };
+  }
+
+  paintStyle(active: boolean): LineLayerSpecification['paint'] {
+    return {
+      'line-color': active ? (this.transitLeg ? '#E21919' : '#1976D2') : '#777',
+      'line-width': this.transitLeg ? 6 : 4,
+      'line-dasharray': this.transitLeg ? [1] : [1, 2],
+    };
   }
 
   get transitLeg(): boolean {

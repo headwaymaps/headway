@@ -7,7 +7,7 @@
       rounded
       :ripple="false"
       size="sm"
-      :to="`/multimodal/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
+      :to="`/directions/transit/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
       :color="currentMode === 'transit' ? 'primary' : undefined"
     >
       {{ $t('modes.transit') }}

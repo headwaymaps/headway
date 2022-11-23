@@ -67,16 +67,16 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  // DEPRECATED ROUTE: will remove eventually
   {
     path: '/multimodal/:to/:from',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [
-      {
-        path: '/multimodal/:to/:from',
-        props: true,
-        component: () => import('pages/MultimodalPage.vue'),
-      },
-    ],
+    redirect: (route) => {
+      return {
+        path: `/directions/transit/${encodeURIComponent(
+          route.params.to.toString()
+        )}/${encodeURIComponent(route.params.from.toString())}`,
+      };
+    },
   },
 
   // Always leave this as last one,

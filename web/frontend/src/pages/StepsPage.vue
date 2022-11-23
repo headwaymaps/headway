@@ -42,17 +42,16 @@ import {
   poiDisplayName,
 } from 'src/utils/models';
 import Place from 'src/models/Place';
+import Route from 'src/models/Route';
 import { defineComponent, Ref, ref } from 'vue';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
-import { CacheableMode, getRoutes } from 'src/utils/routecache';
 import {
-  Route,
-  ProcessedRouteSummary,
-  summarizeRoute,
+  ValhallaRouteLegManeuver,
+  CacheableMode,
   valhallaTypeToIcon,
-} from 'src/utils/routes';
-import { RouteLegManeuver } from 'src/utils/routes';
+} from 'src/services/ValhallaClient';
+import { toLngLat } from 'src/utils/geomath';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -66,7 +65,7 @@ export default defineComponent({
     alternateIndex: String,
   },
   data: function (): {
-    steps: RouteLegManeuver[];
+    steps: ValhallaRouteLegManeuver[];
   } {
     return {
       steps: [],
@@ -74,7 +73,6 @@ export default defineComponent({
   },
   methods: {
     poiDisplayName,
-    summarizeRoute,
     valhallaTypeToIcon,
     onBackClicked() {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
@@ -104,9 +102,9 @@ export default defineComponent({
       if (fromPoi.value?.position && toPoi.value?.position) {
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
-        const routes = await getRoutes(
-          fromPoi.value,
-          toPoi.value,
+        const routes = await Route.getRoutes(
+          toLngLat(fromPoi.value.position),
+          toLngLat(toPoi.value.position),
           this.mode as CacheableMode,
           fromPlace.preferredDistanceUnits()
         );
@@ -123,10 +121,7 @@ export default defineComponent({
         }
       }
     },
-    processRoute(
-      routes: [Route, ProcessedRouteSummary][],
-      selectedIdx: number
-    ) {
+    processRoute(routes: Route[], selectedIdx: number) {
       for (var i = 0; i < 10; i += 1) {
         if (map?.getLayer('headway_polyline' + i)) {
           map?.removeLayer('headway_polyline' + i);
@@ -136,7 +131,7 @@ export default defineComponent({
         }
       }
       const route = routes[selectedIdx];
-      const leg = route[0]?.legs[0];
+      const leg = route.valhallaRoute.legs[0];
       this.$data.steps = leg.maneuvers;
       if (leg && map) {
         var totalTime = 0;
@@ -148,16 +143,27 @@ export default defineComponent({
         decodeValhallaPath(leg.shape, 6).forEach((point) => {
           points.push([point[1], point[0]]);
         });
-        getBaseMap()?.pushRouteLayer(leg, 'headway_polyline' + selectedIdx, {
-          'line-color': '#1976D2',
-          'line-width': 6,
-        });
+        getBaseMap()?.pushRouteLayer(
+          'headway_polyline' + selectedIdx,
+          // currently valhalla routes only ever have 1 leg.
+          route.legs[0].geometry(),
+          {
+            'line-color': '#1976D2',
+            'line-width': 6,
+          }
+        );
         setTimeout(() => {
           this.resizeMap();
           getBaseMap()?.fitBounds(
             new LngLatBounds(
-              new LngLat(route[0].summary.min_lon, route[0].summary.min_lat),
-              new LngLat(route[0].summary.max_lon, route[0].summary.max_lat)
+              new LngLat(
+                route.valhallaRoute.summary.min_lon,
+                route.valhallaRoute.summary.min_lat
+              ),
+              new LngLat(
+                route.valhallaRoute.summary.max_lon,
+                route.valhallaRoute.summary.max_lat
+              )
             )
           );
         });
