@@ -1,3 +1,6 @@
+import { LngLat } from 'maplibre-gl';
+import { DistanceUnits } from 'src/utils/models';
+
 export interface ValhallaRouteLegManeuver {
   begin_shape_index: number;
   end_shape_index: number;
@@ -88,9 +91,6 @@ export function valhallaTypeToIcon(type: number) {
   }
   return '';
 }
-
-import { LngLat } from 'maplibre-gl';
-import { POI, DistanceUnits } from 'src/utils/models';
 
 export type CacheableMode = 'walk' | 'bicycle' | 'car';
 

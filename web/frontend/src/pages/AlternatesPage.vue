@@ -10,7 +10,7 @@
   <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
     <q-list>
       <route-list-item
-        v-for="item in $data.routes"
+        v-for="(item, index) in $data.routes"
         :click-handler="() => clickRoute(item)"
         :active="$data.activeRoute === item"
         :duration-formatted="item.durationFormatted"
@@ -21,6 +21,9 @@
           :is="componentForMode(mode)"
           :item="item"
           :showRouteSteps="showRouteSteps"
+          :active="index === index"
+          :earliest-start="earliestStart"
+          :latest-arrival="latestArrival"
         />
       </route-list-item>
     </q-list>
@@ -37,19 +40,21 @@ import {
 import {
   canonicalizePoi,
   decanonicalizePoi,
+  DistanceUnits,
   POI,
   poiDisplayName,
 } from 'src/utils/models';
 import { Component, defineComponent, Ref, ref } from 'vue';
-import { CacheableMode } from 'src/services/ValhallaClient';
 import Route from 'src/models/Route';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import RouteListItem from 'src/components/RouteListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
-import Trip from 'src/models/Trip';
+import MultiModalListItem from 'src/components/MultiModalListItem.vue';
+import Trip, { fetchBestTrips } from 'src/models/Trip';
 import { toLngLat } from 'src/utils/geomath';
+import Itinerary from 'src/models/Itinerary';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -67,10 +72,15 @@ export default defineComponent({
   data: function (): {
     routes: Trip[];
     activeRoute: Trip | undefined;
+    // only used by transit
+    earliestStart: number;
+    latestArrival: number;
   } {
     return {
       routes: [],
       activeRoute: undefined,
+      earliestStart: 0,
+      latestArrival: 0,
     };
   },
   components: { RouteListItem, TripSearch },
@@ -82,7 +92,7 @@ export default defineComponent({
         case TravelMode.Drive:
           return SingleModeListItem;
         case TravelMode.Transit:
-          throw 'todo';
+          return MultiModalListItem;
       }
     },
     poiDisplayName,
@@ -148,11 +158,11 @@ export default defineComponent({
         const fromCanonical = canonicalizePoi(fromPoi.value);
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
-        const routes = await Route.getRoutes(
+        const routes = await fetchBestTrips(
           toLngLat(fromPoi.value.position),
           toLngLat(toPoi.value.position),
-          this.mode as CacheableMode,
-          fromPlace.preferredDistanceUnits()
+          this.mode,
+          fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
         this.renderRoutes(routes, 0);
       }
@@ -185,31 +195,32 @@ export default defineComponent({
         );
       }
 
-      const unselectedLayerName = (routeIdx: number) =>
-        `aleternate_${this.mode}_${routeIdx}_unselected`;
-      const selectedLayerName = (routeIdx: number) =>
-        `aleternate_${this.mode}_${routeIdx}_selected`;
+      const unselectedLayerName = (routeIdx: number, legIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}.${legIdx}_unselected`;
+      const selectedLayerName = (routeIdx: number, legIdx: number) =>
+        `aleternate_${this.mode}_${routeIdx}.${legIdx}_selected`;
 
       for (let routeIdx = 0; routeIdx < routes.length; routeIdx++) {
-        if (routeIdx == selectedIdx) {
-          if (map.hasLayer(unselectedLayerName(routeIdx))) {
-            map.removeLayer(unselectedLayerName(routeIdx));
-          }
-          continue;
-        }
-
-        if (map.hasLayer(selectedLayerName(routeIdx))) {
-          map.removeLayer(selectedLayerName(routeIdx));
-        }
-
-        if (map.hasLayer(unselectedLayerName(routeIdx))) {
-          continue;
-        }
-
         const route = routes[routeIdx];
-        for (const leg of route.legs) {
+        for (let legIdx = 0; legIdx < route.legs.length; legIdx++) {
+          const leg = route.legs[legIdx];
+          if (routeIdx == selectedIdx) {
+            if (map.hasLayer(unselectedLayerName(routeIdx, legIdx))) {
+              map.removeLayer(unselectedLayerName(routeIdx, legIdx));
+            }
+            continue;
+          }
+
+          if (map.hasLayer(selectedLayerName(routeIdx, legIdx))) {
+            map.removeLayer(selectedLayerName(routeIdx, legIdx));
+          }
+
+          if (map.hasLayer(unselectedLayerName(routeIdx, legIdx))) {
+            continue;
+          }
+
           map.pushRouteLayer(
-            unselectedLayerName(routeIdx),
+            unselectedLayerName(routeIdx, legIdx),
             leg.geometry(),
             leg.paintStyle(false)
           );
@@ -218,10 +229,11 @@ export default defineComponent({
 
       // Add selected route last to be sure it's on top of the unselected routes
       const selectedRoute = routes[selectedIdx];
-      if (!map.hasLayer(selectedLayerName(selectedIdx))) {
-        for (const leg of selectedRoute.legs) {
+      for (let legIdx = 0; legIdx < selectedRoute.legs.length; legIdx++) {
+        const leg = selectedRoute.legs[legIdx];
+        if (!map.hasLayer(selectedLayerName(selectedIdx, legIdx))) {
           map.pushRouteLayer(
-            selectedLayerName(selectedIdx),
+            selectedLayerName(selectedIdx, legIdx),
             leg.geometry(),
             leg.paintStyle(true)
           );
@@ -239,6 +251,27 @@ export default defineComponent({
         );
       } else {
         setBottomCardAllowance(0);
+      }
+    },
+    calculateTransitStats() {
+      this.$data.earliestStart = Number.MAX_SAFE_INTEGER;
+      this.$data.latestArrival = 0;
+      // terrible hack.
+      if (this.mode != TravelMode.Transit) {
+        return;
+      }
+
+      let itineraries: Itinerary[] = this.$data.routes as Itinerary[];
+
+      for (var index = 0; index < itineraries.length; index++) {
+        this.$data.earliestStart = Math.min(
+          this.$data.earliestStart,
+          itineraries[index].startTime
+        );
+        this.$data.latestArrival = Math.max(
+          this.$data.latestArrival,
+          itineraries[index].endTime
+        );
       }
     },
   },

@@ -38,10 +38,6 @@ import TransitTimeline from './TransitTimeline.vue';
 export default defineComponent({
   name: 'MultiModalListItem',
   props: {
-    // showRouteSteps: {
-    //   type: Function as PropType<(route: Route) => void>,
-    //   required: true,
-    // },
     item: {
       type: Object as PropType<Itinerary>,
       required: true,

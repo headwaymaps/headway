@@ -6,7 +6,7 @@ import {
   ValhallaRouteLegManeuver,
 } from 'src/services/ValhallaClient';
 import { formatDuration } from 'src/utils/format';
-import { POI, DistanceUnits } from 'src/utils/models';
+import { DistanceUnits } from 'src/utils/models';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
 import Trip, { TripLeg } from './Trip';

@@ -30,6 +30,12 @@ export default defineComponent({
       type: Object as PropType<Route>,
       required: true,
     },
+    // SingleModalListItem actually doesn't use this, but MultiModalListItem needs it, so
+    // we have to include it here to avoid an "unexpected property" warning.
+    // This feels gross, but hopefully I can find a better way.
+    active: Boolean,
+    earliestStart: Number,
+    latestArrival: Number,
   },
 });
 </script>
