@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-config
+data:
+  area: Seattle
+  public-url: https://seattle.maps.earth
+  bbox: "-122.462 47.394 -122.005 47.831"
+  enable-transit-routing: "1"
+  font-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/fonts.tar
+  sprite-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/sprite.tar
+  natural-earth-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/natural_earth.mbtiles
+  mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.mbtiles
+  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.valhalla.tar.xz
+  pelias-config-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.pelias.json
+  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.placeholder.tar.xz
+  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.elasticsearch.tar.xz
+  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.graph.obj.xz

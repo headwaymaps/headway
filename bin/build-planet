@@ -17,7 +17,8 @@ source ${SCRIPT_DIR}/_headway_version.sh
 fi
 
 # This job assumes you've already downloaded the planet file into the repository root
-AREA=planet-v1.19
+AREA=planet-with-admin-v1.20
+
 CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_VERSION"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")

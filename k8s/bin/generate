@@ -36,7 +36,7 @@ fi
 
 set -o nounset
 
-OUTPUT_DIR="hw-${HEADWAY_VERSION}-${HEADWAY_AREA_TAG}"
+OUTPUT_DIR="${HEADWAY_AREA_TAG}-hw-${HEADWAY_VERSION}"
 mkdir -p "$OUTPUT_DIR"
 
 for file in _template/*.tpl
