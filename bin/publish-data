@@ -67,7 +67,7 @@ upload "${AREA}.placeholder.tar.xz"   "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
 
 # transit files only exist when transit is enabled
-if [ -f "${AREA}.graph.obj.xz" ]; then
+if [ -f "${DATA_ROOT}/${AREA}.graph.obj.xz" ]; then
 upload "${AREA}.graph.obj.xz"         "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.gtfs.tar.xz"          "${HEADWAY_VERSION}/${AREA_TAG}"
 fi
