@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: peliasapi
+  name: pelias-api
 spec:
   selector:
     app: pelias-api

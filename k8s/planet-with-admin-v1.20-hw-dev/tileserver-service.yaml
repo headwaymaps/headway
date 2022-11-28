@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mbtileserver
+  name: tileserver
 spec:
   selector:
     app: tileserver

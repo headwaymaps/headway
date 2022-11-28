@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: headway-valhalla-deployment
+  name: valhalla
 spec:
   selector:
     matchLabels:
@@ -13,7 +13,7 @@ spec:
         app: valhalla
     spec:
       initContainers:
-        - name: valhalla-init
+        - name: init
           image: ghcr.io/headwaymaps/valhalla-init:${HEADWAY_VERSION}
           imagePullPolicy: Always
           volumeMounts:
@@ -31,7 +31,7 @@ spec:
             requests:
               memory: 100Mi
       containers:
-        - name: valhalla
+        - name: main
           image: ghcr.io/headwaymaps/valhalla:${HEADWAY_VERSION}
           ports:
           - containerPort: 8002

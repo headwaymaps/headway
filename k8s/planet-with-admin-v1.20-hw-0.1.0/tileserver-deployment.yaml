@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: headway-tileserver-deployment
+  name: tileserver
 spec:
   selector:
     matchLabels:
@@ -13,7 +13,7 @@ spec:
         app: tileserver
     spec:
       initContainers:
-        - name: tileserver-init
+        - name: init
           image: ghcr.io/headwaymaps/tileserver-init:0.1.0
           imagePullPolicy: Always
           volumeMounts:

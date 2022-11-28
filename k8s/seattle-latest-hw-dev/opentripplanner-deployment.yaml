@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: headway-opentripplanner-deployment
+  name: opentripplanner
 spec:
   selector:
     matchLabels:
@@ -13,7 +13,7 @@ spec:
         app: opentripplanner
     spec:
       initContainers:
-        - name: opentripplanner-init
+        - name: init
           image: ghcr.io/headwaymaps/opentripplanner-init:dev
           imagePullPolicy: Always
           volumeMounts:
@@ -31,7 +31,7 @@ spec:
             requests:
               memory: 128Mi
       containers:
-        - name: opentripplanner
+        - name: main
           image: ghcr.io/headwaymaps/opentripplanner:dev
           imagePullPolicy: Always
           ports:

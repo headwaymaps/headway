@@ -21,7 +21,7 @@ spec:
         image: pelias/api:latest
     spec:
       initContainers:
-        - name: pelias-init
+        - name: init
           image: ghcr.io/headwaymaps/pelias-init:dev
           imagePullPolicy: Always
           volumeMounts:
@@ -45,7 +45,7 @@ spec:
             requests:
               memory: 100Mi
       containers:
-        - name: pelias-api
+        - name: main
           image: pelias/api:latest
           ports:
             - containerPort: 4000

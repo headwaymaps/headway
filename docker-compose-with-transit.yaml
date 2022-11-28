@@ -1,6 +1,6 @@
 version: "3"
 services:
-  mbtileserver_init:
+  tileserver-init:
     image: ghcr.io/headwaymaps/tileserver-init:latest
     env_file: .env
     environment:
@@ -10,38 +10,38 @@ services:
       NATURAL_EARTH_ARTIFACT_SOURCE_PATH: /bootstrap/natural_earth.mbtiles
     volumes:
       - "./data/:/bootstrap/:ro"
-      - "mbtileserver_data:/data/:rw"
-  mbtileserver:
+      - "tileserver_data:/data/:rw"
+  tileserver:
     image: ghcr.io/headwaymaps/tileserver:latest
     restart: always
     env_file: .env
     environment:
       PORT: 8000
     volumes:
-      - "mbtileserver_data:/data/:ro"
+      - "tileserver_data:/data/:ro"
     depends_on:
-      mbtileserver_init:
+      tileserver-init:
         condition: service_completed_successfully
     ports:
       - "9000:8000"
-  otp_init:
+  opentripplanner-init:
     image: ghcr.io/headwaymaps/opentripplanner-init:latest
     env_file: .env
     environment:
       OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.xz
     volumes:
       - "./data/:/bootstrap/:ro"
-      - "otp_data:/data/:rw"
-  otp:
+      - "opentripplanner_data:/data/:rw"
+  opentripplanner:
     image: ghcr.io/headwaymaps/opentripplanner:latest
     restart: always
     env_file: .env
     volumes:
-      - "otp_data:/data/:ro"
+      - "opentripplanner_data:/data/:ro"
     depends_on:
-      otp_init:
+      opentripplanner-init:
         condition: service_completed_successfully
-  valhalla_init:
+  valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
     volumes:
@@ -64,9 +64,9 @@ services:
         soft: 8192
         hard: 8192
     depends_on:
-      valhalla_init:
+      valhalla-init:
         condition: service_completed_successfully
-  nginx_init:
+  frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
     environment:
@@ -76,26 +76,27 @@ services:
       SPRITE_ARTIFACT_DEST_PATH: /data/sprite/sprite.tar
     volumes:
       - "./data/:/bootstrap/:ro"
-      - "nginx_data:/data/:rw"
-  nginx:
+      - "frontend_data:/data/:rw"
+  frontend:
     image: ghcr.io/headwaymaps/headway:latest
     restart: always
     env_file: .env
     environment:
       HEADWAY_RESOLVER: 127.0.0.11
-      HEADWAY_TILESERVER_URL: http://mbtileserver:8000
-      HEADWAY_PELIAS_URL: http://pelias_api:4000
+      HEADWAY_TILESERVER_URL: http://tileserver:8000
+      HEADWAY_PELIAS_URL: http://pelias-api:4000
       HEADWAY_VALHALLA_URL: http://valhalla:8002
+      HEADWAY_OTP_URL: http://opentripplanner:8080
     ports:
       - "8080:8080"
     volumes:
-      - "nginx_data:/data/:ro"
+      - "frontend_data:/data/:ro"
     depends_on:
       - "valhalla"
-      - "otp"
-      - "pelias_api"
-      - "mbtileserver"
-  pelias_config_init:
+      - "opentripplanner"
+      - "pelias-api"
+      - "tileserver"
+  pelias-config-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
@@ -104,7 +105,7 @@ services:
     volumes:
       - "./data/:/bootstrap/:ro"
       - "pelias_config_data:/config"
-  pelias_elastic_init:
+  pelias-elasticsearch-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
@@ -113,7 +114,7 @@ services:
     volumes:
       - "./data/:/bootstrap/:ro"
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
-  peliasplaceholder_init:
+  pelias-placeholder-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
@@ -122,10 +123,10 @@ services:
     volumes:
       - "./data/:/bootstrap/:ro"
       - "pelias_placeholder_data:/data/placeholder"
-  peliaslibpostal:
+  pelias-libpostal:
     image: pelias/libpostal-service
     restart: always
-  pelias_api:
+  pelias-api:
     image: pelias/api:master
     restart: always
     environment:
@@ -134,11 +135,11 @@ services:
     volumes:
       - "pelias_config_data:/config:ro"
     depends_on:
-      peliaselasticsearch:
+      pelias-elasticsearch:
         condition: service_healthy
-      pelias_config_init:
+      pelias-config-init:
         condition: service_completed_successfully
-  peliasplaceholder:
+  pelias-placeholder:
     image: pelias/placeholder:master
     restart: always
     environment:
@@ -147,11 +148,11 @@ services:
       - "pelias_config_data:/config:ro"
       - "pelias_placeholder_data:/data/placeholder"
     depends_on:
-      pelias_config_init:
+      pelias-config-init:
         condition: service_completed_successfully
-      peliasplaceholder_init:
+      pelias-placeholder-init:
         condition: service_completed_successfully
-  peliaselasticsearch:
+  pelias-elasticsearch:
     image: pelias/elasticsearch:7.16.1
     restart: always
     volumes:
@@ -165,9 +166,9 @@ services:
         hard: 65536
     cap_add: [ "IPC_LOCK" ]
     depends_on:
-      pelias_elastic_init:
+      pelias-elasticsearch-init:
         condition: service_completed_successfully
-      pelias_config_init:
+      pelias-config-init:
         condition: service_completed_successfully
     healthcheck:
       test: nc -z localhost 9200
@@ -175,7 +176,7 @@ volumes:
   pelias_config_data:
   pelias_placeholder_data:
   pelias_elasticsearch_data:
-  mbtileserver_data:
-  otp_data:
+  tileserver_data:
+  opentripplanner_data:
   valhalla_data:
-  nginx_data:
+  frontend_data:

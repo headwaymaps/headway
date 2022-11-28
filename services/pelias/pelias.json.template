@@ -6,7 +6,7 @@
   "esclient": {
     "apiVersion": "7.5",
     "hosts": [
-      { "host": "peliaselasticsearch" }
+      { "host": "pelias-elasticsearch" }
     ]
   },
   "elasticsearch": {

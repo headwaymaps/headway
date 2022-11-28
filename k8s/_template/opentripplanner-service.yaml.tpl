@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: otp
+  name: opentripplanner
 spec:
   selector:
     app: opentripplanner
