@@ -335,7 +335,7 @@ gtfs-base:
 gtfs-enumerate:
     FROM +gtfs-base
     COPY ./services/gtfs/enumerate_gtfs_feeds.py /gtfs/
-    ARG area
+    ARG --required area
     ARG bbox
     ENV BBOX=${bbox}
     IF [ ! -z "${BBOX}" ]
