@@ -12,7 +12,7 @@ data:
   natural-earth-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/natural_earth.mbtiles
   mbtiles-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.mbtiles
   valhalla-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.valhalla.tar.xz
-  pelias-config-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.pelias.json
   placeholder-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.placeholder.tar.xz
   elasticsearch-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar.xz
   otp-graph-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.graph.obj.xz
+  pelias-config-json: ${PELIAS_CONFIG_JSON_YAML}

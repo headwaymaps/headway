@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -e
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
@@ -34,6 +36,17 @@ then
     export ASSET_VERSION="${HEADWAY_VERSION}"
 fi
 
+PELIAS_CONFIG_FILE="${REPO_ROOT}/data/${HEADWAY_AREA}.pelias.json"
+if [ ! -f "$PELIAS_CONFIG_FILE" ]; then
+    echo "Missing pelias config file: ${PELIAS_CONFIG_FILE}"
+    exit 1
+fi
+PELIAS_CONFIG_JSON=$(cat $PELIAS_CONFIG_FILE)
+
+indent4() { while IFS= read -r line; do printf '    %s\n' "$line"; done; }
+export PELIAS_CONFIG_JSON_YAML="|
+$(echo "$PELIAS_CONFIG_JSON" | indent4)"
+
 set -o nounset
 
 OUTPUT_DIR="${HEADWAY_AREA_TAG}-hw-${HEADWAY_VERSION}"
@@ -41,13 +54,12 @@ mkdir -p "$OUTPUT_DIR"
 
 for file in _template/*.tpl
 do
-    set -x
     if [[ $file =~ opentripplanner-deployment && "$HEADWAY_ENABLE_TRANSIT_ROUTING" == 0 ]]; then
         echo "skipping transit routing deployment"
         # NOTE: we *do* want to copy the OTP *service* definition, otherwise
         # our nginx frontend will fail to start up due to the inability to
         # resolve DNS for the OTP proxy. A better solution might be to remove
-        # the OTP seciton altogether when transit routing is disabled, but
+        # the OTP section altogether when transit routing is disabled, but
         # that's beyond the capabilities of the simple envsubst we're using.
         # For now then, we copy in the service defintion.
         continue

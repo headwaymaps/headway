@@ -20,9 +20,9 @@
   },
   "api": {
     "services": {
-      "placeholder": { "url": "http://peliasplaceholder:4100" },
-      "libpostal": { "url": "http://peliaslibpostal:4400" },
-      "pip": { "url": "http://peliaspip:4400" }
+      "placeholder": { "url": "http://pelias-placeholder:4100" },
+      "libpostal": { "url": "http://pelias-libpostal:4400" },
+      "pip": { "url": "http://pelias-pip:4400" }
     }
   },
   "imports": {
