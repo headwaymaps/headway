@@ -28,11 +28,11 @@ spec:
             - name: config-volume
               mountPath: /config
           env:
-            - name: PELIAS_CONFIG_ARTIFACT_URL
+            - name: PELIAS_CONFIG_JSON
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
-                  key: pelias-config-artifact-url
+                  key: pelias-config-json
             - name: HEADWAY_AREA
               valueFrom:
                 configMapKeyRef:
