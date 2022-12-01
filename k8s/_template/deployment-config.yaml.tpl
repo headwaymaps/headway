@@ -11,8 +11,8 @@ data:
   sprite-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/sprite.tar
   natural-earth-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/natural_earth.mbtiles
   mbtiles-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.mbtiles
-  valhalla-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.valhalla.tar.xz
-  placeholder-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.placeholder.tar.xz
-  elasticsearch-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar.xz
-  otp-graph-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.graph.obj.xz
+  valhalla-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.valhalla.tar.zst
+  placeholder-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.placeholder.tar.zst
+  elasticsearch-artifact-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar.zst
+  otp-graph-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${ASSET_VERSION}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.graph.obj.zst
   pelias-config-json: ${PELIAS_CONFIG_JSON_YAML}

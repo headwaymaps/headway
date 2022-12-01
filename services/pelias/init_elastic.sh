@@ -8,12 +8,12 @@ if [ ! -z "$(find /usr/share/elasticsearch/data -type f)" ]; then
 elif [ -f "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Extracting artifact."
     mkdir -p /usr/share/elasticsearch/data
-    tar -xJf "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" -C /usr/share/elasticsearch/data
+    tar --zstd -xf "${ELASTICSEARCH_ARTIFACT_SOURCE_PATH}" -C /usr/share/elasticsearch/data
 elif [ ! -z "${ELASTICSEARCH_ARTIFACT_URL}" ]; then
     echo "Downloading and extracting artifact."
     rm -fr /tmp/elasticsearch.download
     mkdir -p /tmp/elasticsearch.download
-    wget --tries=100 -O- "${ELASTICSEARCH_ARTIFACT_URL}" | tar -xJ -C /tmp/elasticsearch.download
+    wget --tries=100 -O- "${ELASTICSEARCH_ARTIFACT_URL}" | tar --zstd -x -C /tmp/elasticsearch.download
     mv /tmp/elasticsearch.download/nodes /usr/share/elasticsearch/data/nodes
     rmdir /tmp/elasticsearch.download
 else
