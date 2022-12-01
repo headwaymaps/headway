@@ -42,7 +42,7 @@ spec:
             limits:
               memory: 8Gi
             requests:
-              memory: 1Gi
+              memory: 250Mi
       volumes:
         - name: valhalla-volume
           ephemeral:
