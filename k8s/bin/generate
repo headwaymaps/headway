@@ -51,6 +51,7 @@ set -o nounset
 
 OUTPUT_DIR="${HEADWAY_AREA_TAG}-hw-${HEADWAY_VERSION}"
 mkdir -p "$OUTPUT_DIR"
+rm -f "${OUTPUT_DIR}"/*
 
 for file in _template/*.tpl
 do
