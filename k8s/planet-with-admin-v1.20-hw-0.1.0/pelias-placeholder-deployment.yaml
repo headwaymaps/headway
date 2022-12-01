@@ -62,7 +62,7 @@ spec:
               value: "4100"
           resources:
             limits:
-              memory: 500Gi
+              memory: 500Mi
             requests:
               memory: 200Mi
           livenessProbe:
