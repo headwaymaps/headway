@@ -23,7 +23,7 @@ EOS
 if [ ! -z "$HEADWAY_BBOX" ]; then
     # remove leading and trailing space, then comma separate
     comma_seperated_bounds=$(echo $HEADWAY_BBOX | sed 's/^ *//' | sed 's/ *$//' | sed 's/  */,/g')
-    bbox_json="[${comma_seperated_bounds}]";
+    bbox_json="[${comma_seperated_bounds}]"
 else
     bbox_json="null"
 fi
@@ -34,9 +34,9 @@ if [ -z "$HEADWAY_ENABLE_TRANSIT_ROUTING" ]; then
 fi
 
 if [[ "$HEADWAY_ENABLE_TRANSIT_ROUTING" == 0 ]]; then
-    transit_routing_enabled_json="false";
+    transit_routing_enabled_json="false"
 else
-    transit_routing_enabled_json="true";
+    transit_routing_enabled_json="true"
 fi
 
 cat << EOS

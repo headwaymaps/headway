@@ -9,9 +9,14 @@ function upload() {
   OUTPUT_PREFIX=$2
 
   RESOURCE="${OUTPUT_PREFIX}/$(basename $INPUT)"
-  BUCKET=maps-eotw
-  ENDPOINT=https://s3.us-west-004.backblazeb2.com
-  aws s3 --endpoint=$ENDPOINT cp "${DATA_ROOT}/${INPUT}" "s3://${BUCKET}/${RESOURCE}"
+  BUCKET=$HEADWAY_S3_BUCKET
+
+  # I'm seeing much faster uploads with the openstack swift client vs the aws cli
+  # Plus, my host seems to be pretty flaky with large uploads via the `aws s3` cli.
+  #
+  # Note you'll need to be authenticated to run this.
+  #   e.g. (source ~/openrc.sh && bin/publish-data)
+  swift upload --segment-size=5G --skip-identical $BUCKET "${DATA_ROOT}/${INPUT}" --object-name="${RESOURCE}"
 }
 
 function usage() {
@@ -19,7 +24,7 @@ cat << EOF
 usage: $0 <area-tag> <area>
 examples:
     $0 seattle-latest Seattle
-    $0 planet-v1.19 planet-v1.18
+    $0 planet-v1.19 planet-v1.19
 
 Use a release other than what's in bin/_headway_version.sh
     HEADWAY_VERSION=latest $0 seattle-latest Seattle
@@ -46,15 +51,23 @@ if [ -z "${HEADWAY_VERSION}" ]; then
     source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
-upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
+CONFIG_FILE="${APP_ROOT}/.env"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Missing ${CONFIG_FILE}. See ${CONFIG_FILE}-example"
+    exit 1
+fi
+
 upload "${AREA}.valhalla.tar.xz"      "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.pelias.json"          "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.elasticsearch.tar.xz" "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.mbtiles"              "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.placeholder.tar.xz"   "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
 
 # transit files only exist when transit is enabled
-if [ -f "${AREA}.graph.obj.xz" ]; then
+if [ -f "${DATA_ROOT}/${AREA}.graph.obj.xz" ]; then
 upload "${AREA}.graph.obj.xz"         "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.gtfs.tar.xz"          "${HEADWAY_VERSION}/${AREA_TAG}"
 fi

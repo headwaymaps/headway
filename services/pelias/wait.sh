@@ -5,7 +5,7 @@ function elastic_status(){
     --output /dev/null \
     --silent \
     --write-out "%{http_code}" \
-    "http://peliaselasticsearch:9200/_cluster/health?wait_for_status=yellow&timeout=1s" \
+    "http://pelias-elasticsearch:9200/_cluster/health?wait_for_status=yellow&timeout=1s" \
       || true;
 }
 

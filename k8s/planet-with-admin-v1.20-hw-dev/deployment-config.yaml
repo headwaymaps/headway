@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-config
+data:
+  area: planet-with-admin-v1.20
+  public-url: https://maps.earth
+  bbox: ""
+  enable-transit-routing: "0"
+  font-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/fonts.tar
+  sprite-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/sprite.tar
+  natural-earth-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/natural_earth.mbtiles
+  mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.mbtiles
+  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.valhalla.tar.xz
+  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.placeholder.tar.xz
+  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.elasticsearch.tar.xz
+  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.graph.obj.xz
+  pelias-config-json: |
+    {
+      "logger": {
+        "level": "info",
+        "timestamp": false
+      },
+      "esclient": {
+        "apiVersion": "7.5",
+        "hosts": [
+          { "host": "pelias-elasticsearch" }
+        ]
+      },
+      "elasticsearch": {
+        "settings": {
+          "index": {
+            "refresh_interval": "10s",
+            "number_of_replicas": "0",
+            "number_of_shards": "5"
+          }
+        }
+      },
+      "api": {
+        "services": {
+          "placeholder": { "url": "http://pelias-placeholder:4100" },
+          "libpostal": { "url": "http://pelias-libpostal:4400" },
+          "pip": { "url": "http://pelias-pip:4400" }
+        }
+      },
+      "imports": {
+        "adminLookup": {
+          "enabled": true
+        },
+        "openstreetmap": {
+          "leveldbpath": "/tmp",
+          "datapath": "/data/openstreetmap",
+          "import": [{
+            "filename": "data.osm.pbf"
+          }]
+        },
+        "whosonfirst": {
+          "datapath": "/data/whosonfirst",
+          "importPostalcodes": true
+        },
+        "polyline": {
+          "datapath": "/data/polylines",
+          "files": [ "extract.0sv" ]
+        }
+      }
+    }

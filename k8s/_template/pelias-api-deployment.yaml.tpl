@@ -21,18 +21,18 @@ spec:
         image: pelias/api:latest
     spec:
       initContainers:
-        - name: pelias-init
+        - name: init
           image: ghcr.io/headwaymaps/pelias-init:${HEADWAY_VERSION}
           imagePullPolicy: Always
           volumeMounts:
             - name: config-volume
               mountPath: /config
           env:
-            - name: PELIAS_CONFIG_ARTIFACT_URL
+            - name: PELIAS_CONFIG_JSON
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
-                  key: pelias-config-artifact-url
+                  key: pelias-config-json
             - name: HEADWAY_AREA
               valueFrom:
                 configMapKeyRef:
@@ -45,7 +45,7 @@ spec:
             requests:
               memory: 100Mi
       containers:
-        - name: pelias-api
+        - name: main
           image: pelias/api:latest
           ports:
             - containerPort: 4000

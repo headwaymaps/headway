@@ -13,6 +13,6 @@ elif [ ! -z "${OTP_ARTIFACT_URL}" ]; then
     wget --tries=100 --continue -O- "${OTP_ARTIFACT_URL}" | xz --decompress --stdout > /data/graph.obj.download
     mv /data/graph.obj.download /data/graph.obj
 else
-    echo "No OTP artifact available"
+    echo "No OTP artifact available."
     exit 1
 fi

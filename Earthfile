@@ -335,7 +335,7 @@ gtfs-base:
 gtfs-enumerate:
     FROM +gtfs-base
     COPY ./services/gtfs/enumerate_gtfs_feeds.py /gtfs/
-    ARG area
+    ARG --required area
     ARG bbox
     ENV BBOX=${bbox}
     IF [ ! -z "${BBOX}" ]
@@ -588,10 +588,10 @@ web-serve-image:
     ENV HEADWAY_SHARED_VOL=/data
     ENV HEADWAY_HTTP_PORT=8080
     ENV HEADWAY_RESOLVER=127.0.0.11
-    ENV HEADWAY_OTP_URL=http://otp:8080
+    ENV HEADWAY_OTP_URL=http://opentripplanner:8080
     ENV HEADWAY_VALHALLA_URL=http://valhalla:8002
-    ENV HEADWAY_TILESERVER_URL=http://mbtileserver:8000
-    ENV HEADWAY_PELIAS_URL=http://pelias:8080
+    ENV HEADWAY_TILESERVER_URL=http://tileserver:8000
+    ENV HEADWAY_PELIAS_URL=http://pelias-api:8080
     # for escaping $ in nginx template
     ENV ESC=$
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
