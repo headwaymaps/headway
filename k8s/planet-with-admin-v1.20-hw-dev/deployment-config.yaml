@@ -11,10 +11,10 @@ data:
   sprite-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/sprite.tar
   natural-earth-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/natural_earth.mbtiles
   mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.mbtiles
-  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.valhalla.tar.xz
-  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.placeholder.tar.xz
-  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.elasticsearch.tar.xz
-  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.graph.obj.xz
+  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.valhalla.tar.zst
+  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.placeholder.tar.zst
+  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.elasticsearch.tar.zst
+  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.1.0/planet-with-admin-v1.20/planet-with-admin-v1.20.graph.obj.zst
   pelias-config-json: |
     {
       "logger": {

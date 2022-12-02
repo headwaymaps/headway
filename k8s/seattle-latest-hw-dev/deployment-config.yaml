@@ -11,10 +11,10 @@ data:
   sprite-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/sprite.tar
   natural-earth-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/natural_earth.mbtiles
   mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.mbtiles
-  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.valhalla.tar.xz
-  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.placeholder.tar.xz
-  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.elasticsearch.tar.xz
-  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.graph.obj.xz
+  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.valhalla.tar.zst
+  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.placeholder.tar.zst
+  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.elasticsearch.tar.zst
+  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.graph.obj.zst
   pelias-config-json: |
     {
       "logger": {
