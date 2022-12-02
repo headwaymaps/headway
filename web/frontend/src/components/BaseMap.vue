@@ -419,13 +419,19 @@ export default defineComponent({
       this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
     });
     this.pushTouchHandler('poi_click', async (event) => {
-      if (!event?.features) {
+      if (!event.features) {
         console.warn('poi_click without features');
         return;
       }
       let poi = await mapFeatureToPoi(event?.features[0]);
       if (!poi?.gid) {
-        console.error('Could not canonicalize map feature.');
+        // There are certain OSM features that fail to reverse-geocode - maybe OSM
+        // entities which aren't in pelias? In that case, we just use the lng/lat
+        // so the person can still get routing directions to it.
+        console.warn(
+          'Could not canonicalize map feature, falling back to lon/lat'
+        );
+        this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
         return;
       }
       const gidComponent = encodeURIComponent(poi?.gid);
