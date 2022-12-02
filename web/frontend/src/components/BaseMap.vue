@@ -23,7 +23,7 @@ import { debounce } from 'lodash';
 
 export var map: maplibregl.Map | null = null;
 
-async function loadMap() {
+async function loadMap(): Promise<maplibregl.Map> {
   let initialCenter: LngLatLike = [0, 0];
   let initialZoom = 1;
 
@@ -60,6 +60,7 @@ async function loadMap() {
   }
 
   map = new maplibregl.Map(mapOptions);
+  return map;
 }
 
 const mapTouchTimeouts: NodeJS.Timeout[] = [];
@@ -350,7 +351,7 @@ export default defineComponent({
     },
   },
   mounted: async function () {
-    await loadMap();
+    let map = await loadMap();
     // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
     baseMapMethods = {
       flyTo: this.flyTo,
@@ -371,20 +372,20 @@ export default defineComponent({
       showCompass: true,
       showZoom: true,
     });
-    map?.addControl(nav, 'top-right');
+    map.addControl(nav, 'top-right');
     var geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       showAccuracyCircle: true,
       showUserLocation: true,
     });
-    map?.addControl(geolocate, 'bottom-right');
-    map?.on('load', () => {
+    map.addControl(geolocate, 'bottom-right');
+    map.on('load', () => {
       this.loaded = true;
     });
-    map?.on('click', (event: MapMouseEvent) => {
+    map.on('click', (event: MapMouseEvent) => {
       this.touchHandlers.get('click')?.forEach((value) => value(event));
     });
-    map?.on('mousedown', (event: MapMouseEvent) => {
+    map.on('mousedown', (event: MapMouseEvent) => {
       clearAllTimeouts();
       mapTouchTimeouts.push(
         setTimeout(() => {
@@ -392,7 +393,7 @@ export default defineComponent({
         }, 700)
       );
     });
-    map?.on('touchstart', (event: MapMouseEvent) => {
+    map.on('touchstart', (event: MapMouseEvent) => {
       clearAllTimeouts();
       mapTouchTimeouts.push(
         setTimeout(() => {
@@ -400,19 +401,15 @@ export default defineComponent({
         }, 700)
       );
     });
-    map?.on('mouseup', () => clearAllTimeouts());
-    map?.on('mousemove', () => clearAllTimeouts());
-    map?.on('touchup', () => clearAllTimeouts());
-    map?.on('touchend', () => clearAllTimeouts());
-    map?.on('move', () => clearAllTimeouts());
+    map.on('mouseup', () => clearAllTimeouts());
+    map.on('mousemove', () => clearAllTimeouts());
+    map.on('touchup', () => clearAllTimeouts());
+    map.on('touchend', () => clearAllTimeouts());
+    map.on('move', () => clearAllTimeouts());
 
-    map?.on(
+    map.on(
       'moveend',
       debounce(() => {
-        if (!map) {
-          console.error('mas was unexpectedly null');
-          return;
-        }
         Prefs.stored().setMostRecentMapCenter(map.getCenter());
         Prefs.stored().setMostRecentMapZoom(map.getZoom());
       }, 2000)
@@ -438,15 +435,15 @@ export default defineComponent({
     setTimeout(async () => {
       const permissionState = await geolocationPermissionState();
       if (permissionState === 'granted') {
-        map?.on('load', () => {
+        map.on('load', () => {
           geolocate.trigger();
           geolocate.on('geolocate', () => {
             if (!this.$data.hasGeolocated) {
               // prevent the default "zoom" that occurs when we automatically `trigger`
               // the geolocate button.
-              map?.stop();
+              map.stop();
               if (this.$data.flyToLocation) {
-                map?.flyTo(this.$data.flyToLocation, { flying: true });
+                map.flyTo(this.$data.flyToLocation, { flying: true });
                 this.$data.flyToLocation = undefined;
               } else if (this.$data.boundsToFit) {
                 this.fitBounds(this.$data.boundsToFit);
@@ -458,29 +455,23 @@ export default defineComponent({
         });
       }
     });
-    map?.on('load', () => {
+    map.on('load', () => {
       setBottomCardAllowance();
-      const layers = map?.getStyle().layers;
+      const layers = map.getStyle().layers;
       if (layers) {
         for (const layer of layers) {
           if (layer.id.startsWith('place_') || layer.id.startsWith('poi_')) {
-            map?.on('mouseenter', layer.id, (event) => {
-              if (!map) {
-                return;
-              }
+            map.on('mouseenter', layer.id, (event) => {
               if (event.features && event.features[0]) {
                 map.getCanvas().style.cursor = 'pointer';
               } else {
                 console.warn('hovered place without feature', layer, event);
               }
             });
-            map?.on('mouseleave', layer.id, () => {
-              if (!map) {
-                return;
-              }
+            map.on('mouseleave', layer.id, () => {
               map.getCanvas().style.cursor = '';
             });
-            map?.on('click', layer.id, (event) => {
+            map.on('click', layer.id, (event) => {
               if (event.features && event.features[0]) {
                 this.touchHandlers
                   .get('poi_click')
