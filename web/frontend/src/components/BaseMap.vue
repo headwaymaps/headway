@@ -464,11 +464,29 @@ export default defineComponent({
       if (layers) {
         for (const layer of layers) {
           if (layer.id.startsWith('place_') || layer.id.startsWith('poi_')) {
+            map?.on('mouseenter', layer.id, (event) => {
+              if (!map) {
+                return;
+              }
+              if (event.features && event.features[0]) {
+                map.getCanvas().style.cursor = 'pointer';
+              } else {
+                console.warn('hovered place without feature', layer, event);
+              }
+            });
+            map?.on('mouseleave', layer.id, () => {
+              if (!map) {
+                return;
+              }
+              map.getCanvas().style.cursor = '';
+            });
             map?.on('click', layer.id, (event) => {
               if (event.features && event.features[0]) {
                 this.touchHandlers
                   .get('poi_click')
                   ?.forEach((value) => value(event));
+              } else {
+                console.warn('clicked place without feature', layer, event);
               }
             });
           }
