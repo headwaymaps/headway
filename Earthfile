@@ -453,7 +453,7 @@ valhalla-init-image:
     FROM +valhalla-base-image
     USER root
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget \
+        && apt-get install -y --no-install-recommends ca-certificates wget zstd \
         && rm -rf /var/lib/apt/lists/*
 
     USER valhalla
