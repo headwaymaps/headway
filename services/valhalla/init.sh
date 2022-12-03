@@ -12,10 +12,10 @@ mkdir -p /data/valhalla/
 
 if [ -f "${VALHALLA_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Copying artifact."
-    xz --decompress --stdout ${VALHALLA_ARTIFACT_SOURCE_PATH} > /data/valhalla/tiles.tar
+    zstd --decompress --stdout ${VALHALLA_ARTIFACT_SOURCE_PATH} > /data/valhalla/tiles.tar
 elif [ ! -z "${VALHALLA_ARTIFACT_URL}" ]; then
     echo "Downloading artifact."
-    wget --tries=100 -O- "${VALHALLA_ARTIFACT_URL}" | xz --decompress --stdout > /data/valhalla/tiles.tar.download
+    wget --tries=100 -O- "${VALHALLA_ARTIFACT_URL}" | zstd --decompress --stdout > /data/valhalla/tiles.tar.download
     mv /data/valhalla/tiles.tar.download /data/valhalla/tiles.tar
 else
     echo "No valhalla artifact available."

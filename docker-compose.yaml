@@ -31,7 +31,7 @@ services:
       - "valhalla_data:/data/:rw"
       - "./data/:/bootstrap/:ro"
     environment:
-      VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar.xz
+      VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar.zst
     ulimits:
       nofile:
         soft: 8192
@@ -92,7 +92,7 @@ services:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
-      ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.xz
+      ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.zst
     command: [ "/bin/bash", "/app/init_elastic.sh" ]
     volumes:
       - "./data/:/bootstrap/:ro"
@@ -101,7 +101,7 @@ services:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
     environment:
-      PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.xz
+      PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.zst
     command: [ "/bin/bash", "/app/init_placeholder.sh" ]
     volumes:
       - "./data/:/bootstrap/:ro"

@@ -11,10 +11,10 @@ data:
   sprite-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/sprite.tar
   natural-earth-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/natural_earth.mbtiles
   mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.mbtiles
-  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.valhalla.tar.xz
-  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.placeholder.tar.xz
-  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.elasticsearch.tar.xz
-  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.graph.obj.xz
+  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.valhalla.tar.zst
+  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.placeholder.tar.zst
+  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.elasticsearch.tar.zst
+  otp-graph-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/los-angeles-latest/los-angeles-latest.graph.obj.zst
   pelias-config-json: |
     {
       "logger": {

@@ -59,17 +59,16 @@ else
     exit 1
 fi
 
-upload "${AREA}.valhalla.tar.xz"      "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.pelias.json"          "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.elasticsearch.tar.xz" "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.valhalla.tar.zst"      "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.elasticsearch.tar.zst" "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.mbtiles"              "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.placeholder.tar.xz"   "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.placeholder.tar.zst"   "${HEADWAY_VERSION}/${AREA_TAG}"
 upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
 
 # transit files only exist when transit is enabled
-if [ -f "${DATA_ROOT}/${AREA}.graph.obj.xz" ]; then
-upload "${AREA}.graph.obj.xz"         "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.gtfs.tar.xz"          "${HEADWAY_VERSION}/${AREA_TAG}"
+if [ -f "${DATA_ROOT}/${AREA}.graph.obj.zst" ]; then
+upload "${AREA}.graph.obj.zst"         "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.gtfs.tar.zst"          "${HEADWAY_VERSION}/${AREA_TAG}"
 fi
 
 # These files are generic across all areas

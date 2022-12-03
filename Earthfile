@@ -63,9 +63,9 @@ save-gtfs:
     FROM +save-base
     ARG --required area
     ARG --required transit_feeds
-    COPY (+gtfs-build/gtfs.tar.xz --transit_feeds=${transit_feeds}) /gtfs.tar.xz
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /gtfs.tar.zst
     # This isn't used at runtime, but it might be useful to archive the input
-    SAVE ARTIFACT /gtfs.tar.xz AS LOCAL ./data/${area}.gtfs.tar.xz
+    SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}.gtfs.tar.zst
 
 save-otp:
     FROM +save-base
@@ -73,8 +73,8 @@ save-otp:
     ARG --required transit_feeds
 
     COPY (+otp-build/graph.obj --area=${area} --transit_feeds=${transit_feeds}) /graph.obj
-    RUN xz /graph.obj
-    SAVE ARTIFACT /graph.obj.xz AS LOCAL ./data/${area}.graph.obj.xz
+    RUN zstd /graph.obj
+    SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${area}.graph.obj.zst
 
 save-mbtiles:
     FROM +save-base
@@ -86,24 +86,24 @@ save-valhalla:
     FROM +save-base
     ARG area
     COPY (+valhalla-build/tiles --area=${area}) /valhalla
-    RUN tar -cJf /valhalla.tar.xz -C /valhalla .
-    SAVE ARTIFACT /valhalla.tar.xz AS LOCAL ./data/${area}.valhalla.tar.xz
+    RUN tar --zstd -cf /valhalla.tar.zst -C /valhalla .
+    SAVE ARTIFACT /valhalla.tar.zst AS LOCAL ./data/${area}.valhalla.tar.zst
 
 save-elasticsearch:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
-    RUN tar -cJf /elasticsearch.tar.xz -C /elasticsearch .
-    SAVE ARTIFACT /elasticsearch.tar.xz AS LOCAL ./data/${area}.elasticsearch.tar.xz
+    RUN tar --zstd -cf /elasticsearch.tar.zst -C /elasticsearch .
+    SAVE ARTIFACT /elasticsearch.tar.zst AS LOCAL ./data/${area}.elasticsearch.tar.zst
 
 save-placeholder:
     FROM +save-base
     ARG area
     ARG countries
     COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
-    RUN tar -cJf /placeholder.tar.xz -C /placeholder .
-    SAVE ARTIFACT /placeholder.tar.xz AS LOCAL ./data/${area}.placeholder.tar.xz
+    RUN tar --zstd -cf /placeholder.tar.zst -C /placeholder .
+    SAVE ARTIFACT /placeholder.tar.zst AS LOCAL ./data/${area}.placeholder.tar.zst
 
 save-pelias-config:
     FROM +save-base
@@ -355,8 +355,11 @@ gtfs-build:
 
     COPY ./services/gtfs/download_gtfs_feeds.py /gtfs/
     RUN python /gtfs/download_gtfs_feeds.py
-    RUN cd /gtfs_feeds && ls *.zip | tar -cJf /gtfs/gtfs.tar.xz --files-from -
-    SAVE ARTIFACT /gtfs/gtfs.tar.xz /gtfs.tar.xz
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends zstd \
+        && rm -rf /var/lib/apt/lists/*
+    RUN cd /gtfs_feeds && ls *.zip | tar --zstd -cf /gtfs/gtfs.tar.zst --files-from -
+    SAVE ARTIFACT /gtfs/gtfs.tar.zst /gtfs.tar.zst
 
 ##############################
 # OpenTripPlanner
@@ -387,11 +390,11 @@ otp-build:
     ARG --required transit_feeds
     ARG --required area
 
-    COPY (+gtfs-build/gtfs.tar.xz --transit_feeds=${transit_feeds}) /data/
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /data/
     COPY (+extract/data.osm.pbf --area=${area}) /data/
 
     WORKDIR /data
-    RUN tar xvJf gtfs.tar.xz
+    RUN tar --zstd -xf gtfs.tar.zst
     RUN java -Xmx4G -jar /otp/otp-shaded.jar --build --save .
 
     SAVE ARTIFACT /data/graph.obj /graph.obj
@@ -607,7 +610,7 @@ downloader-base:
     FROM debian:bullseye-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends wget ca-certificates xz-utils \
+        && apt-get install -y --no-install-recommends wget ca-certificates zstd \
         && rm -rf /var/lib/apt/lists/*
     RUN mkdir /data
 
@@ -622,11 +625,11 @@ java11-base:
     FROM debian:bullseye-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo xz-utils \
+        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo zstd \
         && rm -rf /var/lib/apt/lists/*
 
 save-base:
     FROM debian:bullseye-slim
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends xz-utils \
+        && apt-get install -y --no-install-recommends zstd \
         && rm -rf /var/lib/apt/lists/*
