@@ -1,9 +1,12 @@
 <template>
   <q-list>
     <q-item
-      class="itinerary-row"
-      v-bind:key="JSON.stringify(step)"
       v-for="step in steps"
+      v-bind:key="JSON.stringify(step)"
+      class="itinerary-row"
+      :style="step.isDestination ? 'padding-bottom: 20px;' : ''"
+      :clickable="!step.isMovement"
+      v-on:click="clickedStep(step)"
     >
       <q-item-section
         :top="step.isMovement"
@@ -109,6 +112,8 @@
 import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
 import { formatDuration, formatTime } from 'src/utils/format';
+import { LngLat } from 'maplibre-gl';
+import { getBaseMap } from 'src/components/BaseMap.vue';
 
 export default defineComponent({
   name: 'TransitSteps',
@@ -126,6 +131,9 @@ export default defineComponent({
   methods: {
     formatTime,
     formatDuration,
+    clickedStep: (step): void => {
+      getBaseMap()?.flyTo([step.position.lng, step.position.lat], 16);
+    },
   },
 });
 
@@ -136,6 +144,7 @@ type Step = {
   description: string;
   isMovement: boolean;
   isDestination: boolean;
+  position: LngLat;
 };
 
 function buildSteps(itinerary: Itinerary): Step[] {
@@ -148,6 +157,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
     description: firstLeg.sourceName,
     isMovement: false,
     isDestination: false,
+    position: firstLeg.sourceLngLat,
   };
 
   let middleSteps = itinerary.legs.flatMap((leg) => {
@@ -157,6 +167,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
         timeline: '',
         timelineClasses: ['timeline-edge', `timeline-edge-${leg.mode}`],
         description: formatDuration(leg.duration),
+        position: leg.sourceLngLat,
         isMovement: true,
         isDestination: false,
       },
@@ -165,6 +176,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
         timeline: '',
         timelineClasses: ['timeline-node'],
         description: leg.destinationName,
+        position: leg.destinationLngLat,
         isMovement: false,
         isDestination: false,
       },

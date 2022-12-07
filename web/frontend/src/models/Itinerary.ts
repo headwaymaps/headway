@@ -145,6 +145,14 @@ export class ItineraryLeg {
     return this.raw.to.name;
   }
 
+  get sourceLngLat(): LngLat {
+    return new LngLat(this.raw.from.lon, this.raw.from.lat);
+  }
+
+  get destinationLngLat(): LngLat {
+    return new LngLat(this.raw.to.lon, this.raw.to.lat);
+  }
+
   get duration(): number {
     return (this.raw.endTime - this.raw.startTime) / 1000;
   }
