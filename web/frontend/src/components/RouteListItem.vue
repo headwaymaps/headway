@@ -1,7 +1,7 @@
 <template>
   <q-item
     class="route-list-item"
-    clickable
+    :clickable="!$props.active"
     active-class="route-list-item--selected"
     :active="$props.active"
     v-on:click="$props.clickHandler"
