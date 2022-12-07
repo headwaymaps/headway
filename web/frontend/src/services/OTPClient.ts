@@ -18,6 +18,8 @@ export type OTPItineraryLeg = {
   transitLeg: boolean;
   legGeometry: OTPLegGeometry;
   routeShortName?: string;
+  from: { name: string };
+  to: { name: string };
 };
 
 export type OTPItinerary = {

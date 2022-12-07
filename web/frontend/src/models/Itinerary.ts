@@ -10,6 +10,7 @@ import { DistanceUnits, TravelMode } from 'src/utils/models';
 import {
   formatDistance,
   formatDuration,
+  formatTime,
   kilometersToMiles,
 } from 'src/utils/format';
 import { decodeOtpPath } from 'src/third_party/decodePath';
@@ -95,11 +96,7 @@ export default class Itinerary implements Trip {
   }
 }
 
-function formatTime(millis: number): string {
-  return new Date(millis).toLocaleTimeString([], { timeStyle: 'short' });
-}
-
-class ItineraryLeg {
+export class ItineraryLeg {
   readonly raw: OTPItineraryLeg;
   constructor(otp: OTPItineraryLeg) {
     this.raw = otp;
@@ -138,6 +135,18 @@ class ItineraryLeg {
       'line-width': this.transitLeg ? 6 : 4,
       'line-dasharray': this.transitLeg ? [1] : [1, 2],
     };
+  }
+
+  get sourceName(): string {
+    return this.raw.from.name;
+  }
+
+  get destinationName(): string {
+    return this.raw.to.name;
+  }
+
+  get duration(): number {
+    return (this.raw.endTime - this.raw.startTime) / 1000;
   }
 
   get transitLeg(): boolean {
