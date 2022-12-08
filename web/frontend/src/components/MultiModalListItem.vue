@@ -23,17 +23,12 @@
       v-on:click="showSteps"
     />
   </q-item-label>
-  <transit-timeline
-    :hidden="!(active && areStepsVisible)"
-    :itinerary="item"
-    :earliest-start="earliestStart"
-    :latest-arrival="latestArrival"
-  />
+  <transit-steps :hidden="!(active && areStepsVisible)" :itinerary="item" />
 </template>
 <script lang="ts">
 import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
-import TransitTimeline from './TransitTimeline.vue';
+import TransitSteps from './TransitSteps.vue';
 
 export default defineComponent({
   name: 'MultiModalListItem',
@@ -69,8 +64,9 @@ export default defineComponent({
   methods: {
     showSteps() {
       this.areStepsVisible = true;
+      console.log(this.item);
     },
   },
-  components: { TransitTimeline },
+  components: { TransitSteps },
 });
 </script>
