@@ -152,13 +152,15 @@ export default defineComponent({
       map.fitBounds(trip.bounds);
     },
     resizeMap() {
-      if (this.$refs.bottomCard && this.$refs.bottomCard) {
-        setBottomCardAllowance(
-          (this.$refs.bottomCard as HTMLDivElement).offsetHeight
-        );
-      } else {
+      if (!this.$refs.bottomCard) {
+        console.error('bottom card was missing');
         setBottomCardAllowance(0);
+        return;
       }
+
+      setBottomCardAllowance(
+        (this.$refs.bottomCard as HTMLDivElement).offsetHeight
+      );
     },
   },
   mounted: async function () {
