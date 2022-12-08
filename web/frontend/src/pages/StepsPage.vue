@@ -17,7 +17,7 @@
 
 <style lang="scss">
 .steps-page-bottom-card {
-  max-height: 80%;
+  max-height: calc(100% - 200px);
 }
 </style>
 
