@@ -20,11 +20,21 @@
         <component
           :is="componentForMode(item.mode)"
           :item="item"
-          :showRouteSteps="showRouteSteps"
           :active="item === activeRoute"
           :earliest-start="earliestStart"
           :latest-arrival="latestArrival"
         />
+        <q-item-label>
+          <q-btn
+            style="margin-left: -6px"
+            padding="6px"
+            flat
+            icon="directions"
+            :label="$t('route_picker_show_route_details_btn')"
+            size="sm"
+            v-on:click="showTripSteps(item)"
+          />
+        </q-item-label>
       </route-list-item>
     </q-list>
   </div>
@@ -111,11 +121,7 @@ export default defineComponent({
       this.toPoi = poi;
       this.rewriteUrl();
     },
-    showRouteSteps(route: Route) {
-      console.assert(
-        this.mode != TravelMode.Transit,
-        'show route steps should only be availble for non-transit'
-      );
+    showTripSteps(route: Route) {
       let index = this.$data.routes.indexOf(route);
       if (index !== -1 && this.to && this.from) {
         this.$router.push(

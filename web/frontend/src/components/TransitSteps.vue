@@ -131,7 +131,7 @@ export default defineComponent({
   methods: {
     formatTime,
     formatDuration,
-    clickedStep: (step): void => {
+    clickedStep: (step: Step): void => {
       getBaseMap()?.flyTo([step.position.lng, step.position.lat], 16);
     },
   },

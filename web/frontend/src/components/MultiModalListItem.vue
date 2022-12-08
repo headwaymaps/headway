@@ -12,17 +12,6 @@
       })
     }}
   </q-item-label>
-  <q-item-label :hidden="active && areStepsVisible">
-    <q-btn
-      style="margin-left: -6px"
-      padding="6px"
-      flat
-      icon="directions"
-      label="Details"
-      size="sm"
-      v-on:click="showSteps"
-    />
-  </q-item-label>
   <transit-steps :hidden="!(active && areStepsVisible)" :itinerary="item" />
 </template>
 <script lang="ts">
@@ -49,10 +38,6 @@ export default defineComponent({
       type: Number,
       required: true,
     },
-    // MultiModalListItem actually doesn't use this, but SingleModeListItem needs it, so
-    // we have to include it here to avoid an "unexpected property" warning.
-    // This feels gross, but hopefully I can find a better way.
-    showRouteSteps: Function,
   },
   data(): {
     areStepsVisible: boolean;
@@ -60,12 +45,6 @@ export default defineComponent({
     return {
       areStepsVisible: false,
     };
-  },
-  methods: {
-    showSteps() {
-      this.areStepsVisible = true;
-      console.log(this.item);
-    },
   },
   components: { TransitSteps },
 });
