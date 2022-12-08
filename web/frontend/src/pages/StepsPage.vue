@@ -143,7 +143,7 @@ export default defineComponent({
         decodeValhallaPath(leg.shape, 6).forEach((point) => {
           points.push([point[1], point[0]]);
         });
-        getBaseMap()?.pushRouteLayer(
+        getBaseMap()?.pushTripLayer(
           'headway_polyline' + selectedIdx,
           // currently valhalla routes only ever have 1 leg.
           route.legs[0].geometry(),

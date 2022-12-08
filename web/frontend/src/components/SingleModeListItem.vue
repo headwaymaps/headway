@@ -1,6 +1,6 @@
 <template>
   <q-item-label>
-    {{ $t('via_$place', { place: item.viaRoadsFormatted }) }}
+    {{ $t('via_$place', { place: trip.viaRoadsFormatted }) }}
   </q-item-label>
 </template>
 
@@ -11,7 +11,7 @@ import { defineComponent, PropType } from 'vue';
 export default defineComponent({
   name: 'SingleModeListItem',
   props: {
-    item: {
+    trip: {
       type: Object as PropType<Route>,
       required: true,
     },

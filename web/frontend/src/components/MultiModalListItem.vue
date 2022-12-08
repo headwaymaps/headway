@@ -1,18 +1,18 @@
 <template>
   <q-item-label>
-    {{ item.startStopTimesFormatted() }}
+    {{ trip.startStopTimesFormatted() }}
   </q-item-label>
   <q-item-label caption>
-    {{ item.viaRouteFormatted }}
+    {{ trip.viaRouteFormatted }}
   </q-item-label>
   <q-item-label caption :hidden="!active">
     {{
       $t('walk_distance', {
-        preformattedDistance: item.walkingDistanceFormatted(),
+        preformattedDistance: trip.walkingDistanceFormatted(),
       })
     }}
   </q-item-label>
-  <transit-steps :hidden="!(active && areStepsVisible)" :itinerary="item" />
+  <transit-steps :hidden="!(active && areStepsVisible)" :itinerary="trip" />
 </template>
 <script lang="ts">
 import Itinerary from 'src/models/Itinerary';
@@ -22,7 +22,7 @@ import TransitSteps from './TransitSteps.vue';
 export default defineComponent({
   name: 'MultiModalListItem',
   props: {
-    item: {
+    trip: {
       type: Object as PropType<Itinerary>,
       required: true,
     },
