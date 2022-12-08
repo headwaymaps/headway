@@ -10,7 +10,7 @@ function elastic_status(){
 }
 
 echo 'waiting for elasticsearch service to come up';
-retry_count=30
+retry_count=600
 
 i=1
 while [[ "$i" -le "$retry_count" ]]; do

@@ -4,6 +4,7 @@
     "timestamp": false
   },
   "esclient": {
+    "requestTimeout": "600000",
     "apiVersion": "7.5",
     "hosts": [
       { "host": "pelias-elasticsearch" }
