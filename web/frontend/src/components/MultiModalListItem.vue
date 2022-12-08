@@ -12,12 +12,10 @@
       })
     }}
   </q-item-label>
-  <transit-steps :hidden="!(active && areStepsVisible)" :itinerary="trip" />
 </template>
 <script lang="ts">
 import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
-import TransitSteps from './TransitSteps.vue';
 
 export default defineComponent({
   name: 'MultiModalListItem',
@@ -39,13 +37,5 @@ export default defineComponent({
       required: true,
     },
   },
-  data(): {
-    areStepsVisible: boolean;
-  } {
-    return {
-      areStepsVisible: false,
-    };
-  },
-  components: { TransitSteps },
 });
 </script>

@@ -116,10 +116,10 @@ import { LngLat } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
 
 export default defineComponent({
-  name: 'TransitSteps',
+  name: 'MultiModalSteps',
   data: function () {
     return {
-      steps: buildSteps(this.$props.itinerary),
+      steps: buildSteps(this.$props.trip),
     };
   },
   props: {

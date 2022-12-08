@@ -202,9 +202,9 @@ export default defineComponent({
       }
 
       const unselectedLayerName = (tripIdx: number, legIdx: number) =>
-        `aleternate_${this.mode}_${tripIdx}.${legIdx}_unselected`;
+        `alternate_${this.mode}_${tripIdx}.${legIdx}_unselected`;
       const selectedLayerName = (tripIdx: number, legIdx: number) =>
-        `aleternate_${this.mode}_${tripIdx}.${legIdx}_selected`;
+        `alternate_${this.mode}_${tripIdx}.${legIdx}_selected`;
 
       for (let tripIdx = 0; tripIdx < trips.length; tripIdx++) {
         const trip = trips[tripIdx];
