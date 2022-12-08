@@ -6,10 +6,20 @@
     class="top-left-fab"
     v-on:click="() => onBackClicked()"
   />
-  <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
+  <div
+    class="bottom-card steps-page-bottom-card bg-white"
+    ref="bottomCard"
+    v-if="fromPoi && toPoi"
+  >
     <component v-if="trip" :is="componentForMode(trip.mode)" :trip="trip" />
   </div>
 </template>
+
+<style lang="scss">
+.steps-page-bottom-card {
+  max-height: 80%;
+}
+</style>
 
 <script lang="ts">
 import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';

@@ -3,7 +3,6 @@
     <q-item
       v-for="step in steps"
       v-bind:key="JSON.stringify(step)"
-      class="itinerary-row"
       :style="step.isDestination ? 'padding-bottom: 20px;' : ''"
       :clickable="!step.isMovement"
       v-on:click="clickedStep(step)"
@@ -63,10 +62,6 @@
 </template>
 
 <style lang="scss">
-.itinerary-row {
-  padding: 0;
-}
-
 .timeline-edge {
   position: relative;
   width: 100%;
@@ -123,7 +118,7 @@ export default defineComponent({
     };
   },
   props: {
-    itinerary: {
+    trip: {
       type: Object as PropType<Itinerary>,
       required: true,
     },
