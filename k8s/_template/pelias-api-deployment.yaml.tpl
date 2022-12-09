@@ -22,7 +22,7 @@ spec:
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/pelias-init:${HEADWAY_VERSION}
+          image: ghcr.io/headwaymaps/pelias-init:${HEADWAY_CONTAINER_VERSION}
           imagePullPolicy: Always
           volumeMounts:
             - name: config-volume
