@@ -211,6 +211,16 @@ export default defineComponent({
         });
       },
       hoverPoi(poi: POI | undefined) {
+        if (!supportsHover()) {
+          // FIX: selecting automcomplete item on mobile requires double
+          // tapping.
+          //
+          // On touch devices, where hover is not supported, this method is
+          // fired upon tapping. I don't fully understand why, but maybe
+          // mutating the state in this method would rebuild the component,
+          // canceling any outstanding event handlers on the old component.
+          return;
+        }
         poiHovered.value = poi;
 
         if (hoverMarker) {
@@ -232,4 +242,8 @@ export default defineComponent({
     };
   },
 });
+
+function supportsHover(): boolean {
+  return window.matchMedia('(hover: hover)').matches;
+}
 </script>
