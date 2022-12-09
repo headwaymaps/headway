@@ -9,5 +9,5 @@ cd "$REPO_ROOT/k8s"
 
 bin/generate seattle.env
 bin/generate los-angeles.env
-ASSET_VERSION=0.1.0 bin/generate planet.env
+HEADWAY_SCHEMA_VERSION=0.2.0 bin/generate planet.env
 HEADWAY_VERSION=0.1.0 bin/generate planet.env
