@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/tileserver-init:0.1.0
+          image: ghcr.io/headwaymaps/tileserver-init:0.2.0
           imagePullPolicy: Always
           volumeMounts:
             - name: tileserver-volume
@@ -43,7 +43,7 @@ spec:
               memory: 100Mi
       containers:
         - name: tileserver
-          image: ghcr.io/headwaymaps/tileserver:0.1.0
+          image: ghcr.io/headwaymaps/tileserver:0.2.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
