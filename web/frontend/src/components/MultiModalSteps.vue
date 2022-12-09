@@ -3,7 +3,6 @@
     <q-item
       v-for="step in steps"
       v-bind:key="JSON.stringify(step)"
-      class="itinerary-row"
       :style="step.isDestination ? 'padding-bottom: 20px;' : ''"
       :clickable="!step.isMovement"
       v-on:click="clickedStep(step)"
@@ -63,10 +62,6 @@
 </template>
 
 <style lang="scss">
-.itinerary-row {
-  padding: 0;
-}
-
 .timeline-edge {
   position: relative;
   width: 100%;
@@ -80,7 +75,9 @@
   border-left: dashed $walkColor 6px;
 }
 
-.timeline-edge-BUS {
+.timeline-edge-BUS,
+.timeline-edge-TRAIN,
+.timeline-edge-TRAM {
   border-left: solid $transitColor 6px;
 }
 
@@ -116,14 +113,14 @@ import { LngLat } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
 
 export default defineComponent({
-  name: 'TransitSteps',
+  name: 'MultiModalSteps',
   data: function () {
     return {
-      steps: buildSteps(this.$props.itinerary),
+      steps: buildSteps(this.$props.trip),
     };
   },
   props: {
-    itinerary: {
+    trip: {
       type: Object as PropType<Itinerary>,
       required: true,
     },
@@ -131,7 +128,7 @@ export default defineComponent({
   methods: {
     formatTime,
     formatDuration,
-    clickedStep: (step): void => {
+    clickedStep: (step: Step): void => {
       getBaseMap()?.flyTo([step.position.lng, step.position.lat], 16);
     },
   },

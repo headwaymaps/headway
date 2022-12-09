@@ -133,7 +133,7 @@ export interface BaseMapInterface {
     layer: LayerSpecification,
     beforeLayerType: string
   ) => void;
-  pushRouteLayer: (
+  pushTripLayer: (
     layerId: string,
     geometry: GeoJSON.Geometry,
     paint: LineLayerSpecification['paint']
@@ -233,7 +233,7 @@ export default defineComponent({
         return true;
       }
     },
-    pushRouteLayer(
+    pushTripLayer(
       layerId: string,
       geometry: GeoJSON.Geometry,
       paint: LineLayerSpecification['paint']
@@ -361,7 +361,7 @@ export default defineComponent({
       removeAllMarkers: this.removeAllMarkers,
       removeMarkersExcept: this.removeMarkersExcept,
       pushLayer: this.pushLayer,
-      pushRouteLayer: this.pushRouteLayer,
+      pushTripLayer: this.pushTripLayer,
       hasLayer: this.hasLayer,
       removeLayer: this.removeLayer,
       removeLayersExcept: this.removeLayersExcept,

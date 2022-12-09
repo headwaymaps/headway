@@ -6,52 +6,39 @@
     class="top-left-fab"
     v-on:click="() => onBackClicked()"
   />
-  <div class="bottom-card bg-white" ref="bottomCard" v-if="fromPoi && toPoi">
-    <q-list>
-      <div v-for="item in $data.steps" v-bind:key="JSON.stringify(item)">
-        <q-item class="q-my-sm" active-class="bg-blue-1">
-          <q-item-section avatar>
-            <q-icon :name="valhallaTypeToIcon(item.type)" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>
-              {{ item.instruction }}
-            </q-item-label>
-            <q-item-label caption>
-              {{ item.verbal_post_transition_instruction }}
-            </q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-separator spaced />
-      </div>
-    </q-list>
+  <div
+    class="bottom-card steps-page-bottom-card bg-white"
+    ref="bottomCard"
+    v-if="fromPoi && toPoi"
+  >
+    <component v-if="trip" :is="componentForMode(trip.mode)" :trip="trip" />
   </div>
 </template>
 
+<style lang="scss">
+.steps-page-bottom-card {
+  max-height: calc(100% - 200px);
+}
+</style>
+
 <script lang="ts">
-import {
-  getBaseMap,
-  map,
-  setBottomCardAllowance,
-} from 'src/components/BaseMap.vue';
+import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
 import {
   encodePoi,
   canonicalizePoi,
   decanonicalizePoi,
   POI,
   poiDisplayName,
+  TravelMode,
+  DistanceUnits,
 } from 'src/utils/models';
 import Place from 'src/models/Place';
-import Route from 'src/models/Route';
-import { defineComponent, Ref, ref } from 'vue';
-import { decodeValhallaPath } from 'src/third_party/decodePath';
-import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
-import {
-  ValhallaRouteLegManeuver,
-  CacheableMode,
-  valhallaTypeToIcon,
-} from 'src/services/ValhallaClient';
+import { defineComponent, Component, Ref, ref } from 'vue';
+import { Marker } from 'maplibre-gl';
 import { toLngLat } from 'src/utils/geomath';
+import Trip, { fetchBestTrips } from 'src/models/Trip';
+import SingleModeSteps from 'src/components/SingleModeSteps.vue';
+import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);
@@ -59,21 +46,43 @@ var fromPoi: Ref<POI | undefined> = ref(undefined);
 export default defineComponent({
   name: 'StepsPage',
   props: {
-    mode: String,
-    to: String,
-    from: String,
-    alternateIndex: String,
+    mode: {
+      type: String as () => TravelMode,
+      required: true,
+    },
+    to: {
+      type: String,
+      required: true,
+    },
+    from: {
+      type: String,
+      required: true,
+    },
+    alternateIndex: {
+      type: String,
+      required: true,
+    },
   },
   data: function (): {
-    steps: ValhallaRouteLegManeuver[];
+    trip?: Trip;
   } {
     return {
-      steps: [],
+      trip: undefined,
     };
   },
   methods: {
     poiDisplayName,
-    valhallaTypeToIcon,
+    componentForMode(mode: TravelMode): Component {
+      switch (mode) {
+        case TravelMode.Walk:
+        case TravelMode.Bike:
+        case TravelMode.Drive:
+          return SingleModeSteps;
+        case TravelMode.Transit:
+          return MultiModalSteps;
+      }
+    },
+
     onBackClicked() {
       if (!fromPoi.value?.position && !toPoi.value?.position) {
         this.$router.push('/');
@@ -86,6 +95,12 @@ export default defineComponent({
       );
     },
     rewriteUrl: async function () {
+      let map = getBaseMap();
+      if (!map) {
+        console.error('map was not set');
+        return;
+      }
+
       if (!fromPoi.value?.position && !toPoi.value?.position) {
         this.$router.push('/');
         return;
@@ -102,135 +117,66 @@ export default defineComponent({
       if (fromPoi.value?.position && toPoi.value?.position) {
         // TODO: replace POI with Place so we don't have to hit pelias twice?
         let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
-        const routes = await Route.getRoutes(
+        const trips = await fetchBestTrips(
           toLngLat(fromPoi.value.position),
           toLngLat(toPoi.value.position),
-          this.mode as CacheableMode,
-          fromPlace.preferredDistanceUnits()
+          this.mode,
+          fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
-        if (this.alternateIndex) {
-          let idx = parseInt(this.alternateIndex);
-          this.processRoute(routes, idx);
-        }
-      } else {
-        if (map?.getLayer('headway_polyline')) {
-          map?.removeLayer('headway_polyline');
-        }
-        if (map?.getSource('headway_polyline')) {
-          map?.removeSource('headway_polyline');
-        }
+        let idx = parseInt(this.alternateIndex);
+        let trip = trips[idx];
+        console.assert(trip);
+        this.$data.trip = trip;
+        this.renderTripLayer(trip);
       }
     },
-    processRoute(routes: Route[], selectedIdx: number) {
-      for (var i = 0; i < 10; i += 1) {
-        if (map?.getLayer('headway_polyline' + i)) {
-          map?.removeLayer('headway_polyline' + i);
-        }
-        if (map?.getSource('headway_polyline' + i)) {
-          map?.removeSource('headway_polyline' + i);
-        }
+    renderTripLayer(trip: Trip) {
+      let map = getBaseMap();
+      if (!map) {
+        console.error('map was not set');
+        return;
       }
-      const route = routes[selectedIdx];
-      const leg = route.valhallaRoute.legs[0];
-      this.$data.steps = leg.maneuvers;
-      if (leg && map) {
-        var totalTime = 0;
-        for (const key in leg.maneuvers) {
-          totalTime += leg.maneuvers[key].time;
-          leg.maneuvers[key].time = totalTime;
-        }
-        var points: [number, number][] = [];
-        decodeValhallaPath(leg.shape, 6).forEach((point) => {
-          points.push([point[1], point[0]]);
-        });
-        getBaseMap()?.pushRouteLayer(
-          'headway_polyline' + selectedIdx,
-          // currently valhalla routes only ever have 1 leg.
-          route.legs[0].geometry(),
-          {
-            'line-color': '#1976D2',
-            'line-width': 6,
-          }
+
+      // TODO: add a map.filterLayers((layerName: string) => boolean) method so
+      // we can keep the layer we need and remove the others based on a prefix/regex/w.e.
+      map.removeAllLayers();
+
+      for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
+        const leg = trip.legs[legIdx];
+        map.pushTripLayer(
+          `selected_trip_leg_${legIdx}`,
+          leg.geometry(),
+          leg.paintStyle(true)
         );
-        setTimeout(() => {
-          this.resizeMap();
-          getBaseMap()?.fitBounds(
-            new LngLatBounds(
-              new LngLat(
-                route.valhallaRoute.summary.min_lon,
-                route.valhallaRoute.summary.min_lat
-              ),
-              new LngLat(
-                route.valhallaRoute.summary.max_lon,
-                route.valhallaRoute.summary.max_lat
-              )
-            )
-          );
-        });
       }
-    },
-    clearPolylines() {
-      for (var i = 0; i < 10; i += 1) {
-        if (map?.getLayer('headway_polyline' + i)) {
-          map?.removeLayer('headway_polyline' + i);
-        }
-        if (map?.getSource('headway_polyline' + i)) {
-          map?.removeSource('headway_polyline' + i);
-        }
-      }
+      map.fitBounds(trip.bounds);
     },
     resizeMap() {
-      if (this.$refs.bottomCard && this.$refs.bottomCard) {
-        setBottomCardAllowance(
-          (this.$refs.bottomCard as HTMLDivElement).offsetHeight
-        );
-      } else {
+      if (!this.$refs.bottomCard) {
+        console.error('bottom card was missing');
         setBottomCardAllowance(0);
+        return;
       }
-    },
-  },
-  watch: {
-    to(newValue) {
-      setTimeout(async () => {
-        toPoi.value = await decanonicalizePoi(newValue);
-        if (!toPoi.value) {
-          this.clearPolylines();
-        }
-        this.resizeMap();
 
-        getBaseMap()?.removeMarkersExcept([]);
-
-        if (!newValue.position) {
-          return;
-        }
-        const marker = new Marker({ color: '#111111' }).setLngLat([
-          newValue.position.long,
-          newValue.position.lat,
-        ]);
-        getBaseMap()?.pushMarker('active_marker', marker);
-      });
+      setBottomCardAllowance(
+        (this.$refs.bottomCard as HTMLDivElement).offsetHeight
+      );
     },
-    from(newValue) {
-      setTimeout(async () => {
-        fromPoi.value = await decanonicalizePoi(newValue);
-        if (!fromPoi.value) {
-          this.clearPolylines();
-        }
-        this.resizeMap();
-      });
-    },
-  },
-  beforeUnmount: function () {
-    this.clearPolylines();
   },
   mounted: async function () {
     setTimeout(async () => {
+      let map = getBaseMap();
+      if (!map) {
+        console.error('map was not set');
+        return;
+      }
+
       toPoi.value = await decanonicalizePoi(this.$props.to as string);
       fromPoi.value = await decanonicalizePoi(this.$props.from as string);
       await this.rewriteUrl();
       this.resizeMap();
 
-      getBaseMap()?.removeMarkersExcept([]);
+      getBaseMap()?.removeAllMarkers();
       if (this.toPoi?.position) {
         const marker = new Marker({ color: '#111111' }).setLngLat([
           this.toPoi.position.long,
@@ -239,14 +185,6 @@ export default defineComponent({
         getBaseMap()?.pushMarker('active_marker', marker);
       }
     });
-  },
-  unmounted: function () {
-    if (map?.getLayer('headway_polyline')) {
-      map?.removeLayer('headway_polyline');
-    }
-    if (map?.getSource('headway_polyline')) {
-      map?.removeSource('headway_polyline');
-    }
   },
   setup: function () {
     return {
