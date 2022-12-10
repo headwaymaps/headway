@@ -62,6 +62,10 @@ export function formatDuration(
   return timeString;
 }
 
+export function formatTime(millis: number): string {
+  return new Date(millis).toLocaleTimeString([], { timeStyle: 'short' });
+}
+
 export function kilometersToMiles(kilometers: number): number {
   return kilometers * 0.62137119;
 }
