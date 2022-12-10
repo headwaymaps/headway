@@ -11,17 +11,16 @@
       :debounce="0"
       :dense="true"
       v-on:clear="() => selectPoi(undefined)"
-      v-on:blur="deferHide(castToMenu($refs.autoCompleteMenu))"
+      v-on:blur="deferHide(autoCompleteMenu())"
       v-on:beforeinput="
-        (event) =>
-          updateAutocompleteEventBeforeInput(
-            event,
-            castToMenu($refs.autoCompleteMenu)
-          )
+  (event: Event) =>
+    updateAutocompleteEventBeforeInput(
+      event,
+      autoCompleteMenu()
+      )
       "
       v-on:update:model-value="
-        () =>
-          updateAutocompleteEventRawString(castToMenu($refs.autoCompleteMenu))
+        () => updateAutocompleteEventRawString(autoCompleteMenu())
       "
     >
     </q-input>
@@ -31,25 +30,27 @@
       :no-focus="true"
       :no-refocus="true"
       v-on:before-hide="removeHoverMarkers"
-      :target="castToTarget($refs.autoCompleteInput)"
+      :target="($refs.autoCompleteInput as Element)"
     >
-      <q-item
-        :key="item?.key"
-        v-for="item in autocompleteOptions"
-        clickable
-        v-on:click="() => selectPoi(item)"
-        v-on:mouseenter="() => hoverPoi(item)"
-        v-on:mouseleave="() => hoverPoi(undefined)"
-      >
-        <q-item-section>
-          <q-item-label>{{
-            item?.name ? item.name : item?.address
-          }}</q-item-label>
-          <q-item-label v-if="item?.name" caption>{{
-            item.address
-          }}</q-item-label>
-        </q-item-section>
-      </q-item>
+      <q-list>
+        <q-item
+          :key="item?.key"
+          v-for="item in autocompleteOptions"
+          clickable
+          v-on:click="selectPoi(item)"
+          v-on:mouseenter="hoverPoi(item)"
+          v-on:mouseleave="hoverPoi(undefined)"
+        >
+          <q-item-section>
+            <q-item-label>{{
+              item?.name ? item.name : item?.address
+            }}</q-item-label>
+            <q-item-label v-if="item?.name" caption>{{
+              item.address
+            }}</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
     </q-menu>
   </div>
 </template>
@@ -71,7 +72,11 @@ export default defineComponent({
     forceText: String,
     hint: String,
   },
-  methods: {},
+  methods: {
+    autoCompleteMenu(): QMenu {
+      return this.$refs.autoCompleteMenu as QMenu;
+    },
+  },
   watch: {
     forceText: {
       immediate: true,
@@ -160,14 +165,6 @@ export default defineComponent({
       inputText,
       autocompleteOptions,
       poiHovered,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      castToTarget(target: any) {
-        return target as Element;
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      castToMenu(menu: any) {
-        return menu as QMenu;
-      },
       deferHide(menu: QMenu) {
         setTimeout(() => {
           menu.hide();
@@ -214,6 +211,16 @@ export default defineComponent({
         });
       },
       hoverPoi(poi: POI | undefined) {
+        if (!supportsHover()) {
+          // FIX: selecting automcomplete item on mobile requires double
+          // tapping.
+          //
+          // On touch devices, where hover is not supported, this method is
+          // fired upon tapping. I don't fully understand why, but maybe
+          // mutating the state in this method would rebuild the component,
+          // canceling any outstanding event handlers on the old component.
+          return;
+        }
         poiHovered.value = poi;
 
         if (hoverMarker) {
@@ -235,4 +242,8 @@ export default defineComponent({
     };
   },
 });
+
+function supportsHover(): boolean {
+  return window.matchMedia('(hover: hover)').matches;
+}
 </script>
