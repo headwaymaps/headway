@@ -44,7 +44,10 @@ async function renderOnMap(poi: POI) {
 export default defineComponent({
   name: 'PlacePage',
   props: {
-    osm_id: String,
+    osm_id: {
+      type: String,
+      required: true,
+    },
   },
   components: { PlaceCard, SearchBox },
   data: function () {
@@ -68,7 +71,8 @@ export default defineComponent({
     },
   },
   beforeRouteUpdate: async function (to, from, next) {
-    const newOsmId = to.params.osm_id;
+    const newOsmId = to.params.osm_id as string;
+
     const poi = await decanonicalizePoi(newOsmId);
     if (poi) {
       this.poi = poi;
