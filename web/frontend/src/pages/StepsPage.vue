@@ -28,17 +28,17 @@ import {
   canonicalizePoi,
   decanonicalizePoi,
   POI,
-  poiDisplayName,
   TravelMode,
   DistanceUnits,
 } from 'src/utils/models';
-import Place from 'src/models/Place';
+import { poiDisplayName } from 'src/i18n/utils';
 import { defineComponent, Component, Ref, ref } from 'vue';
 import { Marker } from 'maplibre-gl';
 import { toLngLat } from 'src/utils/geomath';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
+import Place from 'src/models/Place';
 
 var toPoi: Ref<POI | undefined> = ref(undefined);
 var fromPoi: Ref<POI | undefined> = ref(undefined);

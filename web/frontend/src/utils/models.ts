@@ -1,6 +1,5 @@
 import addressFormatter from '@fragaria/address-formatter';
 import { LngLatBoundsLike } from 'maplibre-gl';
-import { i18n } from 'src/i18n/lang';
 import { LongLat } from './geomath';
 
 const addressKeys = [
@@ -74,16 +73,6 @@ export interface POI {
   position?: LongLat;
   bbox?: LngLatBoundsLike;
   gid?: string;
-}
-
-export function poiDisplayName(poi: POI | undefined): string {
-  if (poi?.name) {
-    return poi?.name;
-  }
-  if (poi?.address) {
-    return poi?.address;
-  }
-  return i18n.global.t('dropped_pin');
 }
 
 export function canonicalizePoi(poi?: POI): string {

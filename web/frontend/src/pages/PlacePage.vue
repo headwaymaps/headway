@@ -15,7 +15,8 @@
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
-import { decanonicalizePoi, POI, poiDisplayName } from 'src/utils/models';
+import { decanonicalizePoi, POI } from 'src/utils/models';
+import { poiDisplayName } from 'src/i18n/utils';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
