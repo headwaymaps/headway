@@ -18,8 +18,9 @@ import maplibregl, {
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Prefs from 'src/utils/Prefs';
 import Config from 'src/utils/Config';
-import { mapFeatureToPoi } from 'src/utils/models';
+import { mapFeatureToPlace } from 'src/utils/models';
 import { debounce } from 'lodash';
+import { PlaceId } from 'src/models/Place';
 
 export var map: maplibregl.Map | null = null;
 
@@ -416,26 +417,37 @@ export default defineComponent({
     );
 
     this.pushTouchHandler('longpress', (event) => {
-      this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
+      const id = PlaceId.location(event.lngLat);
+      this.$router.push({
+        name: 'place',
+        params: { placeId: id.serialized() },
+      });
     });
     this.pushTouchHandler('poi_click', async (event) => {
       if (!event.features) {
         console.warn('poi_click without features');
         return;
       }
-      let poi = await mapFeatureToPoi(event?.features[0]);
-      if (!poi?.gid) {
+      let place = await mapFeatureToPlace(event?.features[0]);
+      if (place?.id.gid) {
+        const id = PlaceId.gid(place.id.gid);
+        this.$router.push({
+          name: 'place',
+          params: { placeId: id.serialized() },
+        });
+      } else {
         // There are certain OSM features that fail to reverse-geocode - maybe OSM
         // entities which aren't in pelias? In that case, we just use the lng/lat
         // so the person can still get routing directions to it.
         console.warn(
           'Could not canonicalize map feature, falling back to lon/lat'
         );
-        this.$router.push(`/pin/${event.lngLat.lng}/${event.lngLat.lat}/`);
-        return;
+        let id = PlaceId.location(event.lngLat);
+        this.$router.push({
+          name: 'place',
+          params: { placeId: id.serialized() },
+        });
       }
-      const gidComponent = encodeURIComponent(poi?.gid);
-      this.$router.push(`/place/${gidComponent}`);
     });
 
     setTimeout(async () => {

@@ -8,27 +8,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent } from 'vue';
 import BaseMap from 'src/components/BaseMap.vue';
 
 export default defineComponent({
   name: 'MainLayout',
-
   components: { BaseMap },
-  props: {
-    osm_id: String,
-  },
-  methods: {},
-
-  setup() {
-    const leftDrawerOpen = ref(false);
-
-    return {
-      leftDrawerOpen,
-      toggleLeftDrawer() {
-        leftDrawerOpen.value = !leftDrawerOpen.value;
-      },
-    };
-  },
 });
 </script>

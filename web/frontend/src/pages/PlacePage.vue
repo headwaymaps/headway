@@ -3,96 +3,98 @@
     <q-card-section>
       <search-box
         ref="searchBox"
-        :force-text="poiDisplayName(poi)"
-        v-on:did-select-poi="searchBoxDidSelectPoi"
+        :force-text="place ? placeDisplayName(place) : undefined"
+        v-on:did-select-place="searchBoxDidSelectPlace"
       ></search-box>
     </q-card-section>
   </q-card>
 
-  <place-card :poi="poi" v-on:close="$router.push('/')"></place-card>
+  <place-card :place="place" v-on:close="$router.push('/')"></place-card>
 </template>
 
 <script lang="ts">
-import { Marker } from 'maplibre-gl';
+import { LngLat, Marker } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
-import { decanonicalizePoi, POI } from 'src/utils/models';
-import { poiDisplayName } from 'src/i18n/utils';
+import { placeDisplayName } from 'src/i18n/utils';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
+import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 
-async function renderOnMap(poi: POI) {
-  if (poi.bbox) {
+async function renderOnMap(place: Place) {
+  const map = getBaseMap();
+  if (!map) {
+    console.error('map was unexpectedly unset');
+    return;
+  }
+
+  if (place.bbox) {
     // prefer bounds when available so we don't "overzoom" on a large
     // entity like an entire city.
-    getBaseMap()?.fitBounds(poi.bbox, { maxZoom: 16 });
-  } else if (poi.position) {
-    getBaseMap()?.flyTo([poi.position.long, poi.position.lat], 16);
+    map.fitBounds(place.bbox, { maxZoom: 16 });
+  } else {
+    map.flyTo([place.point.lng, place.point.lat], 16);
   }
 
-  if (poi.position) {
-    getBaseMap()?.pushMarker(
-      'active_marker',
-      new Marker({ color: '#111111' }).setLngLat([
-        poi.position.long,
-        poi.position.lat,
-      ])
-    );
-    getBaseMap()?.removeMarkersExcept(['active_marker']);
-  }
+  map.pushMarker(
+    'active_marker',
+    new Marker({ color: '#111111' }).setLngLat(place.point)
+  );
+  map.removeMarkersExcept(['active_marker']);
 }
 
 export default defineComponent({
   name: 'PlacePage',
   props: {
-    osm_id: {
+    placeId: {
       type: String,
       required: true,
     },
   },
   components: { PlaceCard, SearchBox },
-  data: function () {
+  data: function (): { place: Place } {
     return {
-      poi: {},
+      place: emptyPlace(),
     };
   },
   watch: {
-    poi: async function (newValue): Promise<void> {
+    place: async function (newValue): Promise<void> {
       await renderOnMap(newValue);
     },
   },
   methods: {
-    poiDisplayName,
-    searchBoxDidSelectPoi(poi?: POI) {
-      if (poi) {
-        this.poi = poi;
+    placeDisplayName,
+    searchBoxDidSelectPlace(place?: Place) {
+      if (place) {
+        this.place = place;
       } else {
         this.$router.push('/');
       }
     },
   },
   beforeRouteUpdate: async function (to, from, next) {
-    const newOsmId = to.params.osm_id as string;
-
-    const poi = await decanonicalizePoi(newOsmId);
-    if (poi) {
-      this.poi = poi;
+    const placeId = to.params.placeId as string;
+    let place = await PlaceStorage.fetchFromSerializedId(placeId);
+    if (place) {
+      this.place = place;
     } else {
-      console.warn(`unable to find POI with osm_id: ${this.$props.osm_id}`);
+      console.warn(`unable to find Place with id: ${placeId}`);
     }
 
     next();
   },
   mounted: async function () {
-    const poi = await decanonicalizePoi(this.$props.osm_id);
-    if (poi) {
-      this.$data.poi = poi;
+    const placeId = this.$props.placeId as string;
+    let place = await PlaceStorage.fetchFromSerializedId(placeId);
+    if (place) {
+      this.place = place;
     } else {
-      console.warn(`unable to find POI with osm_id: ${this.$props.osm_id}`);
+      console.warn(`unable to find Place with id: ${placeId}`);
     }
   },
-  setup: function () {
-    return {};
-  },
 });
+function emptyPlace(): Place {
+  let nullIsland = new LngLat(0, 0);
+  return new Place(PlaceId.location(nullIsland), nullIsland);
+}
 </script>

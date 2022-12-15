@@ -1,10 +1,10 @@
-import { DistanceUnits } from '../utils/models';
+import { localizeAddress, DistanceUnits } from '../utils/models';
 import PeliasClient from 'src/services/PeliasClient';
-import { LngLat } from 'maplibre-gl';
+import { LngLat, LngLatBounds } from 'maplibre-gl';
 
 /// PlaceId can be either a LngLat or a gid (but not both).
 type GID = string;
-class PlaceId {
+export class PlaceId {
   public readonly location?: LngLat;
   public readonly gid?: GID;
 
@@ -37,6 +37,15 @@ class PlaceId {
     }
   }
 
+  public urlEncoded(): string {
+    return encodeURIComponent(this.serialized());
+  }
+
+  public static urlDecoded(urlEncoded: string): PlaceId {
+    const decoded = decodeURIComponent(urlEncoded);
+    return PlaceId.deserialize(decoded);
+  }
+
   public static deserialize(serialized: string): PlaceId {
     if (/([0-9\.-]+,[0-9\.-]+)/.test(serialized)) {
       const longLat = serialized.split(',');
@@ -59,26 +68,28 @@ class PlaceId {
   }
 }
 
-/// Wrapper around a pelias response
-export default class Place {
-  id: PlaceId;
-  point: LngLat;
-  countryCode?: string;
-
-  constructor(id: PlaceId, point: LngLat, countryCode?: string) {
-    this.id = id;
-    this.point = point;
-    this.countryCode = countryCode;
-  }
+export class PlaceStorage {
+  /// Cache of serialized PlaceId -> Place
+  /// NOTE: I tried using the id as cacheKey without serializing, but I found
+  /// duplicated keys. I don't think "hashable" works how I expected.
+  ///     static cache = new Map<PlaceId, Place>();
+  static cache = new Map<string, Place>();
 
   public static async fetchFromSerializedId(
     serializedId: string
   ): Promise<Place> {
     const id = PlaceId.deserialize(serializedId);
-    return Place.fetchFromId(id);
+    return PlaceStorage.fetchFromId(id);
   }
 
   public static async fetchFromId(id: PlaceId): Promise<Place> {
+    const cacheKey = id.serialized();
+    const cached = this.cache.get(cacheKey);
+
+    if (cached) {
+      return cached;
+    }
+
     const placeJson = await (async () => {
       if (id.gid) {
         return await PeliasClient.findByGid(id.gid);
@@ -90,8 +101,54 @@ export default class Place {
     })();
 
     const feature = placeJson.features[0];
-    console.assert(feature, 'no feature found for placeId', id);
+    if (!feature) {
+      if (!id.location) {
+        // presumably if it was a gid, we'd hit something in pelias
+        throw new Error(`missing location for id: ${id}`);
+      }
+      const place = Place.bareLocation(id.location);
+      this.cache.set(cacheKey, place);
+      return place;
+    }
 
+    const place = Place.fromFeature(id, feature);
+
+    // if user clicked on location, keep that precise location
+    if (id.location) {
+      place.point = id.location;
+    }
+
+    this.cache.set(cacheKey, place);
+    return place;
+  }
+}
+
+/// Wrapper around a pelias response
+export default class Place {
+  id: PlaceId;
+  point: LngLat;
+  bbox?: LngLatBounds;
+  countryCode?: string;
+  public address?: string | null;
+  name?: string;
+
+  constructor(
+    id: PlaceId,
+    point: LngLat,
+    bbox?: LngLatBounds,
+    countryCode?: string,
+    name?: string,
+    address?: string
+  ) {
+    this.id = id;
+    this.point = point;
+    this.bbox = bbox;
+    this.countryCode = countryCode;
+    this.name = name;
+    this.address = address;
+  }
+
+  static fromFeature(id: PlaceId, feature: GeoJSON.Feature): Place {
     const geometry = feature.geometry as GeoJSON.Point;
     console.assert(geometry, 'no geometry found for feature', feature);
     console.assert(
@@ -104,10 +161,51 @@ export default class Place {
     console.assert(lat, 'missing lat');
     const location = new LngLat(lng, lat);
 
+    let bbox;
+    if (feature.bbox?.length == 4) {
+      bbox = LngLatBounds.convert(
+        feature.bbox as [number, number, number, number]
+      );
+    } else {
+      console.assert(
+        !feature.bbox,
+        'bbox was present, but had unexpected length',
+        feature.bbox
+      );
+    }
+
     const countryCode = feature.properties?.country_code;
     console.assert(countryCode, 'no country code found for feature', feature);
 
-    return new Place(id, location, countryCode);
+    const name = feature.properties?.name;
+    console.assert(name, 'no name found for feature', feature);
+
+    const address = localizeAddress(feature.properties);
+    console.assert(address, 'no address found for feature', feature);
+
+    const place = new Place(id, location, bbox, countryCode, name, address);
+    return place;
+  }
+
+  static bareLocation(location: LngLat) {
+    return new Place(
+      PlaceId.location(location),
+      location,
+      undefined,
+      undefined
+    );
+  }
+
+  public serializedId(): string {
+    return this.id.serialized();
+  }
+
+  public urlEncodedId(): string {
+    return this.id.urlEncoded();
+  }
+
+  public displayName(): string | undefined {
+    return this.name;
   }
 
   public preferredDistanceUnits(): DistanceUnits | undefined {

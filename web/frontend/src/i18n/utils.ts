@@ -1,12 +1,12 @@
 import { i18n } from './lang';
-import { POI } from 'src/utils/models';
+import Place from 'src/models/Place';
 
-export function poiDisplayName(poi?: POI): string {
-  if (poi?.name) {
-    return poi?.name;
+export function placeDisplayName(place: Place): string {
+  if (place.name) {
+    return place.name;
   }
-  if (poi?.address) {
-    return poi?.address;
+  if (place.address) {
+    return place.address;
   }
   return i18n.global.t('dropped_pin');
 }

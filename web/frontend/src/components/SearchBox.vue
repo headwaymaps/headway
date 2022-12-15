@@ -10,7 +10,7 @@
       :outlined="true"
       :debounce="0"
       :dense="true"
-      v-on:clear="() => selectPoi(undefined)"
+      v-on:clear="selectPlace(undefined)"
       v-on:blur="deferHide(autoCompleteMenu())"
       v-on:beforeinput="
   (event: Event) =>
@@ -34,12 +34,12 @@
     >
       <q-list>
         <q-item
-          :key="item?.key"
+          :key="item?.serializedId()"
           v-for="item in autocompleteOptions"
           clickable
-          v-on:click="selectPoi(item)"
-          v-on:mouseenter="hoverPoi(item)"
-          v-on:mouseleave="hoverPoi(undefined)"
+          v-on:click="selectPlace(item)"
+          v-on:mouseenter="hoverPlace(item)"
+          v-on:mouseleave="hoverPlace(undefined)"
         >
           <q-item-section>
             <q-item-label>{{
@@ -58,11 +58,10 @@
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
-import { localizeAddress, POI } from 'src/utils/models';
 import { Event, Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
 import { QMenu } from 'quasar';
-import { LongLat } from 'src/utils/geomath';
+import Place, { PlaceId } from 'src/models/Place';
 
 const isAndroid = /(android)/i.test(navigator.userAgent);
 
@@ -86,7 +85,7 @@ export default defineComponent({
       },
     },
   },
-  emits: ['didSelectPoi'],
+  emits: ['didSelectPlace'],
   unmounted: function () {
     this.onUnmounted();
   },
@@ -95,8 +94,8 @@ export default defineComponent({
   },
   setup: function (props, ctx) {
     const inputText = ref('');
-    const poiHovered: Ref<POI | undefined> = ref(undefined);
-    const autocompleteOptions: Ref<(POI | undefined)[]> = ref([]);
+    const placeHovered: Ref<Place | undefined> = ref(undefined);
+    const autocompleteOptions: Ref<Place[] | undefined> = ref([]);
     let requestIdx = 0;
     let mostRecentResultsRequestIdx = 0;
 
@@ -136,23 +135,13 @@ export default defineComponent({
       mostRecentResultsRequestIdx = thisRequestIdx;
 
       const results = await response.json();
-      var options: POI[] = [];
+      var options: Place[] = [];
       for (const feature of results.features) {
-        var address = localizeAddress(feature.properties);
-
-        const coordinates = feature?.geometry?.coordinates;
-        const position: LongLat | undefined = coordinates
-          ? { long: coordinates[0], lat: coordinates[1] }
-          : undefined;
-
-        options.push({
-          name: feature.properties.name,
-          address: address,
-          key: feature.properties.osm_id,
-          position: position,
-          bbox: feature.bbox,
-          gid: feature?.properties?.gid,
-        });
+        // TODO: Not sure if this ever happens.
+        console.assert(feature.properties.gid);
+        let gid = feature.properties.gid;
+        let id = PlaceId.gid(gid);
+        options.push(Place.fromFeature(id, feature));
       }
       autocompleteOptions.value = options;
     };
@@ -164,7 +153,7 @@ export default defineComponent({
     return {
       inputText,
       autocompleteOptions,
-      poiHovered,
+      placeHovered,
       deferHide(menu: QMenu) {
         setTimeout(() => {
           menu.hide();
@@ -182,8 +171,8 @@ export default defineComponent({
       },
       updateAutocompleteEventRawString(menu: QMenu) {
         menu.show();
-        if (poiHovered.value) {
-          poiHovered.value = undefined;
+        if (placeHovered.value) {
+          placeHovered.value = undefined;
         }
         if (!isAndroid) {
           setTimeout(() => updateAutocomplete(inputText.value));
@@ -192,8 +181,8 @@ export default defineComponent({
       updateAutocompleteEventBeforeInput(event: Event, menu: QMenu) {
         const inputEvent = event as InputEvent;
         menu.show();
-        if (poiHovered.value) {
-          poiHovered.value = undefined;
+        if (placeHovered.value) {
+          placeHovered.value = undefined;
         }
         if (isAndroid) {
           setTimeout(() =>
@@ -204,13 +193,13 @@ export default defineComponent({
           );
         }
       },
-      async selectPoi(poi?: POI) {
-        ctx.emit('didSelectPoi', poi);
+      selectPlace(place?: Place) {
+        ctx.emit('didSelectPlace', place);
         setTimeout(() => {
           if (hoverMarker) hoverMarker.remove();
         });
       },
-      hoverPoi(poi: POI | undefined) {
+      hoverPlace(place?: Place) {
         if (!supportsHover()) {
           // FIX: selecting automcomplete item on mobile requires double
           // tapping.
@@ -221,16 +210,21 @@ export default defineComponent({
           // canceling any outstanding event handlers on the old component.
           return;
         }
-        poiHovered.value = poi;
+        placeHovered.value = place;
 
         if (hoverMarker) {
           hoverMarker.remove();
         }
-        if (map && poi?.position?.long && poi?.position?.lat) {
-          hoverMarker = new Marker({ color: '#11111155' }).setLngLat([
-            poi?.position?.long,
-            poi?.position?.lat,
-          ]);
+
+        if (!map) {
+          console.error('map was unexpectedly unset');
+          return;
+        }
+
+        if (place) {
+          hoverMarker = new Marker({ color: '#11111155' }).setLngLat(
+            place.point
+          );
           hoverMarker.addTo(map);
         }
       },
