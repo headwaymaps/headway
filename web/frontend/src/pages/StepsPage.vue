@@ -6,11 +6,7 @@
     class="top-left-fab"
     v-on:click="() => onBackClicked()"
   />
-  <div
-    class="bottom-card steps-page-bottom-card bg-white"
-    ref="bottomCard"
-    v-if="fromPoi && toPoi"
-  >
+  <div class="bottom-card steps-page-bottom-card bg-white" ref="bottomCard">
     <component v-if="trip" :is="componentForMode(trip.mode)" :trip="trip" />
   </div>
 </template>
@@ -23,25 +19,16 @@
 
 <script lang="ts">
 import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
-import {
-  encodePoi,
-  canonicalizePoi,
-  decanonicalizePoi,
-  POI,
-  TravelMode,
-  DistanceUnits,
-} from 'src/utils/models';
-import { poiDisplayName } from 'src/i18n/utils';
+import { TravelMode, DistanceUnits } from 'src/utils/models';
+import Place, { PlaceStorage } from 'src/models/Place';
 import { defineComponent, Component, Ref, ref } from 'vue';
 import { Marker } from 'maplibre-gl';
-import { toLngLat } from 'src/utils/geomath';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
-import Place from 'src/models/Place';
 
-var toPoi: Ref<POI | undefined> = ref(undefined);
-var fromPoi: Ref<POI | undefined> = ref(undefined);
+let toPlace: Ref<Place | undefined> = ref(undefined);
+let fromPlace: Ref<Place | undefined> = ref(undefined);
 
 export default defineComponent({
   name: 'StepsPage',
@@ -71,7 +58,6 @@ export default defineComponent({
     };
   },
   methods: {
-    poiDisplayName,
     componentForMode(mode: TravelMode): Component {
       switch (mode) {
         case TravelMode.Walk:
@@ -84,16 +70,11 @@ export default defineComponent({
     },
 
     onBackClicked() {
-      if (!fromPoi.value?.position && !toPoi.value?.position) {
-        this.$router.push('/');
-        return;
-      }
-      const fromCanonical = fromPoi.value ? encodePoi(fromPoi.value) : '_';
-      const toCanonical = toPoi.value ? encodePoi(toPoi.value) : '_';
-      this.$router.push(
-        `/directions/${this.mode}/${toCanonical}/${fromCanonical}`
-      );
+      const fromEncoded = fromPlace.value?.urlEncodedId() ?? '_';
+      const toEncoded = toPlace.value?.urlEncodedId() ?? '_';
+      this.$router.push(`/directions/${this.mode}/${toEncoded}/${fromEncoded}`);
     },
+
     rewriteUrl: async function () {
       let map = getBaseMap();
       if (!map) {
@@ -101,27 +82,18 @@ export default defineComponent({
         return;
       }
 
-      if (!fromPoi.value?.position && !toPoi.value?.position) {
-        this.$router.push('/');
-        return;
-      }
-      const fromCanonical = fromPoi.value
-        ? canonicalizePoi(fromPoi.value)
-        : '_';
-      const toEncoded = toPoi.value ? encodePoi(toPoi.value) : '_';
+      const fromEncoded = fromPlace.value?.urlEncodedId() ?? '_';
+      const toEncoded = toPlace.value?.urlEncodedId() ?? '_';
       this.$router.push(
-        `/directions/${this.mode}/${toEncoded}/${encodeURIComponent(
-          fromCanonical
-        )}/${this.alternateIndex}`
+        `/directions/${this.mode}/${toEncoded}/${fromEncoded}/${this.alternateIndex}`
       );
-      if (fromPoi.value?.position && toPoi.value?.position) {
-        // TODO: replace POI with Place so we don't have to hit pelias twice?
-        let fromPlace = await Place.fetchFromSerializedId(fromCanonical);
+
+      if (fromPlace.value && toPlace.value) {
         const trips = await fetchBestTrips(
-          toLngLat(fromPoi.value.position),
-          toLngLat(toPoi.value.position),
+          fromPlace.value.point,
+          toPlace.value.point,
           this.mode,
-          fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
+          fromPlace.value.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
         let idx = parseInt(this.alternateIndex);
         let trip = trips[idx];
@@ -171,25 +143,29 @@ export default defineComponent({
         return;
       }
 
-      toPoi.value = await decanonicalizePoi(this.$props.to as string);
-      fromPoi.value = await decanonicalizePoi(this.$props.from as string);
+      toPlace.value = await PlaceStorage.fetchFromSerializedId(
+        this.$props.to as string
+      );
+      fromPlace.value = await PlaceStorage.fetchFromSerializedId(
+        this.$props.from as string
+      );
+
       await this.rewriteUrl();
       this.resizeMap();
 
-      getBaseMap()?.removeAllMarkers();
-      if (this.toPoi?.position) {
-        const marker = new Marker({ color: '#111111' }).setLngLat([
-          this.toPoi.position.long,
-          this.toPoi.position.lat,
-        ]);
-        getBaseMap()?.pushMarker('active_marker', marker);
+      map.removeAllMarkers();
+      if (this.toPlace?.point) {
+        const marker = new Marker({ color: '#111111' }).setLngLat(
+          this.toPlace.point
+        );
+        map.pushMarker('active_marker', marker);
       }
     });
   },
   setup: function () {
     return {
-      toPoi,
-      fromPoi,
+      toPlace,
+      fromPlace,
     };
   },
 });

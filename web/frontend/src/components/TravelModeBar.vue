@@ -7,7 +7,7 @@
       rounded
       :ripple="false"
       size="sm"
-      :to="`/directions/transit/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
+      :to="linkPath('transit')"
       :color="currentMode === 'transit' ? 'primary' : undefined"
     >
       {{ $t('modes.transit') }}
@@ -18,7 +18,7 @@
       rounded
       :ripple="false"
       size="sm"
-      :to="`/directions/car/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
+      :to="linkPath('car')"
       :color="currentMode === 'car' ? 'primary' : undefined"
     >
       {{ $t('modes.drive') }}
@@ -29,7 +29,7 @@
       rounded
       :ripple="false"
       size="sm"
-      :to="`/directions/bicycle/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
+      :to="linkPath('bicycle')"
       :color="currentMode === 'bicycle' ? 'primary' : undefined"
     >
       {{ $t('modes.bike') }}
@@ -40,7 +40,7 @@
       rounded
       :ripple="false"
       size="sm"
-      :to="`/directions/walk/${poiToUrlArg(toPoi)}/${poiToUrlArg(fromPoi)}`"
+      :to="linkPath('walk')"
       :color="currentMode === 'walk' ? 'primary' : undefined"
     >
       {{ $t('modes.walk') }}
@@ -50,26 +50,25 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { POI, TravelMode, encodePoi } from 'src/utils/models';
+import { TravelMode } from 'src/utils/models';
 import Config from 'src/utils/Config';
+import Place from 'src/models/Place';
 
 export default defineComponent({
   name: 'TravelModeBar',
   props: {
     currentMode: String as () => TravelMode,
-    fromPoi: Object as () => POI,
-    toPoi: Object as () => POI,
+    fromPlace: Place,
+    toPlace: Place,
   },
   setup: function () {
     return { transitRoutingEnabled: Config.transitRoutingEnabled };
   },
   methods: {
-    poiToUrlArg(poi?: POI): string {
-      if (!poi) {
-        return '_';
-      } else {
-        return encodePoi(poi);
-      }
+    linkPath(mode: string): string {
+      let f = (place?: Place): string => place?.urlEncodedId() ?? '_';
+
+      return `/directions/${mode}/${f(this.toPlace)}/${f(this.fromPlace)}`;
     },
   },
 });

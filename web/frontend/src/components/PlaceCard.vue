@@ -12,17 +12,17 @@
         />
         <div class="place-card-section">
           <div class="text-subtitle1">
-            {{ $props.poi?.name ? $props.poi?.name : $props.poi?.address }}
+            {{ primaryName() }}
           </div>
-          <div class="text" v-if="$props.poi?.name && $props.poi?.address">
-            {{ $props.poi?.address }}
+          <div class="text" v-if="secondaryName()">
+            {{ secondaryName() }}
           </div>
         </div>
       </div>
     </q-card-section>
     <q-card-section>
       <div class="place-card-section">
-        <travel-mode-bar :to-poi="$props.poi" />
+        <travel-mode-bar :to-place="place" />
       </div>
     </q-card-section>
   </q-card>
@@ -30,7 +30,8 @@
 
 <script lang="ts">
 import { QCard } from 'quasar';
-import { encodePoi } from 'src/utils/models';
+import { i18n } from 'src/i18n/lang';
+import Place from 'src/models/Place';
 import { defineComponent } from 'vue';
 import { setBottomCardAllowance } from './BaseMap.vue';
 import TravelModeBar from './TravelModeBar.vue';
@@ -39,10 +40,28 @@ export default defineComponent({
   name: 'PlaceCard',
   emits: ['close'],
   props: {
-    poi: Object,
+    place: {
+      type: Place,
+      required: true,
+    },
   },
   methods: {
-    encodePoi,
+    primaryName(): string {
+      if (this.place.name) {
+        return this.place.name;
+      }
+      if (this.place.address) {
+        return this.place.address;
+      }
+      return i18n.global.t('dropped_pin');
+    },
+    secondaryName(): string | undefined {
+      if (this.place.name && this.place.address) {
+        return this.place.address;
+      } else {
+        return undefined;
+      }
+    },
   },
   watch: {
     poi: function () {

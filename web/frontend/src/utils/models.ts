@@ -1,6 +1,5 @@
 import addressFormatter from '@fragaria/address-formatter';
-import { LngLatBoundsLike } from 'maplibre-gl';
-import { LongLat } from './geomath';
+import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 
 const addressKeys = [
   'archipelago',
@@ -66,79 +65,9 @@ const addressKeys = [
   'ward',
 ];
 
-export interface POI {
-  key?: string;
-  name?: string | null;
-  address?: string | null;
-  position?: LongLat;
-  bbox?: LngLatBoundsLike;
-  gid?: string;
-}
-
-export function canonicalizePoi(poi?: POI): string {
-  if (poi?.gid) {
-    return poi.gid;
-  }
-  if (poi?.position) {
-    return `${poi.position?.long},${poi.position?.lat}`;
-  }
-  return '';
-}
-
-export function encodePoi(poi?: POI): string {
-  return encodeURIComponent(canonicalizePoi(poi));
-}
-
-export async function decanonicalizePoi(
-  poiStringRaw: string
-): Promise<POI | undefined> {
-  if (poiStringRaw == '_') {
-    return undefined;
-  }
-  const poiString = decodeURIComponent(poiStringRaw);
-  if (/([0-9\.-]+,[0-9\.-]+)/.test(poiString)) {
-    const longLat = poiString.split(',');
-    return {
-      position: {
-        long: parseFloat(longLat[0]),
-        lat: parseFloat(longLat[1]),
-      },
-    };
-  } else {
-    const response = await fetch(`/pelias/v1/place?ids=${poiString}`);
-    if (response.status != 200) {
-      console.error(
-        `Could not fetch POI data for ${poiString}. Is pelias down?`
-      );
-      return;
-    }
-
-    const results = await response.json();
-    if (results.features.length > 0) {
-      const feature = results.features[0];
-      const address = localizeAddress(feature.properties);
-
-      const coordinates = feature?.geometry?.coordinates;
-      const position: LongLat | undefined = coordinates
-        ? { long: coordinates[0], lat: coordinates[1] }
-        : undefined;
-      return {
-        name: feature.properties.name,
-        address: address,
-        key: feature.properties.osm_id,
-        position: position,
-        bbox: feature.bbox,
-        gid: feature?.properties?.gid,
-      };
-    }
-    return undefined;
-  }
-}
-
-export async function mapFeatureToPoi(
+export async function mapFeatureToPlace(
   feature: GeoJSON.Feature
-): Promise<POI | undefined> {
-  feature.geometry;
+): Promise<Place | undefined> {
   const pointGeometry = feature.geometry as GeoJSON.Point;
   if (!pointGeometry) {
     console.error(
@@ -170,7 +99,8 @@ export async function mapFeatureToPoi(
     if (results.features[id]?.properties?.name !== feature?.properties?.name) {
       continue;
     }
-    return decanonicalizePoi(results.features[id].properties.gid);
+    const gid = PlaceId.gid(results.features[id].properties.gid);
+    return await PlaceStorage.fetchFromId(gid);
   }
   return undefined;
 }

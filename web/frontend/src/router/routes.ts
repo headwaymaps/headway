@@ -13,24 +13,14 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/place/:osm_id',
+    path: '/place/:placeId',
     component: () => import('layouts/MainLayout.vue'),
     children: [
       {
-        path: '/place/:osm_id',
+        name: 'place',
+        path: '/place/:placeId',
         props: true,
         component: () => import('pages/PlacePage.vue'),
-      },
-    ],
-  },
-  {
-    path: '/pin/:long/:lat',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [
-      {
-        path: '/pin/:long/:lat',
-        props: true,
-        component: () => import('pages/DroppedPinPage.vue'),
       },
     ],
   },

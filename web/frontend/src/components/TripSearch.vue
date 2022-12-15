@@ -6,8 +6,8 @@
           ref="searchBox"
           :hint="$t('search.from')"
           :style="{ flex: 1 }"
-          :force-text="fromPoi ? poiDisplayName(fromPoi) : undefined"
-          v-on:did-select-poi="didSelectFromPoi as any"
+          :force-text="displayName(fromPlace)"
+          v-on:did-select-place="didSelectFromPlace"
         />
         <q-btn
           size="small"
@@ -26,8 +26,8 @@
           ref="searchBox"
           :hint="$t('search.to')"
           :style="{ flex: 1 }"
-          :force-text="toPoi ? poiDisplayName(toPoi) : undefined"
-          v-on:did-select-poi="didSelectToPoi as any"
+          :force-text="displayName(toPlace)"
+          v-on:did-select-place="didSelectToPlace"
         />
         <q-btn
           size="small"
@@ -42,46 +42,59 @@
       <q-card-section style="padding-top: 0">
         <travel-mode-bar
           :current-mode="currentMode"
-          :to-poi="toPoi"
-          :from-poi="fromPoi"
+          :to-place="toPlace"
+          :from-place="fromPlace"
         />
       </q-card-section>
     </q-card>
   </div>
 </template>
 <script lang="ts">
-import { POI, TravelMode } from 'src/utils/models';
-import { poiDisplayName } from 'src/i18n/utils';
+import { TravelMode } from 'src/utils/models';
 import { defineComponent, PropType } from 'vue';
 import TravelModeBar from 'src/components/TravelModeBar.vue';
 import SearchBox from 'src/components/SearchBox.vue';
+import Place from 'src/models/Place';
+import { LngLat } from 'maplibre-gl';
 
 export default defineComponent({
   name: 'TripSearch',
   props: {
-    fromPoi: { type: Object as () => POI },
-    toPoi: { type: Object as () => POI },
+    fromPlace: {
+      type: Place,
+      required: false,
+    },
+    toPlace: {
+      type: Place,
+      required: false,
+    },
     currentMode: { type: String as () => TravelMode, required: true },
-    didSelectFromPoi: {
-      type: Function as PropType<(newValue?: POI) => void>,
+    didSelectFromPlace: {
+      type: Function as PropType<(newValue?: Place) => void>,
       required: true,
     },
-    didSelectToPoi: {
-      type: Function as PropType<(newValue?: POI) => void>,
+    didSelectToPlace: {
+      type: Function as PropType<(newValue?: Place) => void>,
       required: true,
     },
-    didSwapPois: {
+    didSwapPlaces: {
       type: Function as PropType<
-        (newToValue?: POI, newFromValue?: POI) => void
+        (newToValue?: Place, newFromValue?: Place) => void
       >,
       required: true,
     },
   },
   components: { SearchBox, TravelModeBar },
   methods: {
-    poiDisplayName,
+    displayName(place?: Place): string | undefined {
+      if (!place) {
+        return undefined;
+      }
+
+      return place.name;
+    },
     didClickSwap() {
-      this.didSwapPois(this.toPoi, this.fromPoi);
+      this.didSwapPlaces(this.toPlace, this.fromPlace);
     },
     didClickFromGps() {
       const options = {
@@ -91,13 +104,13 @@ export default defineComponent({
       };
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          this.didSelectFromPoi({
-            name: this.$t('my_location'),
-            position: {
-              lat: position.coords.latitude,
-              long: position.coords.longitude,
-            },
-          });
+          let lngLat = new LngLat(
+            position.coords.longitude,
+            position.coords.latitude
+          );
+          let place = Place.bareLocation(lngLat);
+          place.name = this.$t('my_location');
+          this.didSelectFromPlace(place);
         },
         (error) => {
           console.error(error);
