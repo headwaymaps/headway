@@ -18,11 +18,15 @@
 </style>
 
 <script lang="ts">
-import { getBaseMap, setBottomCardAllowance } from 'src/components/BaseMap.vue';
+import {
+  destinationMarker,
+  getBaseMap,
+  setBottomCardAllowance,
+  sourceMarker,
+} from 'src/components/BaseMap.vue';
 import { TravelMode, DistanceUnits } from 'src/utils/models';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { defineComponent, Component, Ref, ref } from 'vue';
-import { Marker } from 'maplibre-gl';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
@@ -96,16 +100,21 @@ export default defineComponent({
           fromPlace.value.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
         let idx = parseInt(this.alternateIndex);
-        let trip = trips[idx];
+        const trip = trips[idx];
         console.assert(trip);
         this.$data.trip = trip;
-        this.renderTripLayer(trip);
+        this.renderTripLayer();
       }
     },
-    renderTripLayer(trip: Trip) {
-      let map = getBaseMap();
+    renderTripLayer() {
+      const map = getBaseMap();
       if (!map) {
         console.error('map was not set');
+        return;
+      }
+      const trip = this.trip;
+      if (!trip) {
+        console.error('trip was not set');
         return;
       }
 
@@ -121,7 +130,6 @@ export default defineComponent({
           leg.paintStyle(true)
         );
       }
-      map.fitBounds(trip.bounds);
     },
     resizeMap() {
       if (!this.$refs.bottomCard) {
@@ -136,31 +144,49 @@ export default defineComponent({
     },
   },
   mounted: async function () {
-    setTimeout(async () => {
+    toPlace.value = await PlaceStorage.fetchFromSerializedId(
+      this.$props.to as string
+    );
+    fromPlace.value = await PlaceStorage.fetchFromSerializedId(
+      this.$props.from as string
+    );
+
+    await this.rewriteUrl();
+
+    let map = getBaseMap();
+    if (!map) {
+      console.error('map was not set');
+      return;
+    }
+    this.resizeMap();
+
+    setTimeout(() => {
       let map = getBaseMap();
       if (!map) {
         console.error('map was not set');
         return;
       }
-
-      toPlace.value = await PlaceStorage.fetchFromSerializedId(
-        this.$props.to as string
-      );
-      fromPlace.value = await PlaceStorage.fetchFromSerializedId(
-        this.$props.from as string
-      );
-
-      await this.rewriteUrl();
-      this.resizeMap();
-
-      map.removeAllMarkers();
-      if (this.toPlace?.point) {
-        const marker = new Marker({ color: '#111111' }).setLngLat(
-          this.toPlace.point
-        );
-        map.pushMarker('active_marker', marker);
+      if (!this.trip) {
+        console.error('trip was not set');
+        return;
       }
+      map.fitBounds(this.trip.bounds);
     });
+
+    map.removeAllMarkers();
+    if (fromPlace.value) {
+      map.pushMarker(
+        'source_marker',
+        sourceMarker().setLngLat(fromPlace.value.point)
+      );
+    }
+
+    if (toPlace.value) {
+      map.pushMarker(
+        'destination_marker',
+        destinationMarker().setLngLat(toPlace.value.point)
+      );
+    }
   },
   setup: function () {
     return {

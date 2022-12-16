@@ -158,6 +158,20 @@ export default defineComponent({
         this.calculateTransitStats(trips);
         this.renderTrips(trips, 0);
       }
+
+      if (fromPlace.value) {
+        map.pushMarker(
+          'source_marker',
+          sourceMarker().setLngLat(fromPlace.value.point)
+        );
+      }
+
+      if (toPlace.value) {
+        map.pushMarker(
+          'destination_marker',
+          destinationMarker().setLngLat(toPlace.value.point)
+        );
+      }
     },
     renderTrips(trips: Trip[], selectedIdx: number) {
       const map = getBaseMap();
@@ -167,19 +181,6 @@ export default defineComponent({
       }
       this.$data.trips = trips;
       this.activeTrip = trips[selectedIdx];
-
-      if (fromPlace.value) {
-        map.pushMarker(
-          'source_marker',
-          sourceMarker().setLngLat(fromPlace.value.point)
-        );
-      }
-      if (toPlace.value) {
-        map.pushMarker(
-          'destination_marker',
-          destinationMarker().setLngLat(toPlace.value.point)
-        );
-      }
 
       const unselectedLayerName = (tripIdx: number, legIdx: number) =>
         `alternate_${this.mode}_${tripIdx}.${legIdx}_unselected`;
