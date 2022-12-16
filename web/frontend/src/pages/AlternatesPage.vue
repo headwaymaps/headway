@@ -115,6 +115,8 @@ export default defineComponent({
             return this.$t('transit_area_not_supported_for_source');
           case ItineraryErrorCode.DestinationOutsideBounds:
             return this.$t('transit_area_not_supported_for_destination');
+          case ItineraryErrorCode.TransitServiceDisabled:
+            return this.$t('transit_routing_not_enabled');
           case ItineraryErrorCode.Other:
             return this.$t('transit_trip_error_unknown');
         }
@@ -200,6 +202,7 @@ export default defineComponent({
           this.calculateTransitStats(trips);
           this.trips = trips;
           this.renderTrips(0);
+          this.error = undefined;
         } else {
           this.trips = [];
           this.error = result.error;

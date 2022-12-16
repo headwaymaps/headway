@@ -23,11 +23,12 @@ export enum ItineraryErrorCode {
   Other,
   SourceOutsideBounds,
   DestinationOutsideBounds,
+  TransitServiceDisabled,
 }
 
 export class ItineraryError {
   errorCode: ItineraryErrorCode;
-  message: string;
+  message?: string;
 
   constructor(errorType: ItineraryErrorCode, message: string) {
     this.errorCode = errorType;
@@ -35,26 +36,43 @@ export class ItineraryError {
   }
 
   static fromOtp(otpError: OTPError): ItineraryError {
-    switch (otpError.id) {
-      case OTPErrorId.OutsideBounds: {
-        if (otpError.missing.includes('TO_PLACE')) {
+    if ('planError' in otpError) {
+      const planError = otpError.planError;
+      switch (planError.id) {
+        case OTPErrorId.OutsideBounds: {
+          if (planError.missing.includes('TO_PLACE')) {
+            return {
+              errorCode: ItineraryErrorCode.DestinationOutsideBounds,
+              message: planError.msg,
+            };
+          } else {
+            console.assert(planError.missing.includes('FROM_PLACE'));
+            return {
+              errorCode: ItineraryErrorCode.SourceOutsideBounds,
+              message: planError.msg,
+            };
+          }
+        }
+        default: {
           return {
-            errorCode: ItineraryErrorCode.DestinationOutsideBounds,
-            message: otpError.msg,
-          };
-        } else {
-          console.assert(otpError.missing.includes('FROM_PLACE'));
-          return {
-            errorCode: ItineraryErrorCode.SourceOutsideBounds,
-            message: otpError.msg,
+            errorCode: ItineraryErrorCode.Other,
+            message: planError.message,
           };
         }
       }
-      default: {
-        return {
-          errorCode: ItineraryErrorCode.Other,
-          message: otpError.message,
-        };
+    } else {
+      const responseError = otpError.responseError;
+      switch (responseError.status) {
+        case 404: {
+          return {
+            errorCode: ItineraryErrorCode.TransitServiceDisabled,
+          };
+        }
+        default: {
+          return {
+            errorCode: ItineraryErrorCode.Other,
+          };
+        }
       }
     }
   }

@@ -20,7 +20,7 @@ export enum OTPErrorId {
 }
 
 // incomplete
-export type OTPError = {
+export type OTPPlanError = {
   id: OTPErrorId;
   msg: string;
   message: string;
@@ -54,8 +54,14 @@ export type OTPPlanResponse = {
   plan: {
     itineraries: OTPItinerary[];
   };
-  error?: OTPError;
+  error?: OTPPlanError;
 };
+
+export type OTPError =
+  | { planError: OTPPlanError }
+  | { responseError: OTPResponseError };
+
+type OTPResponseError = { status: number };
 
 export class OTPClient {
   public static async fetchItineraries(
@@ -63,22 +69,28 @@ export class OTPClient {
     to: LngLat,
     count: number
   ): Promise<Result<OTPItinerary[], OTPError>> {
-    const rawResponse = await fetch(
+    const response = await fetch(
       `/otp/routers/default/plan?fromPlace=${from.lat},${from.lng}&toPlace=${to.lat},${to.lng}&numItineraries=${count}`
     );
-    const response: OTPPlanResponse = await rawResponse.json();
-    if (response.plan.itineraries.length > 0) {
-      const itineraries = response.plan.itineraries.sort(
-        (a, b) => a.endTime - b.endTime
-      );
-      return Ok(itineraries);
-    } else {
-      if (response.error) {
-        return Err(response.error);
+    if (response.ok) {
+      const responseJson: OTPPlanResponse = await response.json();
+      if (responseJson.plan.itineraries.length > 0) {
+        const itineraries = responseJson.plan.itineraries.sort(
+          (a, b) => a.endTime - b.endTime
+        );
+        return Ok(itineraries);
       } else {
-        console.error('Uknown error in OTP response', response);
-        throw new Error('Uknown error in OTP response');
+        if (responseJson.error) {
+          return Err({ planError: responseJson.error });
+        } else {
+          console.error('Uknown error in OK OTP response', responseJson);
+          throw new Error('Uknown error in OK OTP response');
+        }
       }
+    } else {
+      console.warn('Error in OTP response', response);
+      const responseError = { status: response.status };
+      return Err({ responseError });
     }
   }
 }

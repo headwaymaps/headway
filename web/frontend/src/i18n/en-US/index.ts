@@ -7,6 +7,8 @@ export default {
     'Sorry, this destination is outside of our current transit coverage area.',
   transit_trip_error_unknown:
     'Sorry, unable to find transit directions for this trip.',
+  transit_routing_not_enabled:
+    'Transit directions are disabled or incorrectly configured. Please contact the server administrator',
   try_driving_directions: 'Try driving directions instead?',
   where_to_question: 'Where to?',
   my_location: 'My Location',
