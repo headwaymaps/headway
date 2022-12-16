@@ -48,6 +48,12 @@
   </div>
 </template>
 
+<style lang="scss">
+.travel-mode-bar a:not(:last-child) {
+  margin-right: 8px;
+}
+</style>
+
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { TravelMode } from 'src/utils/models';

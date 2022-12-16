@@ -1,52 +1,45 @@
 <template>
-  <div class="top-left-card">
-    <q-card>
-      <q-card-section :style="{ display: 'flex', alignItems: 'center' }">
-        <search-box
-          ref="searchBox"
-          :hint="$t('search.from')"
-          :style="{ flex: 1 }"
-          :force-text="displayName(fromPlace)"
-          v-on:did-select-place="didSelectFromPlace"
-        />
-        <q-btn
-          size="small"
-          :style="{ marginLeft: '0.5em', marginRight: 0 }"
-          flat
-          round
-          color="primary"
-          icon="gps_fixed"
-          v-on:click="didClickFromGps"
-        />
-      </q-card-section>
-      <q-card-section
-        :style="{ paddingTop: 0, display: 'flex', alignItems: 'center' }"
-      >
-        <search-box
-          ref="searchBox"
-          :hint="$t('search.to')"
-          :style="{ flex: 1 }"
-          :force-text="displayName(toPlace)"
-          v-on:did-select-place="didSelectToPlace"
-        />
-        <q-btn
-          size="small"
-          :style="{ marginLeft: '0.5em', marginRight: 0 }"
-          flat
-          round
-          color="primary"
-          icon="swap_vert"
-          v-on:click="didClickSwap"
-        />
-      </q-card-section>
-      <q-card-section style="padding-top: 0">
-        <travel-mode-bar
-          :current-mode="currentMode"
-          :to-place="toPlace"
-          :from-place="fromPlace"
-        />
-      </q-card-section>
-    </q-card>
+  <div class="top-card">
+    <div style="display: flex">
+      <search-box
+        :hint="$t('search.from')"
+        :style="{ flex: 1 }"
+        :force-text="fromPlace?.name"
+        v-on:did-select-place="didSelectFromPlace"
+      />
+      <q-btn
+        size="small"
+        :style="{ marginLeft: '0.5em', marginRight: 0 }"
+        flat
+        round
+        color="primary"
+        icon="gps_fixed"
+        v-on:click="didClickFromGps"
+      />
+    </div>
+    <div style="margin-top: 16px; display: flex">
+      <search-box
+        :hint="$t('search.to')"
+        :style="{ flex: 1 }"
+        :force-text="toPlace?.name"
+        v-on:did-select-place="didSelectToPlace"
+      />
+      <q-btn
+        size="small"
+        :style="{ marginLeft: '0.5em', marginRight: 0 }"
+        flat
+        round
+        color="primary"
+        icon="swap_vert"
+        v-on:click="didClickSwap"
+      />
+    </div>
+    <travel-mode-bar
+      style="margin-top: 16px"
+      :current-mode="currentMode"
+      :to-place="toPlace"
+      :from-place="fromPlace"
+    />
   </div>
 </template>
 <script lang="ts">
@@ -86,13 +79,6 @@ export default defineComponent({
   },
   components: { SearchBox, TravelModeBar },
   methods: {
-    displayName(place?: Place): string | undefined {
-      if (!place) {
-        return undefined;
-      }
-
-      return place.name;
-    },
     didClickSwap() {
       this.didSwapPlaces(this.toPlace, this.fromPlace);
     },

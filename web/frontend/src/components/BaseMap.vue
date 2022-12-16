@@ -23,6 +23,7 @@ import { debounce } from 'lodash';
 import { PlaceId } from 'src/models/Place';
 
 export var map: maplibregl.Map | null = null;
+const mapContainerId = 'map';
 
 async function loadMap(): Promise<maplibregl.Map> {
   let initialCenter: LngLatLike = [0, 0];
@@ -38,11 +39,10 @@ async function loadMap(): Promise<maplibregl.Map> {
   }
 
   let mapOptions: MapOptions = {
-    container: 'map', // container id
+    container: mapContainerId,
     style: '/styles/style/style.json', // style URL
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
-    trackResize: true,
   };
 
   let bounds = Config.maxBounds;
@@ -78,33 +78,6 @@ function clearAllTimeouts() {
   mapTouchTimeouts.length = 0;
 }
 
-var bottomCardAllowance = 0;
-
-export function setBottomCardAllowance(pixels?: number) {
-  if (pixels !== undefined) {
-    bottomCardAllowance = pixels;
-  }
-  const mapElement = document.getElementsByClassName(
-    'maplibregl-map'
-  )[0] as HTMLDivElement;
-  const topLeftCard = document.getElementsByClassName(
-    'top-left-card'
-  )[0] as HTMLDivElement;
-  var topLeftCardAdjustment = 0;
-  if (
-    topLeftCard &&
-    window.getComputedStyle(topLeftCard).position !== 'fixed'
-  ) {
-    topLeftCardAdjustment = topLeftCard.offsetHeight;
-  }
-  if (map !== null) {
-    mapElement.style.height = `${
-      window.innerHeight - bottomCardAllowance - topLeftCardAdjustment
-    }px`;
-  }
-  map?.resize();
-}
-
 /**
  * Polyfill for geolocation permission
  */
@@ -122,7 +95,7 @@ async function geolocationPermissionState(): Promise<string> {
 }
 
 export interface BaseMapInterface {
-  flyTo: (location: LngLatLike, zoom: number) => void;
+  flyTo: (location: LngLatLike, zoom: number) => Promise<void>;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   pushMarker: (key: string, marker: Marker) => void;
   removeMarker: (key: string) => void;
@@ -315,7 +288,7 @@ export default defineComponent({
       });
       this.layers = keys;
     },
-    flyTo: async function (location: LngLatLike, zoom: number) {
+    flyTo: async function (location: LngLatLike, zoom: number): Promise<void> {
       const permissionState = await geolocationPermissionState();
       if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
         map?.flyTo({ center: location, zoom: zoom }, { flying: true });
@@ -407,7 +380,6 @@ export default defineComponent({
     map.on('touchup', () => clearAllTimeouts());
     map.on('touchend', () => clearAllTimeouts());
     map.on('move', () => clearAllTimeouts());
-
     map.on(
       'moveend',
       debounce(() => {
@@ -415,6 +387,21 @@ export default defineComponent({
         Prefs.stored().setMostRecentMapZoom(map.getZoom());
       }, 2000)
     );
+
+    const mapElement = document.getElementById(mapContainerId);
+    if (!mapElement) {
+      console.error('mapElement not found');
+      return;
+    }
+    new ResizeObserver(() => {
+      // This seems more robust than using maplibre's built-in trackResize.
+      // I think maybe trackResize only works when the browser resizes, but we
+      // also resize our map element frequently (on mobile especially), in
+      // order to fit the content before and after the map.
+      // Without this resize, I was finding that "fitBounds" would provide
+      // incorrect results.
+      map.resize();
+    }).observe(mapElement);
 
     this.pushTouchHandler('longpress', (event) => {
       const id = PlaceId.location(event.lngLat);
@@ -474,7 +461,6 @@ export default defineComponent({
       }
     });
     map.on('load', () => {
-      setBottomCardAllowance();
       const layers = map.getStyle().layers;
       if (layers) {
         for (const layer of layers) {
@@ -502,7 +488,6 @@ export default defineComponent({
         }
       }
     });
-    window.addEventListener('resize', () => setBottomCardAllowance());
   },
 });
 

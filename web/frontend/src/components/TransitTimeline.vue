@@ -76,6 +76,25 @@
     </div>
   </div>
 </template>
+<style lang="scss">
+.itinerary-item {
+  flex-grow: 1;
+  position: static;
+  min-width: calc(max(40%, 300px));
+  height: 0;
+  padding: 2.5em;
+  margin: 0.5em;
+  border-radius: 0.5em;
+}
+
+.itinerary-item-line {
+  position: relative;
+  background-color: #ddd;
+  top: -0.25em;
+  height: 0.5em;
+  border-radius: 0.25em;
+}
+</style>
 
 <script lang="ts">
 import { defineComponent } from 'vue';

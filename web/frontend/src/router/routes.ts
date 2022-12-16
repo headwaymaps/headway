@@ -4,10 +4,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
+    props: {
+      appClass: 'front-page',
+    },
     children: [
       {
         path: '/',
-        props: true,
         component: () => import('pages/BaseMapPage.vue'),
       },
     ],

@@ -1,15 +1,14 @@
 <template>
-  <q-card class="top-left-card">
-    <q-card-section>
-      <search-box
-        ref="searchBox"
-        :force-text="place ? placeDisplayName(place) : undefined"
-        v-on:did-select-place="searchBoxDidSelectPlace"
-      ></search-box>
-    </q-card-section>
-  </q-card>
+  <div class="top-card">
+    <search-box
+      :force-text="place ? placeDisplayName(place) : undefined"
+      v-on:did-select-place="searchBoxDidSelectPlace"
+    />
+  </div>
 
-  <place-card :place="place" v-on:close="$router.push('/')"></place-card>
+  <div class="bottom-card">
+    <place-card :place="place" />
+  </div>
 </template>
 
 <script lang="ts">
@@ -21,7 +20,7 @@ import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 
-async function renderOnMap(place: Place) {
+function renderOnMap(place: Place) {
   const map = getBaseMap();
   if (!map) {
     console.error('map was unexpectedly unset');
@@ -59,7 +58,7 @@ export default defineComponent({
   },
   watch: {
     place: async function (newValue): Promise<void> {
-      await renderOnMap(newValue);
+      renderOnMap(newValue);
     },
   },
   methods: {
@@ -93,6 +92,7 @@ export default defineComponent({
     }
   },
 });
+
 function emptyPlace(): Place {
   let nullIsland = new LngLat(0, 0);
   return new Place(PlaceId.location(nullIsland), nullIsland);

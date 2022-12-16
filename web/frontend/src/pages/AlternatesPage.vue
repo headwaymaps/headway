@@ -7,8 +7,8 @@
     :did-select-to-place="searchBoxDidSelectToPlace"
     :did-swap-places="clickedSwap"
   />
-  <div class="bottom-card bg-white" ref="bottomCard" v-if="error">
-    <div class="search-error">
+  <div class="bottom-card">
+    <div class="search-error" v-if="error">
       <p>
         {{ errorText(error) }}
       </p>
@@ -19,9 +19,7 @@
         >
       </div>
     </div>
-  </div>
-  <div class="bottom-card bg-white" ref="bottomCard" v-if="trips.length > 0">
-    <q-list>
+    <q-list v-if="trips.length > 0">
       <trip-list-item
         v-for="trip in trips"
         :click-handler="() => clickTrip(trip)"
@@ -63,7 +61,6 @@ import {
   destinationMarker,
   sourceMarker,
   getBaseMap,
-  setBottomCardAllowance,
 } from 'src/components/BaseMap.vue';
 import { DistanceUnits } from 'src/utils/models';
 import { Component, defineComponent, Ref, ref } from 'vue';
@@ -278,19 +275,7 @@ export default defineComponent({
           );
         }
       }
-      setTimeout(async () => {
-        this.resizeMap();
-      });
       getBaseMap()?.fitBounds(selectedTrip.bounds);
-    },
-    resizeMap() {
-      if (this.$refs.bottomCard && this.$refs.bottomCard) {
-        setBottomCardAllowance(
-          (this.$refs.bottomCard as HTMLDivElement).offsetHeight
-        );
-      } else {
-        setBottomCardAllowance(0);
-      }
     },
     calculateTransitStats(trips: Trip[]) {
       this.$data.earliestStart = Number.MAX_SAFE_INTEGER;
@@ -317,7 +302,6 @@ export default defineComponent({
   watch: {
     mode: async function (): Promise<void> {
       await this.updateTrips();
-      this.resizeMap();
     },
   },
   unmounted: function () {
@@ -336,7 +320,6 @@ export default defineComponent({
     }
 
     await this.rewriteUrl();
-    this.resizeMap();
   },
   setup: function () {
     return {

@@ -1,19 +1,35 @@
 <template>
-  <div class="top-left-card"></div>
-  <q-btn
-    round
-    icon="arrow_back"
-    class="top-left-fab"
-    v-on:click="() => goToAlternates()"
-  />
-  <div class="bottom-card steps-page-bottom-card bg-white" ref="bottomCard">
+  <div class="top-card">
+    <div
+      style="display: flex; flex-direction: row; gap: 16px; align-items: center"
+    >
+      <q-btn round icon="arrow_back" v-on:click="() => goToAlternates()" />
+      <div style="display: flex; flex-direction: column; gap: 8px; flex: 1">
+        <search-box
+          :hint="$t('search.from')"
+          :style="{ flex: 1 }"
+          :force-text="fromPlace?.name"
+          readonly
+        />
+        <search-box
+          :hint="$t('search.to')"
+          :style="{ flex: 1 }"
+          :force-text="toPlace?.name"
+          readonly
+        />
+      </div>
+    </div>
+  </div>
+  <div class="bottom-card steps-page-bottom-card">
     <component v-if="trip" :is="componentForMode(trip.mode)" :trip="trip" />
   </div>
 </template>
 
 <style lang="scss">
 .steps-page-bottom-card {
-  max-height: calc(100% - 200px);
+  @media screen and (max-width: 800px) {
+    max-height: calc(100% - 350px);
+  }
 }
 </style>
 
@@ -21,7 +37,6 @@
 import {
   destinationMarker,
   getBaseMap,
-  setBottomCardAllowance,
   sourceMarker,
 } from 'src/components/BaseMap.vue';
 import { TravelMode, DistanceUnits } from 'src/utils/models';
@@ -30,6 +45,7 @@ import { defineComponent, Component, Ref, ref } from 'vue';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
+import SearchBox from 'src/components/SearchBox.vue';
 
 let toPlace: Ref<Place | undefined> = ref(undefined);
 let fromPlace: Ref<Place | undefined> = ref(undefined);
@@ -54,6 +70,7 @@ export default defineComponent({
       required: true,
     },
   },
+  components: { SearchBox },
   data: function (): {
     trip?: Trip;
   } {
@@ -138,17 +155,6 @@ export default defineComponent({
         );
       }
     },
-    resizeMap() {
-      if (!this.$refs.bottomCard) {
-        console.error('bottom card was missing');
-        setBottomCardAllowance(0);
-        return;
-      }
-
-      setBottomCardAllowance(
-        (this.$refs.bottomCard as HTMLDivElement).offsetHeight
-      );
-    },
   },
   mounted: async function () {
     toPlace.value = await PlaceStorage.fetchFromSerializedId(
@@ -165,7 +171,6 @@ export default defineComponent({
       console.error('map was not set');
       return;
     }
-    this.resizeMap();
 
     setTimeout(() => {
       let map = getBaseMap();

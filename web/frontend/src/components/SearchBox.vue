@@ -1,11 +1,11 @@
 <template>
-  <div>
+  <div class="search-box">
     <q-input
       ref="autoCompleteInput"
-      class="search-bar"
       :label="$props.hint ? $props.hint : $t('where_to_question')"
       v-model="inputText"
-      :clearable="true"
+      clearable
+      :readonly="readonly"
       :input-style="{ color: 'black' }"
       :outlined="true"
       :debounce="0"
@@ -55,6 +55,13 @@
   </div>
 </template>
 
+<style lang="scss">
+.search-box {
+  background: white;
+  border-radius: 4px;
+}
+</style>
+
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
@@ -70,6 +77,7 @@ export default defineComponent({
   props: {
     forceText: String,
     hint: String,
+    readonly: Boolean,
   },
   methods: {
     autoCompleteMenu(): QMenu {
