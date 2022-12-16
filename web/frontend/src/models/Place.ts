@@ -48,11 +48,8 @@ export class PlaceId {
 
   public static deserialize(serialized: string): PlaceId {
     if (/([0-9\.-]+,[0-9\.-]+)/.test(serialized)) {
-      const longLat = serialized.split(',');
-      const location = new LngLat(
-        parseFloat(longLat[0]),
-        parseFloat(longLat[1])
-      );
+      const lngLat = serialized.split(',');
+      const location = new LngLat(parseFloat(lngLat[0]), parseFloat(lngLat[1]));
       return PlaceId.location(location);
     } else {
       return PlaceId.gid(serialized);
