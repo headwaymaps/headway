@@ -1,4 +1,6 @@
 export default {
+  routing_area_not_supported:
+    'Sorry, directions are not supported for this trip area.',
   transit_area_not_supported_for_source:
     'Sorry, trips starting here are outside of our current transit coverage area.',
   transit_area_not_supported_for_destination:

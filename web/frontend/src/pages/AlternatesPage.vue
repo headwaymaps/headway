@@ -12,10 +12,12 @@
       <p>
         {{ errorText(error) }}
       </p>
-      <router-link
-        :to="{ name: 'alternates', params: { mode: 'car', to, from } }"
-        >{{ $t('try_driving_directions') }}</router-link
-      >
+      <div v-if="error.transit">
+        <router-link
+          :to="{ name: 'alternates', params: { mode: 'car', to, from } }"
+          >{{ $t('try_driving_directions') }}</router-link
+        >
+      </div>
     </div>
   </div>
   <div class="bottom-card bg-white" ref="bottomCard" v-if="trips.length > 0">
@@ -73,6 +75,7 @@ import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
 import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
+import { RouteErrorCode } from 'src/models/Route';
 
 let toPlace: Ref<Place | undefined> = ref(undefined);
 let fromPlace: Ref<Place | undefined> = ref(undefined);
@@ -106,7 +109,7 @@ export default defineComponent({
   components: { TripListItem, TripSearch },
   methods: {
     errorText(error: TripFetchError): string {
-      if (error.itineraryError) {
+      if (error.transit) {
         switch (error.itineraryError.errorCode) {
           case ItineraryErrorCode.SourceOutsideBounds:
             return this.$t('transit_area_not_supported_for_source');
@@ -116,8 +119,12 @@ export default defineComponent({
             return this.$t('transit_trip_error_unknown');
         }
       } else {
-        console.assert(false, `unkown error: ${error}`);
-        return this.$t('transit_trip_error_unknown');
+        switch (error.routeError.errorCode) {
+          case RouteErrorCode.UnsupportedArea:
+            return this.$t('routing_area_not_supported');
+          case RouteErrorCode.Other:
+            return this.$t('routing_error_unknown');
+        }
       }
     },
     componentForMode(mode: TravelMode): Component {
