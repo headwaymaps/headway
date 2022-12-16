@@ -4,12 +4,41 @@ import {
   getRoutes as getValhallaRoutes,
   CacheableMode,
   ValhallaRouteLegManeuver,
+  ValhallaError,
+  ValhallaErrorCode,
 } from 'src/services/ValhallaClient';
 import { formatDuration } from 'src/utils/format';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
 import Trip, { TripLeg } from './Trip';
+import { Err, Ok, Result } from 'src/utils/Result';
+
+export enum RouteErrorCode {
+  Other,
+  UnsupportedArea,
+}
+
+export class RouteError {
+  errorCode: RouteErrorCode;
+  message: string;
+
+  constructor(errorCode: RouteErrorCode, message: string) {
+    this.errorCode = errorCode;
+    this.message = message;
+  }
+
+  static fromValhalla(vError: ValhallaError): RouteError {
+    switch (vError.error_code) {
+      case ValhallaErrorCode.UnsupportedArea: {
+        return {
+          errorCode: RouteErrorCode.UnsupportedArea,
+          message: vError.error,
+        };
+      }
+    }
+  }
+}
 
 export default class Route implements Trip {
   durationSeconds: number;
@@ -79,10 +108,16 @@ export default class Route implements Trip {
     to: LngLat,
     mode: CacheableMode,
     units?: DistanceUnits
-  ): Promise<Route[]> {
-    const valhallaRoutes = await getValhallaRoutes(from, to, mode, units);
-    // This is only safe as long as CacheableMode is a subset of TravelMode
-    return valhallaRoutes.map((r) => fromValhalla(r, mode as TravelMode));
+  ): Promise<Result<Route[], RouteError>> {
+    const result = await getValhallaRoutes(from, to, mode, units);
+    if (result.ok) {
+      const valhallaRoutes = result.value;
+      // This is only safe as long as CacheableMode is a subset of TravelMode
+      return Ok(valhallaRoutes.map((r) => fromValhalla(r, mode as TravelMode)));
+    } else {
+      const valhallaError = result.error;
+      return Err(RouteError.fromValhalla(valhallaError));
+    }
   }
 }
 

@@ -2,6 +2,8 @@ import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import {
   OTPClient,
+  OTPError,
+  OTPErrorId,
   OTPItinerary,
   OTPItineraryLeg,
   OTPMode,
@@ -15,6 +17,48 @@ import {
 } from 'src/utils/format';
 import { decodeOtpPath } from 'src/third_party/decodePath';
 import Trip from './Trip';
+import { Err, Ok, Result } from 'src/utils/Result';
+
+export enum ItineraryErrorCode {
+  Other,
+  SourceOutsideBounds,
+  DestinationOutsideBounds,
+}
+
+export class ItineraryError {
+  errorCode: ItineraryErrorCode;
+  message: string;
+
+  constructor(errorType: ItineraryErrorCode, message: string) {
+    this.errorCode = errorType;
+    this.message = message;
+  }
+
+  static fromOtp(otpError: OTPError): ItineraryError {
+    switch (otpError.id) {
+      case OTPErrorId.OutsideBounds: {
+        if (otpError.missing.includes('TO_PLACE')) {
+          return {
+            errorCode: ItineraryErrorCode.DestinationOutsideBounds,
+            message: otpError.msg,
+          };
+        } else {
+          console.assert(otpError.missing.includes('FROM_PLACE'));
+          return {
+            errorCode: ItineraryErrorCode.SourceOutsideBounds,
+            message: otpError.msg,
+          };
+        }
+      }
+      default: {
+        return {
+          errorCode: ItineraryErrorCode.Other,
+          message: otpError.message,
+        };
+      }
+    }
+  }
+}
 
 export default class Itinerary implements Trip {
   private raw: OTPItinerary;
@@ -35,9 +79,15 @@ export default class Itinerary implements Trip {
     from: LngLat,
     to: LngLat,
     distanceUnits: DistanceUnits
-  ): Promise<Itinerary[]> {
-    const otpItineraries = await OTPClient.fetchItineraries(from, to, 5);
-    return otpItineraries.map((otp) => Itinerary.fromOtp(otp, distanceUnits));
+  ): Promise<Result<Itinerary[], ItineraryError>> {
+    const result = await OTPClient.fetchItineraries(from, to, 5);
+    if (result.ok) {
+      return Ok(
+        result.value.map((otp) => Itinerary.fromOtp(otp, distanceUnits))
+      );
+    } else {
+      return Err(ItineraryError.fromOtp(result.error));
+    }
   }
 
   static fromOtp(raw: OTPItinerary, distanceUnits: DistanceUnits): Itinerary {

@@ -7,6 +7,19 @@
     :did-select-to-place="searchBoxDidSelectToPlace"
     :did-swap-places="clickedSwap"
   />
+  <div class="bottom-card bg-white" ref="bottomCard" v-if="error">
+    <div class="search-error">
+      <p>
+        {{ errorText(error) }}
+      </p>
+      <div v-if="error.transit">
+        <router-link
+          :to="{ name: 'alternates', params: { mode: 'car', to, from } }"
+          >{{ $t('try_driving_directions') }}</router-link
+        >
+      </div>
+    </div>
+  </div>
   <div class="bottom-card bg-white" ref="bottomCard" v-if="trips.length > 0">
     <q-list>
       <trip-list-item
@@ -39,6 +52,11 @@
     </q-list>
   </div>
 </template>
+<style lang="scss">
+.search-error {
+  padding: 16px;
+}
+</style>
 
 <script lang="ts">
 import {
@@ -55,8 +73,9 @@ import TripListItem from 'src/components/TripListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
-import Trip, { fetchBestTrips } from 'src/models/Trip';
-import Itinerary from 'src/models/Itinerary';
+import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
+import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
+import { RouteErrorCode } from 'src/models/Route';
 
 let toPlace: Ref<Place | undefined> = ref(undefined);
 let fromPlace: Ref<Place | undefined> = ref(undefined);
@@ -73,6 +92,7 @@ export default defineComponent({
   },
   data: function (): {
     trips: Trip[];
+    error?: TripFetchError;
     activeTrip: Trip | undefined;
     // only used by transit
     earliestStart: number;
@@ -80,6 +100,7 @@ export default defineComponent({
   } {
     return {
       trips: [],
+      error: undefined,
       activeTrip: undefined,
       earliestStart: 0,
       latestArrival: 0,
@@ -87,6 +108,25 @@ export default defineComponent({
   },
   components: { TripListItem, TripSearch },
   methods: {
+    errorText(error: TripFetchError): string {
+      if (error.transit) {
+        switch (error.itineraryError.errorCode) {
+          case ItineraryErrorCode.SourceOutsideBounds:
+            return this.$t('transit_area_not_supported_for_source');
+          case ItineraryErrorCode.DestinationOutsideBounds:
+            return this.$t('transit_area_not_supported_for_destination');
+          case ItineraryErrorCode.Other:
+            return this.$t('transit_trip_error_unknown');
+        }
+      } else {
+        switch (error.routeError.errorCode) {
+          case RouteErrorCode.UnsupportedArea:
+            return this.$t('routing_area_not_supported');
+          case RouteErrorCode.Other:
+            return this.$t('routing_error_unknown');
+        }
+      }
+    },
     componentForMode(mode: TravelMode): Component {
       switch (mode) {
         case TravelMode.Walk:
@@ -101,7 +141,7 @@ export default defineComponent({
       this.$data.activeTrip = trip;
       let index = this.$data.trips.indexOf(trip);
       if (index !== -1) {
-        this.renderTrips(this.$data.trips, index);
+        this.renderTrips(index);
       }
     },
     searchBoxDidSelectFromPlace(place?: Place) {
@@ -149,14 +189,21 @@ export default defineComponent({
       map.removeAllLayers();
       map.removeAllMarkers();
       if (fromPlace.value && toPlace.value) {
-        const trips = await fetchBestTrips(
+        const result = await fetchBestTrips(
           fromPlace.value.point,
           toPlace.value.point,
           this.mode,
           fromPlace.value.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
-        this.calculateTransitStats(trips);
-        this.renderTrips(trips, 0);
+        if (result.ok) {
+          const trips = result.value;
+          this.calculateTransitStats(trips);
+          this.trips = trips;
+          this.renderTrips(0);
+        } else {
+          this.trips = [];
+          this.error = result.error;
+        }
       }
 
       if (fromPlace.value) {
@@ -173,7 +220,9 @@ export default defineComponent({
         );
       }
     },
-    renderTrips(trips: Trip[], selectedIdx: number) {
+    renderTrips(selectedIdx: number) {
+      console.assert(this.trips.length > 0);
+      const trips: Trip[] = this.trips;
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');

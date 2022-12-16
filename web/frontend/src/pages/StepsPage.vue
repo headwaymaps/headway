@@ -4,7 +4,7 @@
     round
     icon="arrow_back"
     class="top-left-fab"
-    v-on:click="() => onBackClicked()"
+    v-on:click="() => goToAlternates()"
   />
   <div class="bottom-card steps-page-bottom-card bg-white" ref="bottomCard">
     <component v-if="trip" :is="componentForMode(trip.mode)" :trip="trip" />
@@ -73,7 +73,7 @@ export default defineComponent({
       }
     },
 
-    onBackClicked() {
+    goToAlternates() {
       const fromEncoded = fromPlace.value?.urlEncodedId() ?? '_';
       const toEncoded = toPlace.value?.urlEncodedId() ?? '_';
       this.$router.push(`/directions/${this.mode}/${toEncoded}/${fromEncoded}`);
@@ -93,12 +93,19 @@ export default defineComponent({
       );
 
       if (fromPlace.value && toPlace.value) {
-        const trips = await fetchBestTrips(
+        const result = await fetchBestTrips(
           fromPlace.value.point,
           toPlace.value.point,
           this.mode,
           fromPlace.value.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
+        if (!result.ok) {
+          console.error('fetchBestTrips.error', result.error);
+          this.goToAlternates();
+          return;
+        }
+
+        let trips = result.value;
         let idx = parseInt(this.alternateIndex);
         const trip = trips[idx];
         console.assert(trip);

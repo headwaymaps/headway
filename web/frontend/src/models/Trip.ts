@@ -1,7 +1,8 @@
 import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import Itinerary from './Itinerary';
-import Route from './Route';
+import { Err, Ok, Result } from 'src/utils/Result';
+import Itinerary, { ItineraryError } from './Itinerary';
+import Route, { RouteError } from './Route';
 
 export default interface Trip {
   durationFormatted: string;
@@ -16,20 +17,36 @@ export interface TripLeg {
   paintStyle(active: boolean): LineLayerSpecification['paint'];
 }
 
+export type TripFetchError =
+  | { transit: true; itineraryError: ItineraryError }
+  | { transit: false; routeError: RouteError };
+
 export async function fetchBestTrips(
   from: LngLat,
   to: LngLat,
   mode: TravelMode,
   distanceUnits: DistanceUnits
-): Promise<Trip[]> {
+): Promise<Result<Trip[], TripFetchError>> {
   switch (mode) {
     case TravelMode.Walk:
     case TravelMode.Bike:
     case TravelMode.Drive: {
-      return Route.getRoutes(from, to, mode, distanceUnits);
+      const result = await Route.getRoutes(from, to, mode, distanceUnits);
+      if (result.ok) {
+        return Ok(result.value);
+      } else {
+        const routeError = result.error;
+        return Err({ transit: false, routeError });
+      }
     }
     case TravelMode.Transit: {
-      return Itinerary.fetchBest(from, to, distanceUnits);
+      const result = await Itinerary.fetchBest(from, to, distanceUnits);
+      if (result.ok) {
+        return Ok(result.value);
+      } else {
+        const itineraryError = result.error;
+        return Err({ transit: true, itineraryError });
+      }
     }
   }
 }

@@ -1,6 +1,8 @@
 import { LngLat } from 'maplibre-gl';
 import { DistanceUnits } from 'src/utils/models';
+import { Err, Ok, Result } from 'src/utils/Result';
 
+// incomplete
 export interface ValhallaRouteLegManeuver {
   begin_shape_index: number;
   end_shape_index: number;
@@ -13,6 +15,19 @@ export interface ValhallaRouteLegManeuver {
   type: number;
 }
 
+// incomplete
+export enum ValhallaErrorCode {
+  UnsupportedArea = 171,
+}
+
+export type ValhallaError = {
+  error_code: ValhallaErrorCode;
+  error: string;
+  status_code: number;
+  status: string;
+};
+
+// incomplete
 export interface ValhallaRouteSummary {
   time: number;
   length: number;
@@ -22,11 +37,13 @@ export interface ValhallaRouteSummary {
   max_lon: number;
 }
 
+// incomplete
 export interface ValhallaRouteLeg {
   maneuvers: ValhallaRouteLegManeuver[];
   shape: string;
 }
 
+// incomplete
 export interface ValhallaRoute {
   legs: ValhallaRouteLeg[];
   summary: ValhallaRouteSummary;
@@ -110,7 +127,7 @@ export async function getRoutes(
   to: LngLat,
   mode: CacheableMode,
   units?: DistanceUnits
-): Promise<ValhallaRoute[]> {
+): Promise<Result<ValhallaRoute[], ValhallaError>> {
   type RouteRequest = {
     locations: Array<{ lat: number; lon: number }>;
     costing: string;
@@ -137,10 +154,12 @@ export async function getRoutes(
   const response = await fetch(
     `/valhalla/route?json=${JSON.stringify(requestObject)}`
   );
+
   if (response.status !== 200) {
-    console.error('Valhalla response gave error: ' + response.status);
-    return [];
+    const error = (await response.json()) as ValhallaError;
+    return Err(error);
   }
+
   const responseJson = await response.json();
   const routes: ValhallaRoute[] = [];
   const route = responseJson.trip as ValhallaRoute;
@@ -153,5 +172,5 @@ export async function getRoutes(
       routes.push(route);
     }
   }
-  return routes;
+  return Ok(routes);
 }
