@@ -50,7 +50,8 @@
   </div>
 </template>
 <script lang="ts">
-import { POI, TravelMode, poiDisplayName } from 'src/utils/models';
+import { POI, TravelMode } from 'src/utils/models';
+import { poiDisplayName } from 'src/i18n/utils';
 import { defineComponent, PropType } from 'vue';
 import TravelModeBar from 'src/components/TravelModeBar.vue';
 import SearchBox from 'src/components/SearchBox.vue';

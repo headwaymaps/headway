@@ -15,7 +15,8 @@
 <script lang="ts">
 import { Marker } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
-import { decanonicalizePoi, POI, poiDisplayName } from 'src/utils/models';
+import { decanonicalizePoi, POI } from 'src/utils/models';
+import { poiDisplayName } from 'src/i18n/utils';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
@@ -44,7 +45,10 @@ async function renderOnMap(poi: POI) {
 export default defineComponent({
   name: 'PlacePage',
   props: {
-    osm_id: String,
+    osm_id: {
+      type: String,
+      required: true,
+    },
   },
   components: { PlaceCard, SearchBox },
   data: function () {
@@ -68,7 +72,8 @@ export default defineComponent({
     },
   },
   beforeRouteUpdate: async function (to, from, next) {
-    const newOsmId = to.params.osm_id;
+    const newOsmId = to.params.osm_id as string;
+
     const poi = await decanonicalizePoi(newOsmId);
     if (poi) {
       this.poi = poi;

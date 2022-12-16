@@ -52,8 +52,8 @@ import {
   decanonicalizePoi,
   DistanceUnits,
   POI,
-  poiDisplayName,
 } from 'src/utils/models';
+import { poiDisplayName } from 'src/i18n/utils';
 import { Component, defineComponent, Ref, ref } from 'vue';
 import Place from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';

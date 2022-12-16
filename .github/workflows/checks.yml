@@ -36,4 +36,5 @@ jobs:
       - run: yarn install
       - run: yarn lint
       - run: yarn format-check
+      - run: yarn tsc
       - run: yarn test
