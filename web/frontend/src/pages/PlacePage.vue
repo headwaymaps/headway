@@ -33,7 +33,7 @@ async function renderOnMap(place: Place) {
     // entity like an entire city.
     map.fitBounds(place.bbox, { maxZoom: 16 });
   } else {
-    map.flyTo([place.point.lng, place.point.lat], 16);
+    map.flyTo(place.point, 16);
   }
 
   map.pushMarker(

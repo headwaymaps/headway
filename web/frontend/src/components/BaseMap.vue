@@ -122,7 +122,7 @@ async function geolocationPermissionState(): Promise<string> {
 }
 
 export interface BaseMapInterface {
-  flyTo: (location: [number, number], zoom: number) => void;
+  flyTo: (location: LngLatLike, zoom: number) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   pushMarker: (key: string, marker: Marker) => void;
   removeMarker: (key: string) => void;
@@ -156,7 +156,7 @@ export function getBaseMap() {
 export default defineComponent({
   name: 'BaseMap',
   data: function (): {
-    flyToLocation: { center: [number, number]; zoom: number } | undefined;
+    flyToLocation: { center: LngLatLike; zoom: number } | undefined;
     boundsToFit: LngLatBoundsLike | undefined;
     hasGeolocated: boolean;
     markers: Map<string, Marker>;
@@ -315,7 +315,7 @@ export default defineComponent({
       });
       this.layers = keys;
     },
-    flyTo: async function (location: [number, number], zoom: number) {
+    flyTo: async function (location: LngLatLike, zoom: number) {
       const permissionState = await geolocationPermissionState();
       if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
         map?.flyTo({ center: location, zoom: zoom }, { flying: true });
