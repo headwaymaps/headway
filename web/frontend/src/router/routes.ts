@@ -40,6 +40,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/MainLayout.vue'),
     children: [
       {
+        name: 'alternates',
         path: '/directions/:mode/:to/:from',
         props: true,
         component: () => import('src/pages/AlternatesPage.vue'),

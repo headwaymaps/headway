@@ -1,4 +1,11 @@
 export default {
+  transit_area_not_supported_for_source:
+    'Sorry, trips starting here are outside of our current transit coverage area.',
+  transit_area_not_supported_for_destination:
+    'Sorry, this destination is outside of our current transit coverage area.',
+  transit_trip_error_unknown:
+    'Sorry, unable to find transit directions for this trip.',
+  try_driving_directions: 'Try driving directions instead?',
   where_to_question: 'Where to?',
   my_location: 'My Location',
   could_not_get_gps_location: 'Could not get GPS location',
