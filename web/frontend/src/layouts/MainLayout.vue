@@ -41,7 +41,6 @@
   overflow-y: scroll;
   @media screen and (max-width: 800px) {
     order: 3;
-    max-height: 40%;
     width: 100%;
     box-shadow: 0px 0px 5px #00000088;
     // need z-index to cast shadow onto map
@@ -57,6 +56,10 @@
 
 #map {
   @media screen and (max-width: 800px) {
+    // This is tall enough to keep the map UI from overlapping.
+    // Ironically the "wide"/"desktop" layout is slightly less tall than the
+    // "mobile optimized" layout, which only needs about 170px
+    min-height: 190px;
     width: 100%;
     order: 2;
     flex: 1;
