@@ -1,9 +1,7 @@
 <template>
   <div class="app-container" :class="appClass">
-    <div class="flex-container">
-      <router-view />
-      <base-map />
-    </div>
+    <router-view />
+    <base-map />
   </div>
 </template>
 
@@ -13,9 +11,11 @@
   height: 100vh;
 }
 
-.flex-container {
+.app-container {
   width: 100%;
-  height: 100%;
+  // iPhoneX content is beyond screen boundary
+  //height: calc(100vh - 50px);
+  height: 100vh;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap-reverse;
