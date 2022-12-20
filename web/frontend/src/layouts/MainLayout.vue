@@ -21,7 +21,9 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap-reverse;
+  @media screen and (min-width: 800px) {
+    flex-wrap: wrap-reverse;
+  }
 }
 
 .top-card {
