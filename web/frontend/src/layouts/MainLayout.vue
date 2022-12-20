@@ -1,24 +1,29 @@
 <template>
   <div class="app-container" :class="appClass">
-    <div class="flex-container">
-      <router-view />
-      <base-map />
-    </div>
+    <router-view />
+    <base-map />
   </div>
 </template>
 
 <style lang="scss">
-.app-container {
-  width: 100vw;
-  height: 100vh;
+.platform-ios {
+  .app-container {
+    @media screen and (max-width: 800px) {
+      height: -webkit-fill-available;
+    }
+  }
 }
 
-.flex-container {
+.app-container {
   width: 100%;
-  height: 100%;
+  // iPhoneX content is beyond screen boundary
+  //height: calc(100vh - 50px);
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap-reverse;
+  @media screen and (min-width: 800px) {
+    flex-wrap: wrap-reverse;
+  }
 }
 
 .top-card {
@@ -41,7 +46,6 @@
   overflow-y: scroll;
   @media screen and (max-width: 800px) {
     order: 3;
-    max-height: 40%;
     width: 100%;
     box-shadow: 0px 0px 5px #00000088;
     // need z-index to cast shadow onto map
@@ -57,6 +61,10 @@
 
 #map {
   @media screen and (max-width: 800px) {
+    // This is tall enough to keep the map UI from overlapping.
+    // Ironically the "wide"/"desktop" layout is slightly less tall than the
+    // "mobile optimized" layout, which only needs about 170px
+    min-height: 190px;
     width: 100%;
     order: 2;
     flex: 1;

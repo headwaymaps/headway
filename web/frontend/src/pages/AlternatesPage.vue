@@ -204,6 +204,9 @@ export default defineComponent({
           this.trips = [];
           this.error = result.error;
         }
+      } else {
+        this.trips = [];
+        this.error = undefined;
       }
 
       if (fromPlace.value) {

@@ -11,7 +11,7 @@
       :debounce="0"
       :dense="true"
       v-on:clear="selectPlace(undefined)"
-      v-on:blur="deferHide(autoCompleteMenu())"
+      v-on:blur="onBlur"
       v-on:beforeinput="
   (event: Event) =>
     updateAutocompleteEventBeforeInput(
@@ -67,7 +67,7 @@ import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
 import { Event, Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
-import { QMenu } from 'quasar';
+import { QMenu, Platform } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
 
 const isAndroid = /(android)/i.test(navigator.userAgent);
@@ -80,6 +80,28 @@ export default defineComponent({
     readonly: Boolean,
   },
   methods: {
+    onBlur(): void {
+      if (Platform.is.ios) {
+        // iOS (on at least 16.1) "helpfully" moves the focused input towards
+        // the middle of the screen, but because out input is in a fixed header
+        // at the top of our app, this has the affect of adding a bunch of
+        // padding (~100px) at the top of our app, even after the keyboard is
+        // dismissed.
+        //
+        // I only duplicated this on a physical iPhone SE 2018 16.1. It went
+        // away after updating to 16.2, so if this work-around causes problems,
+        // we can delete it some day as the browser share declines.
+        //
+        // I don't have a physical iPhoneX style device, and couldn't induce this
+        // behavior on the simulator. I'm not sure if that's because it doesn't
+        // affect that layout, or because it doesn't affect the simulator.
+        //
+        // NOTE: scrolling to 0,0 doesn't seem to do anything. Inspecting
+        // `window.scrollY` is 0 before *and* after this scroll, so maybe the
+        // browser thinks it's a no-op.
+        window.scroll(0, -1);
+      }
+    },
     autoCompleteMenu(): QMenu {
       return this.$refs.autoCompleteMenu as QMenu;
     },
