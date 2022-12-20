@@ -6,9 +6,12 @@
 </template>
 
 <style lang="scss">
-.app-container {
-  width: 100vw;
-  height: 100vh;
+.platform-ios {
+  .app-container {
+    @media screen and (max-width: 800px) {
+      height: -webkit-fill-available;
+    }
+  }
 }
 
 .app-container {
