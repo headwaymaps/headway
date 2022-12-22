@@ -46,6 +46,7 @@ import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
+import TripLayerId from 'src/models/TripLayerId';
 
 let toPlace: Ref<Place | undefined> = ref(undefined);
 let fromPlace: Ref<Place | undefined> = ref(undefined);
@@ -65,7 +66,7 @@ export default defineComponent({
       type: String,
       required: true,
     },
-    alternateIndex: {
+    tripIdx: {
       type: String,
       required: true,
     },
@@ -106,7 +107,7 @@ export default defineComponent({
       const fromEncoded = fromPlace.value?.urlEncodedId() ?? '_';
       const toEncoded = toPlace.value?.urlEncodedId() ?? '_';
       this.$router.push(
-        `/directions/${this.mode}/${toEncoded}/${fromEncoded}/${this.alternateIndex}`
+        `/directions/${this.mode}/${toEncoded}/${fromEncoded}/${this.tripIdx}`
       );
 
       if (fromPlace.value && toPlace.value) {
@@ -123,7 +124,7 @@ export default defineComponent({
         }
 
         let trips = result.value;
-        let idx = parseInt(this.alternateIndex);
+        let idx = parseInt(this.tripIdx);
         const trip = trips[idx];
         console.assert(trip);
         this.$data.trip = trip;
@@ -141,19 +142,22 @@ export default defineComponent({
         console.error('trip was not set');
         return;
       }
+      const tripIdx = parseInt(this.tripIdx);
 
       // TODO: add a map.filterLayers((layerName: string) => boolean) method so
       // we can keep the layer we need and remove the others based on a prefix/regex/w.e.
-      map.removeAllLayers();
-
+      let layerIds = [];
       for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
         const leg = trip.legs[legIdx];
-        map.pushTripLayer(
-          `selected_trip_leg_${legIdx}`,
-          leg.geometry(),
-          leg.paintStyle(true)
-        );
+
+        const layerId = TripLayerId.selected(tripIdx, legIdx);
+        layerIds.push(layerId);
+
+        if (!map.hasLayer(layerId)) {
+          map.pushTripLayer(layerId, leg.geometry(), leg.paintStyle(true));
+        }
       }
+      map.removeLayersExcept(layerIds);
     },
   },
   mounted: async function () {
