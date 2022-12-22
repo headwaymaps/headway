@@ -39,6 +39,7 @@ function renderOnMap(place: Place) {
     'active_marker',
     new Marker({ color: '#111111' }).setLngLat(place.point)
   );
+  map.removeAllLayers();
   map.removeMarkersExcept(['active_marker']);
 }
 
