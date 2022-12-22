@@ -9,12 +9,12 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "${HEADWAY_PUBLIC_URL}/data/default.json"
+      "url": "/data/default.json"
     },
     "natural_earth_shaded_relief": {
       "maxzoom": 6,
       "tileSize": 256,
-      "url": "${HEADWAY_PUBLIC_URL}/data/natural_earth.json",
+      "url": "/data/natural_earth.json",
       "type": "raster"
     }
   },

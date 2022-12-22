@@ -549,6 +549,7 @@ tileserver-serve-image:
 
     COPY ./services/tileserver/configure_run.sh ./services/tileserver/config.json.template /app/
 
+    ENV HEADWAY_PUBLIC_URL=http://127.0.0.1:8080
     CMD ["/app/configure_run.sh"]
     ARG tag
     SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:${tag}
