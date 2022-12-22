@@ -4,7 +4,7 @@
       <search-box
         :hint="$t('search.from')"
         :style="{ flex: 1 }"
-        :force-text="fromPlace?.name"
+        :force-text="fromPlace ? placeDisplayName(fromPlace) : ''"
         v-on:did-select-place="didSelectFromPlace"
       />
       <q-btn
@@ -21,7 +21,7 @@
       <search-box
         :hint="$t('search.to')"
         :style="{ flex: 1 }"
-        :force-text="toPlace?.name"
+        :force-text="toPlace ? placeDisplayName(toPlace) : ''"
         v-on:did-select-place="didSelectToPlace"
       />
       <q-btn
@@ -49,6 +49,7 @@ import TravelModeBar from 'src/components/TravelModeBar.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import Place from 'src/models/Place';
 import { LngLat } from 'maplibre-gl';
+import { placeDisplayName } from 'src/i18n/utils';
 
 export default defineComponent({
   name: 'TripSearch',
@@ -104,6 +105,7 @@ export default defineComponent({
         options
       );
     },
+    placeDisplayName,
   },
 });
 </script>
