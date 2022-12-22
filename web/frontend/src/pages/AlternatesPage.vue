@@ -71,6 +71,7 @@ import TripSearch from 'src/components/TripSearch.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
+import TripLayerId from 'src/models/TripLayerId';
 import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
 
@@ -187,6 +188,7 @@ export default defineComponent({
 
       map.removeAllLayers();
       map.removeAllMarkers();
+
       if (fromPlace.value && toPlace.value) {
         const result = await fetchBestTrips(
           fromPlace.value.point,
@@ -234,32 +236,27 @@ export default defineComponent({
       this.$data.trips = trips;
       this.activeTrip = trips[selectedIdx];
 
-      const unselectedLayerName = (tripIdx: number, legIdx: number) =>
-        `alternate_${this.mode}_${tripIdx}.${legIdx}_unselected`;
-      const selectedLayerName = (tripIdx: number, legIdx: number) =>
-        `alternate_${this.mode}_${tripIdx}.${legIdx}_selected`;
-
       for (let tripIdx = 0; tripIdx < trips.length; tripIdx++) {
         const trip = trips[tripIdx];
         for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
           const leg = trip.legs[legIdx];
           if (tripIdx == selectedIdx) {
-            if (map.hasLayer(unselectedLayerName(tripIdx, legIdx))) {
-              map.removeLayer(unselectedLayerName(tripIdx, legIdx));
+            if (map.hasLayer(TripLayerId.unselected(tripIdx, legIdx))) {
+              map.removeLayer(TripLayerId.unselected(tripIdx, legIdx));
             }
             continue;
           }
 
-          if (map.hasLayer(selectedLayerName(tripIdx, legIdx))) {
-            map.removeLayer(selectedLayerName(tripIdx, legIdx));
+          if (map.hasLayer(TripLayerId.selected(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.selected(tripIdx, legIdx));
           }
 
-          if (map.hasLayer(unselectedLayerName(tripIdx, legIdx))) {
+          if (map.hasLayer(TripLayerId.unselected(tripIdx, legIdx))) {
             continue;
           }
 
           map.pushTripLayer(
-            unselectedLayerName(tripIdx, legIdx),
+            TripLayerId.unselected(tripIdx, legIdx),
             leg.geometry(),
             leg.paintStyle(false)
           );
@@ -270,9 +267,9 @@ export default defineComponent({
       const selectedTrip = trips[selectedIdx];
       for (let legIdx = 0; legIdx < selectedTrip.legs.length; legIdx++) {
         const leg = selectedTrip.legs[legIdx];
-        if (!map.hasLayer(selectedLayerName(selectedIdx, legIdx))) {
+        if (!map.hasLayer(TripLayerId.selected(selectedIdx, legIdx))) {
           map.pushTripLayer(
-            selectedLayerName(selectedIdx, legIdx),
+            TripLayerId.selected(selectedIdx, legIdx),
             leg.geometry(),
             leg.paintStyle(true)
           );
@@ -306,9 +303,6 @@ export default defineComponent({
     mode: async function (): Promise<void> {
       await this.updateTrips();
     },
-  },
-  unmounted: function () {
-    getBaseMap()?.removeLayersExcept([]);
   },
   mounted: async function () {
     if (this.to != '_') {

@@ -21,6 +21,7 @@ import Config from 'src/utils/Config';
 import { mapFeatureToPlace } from 'src/utils/models';
 import { debounce } from 'lodash';
 import { PlaceId } from 'src/models/Place';
+import TripLayerId from 'src/models/TripLayerId';
 
 export var map: maplibregl.Map | null = null;
 const mapContainerId = 'map';
@@ -102,21 +103,21 @@ export interface BaseMapInterface {
   removeAllMarkers: () => void;
   removeMarkersExcept: (keys: string[]) => void;
   pushLayer: (
-    key: string,
+    key: TripLayerId,
     source: SourceSpecification,
     layer: LayerSpecification,
     beforeLayerType: string
   ) => void;
   pushTripLayer: (
-    layerId: string,
+    layerId: TripLayerId,
     geometry: GeoJSON.Geometry,
     paint: LineLayerSpecification['paint']
   ) => void;
-  removeLayersExcept: (keys: string[]) => void;
+  removeLayersExcept: (layerIds: TripLayerId[]) => void;
   /// returns wether a layer was removed
-  removeLayer: (key: string) => boolean;
+  removeLayer: (layerId: TripLayerId) => boolean;
   removeAllLayers(): void;
-  hasLayer: (key: string) => boolean;
+  hasLayer: (layerId: TripLayerId) => boolean;
 }
 
 var baseMapMethods: BaseMapInterface | undefined = undefined;
@@ -188,27 +189,27 @@ export default defineComponent({
         }
       });
     },
-    hasLayer(key: string): boolean {
-      return this.layers.includes(key);
+    hasLayer(layerId: TripLayerId): boolean {
+      return this.layers.includes(layerId.toString());
     },
     removeAllLayers(): void {
       this.removeLayersExcept([]);
     },
-    removeLayer(key: string): boolean {
-      const index = this.layers.indexOf(key);
+    removeLayer(layerId: TripLayerId): boolean {
+      const index = this.layers.indexOf(layerId.toString());
       if (index === -1) {
         return false;
       } else {
         this.layers.splice(index, 1);
-        this.ensureMapLoaded((map) => {
-          map.removeLayer(key);
-          map.removeSource(key);
+        this.ensureMapLoaded((map: maplibregl.Map) => {
+          map.removeLayer(layerId.toString());
+          map.removeSource(layerId.toString());
         });
         return true;
       }
     },
     pushTripLayer(
-      layerId: string,
+      layerId: TripLayerId,
       geometry: GeoJSON.Geometry,
       paint: LineLayerSpecification['paint']
     ): void {
@@ -223,9 +224,9 @@ export default defineComponent({
           },
         },
         {
-          id: layerId,
+          id: layerId.toString(),
           type: 'line',
-          source: layerId,
+          source: layerId.toString(),
           layout: {
             'line-join': 'round',
             'line-cap': 'round',
@@ -236,12 +237,12 @@ export default defineComponent({
       );
     },
     pushLayer(
-      key: string,
+      layerId: TripLayerId,
       source: SourceSpecification,
       layer: LayerSpecification,
       beforeLayerType: string
     ) {
-      let sourceKey = key;
+      let sourceKey = layerId.toString();
       let actualLayer = layer;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((actualLayer as any).source) {
@@ -253,7 +254,7 @@ export default defineComponent({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (actualLayer as any).id = sourceKey;
       }
-      this.ensureMapLoaded((map) => {
+      this.ensureMapLoaded((map: maplibregl.Map) => {
         if (map.getLayer(sourceKey)) {
           map.removeLayer(sourceKey);
         }
@@ -263,7 +264,7 @@ export default defineComponent({
         map.addSource(sourceKey, source);
         let beforeLayerId = undefined;
         if (beforeLayerType) {
-          for (key in map.style._layers) {
+          for (const key in map.style._layers) {
             let layer = map.style._layers[key];
             if (layer.type == beforeLayerType) {
               beforeLayerId = layer.id;
@@ -272,21 +273,27 @@ export default defineComponent({
           }
         }
         map.addLayer(layer, beforeLayerId);
-        this.layers.push(sourceKey);
+        this.layers.push(layerId.toString());
       });
     },
-    removeLayersExcept(keys: string[]) {
-      this.layers.forEach((key) => {
-        if (keys.indexOf(key) === -1) {
-          if (map?.getLayer(key)) {
-            map.removeLayer(key);
+    removeLayersExcept(keep: TripLayerId[]) {
+      const keepStrings = keep.map((layerId) => layerId.toString());
+      let newLayers: string[] = [];
+      this.layers.forEach((layerId: string) => {
+        if (keepStrings.includes(layerId)) {
+          if (!newLayers.includes(layerId)) {
+            newLayers.push(layerId);
           }
-          if (map?.getSource(key)) {
-            map.removeSource(key);
+        } else {
+          if (map?.getLayer(layerId.toString())) {
+            map.removeLayer(layerId.toString());
+          }
+          if (map?.getSource(layerId.toString())) {
+            map.removeSource(layerId.toString());
           }
         }
       });
-      this.layers = keys;
+      this.layers = newLayers;
     },
     flyTo: async function (location: LngLatLike, zoom: number): Promise<void> {
       const permissionState = await geolocationPermissionState();

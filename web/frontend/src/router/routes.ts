@@ -50,11 +50,11 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/directions/:mode/:to/:from/:alternateIndex',
+    path: '/directions/:mode/:to/:from/:tripIdx',
     component: () => import('layouts/MainLayout.vue'),
     children: [
       {
-        path: '/directions/:mode/:to/:from/:alternateIndex',
+        path: '/directions/:mode/:to/:from/:tripIdx',
         props: true,
         component: () => import('src/pages/StepsPage.vue'),
       },
