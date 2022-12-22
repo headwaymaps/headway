@@ -1,32 +1,36 @@
 import os
-from urllib.request import urlopen
-import requests
 import csv
+import sys
 
-def extract_column(name_row, data_row, wanted_column):
-  try:
-    column_index = name_row.index(wanted_column)
-    if column_index >= len(data_row):
-      return None
-    str_val = data_row[column_index]
-    return str_val
-  except ValueError:
-    return None
+if len(sys.argv)!= 2:
+    print("Error: wrong arguments!")
+    print("Usage: %s <mobilitydb.csv>" % sys.argv[0])
+    raise "Error: wrong arguments!"
 
-def extract_column_float(name_row, data_row, wanted_column):
+input_path = sys.argv[1]
+
+try:
+  bbox = [float(val) for val in os.environ['HEADWAY_BBOX'].strip().split(' ')]
+  if len(bbox) != 4:
+    raise ValueError('Length != 4')
+except:
+  print('Invalid or missing environment variable HEADWAY_BBOX')
+  raise
+
+def parse_float(str_val):
+  # This seems overly permissive.
   try:
-    str_val = extract_column(name_row, data_row, wanted_column)
     if str_val is None or str_val == '':
-      return None
+        return None
     return float(str_val)
   except ValueError:
     return None
 
-def gtfs_line_intersects(name_row, data_row, bbox):
-  min_long = extract_column_float(name_row, data_row, 'location.bounding_box.minimum_longitude')
-  max_long = extract_column_float(name_row, data_row, 'location.bounding_box.maximum_longitude')
-  min_lat = extract_column_float(name_row, data_row, 'location.bounding_box.minimum_latitude')
-  max_lat = extract_column_float(name_row, data_row, 'location.bounding_box.maximum_latitude')
+def gtfs_line_intersects(row, bbox):
+  min_long = parse_float(row['location.bounding_box.minimum_longitude'])
+  max_long = parse_float(row['location.bounding_box.maximum_longitude'])
+  min_lat = parse_float(row['location.bounding_box.minimum_latitude'])
+  max_lat = parse_float(row['location.bounding_box.maximum_latitude'])
 
   if min_long is None or max_long is None or min_lat is None or max_lat is None:
     return False
@@ -46,28 +50,16 @@ def gtfs_line_intersects(name_row, data_row, bbox):
     return False
   return True
 
-try:
-  bbox = [float(val) for val in os.environ['HEADWAY_BBOX'].strip().split(' ')]
-  if len(bbox) != 4:
-    raise ValueError('Length != 4')
-except:
-  print('Invalid or missing environment variable HEADWAY_BBOX')
-  raise
+with open(input_path) as input_file:
+  input_csv = csv.DictReader(input_file)
+  with open('/gtfs_feeds/gtfs_feeds.csv', 'w') as output_file:
+    output_csv = csv.writer(output_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-gtfs_url = 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media'
-gtfs_feed_text = urlopen(gtfs_url).read().decode('utf-8')
-
-gtfs_lines = [row for row in csv.reader(gtfs_feed_text.split('\n'), delimiter=',', quotechar='"') if len(row) > 0]
-gtfs_name_line = gtfs_lines[0]
-gtfs_data_lines = gtfs_lines[1:]
-
-matching_lines = [line for line in gtfs_data_lines if gtfs_line_intersects(gtfs_name_line, line, bbox)]
-
-with open('/gtfs_feeds/gtfs_feeds.csv', 'w') as f:
-  w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-  for line in matching_lines:
-    if extract_column(gtfs_name_line, line, 'data_type') == 'gtfs':
-      w.writerow([
-        extract_column(gtfs_name_line, line, 'provider'),
-        extract_column(gtfs_name_line, line, 'mdb_source_id'),
-        extract_column(gtfs_name_line, line, 'urls.latest')])
+    for input_row in input_csv:
+      if input_row['data_type'] == 'gtfs' and gtfs_line_intersects(input_row, bbox):
+        output_row = [
+          input_row['provider'],
+          input_row['mdb_source_id'],
+          input_row['urls.latest'],
+        ]
+        output_csv.writerow(output_row)

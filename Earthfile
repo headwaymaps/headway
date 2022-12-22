@@ -328,20 +328,51 @@ gtfs-base:
     WORKDIR /gtfs
     RUN mkdir /gtfs_feeds
 
+cache-buster:
+    FROM +gtfs-base
+    RUN --no-cache echo $(date +%Y-%m-%d) > todays_date
+    SAVE ARTIFACT todays_date
+
 gtfs-enumerate:
     FROM +gtfs-base
-    COPY ./services/gtfs/enumerate_gtfs_feeds.py /gtfs/
+
+    # Earthly caches computed ARGs - subsequent runs will use the cache_key
+    # that was computed last time, unless something else has busted the cache.
+    #
+    # Reported: https://github.com/earthly/earthly/issues/2523
+    #
+    # This is "expected behavior", but earthly might one day offer a better
+    # solution such as `ARG --no-cache`. In the meanwhile we have this
+    # cache-buster work around
+    COPY +cache-buster/todays_date .
+    ARG cache_key=$(cat todays_date)
+    # If Earthly does one day implement `ARG --no-cache`, we can replace the
+    # two lines above with the following:
+    #    ARG --no-cache cache_key=$(date +%Y-%m-%d)
+
+    COPY (+gtfs-get-mobilitydb/mobilitydb.csv --cache_key=${cache_key}) mobilitydb.csv
+
     ARG --required area
     ARG bbox
     ENV BBOX=${bbox}
     IF [ ! -z "${BBOX}" ]
         ENV HEADWAY_BBOX=${BBOX}
-        RUN python /gtfs/enumerate_gtfs_feeds.py
     ELSE
         COPY web/bboxes.csv /gtfs/bboxes.csv
-        RUN bash -c "export HEADWAY_BBOX=\"$(grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2)\" && python /gtfs/enumerate_gtfs_feeds.py"
+        ARG guessed_bbox=$(grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2)
+        ENV HEADWAY_BBOX=${guessed_bbox}
     END
-    SAVE ARTIFACT /gtfs_feeds/gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}.gtfs_feeds.csv
+
+    COPY ./services/gtfs/enumerate_gtfs_feeds.py /gtfs/
+    RUN python /gtfs/enumerate_gtfs_feeds.py mobilitydb.csv
+
+    SAVE ARTIFACT /gtfs_feeds/gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}-${cache_key}.gtfs_feeds.csv
+
+gtfs-get-mobilitydb:
+    FROM +gtfs-base
+    ARG --required cache_key
+    RUN curl 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media' > mobilitydb.csv
+    SAVE ARTIFACT mobilitydb.csv mobilitydb.csv AS LOCAL "./data/mobilitydb-${cache_key}.csv"
 
 gtfs-build:
     FROM +gtfs-base
