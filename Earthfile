@@ -9,7 +9,7 @@ build:
     # The name of <area>.osm.pbf if you've downloaded a custom extract, or the
     # name of one of the pre-configured downloadable extracts available from
     # bbike.org
-    ARG area
+    ARG --required area
 
     # `countries is uses by whosonfirst dataset.
     # If left blank we try to guess the country based on the area argument.
@@ -28,7 +28,7 @@ build:
 
 save:
     FROM +save-base
-    ARG area
+    ARG --required area
     ARG countries
     ARG transit_feeds
     BUILD +save-extract --area=${area}
@@ -45,7 +45,7 @@ save:
 
 save-polylines:
     FROM +save-base
-    ARG area
+    ARG --required area
     RUN mkdir -p /data
     COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines.0sv
     # This isn't used at runtime, but it can be useful when doing a
@@ -54,7 +54,7 @@ save-polylines:
 
 save-extract:
     FROM +save-base
-    ARG area
+    ARG --required area
     COPY (+extract/data.osm.pbf --area=${area}) /data.osm.pbf
     # This isn't used at runtime, but it might be useful to archive the input
     SAVE ARTIFACT /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
@@ -78,20 +78,20 @@ save-otp:
 
 save-mbtiles:
     FROM +save-base
-    ARG area
+    ARG --required area
     COPY (+planetiler-build-mbtiles/output.mbtiles --area=${area}) /output.mbtiles
     SAVE ARTIFACT /output.mbtiles AS LOCAL ./data/${area}.mbtiles
 
 save-valhalla:
     FROM +save-base
-    ARG area
+    ARG --required area
     COPY (+valhalla-build/tiles --area=${area}) /valhalla
     RUN tar --zstd -cf /valhalla.tar.zst -C /valhalla .
     SAVE ARTIFACT /valhalla.tar.zst AS LOCAL ./data/${area}.valhalla.tar.zst
 
 save-elasticsearch:
     FROM +save-base
-    ARG area
+    ARG --required area
     ARG countries
     COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
     RUN tar --zstd -cf /elasticsearch.tar.zst -C /elasticsearch .
@@ -99,7 +99,7 @@ save-elasticsearch:
 
 save-placeholder:
     FROM +save-base
-    ARG area
+    ARG --required area
     ARG countries
     COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
     RUN tar --zstd -cf /placeholder.tar.zst -C /placeholder .
@@ -107,7 +107,7 @@ save-placeholder:
 
 save-pelias-config:
     FROM +save-base
-    ARG area
+    ARG --required area
     ARG countries
     COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /pelias.json
     SAVE ARTIFACT /pelias.json AS LOCAL ./data/${area}.pelias.json
@@ -137,7 +137,7 @@ images:
 
 extract:
     FROM +downloader-base
-    ARG area
+    ARG --required area
     COPY --if-exists ${area}.osm.pbf /data/data.osm.pbf
     IF [ ! -f "/data/data.osm.pbf" ]
         RUN wget -nv -U headway/1.0 -O /data/data.osm.pbf "https://download.bbbike.org/osm/bbbike/${area}/${area}.osm.pbf"
@@ -159,7 +159,7 @@ pelias-init-image:
 pelias-guess-country:
     FROM debian:bullseye-slim
     COPY services/pelias/cities_to_countries.csv /data/cities_to_countries.csv
-    ARG area
+    ARG --required area
     ENV HEADWAY_AREA=${area}
     RUN grep "^${HEADWAY_AREA}:" /data/cities_to_countries.csv | cut -d':' -f2 > /data/guessed_country
     SAVE ARTIFACT /data/guessed_country /guessed_country
@@ -174,7 +174,7 @@ pelias-config:
     WORKDIR /config
     COPY services/pelias/pelias.json.template pelias.json.template
     ARG countries
-    ARG area
+    ARG --required area
     ENV COUNTRIES=${countries}
     IF [ -z ${COUNTRIES} ]
         COPY (+pelias-guess-country/guessed_country --area=${area}) guessed_country
@@ -199,7 +199,7 @@ pelias-config:
 
 pelias-import-base:
     FROM earthly/dind:alpine
-    ARG area
+    ARG --required area
     ARG countries
     RUN mkdir -p /data/openstreetmap
     COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap    
@@ -226,7 +226,7 @@ pelias-download-wof:
     SAVE ARTIFACT /data/whosonfirst /whosonfirst
 
 pelias-prepare-polylines:
-    ARG area
+    ARG --required area
     ARG countries
     FROM +pelias-import-base
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
@@ -235,7 +235,7 @@ pelias-prepare-polylines:
     SAVE ARTIFACT /data/polylines /polylines
 
 pelias-prepare-placeholder:
-    ARG area
+    ARG --required area
     ARG countries
     FROM +pelias-import-base
     COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
@@ -248,7 +248,7 @@ pelias-prepare-placeholder:
     SAVE ARTIFACT /data/placeholder /placeholder
 
 pelias-import:
-    ARG area
+    ARG --required area
     ARG countries
     FROM +pelias-import-base
     COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
@@ -317,7 +317,7 @@ planetiler-image:
 planetiler-build-mbtiles:
     FROM +planetiler-image
     WORKDIR /
-    ARG area
+    ARG --required area
     COPY (+extract/data.osm.pbf --area=${area}) /data/
     RUN sha256sum /planetiler/planetiler.jar && java -jar /planetiler/planetiler.jar --force osm_path=/data/data.osm.pbf
     SAVE ARTIFACT /data/output.mbtiles /output.mbtiles
@@ -431,7 +431,7 @@ valhalla-build:
     RUN valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite > valhalla.json
     RUN valhalla_build_timezones > /tiles/timezones.sqlite
 
-    ARG area
+    ARG --required area
 
     USER root
     RUN mkdir -p /data/osm
