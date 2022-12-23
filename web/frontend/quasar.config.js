@@ -99,15 +99,7 @@ module.exports = configure(function (/* ctx */) {
       // https: true
       open: true, // opens browser window automatically
       proxy: {
-        '/data': {
-          target: HEADWAY_HOST,
-          changeOrigin: true,
-        },
-        '/styles': {
-          target: HEADWAY_HOST,
-          changeOrigin: true,
-        },
-        '/fonts': {
+        '/tileserver': {
           target: HEADWAY_HOST,
           changeOrigin: true,
         },

@@ -29,10 +29,6 @@ spec:
             - name: headway-volume
               mountPath: /data
           env:
-            - name: FONT_ARTIFACT_DEST_PATH
-              value: /data/fonts/fonts.tar
-            - name: SPRITE_ARTIFACT_DEST_PATH
-              value: /data/sprite/sprite.tar
             - name: HEADWAY_BBOX
               valueFrom:
                 configMapKeyRef:
@@ -43,16 +39,6 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: enable-transit-routing
-            - name: FONT_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: font-source-url
-            - name: SPRITE_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: sprite-source-url
           resources:
             limits:
               memory: 100Mi

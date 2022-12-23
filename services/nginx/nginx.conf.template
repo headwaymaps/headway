@@ -21,7 +21,6 @@ http {
     resolver ${HEADWAY_RESOLVER};
     listen ${HEADWAY_HTTP_PORT} default_server;
 
-    # photon
     location /pelias/  {
       proxy_pass      ${HEADWAY_PELIAS_URL}/;
     }
@@ -36,44 +35,18 @@ http {
       proxy_pass      ${HEADWAY_OTP_URL};
     }
 
-    # valhalla
     location /valhalla/  {
       proxy_pass      ${HEADWAY_VALHALLA_URL}/;
     }
 
-    # mbtileserver stuff
-    location /data/  {
-      proxy_set_header Accept-Encoding "";
-      proxy_set_header x-real-IP ${ESC}remote_addr;
-      proxy_set_header x-forwarded-for ${ESC}proxy_add_x_forwarded_for;
-      proxy_set_header Host "magic_string_magic";
-      sub_filter_types application/json;
-      sub_filter_once  off;
-      sub_filter_last_modified on;
-      sub_filter       'http://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
-      sub_filter       'https://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
-      proxy_pass       ${HEADWAY_TILESERVER_URL}/data/;
+    location /tileserver/  {
+      proxy_pass       ${HEADWAY_TILESERVER_URL}/;
     }
-    location /styles/  {
-      proxy_set_header Accept-Encoding "";
-      proxy_set_header x-real-IP ${ESC}remote_addr;
-      proxy_set_header x-forwarded-for ${ESC}proxy_add_x_forwarded_for;
-      proxy_set_header Host "magic_string_magic";
-      sub_filter_types application/json;
-      sub_filter_once  off;
-      sub_filter_last_modified on;
-      sub_filter       'http://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
-      sub_filter       'https://magic_string_magic' '${HEADWAY_PUBLIC_URL}';
-      proxy_pass       ${HEADWAY_TILESERVER_URL};
-    }
+
     location /static/  {
-      # allow use with maputnik
-      add_header Access-Control-Allow-Origin *;
       alias ${HEADWAY_SHARED_VOL}/;
     }
-    location /fonts/  {
-      proxy_pass       ${HEADWAY_TILESERVER_URL}/fonts/;
-    }
+
     location / {
       try_files ${ESC}uri /index.html;
     }

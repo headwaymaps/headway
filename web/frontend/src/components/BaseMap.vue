@@ -41,7 +41,7 @@ async function loadMap(): Promise<maplibregl.Map> {
 
   let mapOptions: MapOptions = {
     container: mapContainerId,
-    style: '/styles/style/style.json', // style URL
+    style: '/tileserver/styles/basic/style.json', // style URL
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
   };

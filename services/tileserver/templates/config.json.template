@@ -1,15 +1,15 @@
 {
   "options": {
     "paths": {
-      "root": "/data",
-      "styles": "/app/styles",
-      "mbtiles": ""
+      "mbtiles": "/data",
+      "fonts": "fonts",
+      "sprites": "sprites",
+      "styles": "styles"
     }
   },
-
   "styles": {
-    "style": {
-      "style": "/app/styles/style.json"
+    "basic": {
+      "style": "basic/style.json"
     }
   },
   "data": {

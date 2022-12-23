@@ -121,10 +121,6 @@ images:
     FROM debian:bullseye-slim
     ARG tag="latest"
     ARG branding
-    COPY (+tileserver-build/fonts.tar) /fonts.tar
-    COPY (+tileserver-build/sprite.tar) /sprite.tar
-    SAVE ARTIFACT /fonts.tar AS LOCAL ./data/fonts.tar
-    SAVE ARTIFACT /sprite.tar AS LOCAL ./data/sprite.tar
     BUILD +otp-serve-image --tag=${tag}
     BUILD +valhalla-serve-image --tag=${tag}
     BUILD +web-serve-image --tag=${tag} --branding=${branding}
@@ -489,33 +485,38 @@ tileserver-build:
 
     WORKDIR /app
     RUN npm install
-    RUN mkdir -p /app/sprite/
-    COPY ./services/tileserver/assets/sprites/*.svg /app/sprite/
-    WORKDIR /app
+    RUN mkdir -p /app/sprites/
+    COPY ./services/tileserver/assets/sprites/*.svg /app/sprites/
+
     RUN mkdir /output
-    RUN useradd -ms /bin/bash fontnik
+    RUN useradd -s /bin/bash fontnik
     RUN chown fontnik /output
 
     USER fontnik
 
-    RUN mkdir "/output/Roboto Regular"
-    RUN mkdir "/output/Roboto Medium"
-    RUN mkdir "/output/Roboto Condensed Italic"
+    # Output fonts
+    ENV FONTS_DIR=/output/fonts
+    RUN mkdir "$FONTS_DIR"
 
-    RUN node build_glyphs Roboto-Medium.ttf "/output/Roboto Medium"
-    RUN node build_glyphs Roboto-Condensed-Italic.ttf "/output/Roboto Condensed Italic"
-    RUN node build_glyphs Roboto-Regular.ttf "/output/Roboto Regular"
+    RUN mkdir "${FONTS_DIR}/Roboto Regular"
+    RUN node build_glyphs Roboto-Regular.ttf "${FONTS_DIR}/Roboto Regular"
 
-    RUN node build_sprites /output/sprite /app/sprite
-    RUN node build_sprites --retina /output/sprite@2x /app/sprite
+    RUN mkdir "${FONTS_DIR}/Roboto Medium"
+    RUN node build_glyphs Roboto-Medium.ttf "${FONTS_DIR}/Roboto Medium"
 
-    WORKDIR /output
+    RUN mkdir "${FONTS_DIR}/Roboto Condensed Italic"
+    RUN node build_glyphs Roboto-Condensed-Italic.ttf "${FONTS_DIR}/Roboto Condensed Italic"
 
-    RUN tar -cf fonts.tar "Roboto Medium" "Roboto Condensed Italic" "Roboto Regular"
-    RUN tar -cf sprite.tar sprite.json sprite.png sprite@2x.json sprite@2x.png
+    SAVE ARTIFACT "$FONTS_DIR" /fonts
 
-    SAVE ARTIFACT /output/fonts.tar /fonts.tar
-    SAVE ARTIFACT /output/sprite.tar /sprite.tar
+    # Output sprite
+    ENV SPRITE_DIR=/output/sprites
+    RUN mkdir "$SPRITE_DIR"
+
+    RUN node build_sprites "${SPRITE_DIR}/sprite" /app/sprites
+    RUN node build_sprites --retina "${SPRITE_DIR}/sprite@2x" /app/sprites
+
+    SAVE ARTIFACT "$SPRITE_DIR"  /sprites
 
 tileserver-init-image:
     FROM debian:bullseye-slim
@@ -540,15 +541,18 @@ tileserver-serve-image:
         && rm -rf /var/lib/apt/lists/*
 
     RUN mkdir -p /app/styles
-    RUN mkdir -p /styles
     RUN chown -R node /app
-    RUN chown -R node /styles
+
     USER node
 
-    COPY ./services/tileserver/style/style.json.template /styles/style.json.template
+    COPY ./services/tileserver/styles/basic /app/styles/basic
+    COPY (+tileserver-build/sprites) /app/sprites
+    COPY (+tileserver-build/fonts) /app/fonts
 
-    COPY ./services/tileserver/configure_run.sh ./services/tileserver/config.json.template /app/
+    COPY ./services/tileserver/templates /templates/
+    COPY ./services/tileserver/configure_run.sh /app/
 
+    ENV HEADWAY_PUBLIC_URL=http://127.0.0.1:8080
     CMD ["/app/configure_run.sh"]
     ARG tag
     SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:${tag}
