@@ -17,7 +17,7 @@ source ${SCRIPT_DIR}/_headway_version.sh
 fi
 
 # This job assumes you've already downloaded the planet file into the repository root
-AREA=planet-with-admin-v1.20
+AREA=maps-earth-planet-v1.21
 
 CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_VERSION"
 
