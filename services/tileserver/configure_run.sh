@@ -4,8 +4,7 @@ set -xe
 
 export ESC="\$"
 
-envsubst < /app/config.json.template > /app/config.json
-envsubst < /styles/style.json.template > /app/styles/style.json
+envsubst < /templates/config.json.template > /app/config.json
 
 cat /app/config.json
 
@@ -14,4 +13,6 @@ if [ -z "$HEADWAY_PUBLIC_URL" ]; then
     exit 1;
 fi
 
-tileserver-gl-light --config /app/config.json -u $HEADWAY_PUBLIC_URL
+# The -u option allows the generated configs to reference assets with the
+# requisite hostname/path-prefix.
+tileserver-gl-light --config /app/config.json -u "${HEADWAY_PUBLIC_URL}/tileserver"

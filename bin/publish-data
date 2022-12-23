@@ -72,6 +72,4 @@ upload "${AREA}.gtfs.tar.zst"          "${HEADWAY_VERSION}/${AREA_TAG}"
 fi
 
 # These files are generic across all areas
-upload fonts.tar                      "${HEADWAY_VERSION}"
-upload sprite.tar                     "${HEADWAY_VERSION}"
 upload natural_earth.mbtiles          "${HEADWAY_VERSION}"

@@ -9,17 +9,17 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "/data/default.json"
+      "url": "mbtiles://{default}"
     },
     "natural_earth_shaded_relief": {
       "maxzoom": 6,
       "tileSize": 256,
-      "url": "/data/natural_earth.json",
-      "type": "raster"
+      "type": "raster",
+      "url": "mbtiles://{natural_earth}"
     }
   },
-  "sprite": "${HEADWAY_PUBLIC_URL}/static/sprite/sprite",
-  "glyphs": "${HEADWAY_PUBLIC_URL}/static/fonts/{fontstack}/{range}.pbf",
+  "sprite": "sprite",
+  "glyphs": "{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "background",
