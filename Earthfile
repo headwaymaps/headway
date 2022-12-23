@@ -17,7 +17,7 @@ build:
     ARG countries
 
     # tag for created docker containers
-    ARG tag="dev"
+    ARG tag="latest"
 
     # Run +gtfs-enumerate to build an appropriate input for transit_feeds.
     # If omitted, you cannot enable transit routing.
@@ -119,7 +119,7 @@ save-tileserver-natural-earth:
 
 images:
     FROM debian:bullseye-slim
-    ARG tag="dev"
+    ARG tag="latest"
     ARG branding
     COPY (+tileserver-build/fonts.tar) /fonts.tar
     COPY (+tileserver-build/sprite.tar) /sprite.tar
