@@ -58,7 +58,7 @@ This specifies which data to download from Who's On First. Accidentally includin
 
 ## Docker-compose restarts
 
-Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker-compose down --volume` to re-initialize the data in the init containers.
+Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker-compose down --volumes` to re-initialize the data in the init containers.
 
 This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `.env` file.
 
