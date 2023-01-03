@@ -2,8 +2,6 @@
 
 set -xe
 
-export ESC="\$"
-
 envsubst < /templates/config.json.template > /app/config.json
 
 cat /app/config.json

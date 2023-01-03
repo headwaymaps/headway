@@ -191,7 +191,7 @@
       "source": "openmaptiles",
       "source-layer": "aeroway",
       "minzoom": 11,
-      "filter": ["==", "${ESC}type", "Polygon"],
+      "filter": ["==", "$type", "Polygon"],
       "paint": {"fill-color": "rgba(229, 228, 224, 1)", "fill-opacity": 0.7}
     },
     {
@@ -202,7 +202,7 @@
       "minzoom": 11,
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["==", "class", "runway"]
       ],
       "paint": {
@@ -218,7 +218,7 @@
       "minzoom": 11,
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["==", "class", "taxiway"]
       ],
       "paint": {
@@ -362,7 +362,7 @@
       "source-layer": "transportation",
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["==", "brunnel", "tunnel"],
         ["in", "class", "path", "pedestrian"]
       ],
@@ -543,7 +543,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "filter": ["all", ["==", "${ESC}type", "Polygon"]],
+      "filter": ["all", ["==", "$type", "Polygon"]],
       "paint": {"fill-pattern": "pedestrian_polygon"}
     },
     {
@@ -611,7 +611,7 @@
       "source-layer": "transportation",
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["!in", "brunnel", "bridge", "tunnel"],
         ["in", "class", "minor"],
         ["!=", "ramp", 1]
@@ -691,7 +691,7 @@
       "minzoom": 14,
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["!in", "brunnel", "bridge", "tunnel"],
         ["in", "class", "path", "pedestrian"]
       ],
@@ -767,7 +767,7 @@
       "source-layer": "transportation",
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["!in", "brunnel", "bridge", "tunnel"],
         ["in", "class", "minor"]
       ],
@@ -970,7 +970,7 @@
       "source-layer": "transportation",
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["==", "brunnel", "bridge"],
         ["in", "class", "path", "pedestrian"]
       ],
@@ -1042,7 +1042,7 @@
       "source-layer": "transportation",
       "filter": [
         "all",
-        ["==", "${ESC}type", "LineString"],
+        ["==", "$type", "LineString"],
         ["==", "brunnel", "bridge"],
         ["in", "class", "path", "pedestrian"]
       ],
@@ -1301,7 +1301,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "waterway",
-      "filter": ["all", ["==", "${ESC}type", "LineString"]],
+      "filter": ["all", ["==", "$type", "LineString"]],
       "layout": {
         "text-field": "{name}",
         "text-font": ["Roboto Regular"],
@@ -1320,7 +1320,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "water_name",
-      "filter": ["==", "${ESC}type", "Point"],
+      "filter": ["==", "$type", "Point"],
       "layout": {
         "text-field": "{name}",
         "text-font": ["Roboto Regular"],
@@ -1339,7 +1339,7 @@
       "source": "openmaptiles",
       "source-layer": "poi",
       "minzoom": 16,
-      "filter": ["all", ["==", "${ESC}type", "Point"], [">=", "rank", 20]],
+      "filter": ["all", ["==", "$type", "Point"], [">=", "rank", 20]],
       "layout": {
         "icon-image": "{class}_11",
         "text-anchor": "top",
@@ -1364,7 +1364,7 @@
       "minzoom": 15,
       "filter": [
         "all",
-        ["==", "${ESC}type", "Point"],
+        ["==", "$type", "Point"],
         [">=", "rank", 7],
         ["<", "rank", 20]
       ],
@@ -1392,7 +1392,7 @@
       "minzoom": 14,
       "filter": [
         "all",
-        ["==", "${ESC}type", "Point"],
+        ["==", "$type", "Point"],
         [">=", "rank", 1],
         ["<", "rank", 7]
       ],
