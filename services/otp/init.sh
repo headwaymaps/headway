@@ -4,7 +4,7 @@ set -xe
 set -o pipefail
 
 if [ -f /data/graph.obj ]; then
-    echo "Nothing to do, already have ${OTP_ARTIFACT_DEST_PATH}"
+    echo "Nothing to do, already have artifact."
 elif [ -f "${OTP_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Copying artifact."
     zstd --decompress --stdout "${OTP_ARTIFACT_SOURCE_PATH}" > /data/graph.obj
