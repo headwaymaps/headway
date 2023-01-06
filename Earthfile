@@ -121,6 +121,7 @@ images:
     FROM debian:bullseye-slim
     ARG tag="latest"
     ARG branding
+    BUILD +transitmux-serve-image --tag=${tag}
     BUILD +otp-serve-image --tag=${tag}
     BUILD +valhalla-serve-image --tag=${tag}
     BUILD +web-serve-image --tag=${tag} --branding=${branding}
@@ -436,9 +437,57 @@ otp-init-image:
 otp-serve-image:
     FROM +otp-base
 
-    CMD java -Xmx4G -jar /otp/otp-shaded.jar --load /data
+    EXPOSE 8000
+    ENV PORT 8000
+    CMD java -Xmx4G -jar /otp/otp-shaded.jar --load /data --port ${PORT}
+
+    # used for healthcheck
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends netcat \
+        && rm -rf /var/lib/apt/lists/*
+
+    HEALTHCHECK --interval=5s --start-period=20s \
+        CMD nc -z localhost ${PORT}
+
     ARG tag
     SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:${tag}
+
+build-transitmux:
+    FROM rust
+
+    WORKDIR transitmux
+
+    # This speeds up rebuilds of transitmux by caching the prebuilt
+    # dependencies in a separate docker layer. Without this, every change to
+    # transitmux requires re-downloading and re-building all the project deps,
+    # which takes a while.
+    COPY ./services/transitmux/Cargo.toml .
+    COPY ./services/transitmux/Cargo.lock .
+    RUN mkdir src
+    RUN echo 'fn main() { /* dummy main to get cargo to build deps */ }' > src/main.rs
+    RUN cargo build --release
+    RUN rm src/main.rs
+
+    COPY ./services/transitmux .
+    RUN cargo build --release
+    SAVE ARTIFACT target/release/transitmux-server /transitmux-server
+
+transitmux-serve-image:
+    FROM debian:bullseye-slim
+
+    RUN adduser --disabled-login transitmux
+    USER transitmux
+
+    WORKDIR /home/transitmux
+    COPY +build-transitmux/transitmux-server transitmux-server
+
+    EXPOSE 8000
+    ENV RUST_LOG=info
+    ENTRYPOINT ["/home/transitmux/transitmux-server"]
+    CMD ["http://opentripplanner:8000/otp/routers"]
+
+    ARG tag
+    SAVE IMAGE --push ghcr.io/headwaymaps/transitmux:${tag}
 
 ##############################
 # Valhalla
@@ -626,7 +675,7 @@ web-serve-image:
     ENV HEADWAY_SHARED_VOL=/data
     ENV HEADWAY_HTTP_PORT=8080
     ENV HEADWAY_RESOLVER=127.0.0.11
-    ENV HEADWAY_OTP_URL=http://opentripplanner:8080
+    ENV HEADWAY_TRANSITMUX_URL=http://transitmux:8000
     ENV HEADWAY_VALHALLA_URL=http://valhalla:8002
     ENV HEADWAY_TILESERVER_URL=http://tileserver:8000
     ENV HEADWAY_PELIAS_URL=http://pelias-api:8080

@@ -1,12 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: opentripplanner
+  name: opentripplanner-seattle
 spec:
   selector:
-    app: opentripplanner
+    app: opentripplanner-seattle
   ports:
     - protocol: TCP
       name: service
-      port: 8080
-      targetPort: 8080
+      port: 8000

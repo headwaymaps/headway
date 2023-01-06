@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: valhalla
+  name: transitmux
 spec:
   selector:
-    app: valhalla
+    app: transitmux
   ports:
     - protocol: TCP
-      port: 8002
-      targetPort: 8002
+      name: service
+      port: 8000

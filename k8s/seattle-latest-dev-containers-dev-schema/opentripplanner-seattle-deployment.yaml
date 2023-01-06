@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opentripplanner-seattle
+spec:
+  selector:
+    matchLabels:
+      app: opentripplanner-seattle
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: opentripplanner-seattle
+    spec:
+      initContainers:
+        - name: init
+          image: ghcr.io/headwaymaps/opentripplanner-init:dev
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: opentripplanner-volume
+              mountPath: /data
+          env:
+            - name: OTP_ARTIFACT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: otp-graph-urls.seattle
+          resources:
+            limits:
+              memory: 128Mi
+            requests:
+              memory: 128Mi
+      containers:
+        - name: main
+          image: ghcr.io/headwaymaps/opentripplanner:dev
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: opentripplanner-volume
+              mountPath: /data
+          resources:
+            limits:
+              memory: 4.5Gi
+            requests:
+              memory: 500Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
+      volumes:
+        - name: opentripplanner-volume
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 1Gi

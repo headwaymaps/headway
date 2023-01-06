@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: pelias-api
+  name: transitmux
 spec:
   selector:
-    app: pelias-api
+    app: transitmux
   ports:
     - protocol: TCP
-      port: 4000
-      targetPort: 4000
+      name: service
+      port: 8000

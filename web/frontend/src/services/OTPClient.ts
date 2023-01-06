@@ -70,7 +70,7 @@ export class OTPClient {
     count: number
   ): Promise<Result<OTPItinerary[], OTPError>> {
     const response = await fetch(
-      `/otp/routers/default/plan?fromPlace=${from.lat},${from.lng}&toPlace=${to.lat},${to.lng}&numItineraries=${count}`
+      `/transitmux/plan?fromPlace=${from.lat},${from.lng}&toPlace=${to.lat},${to.lng}&numItineraries=${count}`
     );
     if (response.ok) {
       const responseJson: OTPPlanResponse = await response.json();

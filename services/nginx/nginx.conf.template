@@ -25,14 +25,12 @@ http {
       proxy_pass      ${HEADWAY_PELIAS_URL}/;
     }
 
-    # opentripplanner
-    location /otp  {
+    location /transitmux/ {
       set $enable_transit_routing ${HEADWAY_ENABLE_TRANSIT_ROUTING};
       if ($enable_transit_routing != 1) {
         return 404;
       }
-      # omit the trailing slash because OTP's api URL prefix is "otp/" and we don't wanna expose the web UI
-      proxy_pass      ${HEADWAY_OTP_URL};
+      proxy_pass      ${HEADWAY_TRANSITMUX_URL}/;
     }
 
     location /valhalla/  {
