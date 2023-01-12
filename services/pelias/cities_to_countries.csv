@@ -24,7 +24,7 @@ Bern:CH
 Bielefeld:DE
 Birmingham:UK
 Bochum:DE
-Bogota:CO 
+Bogota:CO
 Bombay:IN
 Bonn:DE
 Bordeaux:FR
@@ -67,7 +67,7 @@ Denver:US
 Dessau:DE
 Dortmund:DE
 Dresden:DE
-Dublin:IR
+Dublin:IE
 Duesseldorf:DE
 Duisburg:DE
 Edinburgh:UK
@@ -234,11 +234,3 @@ Wuerzburg:DE
 Wuppertal:DE
 Zagreb:HR
 Zuerich:CH
-:
-#:
-# orginal BBBike version:
-bbbike:
-#:
-dummy:
-Finowfurt:
-#:

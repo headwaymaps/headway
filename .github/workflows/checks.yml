@@ -8,19 +8,13 @@ on:
 
 jobs:
   earthly_build:
-    name: Run a build for Adelaide
+    name: Run a small build
     runs-on: ubuntu-latest
     steps:
       - uses: earthly/actions-setup@v1
-        with:
-          version: "latest"
       - uses: actions/checkout@v2
-      - name: Docker login # to avoid dockerhub rate-limiting
-        run: docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password "${{ secrets.DOCKERHUB_PASSWORD }}"
-      - name: Earthly version check
-        run: earthly --version
-      - name: Build Adelaide
-        run: earthly -P +build --area=Adelaide --countries=AU
+      - run: earthly --version
+      - run: earthly -P +build --area=Bogota
   www_checks:
     defaults:
       run:
