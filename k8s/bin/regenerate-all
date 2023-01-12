@@ -7,6 +7,6 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 cd "$REPO_ROOT/k8s"
 
-bin/generate seattle.env
-HEADWAY_SCHEMA_VERSION=0.2.0 bin/generate planet.env
-HEADWAY_VERSION=0.2.0 bin/generate planet.env
+HEADWAY_TAG=dev bin/generate seattle.env
+HEADWAY_CONTAINER_TAG=dev HEADWAY_DATA_TAG=0.2.0 bin/generate planet.env
+HEADWAY_CONTAINER_TAG=0.3.0 HEADWAY_DATA_TAG=0.2.0 bin/generate planet.env

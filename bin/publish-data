@@ -26,9 +26,9 @@ examples:
     $0 seattle-latest Seattle
     $0 planet-v1.19 planet-v1.19
 
-Use a release other than what's in bin/_headway_version.sh
-    HEADWAY_VERSION=latest $0 seattle-latest Seattle
-    HEADWAY_VERSION=0.1.0 $0 planet-v1.19 planet-v1.19
+Use an upload prefix other than what's in bin/_headway_version.sh
+    HEADWAY_DATA_TAG=latest $0 seattle-latest Seattle
+    HEADWAY_DATA_TAG=0.1.0 $0 planet-v1.19 planet-v1.19
 EOF
 }
 
@@ -47,7 +47,7 @@ if [ -z "${AREA}" ]; then
   exit 1
 fi
 
-if [ -z "${HEADWAY_VERSION}" ]; then
+if [ -z "${HEADWAY_DATA_TAG}" ]; then
     source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
@@ -59,17 +59,17 @@ else
     exit 1
 fi
 
-upload "${AREA}.valhalla.tar.zst"      "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.elasticsearch.tar.zst" "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.mbtiles"              "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.placeholder.tar.zst"   "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.osm.pbf"              "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.valhalla.tar.zst"      "${HEADWAY_DATA_TAG}/${AREA_TAG}"
+upload "${AREA}.elasticsearch.tar.zst" "${HEADWAY_DATA_TAG}/${AREA_TAG}"
+upload "${AREA}.mbtiles"              "${HEADWAY_DATA_TAG}/${AREA_TAG}"
+upload "${AREA}.placeholder.tar.zst"   "${HEADWAY_DATA_TAG}/${AREA_TAG}"
+upload "${AREA}.osm.pbf"              "${HEADWAY_DATA_TAG}/${AREA_TAG}"
 
 # transit files only exist when transit is enabled
 if [ -f "${DATA_ROOT}/${AREA}.graph.obj.zst" ]; then
-upload "${AREA}.graph.obj.zst"         "${HEADWAY_VERSION}/${AREA_TAG}"
-upload "${AREA}.gtfs.tar.zst"          "${HEADWAY_VERSION}/${AREA_TAG}"
+upload "${AREA}.graph.obj.zst"         "${HEADWAY_DATA_TAG}/${AREA_TAG}"
+upload "${AREA}.gtfs.tar.zst"          "${HEADWAY_DATA_TAG}/${AREA_TAG}"
 fi
 
 # These files are generic across all areas
-upload natural_earth.mbtiles          "${HEADWAY_VERSION}"
+upload natural_earth.mbtiles          "${HEADWAY_DATA_TAG}"

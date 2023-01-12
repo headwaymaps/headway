@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/opentripplanner-init:${HEADWAY_CONTAINER_VERSION}
+          image: ghcr.io/headwaymaps/opentripplanner-init:${HEADWAY_CONTAINER_TAG}
           imagePullPolicy: Always
           volumeMounts:
             - name: opentripplanner-volume
@@ -32,7 +32,7 @@ spec:
               memory: 128Mi
       containers:
         - name: main
-          image: ghcr.io/headwaymaps/opentripplanner:${HEADWAY_CONTAINER_VERSION}
+          image: ghcr.io/headwaymaps/opentripplanner:${HEADWAY_CONTAINER_TAG}
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

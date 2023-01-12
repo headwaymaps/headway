@@ -10,14 +10,14 @@ usage: $0 <env-file>
 examples:
     $0 seattle.env
 
-Use a assets and containers other than what's in bin/_headway_version.sh
-    HEADWAY_VERSION=0.1.0 $0 planet.env
+Download assets prefixed with something other than what's in bin/_headway_version.sh
+    HEADWAY_DATA_TAG=0.2.0 $0 seattle.env
 
-Download assets from somewhere other than what's in bin/_headway_version.sh
-    HEADWAY_CONTAINER_VERSION=0.2.0 $0 seattle.env
+Deploy containers from a tag other than what's in bin/_headway_version.sh
+    HEADWAY_CONTAINER_TAG=0.2.0 $0 seattle.env
 
-Deploy containers other than what's in bin/_headway_version.sh
-    HEADWAY_CONTAINER_VERSION=0.2.0 $0 seattle.env
+Use assets and containers other than what's in bin/_headway_version.sh
+    HEADWAY_TAG=dev $0 planet.env
 EOF
 }
 
@@ -28,23 +28,21 @@ fi
 
 source "${REPO_ROOT}/.env"
 
+# stash env vars in local before they get clobbered by _headway_version.sh
+local_container_tag=$HEADWAY_CONTAINER_TAG
+local_data_tag=$HEADWAY_DATA_TAG
+source "${REPO_ROOT}/bin/_headway_version.sh"
+
+if [ ! -z "$HEADWAY_TAG" ]; then
+    HEADWAY_CONTAINER_TAG="$HEADWAY_TAG"
+    HEADWAY_DATA_TAG="$HEADWAY_TAG"
+fi
+
+export HEADWAY_CONTAINER_TAG="${local_container_tag:-$HEADWAY_CONTAINER_TAG}"
+export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
+
 DEPLOYMENT_ENV_FILE="$1"
 source "$DEPLOYMENT_ENV_FILE"
-
-if [ -z "${HEADWAY_VERSION}" ]
-then
-    source "${REPO_ROOT}/bin/_headway_version.sh"
-fi
-
-if [ -z "${HEADWAY_SCHEMA_VERSION}" ]
-then
-    export HEADWAY_SCHEMA_VERSION="${HEADWAY_VERSION}"
-fi
-
-if [ -z "${HEADWAY_CONTAINER_VERSION}" ]
-then
-    export HEADWAY_CONTAINER_VERSION="${HEADWAY_VERSION}"
-fi
 
 PELIAS_CONFIG_FILE="${REPO_ROOT}/data/${HEADWAY_AREA}.pelias.json"
 if [ ! -f "$PELIAS_CONFIG_FILE" ]; then
@@ -66,7 +64,7 @@ render_template() {
 
 set -o nounset
 
-OUTPUT_DIR="${HEADWAY_AREA_TAG}-${HEADWAY_CONTAINER_VERSION}-containers-${HEADWAY_SCHEMA_VERSION}-schema"
+OUTPUT_DIR="${HEADWAY_AREA_TAG}-${HEADWAY_CONTAINER_TAG}-containers-${HEADWAY_DATA_TAG}-schema"
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*
 
@@ -82,7 +80,7 @@ for TRANSIT_AREA in $HEADWAY_TRANSIT_AREAS; do
 
     # intentional newline for YAML formatting
     OTP_GRAPHS_YAML+="
-  otp-graph-urls.${TRANSIT_AREA}: ${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_SCHEMA_VERSION}/${HEADWAY_AREA_TAG}/${TRANSIT_AREA_GRAPH_NAME}.graph.obj.zst"
+  otp-graph-urls.${TRANSIT_AREA}: ${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${TRANSIT_AREA_GRAPH_NAME}.graph.obj.zst"
 
     export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_AREA}"
     OTP_ENDPOINTS_JSON+="${separator}\"http://${OTP_ENDPOINT_NAME}:8000/otp/routers\""

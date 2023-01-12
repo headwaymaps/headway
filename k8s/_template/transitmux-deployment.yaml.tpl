@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: ghcr.io/headwaymaps/transitmux:${HEADWAY_CONTAINER_VERSION}
+          image: ghcr.io/headwaymaps/transitmux:${HEADWAY_CONTAINER_TAG}
           imagePullPolicy: Always
           args: ${OTP_ENDPOINTS_JSON}
           ports:

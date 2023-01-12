@@ -1,26 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pelias-placeholder
+  name: pelias-api
 spec:
   replicas: 1
   minReadySeconds: 10
   selector:
     matchLabels:
-      app: pelias-placeholder
+      app: pelias-api
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
-        app: pelias-placeholder
+        app: pelias-api
+        app-group: pelias-api
       annotations:
+        image: pelias/api:latest
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/pelias-init:0.2.0
+          image: ghcr.io/headwaymaps/pelias-init:0.3.0
           imagePullPolicy: Always
           volumeMounts:
-            - name: placeholder-volume
-              mountPath: /data
             - name: config-volume
               mountPath: /config
           env:
@@ -29,17 +33,12 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: pelias-config-json
-            - name: PLACEHOLDER_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: placeholder-artifact-url
             - name: HEADWAY_AREA
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
                   key: area
-          command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
+          command: ["/bin/bash", "-c", "/app/init_config.sh" ]
           resources:
             limits:
               memory: 200Mi
@@ -47,47 +46,37 @@ spec:
               memory: 100Mi
       containers:
         - name: main
-          image: pelias/placeholder:latest
+          image: pelias/api:latest
           ports:
-            - containerPort: 4100
+            - containerPort: 4000
           volumeMounts:
-            - name: placeholder-volume
-              mountPath: /data
             - name: config-volume
               mountPath: /config
           env:
-            - name: PLACEHOLDER_DATA
-              value: "/data/placeholder/"
+            - name: PELIAS_CONFIG
+              value: "/config/pelias.json"
             - name: PORT
-              value: "4100"
+              value: "4000"
           resources:
             limits:
               memory: 500Mi
             requests:
-              memory: 200Mi
+              memory: 100Mi
           livenessProbe:
             httpGet:
-              path: /demo/
-              port: 4100
-            initialDelaySeconds: 15
-            periodSeconds: 15
+              path: /v1/
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5
             failureThreshold: 10
           readinessProbe:
             httpGet:
-              path: /demo/
-              port: 4100
-            initialDelaySeconds: 15
-            periodSeconds: 15
+              path: /v1/
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5
             failureThreshold: 10
       volumes:
-        - name: placeholder-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 40Gi
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
