@@ -10,7 +10,12 @@
 
 set -e
 
-cd web/frontend
+(cd web/frontend &&
+  yarn format &&
+  yarn lint &&
+  yarn tsc)
 
-yarn lint
-yarn format-check
+(cd services/transitmux &&
+    cargo fmt &&
+    cargo clippy -- -D warnings &&
+    cargo test)

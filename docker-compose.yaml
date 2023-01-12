@@ -22,8 +22,8 @@ services:
     depends_on:
       tileserver-init:
         condition: service_completed_successfully
-    ports:
-      - "9000:8000"
+    expose:
+      - "8000"
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
@@ -61,19 +61,20 @@ services:
     env_file: .env
     environment:
       HEADWAY_RESOLVER: 127.0.0.11
-      HEADWAY_TILESERVER_URL: http://tileserver:8000
       HEADWAY_PELIAS_URL: http://pelias-api:4000
+      HEADWAY_TILESERVER_URL: http://tileserver:8000
+      HEADWAY_TRANSITMUX_URL: http://transitmux:8000
       HEADWAY_VALHALLA_URL: http://valhalla:8002
     ports:
       - "8080:8080"
     volumes:
       - "frontend_data:/data/:ro"
     extra_hosts:
-      - "opentripplanner:0.0.0.0"
+      - "transitmux:0.0.0.0"
     depends_on:
-      - "valhalla"
-      - "pelias-api"
       - "tileserver"
+      - "pelias-api"
+      - "valhalla"
   pelias-config-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env

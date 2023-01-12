@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: tileserver
+  name: ${OTP_ENDPOINT_NAME}
 spec:
   selector:
-    app: tileserver
+    app: ${OTP_ENDPOINT_NAME}
   ports:
     - protocol: TCP
+      name: service
       port: 8000
-      targetPort: 8000

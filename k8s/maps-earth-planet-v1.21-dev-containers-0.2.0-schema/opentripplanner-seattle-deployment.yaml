@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opentripplanner
+  name: opentripplanner-seattle
 spec:
   selector:
     matchLabels:
-      app: opentripplanner
+      app: opentripplanner-seattle
   replicas: 1
   template:
     metadata:
       labels:
-        app: opentripplanner
+        app: opentripplanner-seattle
     spec:
       initContainers:
         - name: init
@@ -24,7 +24,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
-                  key: otp-graph-url
+                  key: otp-graph-urls.seattle
           resources:
             limits:
               memory: 128Mi
@@ -35,7 +35,7 @@ spec:
           image: ghcr.io/headwaymaps/opentripplanner:dev
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 8000
           volumeMounts:
             - name: opentripplanner-volume
               mountPath: /data
@@ -47,14 +47,14 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 8000
             initialDelaySeconds: 15
             periodSeconds: 15
             failureThreshold: 10
           readinessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 8000
             initialDelaySeconds: 15
             periodSeconds: 15
             failureThreshold: 10

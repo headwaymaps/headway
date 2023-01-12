@@ -22,8 +22,10 @@ services:
     depends_on:
       tileserver-init:
         condition: service_completed_successfully
-    ports:
-      - "9000:8000"
+    expose:
+      - "8000"
+    networks:
+      - tileserver_frontend
   opentripplanner-init:
     image: ghcr.io/headwaymaps/opentripplanner-init:latest
     env_file: .env
@@ -41,6 +43,18 @@ services:
     depends_on:
       opentripplanner-init:
         condition: service_completed_successfully
+    networks:
+      - transit_backend
+  transitmux:
+    image: ghcr.io/headwaymaps/transitmux:latest
+    restart: always
+    env_file: .env
+    depends_on:
+      opentripplanner:
+        condition: service_healthy
+    networks:
+      - transit_backend
+      - transit_frontend
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
@@ -57,6 +71,8 @@ services:
     image: ghcr.io/headwaymaps/valhalla:latest
     restart: always
     env_file: .env
+    networks:
+      - valhalla_frontend
     volumes:
       - "valhalla_data:/data/:ro"
     ulimits:
@@ -83,19 +99,24 @@ services:
     env_file: .env
     environment:
       HEADWAY_RESOLVER: 127.0.0.11
-      HEADWAY_TILESERVER_URL: http://tileserver:8000
       HEADWAY_PELIAS_URL: http://pelias-api:4000
+      HEADWAY_TILESERVER_URL: http://tileserver:8000
+      HEADWAY_TRANSITMUX_URL: http://transitmux:8000
       HEADWAY_VALHALLA_URL: http://valhalla:8002
-      HEADWAY_OTP_URL: http://opentripplanner:8080
     ports:
       - "8080:8080"
+    networks:
+      - pelias_frontend
+      - tileserver_frontend
+      - transit_frontend
+      - valhalla_frontend
     volumes:
       - "frontend_data:/data/:ro"
     depends_on:
-      - "valhalla"
-      - "opentripplanner"
       - "pelias-api"
       - "tileserver"
+      - "transitmux"
+      - "valhalla"
   pelias-config-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
@@ -126,12 +147,17 @@ services:
   pelias-libpostal:
     image: pelias/libpostal-service
     restart: always
+    networks:
+      - pelias_backend
   pelias-api:
     image: pelias/api:master
     restart: always
     environment:
       PORT: 4000
       PELIAS_CONFIG: /config/pelias.json
+    networks:
+      - pelias_backend
+      - pelias_frontend
     volumes:
       - "pelias_config_data:/config:ro"
     depends_on:
@@ -144,6 +170,8 @@ services:
     restart: always
     environment:
       PORT: 4100
+    networks:
+      - pelias_backend
     volumes:
       - "pelias_config_data:/config:ro"
       - "pelias_placeholder_data:/data/placeholder"
@@ -155,6 +183,8 @@ services:
   pelias-elasticsearch:
     image: pelias/elasticsearch:7.16.1
     restart: always
+    networks:
+      - pelias_backend
     volumes:
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
     ulimits:
@@ -172,6 +202,15 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: nc -z localhost 9200
+      interval: 5s
+      start_period: 20s
+networks:
+  tileserver_frontend:
+  pelias_frontend:
+  pelias_backend:
+  valhalla_frontend:
+  transit_frontend:
+  transit_backend:
 volumes:
   pelias_config_data:
   pelias_placeholder_data:

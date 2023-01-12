@@ -57,27 +57,60 @@ indent4() { while IFS= read -r line; do printf '    %s\n' "$line"; done; }
 export PELIAS_CONFIG_JSON_YAML="|
 $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 
+render_template() {
+    file=$1
+    output="${2:-$(basename $file | sed 's/\.tpl$//')}"
+
+    envsubst < "$file" > "${OUTPUT_DIR}/${output}"
+}
+
 set -o nounset
 
 OUTPUT_DIR="${HEADWAY_AREA_TAG}-${HEADWAY_CONTAINER_VERSION}-containers-${HEADWAY_SCHEMA_VERSION}-schema"
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*
 
-for file in _template/*.tpl
+export OTP_GRAPHS_YAML=""
+export OTP_ENDPOINTS_JSON="["
+
+separator=""
+for TRANSIT_AREA in $HEADWAY_TRANSIT_AREAS; do
+    TRANSIT_AREA_GRAPH_NAME=$TRANSIT_AREA;
+    # Lowercase transit area for idiomatic k8s names
+    TRANSIT_AREA=$(echo $TRANSIT_AREA | tr '[:upper:]' '[:lower:]')
+    export TRANSIT_AREA;
+
+    # intentional newline for YAML formatting
+    OTP_GRAPHS_YAML+="
+  otp-graph-urls.${TRANSIT_AREA}: ${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_SCHEMA_VERSION}/${HEADWAY_AREA_TAG}/${TRANSIT_AREA_GRAPH_NAME}.graph.obj.zst"
+
+    export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_AREA}"
+    OTP_ENDPOINTS_JSON+="${separator}\"http://${OTP_ENDPOINT_NAME}:8000/otp/routers\""
+    separator=", "
+
+    for file in _template/opentripplanner*.tpl; do
+        output=$(basename $file | sed 's/\.tpl$//' | sed "s/AREA/${TRANSIT_AREA}/")
+        render_template $file $output
+    done
+done
+OTP_ENDPOINTS_JSON+="]"
+
+if [[ "$HEADWAY_ENABLE_TRANSIT_ROUTING" != 0 ]]; then
+    render_template "_template/transitmux-deployment.yaml.tpl"
+fi
+
+# NOTE: we *do* want to enable the transitmux *service*, regardless
+# of if transit routing is enabled - otherwise our nginx frontend will fail
+# to start up due to the inability to resolve DNS. A better solution might
+# be to remove the transitmux section from nginx altogether when transit
+# routing is disabled, but that's beyond the capabilities of the simple
+# envsubst we're using. For now then, we copy in the service defintion.
+render_template "_template/transitmux-service.yaml.tpl"
+
+shopt -s extglob
+for file in _template/!(opentripplanner*|transitmux*).tpl
 do
-    if [[ $file =~ opentripplanner-deployment && "$HEADWAY_ENABLE_TRANSIT_ROUTING" == 0 ]]; then
-        echo "skipping transit routing deployment"
-        # NOTE: we *do* want to copy the OTP *service* definition, otherwise
-        # our nginx frontend will fail to start up due to the inability to
-        # resolve DNS for the OTP proxy. A better solution might be to remove
-        # the OTP section altogether when transit routing is disabled, but
-        # that's beyond the capabilities of the simple envsubst we're using.
-        # For now then, we copy in the service defintion.
-        continue
-    fi
-    output=$(basename $file | sed 's/.tpl$//')
-    echo $output
-    envsubst < "$file" > "$OUTPUT_DIR/$output"
+    render_template $file
 done
 
 

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opentripplanner-losangeles
+spec:
+  selector:
+    app: opentripplanner-losangeles
+  ports:
+    - protocol: TCP
+      name: service
+      port: 8000

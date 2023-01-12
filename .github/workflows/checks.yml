@@ -38,3 +38,26 @@ jobs:
       - run: yarn format-check
       - run: yarn tsc
       - run: yarn test
+  transitmux_checks:
+    defaults:
+      run:
+        working-directory: services/transitmux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo fmt --all --check
+      - run: cargo clippy
+      - run: cargo test --all-features
+      - run: cargo build --release
