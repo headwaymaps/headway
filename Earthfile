@@ -393,24 +393,21 @@ gtfs-build:
 # OpenTripPlanner
 ##############################
 
-otp-download:
-    FROM +downloader-base
-
-    ARG OTP_VERISON=2.1.0
-    ARG OTP_HASH=b4c986b1c726c7d81d255fa183d32576122ba4e50290d53e4bb40be051971134
-
-    RUN wget -nv -O /data/otp-shaded.jar "https://github.com/opentripplanner/OpenTripPlanner/releases/download/v${OTP_VERISON}/otp-${OTP_VERISON}-shaded.jar"
-    RUN echo "${OTP_HASH}  /data/otp-shaded.jar" | sha256sum --check
-
-    SAVE ARTIFACT /data/otp-shaded.jar /otp-shaded.jar
-
 otp-base:
-    FROM +java11-base
+    # The version tag is ignored when sha256 is specified, but I'm leaving it
+    # in to document which "release" our sha pins to.
+    #
+    # I encountered errors when serviging from the latest "stable" release, so
+    # I'm running of a more recent version which doesn't have this issue.
+    #
+    # Error from 2.2.0 was:
+    #     headway-opentripplanner-1            | 01:41:14.080 ERROR (OTPMain.java:58) An uncaught error occurred inside OTP: Cannot invoke "java.util.Set.iterator()" because "patterns" is null
+    #     headway-opentripplanner-1            | java.lang.NullPointerException: Cannot invoke "java.util.Set.iterator()" because "patterns" is null
+    #
+    # FROM opentripplanner/opentripplanner:2.2.0@sha256:c908f27d57be586c814c2b9b2356ab8f53da3c6bce3feaa48138cea750a81f0a
+    FROM opentripplanner/opentripplanner:2.3.0_2023-01-17T14-05@sha256:794c9ef30ba6e49d91eebd0ae5673c3cbbaa40b8ed806243f9f666a3d8dc5afb
 
-    RUN mkdir /data
-    RUN mkdir /otp
-
-    COPY +otp-download/otp-shaded.jar /otp
+    RUN mkdir /var/opentripplanner
 
 otp-build:
     FROM +otp-base
@@ -418,14 +415,20 @@ otp-build:
     ARG --required transit_feeds
     ARG --required area
 
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /data/
-    COPY (+extract/data.osm.pbf --area=${area}) /data/
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /var/opentripplanner
+    COPY (+extract/data.osm.pbf --area=${area}) /var/opentripplanner
 
-    WORKDIR /data
+    WORKDIR /var/opentripplanner
+
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends zstd \
+        && rm -rf /var/lib/apt/lists/*
+
     RUN tar --zstd -xf gtfs.tar.zst
-    RUN java -Xmx4G -jar /otp/otp-shaded.jar --build --save .
 
-    SAVE ARTIFACT /data/graph.obj /graph.obj
+    RUN --entrypoint -- --build --save
+
+    SAVE ARTIFACT /var/opentripplanner/graph.obj /graph.obj
 
 otp-init-image:
     FROM +downloader-base
@@ -439,7 +442,11 @@ otp-serve-image:
 
     EXPOSE 8000
     ENV PORT 8000
-    CMD java -Xmx4G -jar /otp/otp-shaded.jar --load /data --port ${PORT}
+
+    # We add a layer of `sh -c` indirection in order to substitute in the PORT
+    # env variable at runtime
+    ENTRYPOINT ["sh", "-c"]
+    CMD ["/docker-entrypoint.sh --load --port ${PORT}"]
 
     # used for healthcheck
     RUN apt-get update \
