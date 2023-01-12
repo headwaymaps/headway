@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: ghcr.io/headwaymaps/transitmux:0.2.0
+          image: ghcr.io/headwaymaps/transitmux:0.3.0
           imagePullPolicy: Always
           args: ["http://opentripplanner-seattle:8000/otp/routers", "http://opentripplanner-losangeles:8000/otp/routers"]
           ports:

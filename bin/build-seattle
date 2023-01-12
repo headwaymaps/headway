@@ -11,7 +11,7 @@ log_file="${log_dir}/${log_filename}"
 
 EARTHLY_ARGS=${@:1}
 
-if [ -z "$HEADWAY_VERSION" ]
+if [ -z "$HEADWAY_CONTAINER_TAG" ]
 then
 source ${SCRIPT_DIR}/_headway_version.sh
 fi
@@ -19,6 +19,6 @@ fi
 # This job will download the seattle.osm data from bbike
 AREA=Seattle
 TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
-CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_VERSION --transit_feeds=$TRANSIT_FEEDS"
+CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_CONTAINER_TAG --transit_feeds=$TRANSIT_FEEDS"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")

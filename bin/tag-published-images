@@ -1,0 +1,31 @@
+#!/bin/bash -ex
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+function usage() {
+cat << EOF
+usage: $0 <src-tag> <new-tag>
+
+## Example
+
+    $0 latest 0.3.0
+EOF
+}
+
+if [ ! $# -eq 2 ]; then
+  usage
+  exit 1
+fi
+
+SRC_TAG="$1"
+NEW_TAG="$2"
+
+registry_root=ghcr.io/headwaymaps
+
+images=( headway headway-init opentripplanner opentripplanner-init pelias-init tileserver tileserver-init transitmux valhalla valhalla-init )
+
+for image in "${images[@]}"; do
+  docker pull "${registry_root}/${image}:${SRC_TAG}"
+  docker tag "${registry_root}/${image}:${SRC_TAG}" "${registry_root}/${image}:${NEW_TAG}"
+  docker push "${registry_root}/${image}:${NEW_TAG}"
+done

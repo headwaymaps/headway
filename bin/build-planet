@@ -11,7 +11,7 @@ log_file="${log_dir}/${log_filename}"
 
 EARTHLY_ARGS=${@:1}
 
-if [ -z "$HEADWAY_VERSION" ]
+if [ -z "$HEADWAY_CONTAINER_TAG" ]
 then
 source ${SCRIPT_DIR}/_headway_version.sh
 fi
@@ -19,6 +19,6 @@ fi
 # This job assumes you've already downloaded the planet file into the repository root
 AREA=maps-earth-planet-v1.21
 
-CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_VERSION"
+CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG"
 
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
