@@ -494,7 +494,7 @@ transitmux-serve-image:
 ##############################
 
 valhalla-base-image:
-    FROM michaelkirk/valhalla:date-2022-10-10
+    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.3.0
 
     USER root
     WORKDIR /tiles
