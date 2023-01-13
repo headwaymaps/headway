@@ -13,7 +13,8 @@ EARTHLY_ARGS=${@:1}
 
 if [ -z "$HEADWAY_CONTAINER_TAG" ]
 then
-source ${SCRIPT_DIR}/_headway_version.sh
+    # The seattle deployment is for testing, and thus always uses dev containers
+    HEADWAY_CONTAINER_TAG=dev
 fi
 
 # This job will download the seattle.osm data from bbike
