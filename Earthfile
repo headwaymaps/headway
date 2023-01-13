@@ -176,7 +176,7 @@ pelias-config:
     IF [ -z ${COUNTRIES} ]
         COPY (+pelias-guess-country/guessed_country --area=${area}) guessed_country
         IF [ -s guessed_country ]
-            RUN echo "Using guessed country"
+            RUN echo "Using guessed country $(cat guessed_country)"
             RUN COUNTRY_CODE_LIST="[\"$(cat guessed_country | sed 's/,/", "/g')\"]" \
                 bash -c "envsubst < pelias.json.template > pelias.json"
         ELSE
