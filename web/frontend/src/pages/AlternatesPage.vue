@@ -255,11 +255,18 @@ export default defineComponent({
             continue;
           }
 
-          map.pushTripLayer(
-            TripLayerId.unselected(tripIdx, legIdx),
-            leg.geometry(),
-            leg.paintStyle(false)
-          );
+          let layerId = TripLayerId.unselected(tripIdx, legIdx);
+          map.pushTripLayer(layerId, leg.geometry(), leg.paintStyle(false));
+          map.on('mouseover', layerId.toString(), () => {
+            map.setCursor('pointer');
+          });
+          map.on('mouseout', layerId.toString(), () => {
+            map.setCursor('');
+          });
+          map.on('click', layerId.toString(), (e) => {
+            console.log('clicked', e);
+            this.clickTrip(trip);
+          });
         }
       }
 

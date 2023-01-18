@@ -10,6 +10,7 @@ import maplibregl, {
   LineLayerSpecification,
   LngLatBoundsLike,
   LngLatLike,
+  MapLayerEventType,
   MapMouseEvent,
   MapOptions,
   Marker,
@@ -98,6 +99,7 @@ async function geolocationPermissionState(): Promise<string> {
 export interface BaseMapInterface {
   flyTo: (location: LngLatLike, zoom: number) => Promise<void>;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
+  setCursor: (key: string) => void;
   pushMarker: (key: string, marker: Marker) => void;
   removeMarker: (key: string) => void;
   removeAllMarkers: () => void;
@@ -113,11 +115,16 @@ export interface BaseMapInterface {
     geometry: GeoJSON.Geometry,
     paint: LineLayerSpecification['paint']
   ) => void;
+  hasLayer: (layerId: TripLayerId) => boolean;
   removeLayersExcept: (layerIds: TripLayerId[]) => void;
   /// returns wether a layer was removed
   removeLayer: (layerId: TripLayerId) => boolean;
   removeAllLayers(): void;
-  hasLayer: (layerId: TripLayerId) => boolean;
+  on: (
+    type: keyof MapLayerEventType,
+    layerId: string,
+    listener: (ev: unknown) => void
+  ) => void;
 }
 
 var baseMapMethods: BaseMapInterface | undefined = undefined;
@@ -295,6 +302,11 @@ export default defineComponent({
       });
       this.layers = newLayers;
     },
+    setCursor(value: string): void {
+      this.ensureMapLoaded((map) => {
+        map.getCanvas().style.cursor = value;
+      });
+    },
     flyTo: async function (location: LngLatLike, zoom: number): Promise<void> {
       const permissionState = await geolocationPermissionState();
       if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
@@ -319,6 +331,21 @@ export default defineComponent({
         this.$data.boundsToFit = bounds;
       }
     },
+
+    //
+    // Event Handling
+    //
+
+    on(
+      type: keyof MapLayerEventType,
+      layerId: string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      listener: (ev: any) => void
+    ) {
+      this.ensureMapLoaded((map: maplibregl.Map) => {
+        map.on(type, layerId.toString(), listener);
+      });
+    },
     pushTouchHandler: function (
       event: BaseMapEventType,
       handler: BaseMapEventHandler
@@ -335,6 +362,7 @@ export default defineComponent({
     let map = await loadMap();
     // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
     baseMapMethods = {
+      setCursor: this.setCursor,
       flyTo: this.flyTo,
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
@@ -347,6 +375,7 @@ export default defineComponent({
       removeLayer: this.removeLayer,
       removeLayersExcept: this.removeLayersExcept,
       removeAllLayers: this.removeAllLayers,
+      on: this.on,
     };
     var nav = new maplibregl.NavigationControl({
       visualizePitch: true,
@@ -472,17 +501,17 @@ export default defineComponent({
       if (layers) {
         for (const layer of layers) {
           if (layer.id.startsWith('place_') || layer.id.startsWith('poi_')) {
-            map.on('mouseenter', layer.id, (event) => {
+            this.on('mouseover', layer.id, (event) => {
               if (event.features && event.features[0]) {
-                map.getCanvas().style.cursor = 'pointer';
+                this.setCursor('pointer');
               } else {
                 console.warn('hovered place without feature', layer, event);
               }
             });
-            map.on('mouseleave', layer.id, () => {
-              map.getCanvas().style.cursor = '';
+            this.on('mouseout', layer.id, () => {
+              this.setCursor('pointer');
             });
-            map.on('click', layer.id, (event) => {
+            this.on('click', layer.id, (event) => {
               if (event.features && event.features[0]) {
                 this.touchHandlers
                   .get('poi_click')
