@@ -38,7 +38,7 @@ spec:
             - containerPort: 8000
           volumeMounts:
             - name: opentripplanner-volume
-              mountPath: /data
+              mountPath: /var/opentripplanner
           resources:
             limits:
               memory: 4.5Gi

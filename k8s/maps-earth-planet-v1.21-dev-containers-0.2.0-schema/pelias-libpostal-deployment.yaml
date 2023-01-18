@@ -16,7 +16,6 @@ spec:
       containers:
         - name: main
           image: pelias/libpostal-service:latest
-          imagePullPolicy: Always
           ports:
             - containerPort: 4400
           resources:

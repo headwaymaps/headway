@@ -33,6 +33,7 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/valhalla:${HEADWAY_CONTAINER_TAG}
+          imagePullPolicy: Always
           ports:
           - containerPort: 8002
           volumeMounts:

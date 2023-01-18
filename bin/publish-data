@@ -1,8 +1,7 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
-APP_ROOT=$(git rev-parse --show-toplevel)
-DATA_ROOT="${APP_ROOT}/data"
-SCRIPT_DIR="${APP_ROOT}/bin"
+REPO_ROOT=$(git rev-parse --show-toplevel)
+DATA_ROOT="${REPO_ROOT}/data"
 
 function upload() {
   INPUT=$1
@@ -11,65 +10,70 @@ function upload() {
   RESOURCE="${OUTPUT_PREFIX}/$(basename $INPUT)"
   BUCKET=$HEADWAY_S3_BUCKET
 
+  INPUT_PATH="${DATA_ROOT}/${INPUT}"
+  if [ ! -f "$INPUT_PATH" ]; then
+      echo "target file doesn't exist: '${INPUT_PATH}'"
+      exit 1;
+  fi
+
   # I'm seeing much faster uploads with the openstack swift client vs the aws cli
   # Plus, my host seems to be pretty flaky with large uploads via the `aws s3` cli.
   #
   # Note you'll need to be authenticated to run this.
   #   e.g. (source ~/openrc.sh && bin/publish-data)
-  swift upload --segment-size=5G --skip-identical $BUCKET "${DATA_ROOT}/${INPUT}" --object-name="${RESOURCE}"
+  echo "Uploading ${INPUT_PATH} -> s3://${BUCKET}/${RESOURCE}"
+  swift upload --segment-size=5G --skip-identical "$BUCKET" "$INPUT_PATH" --object-name="$RESOURCE"
 }
 
 function usage() {
 cat << EOF
-usage: $0 <area-tag> <area>
+usage: $0 <site.env>
 examples:
-    $0 seattle-latest Seattle
-    $0 planet-v1.19 planet-v1.19
+    $0 k8s/planet.env
 
 Use an upload prefix other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=latest $0 seattle-latest Seattle
-    HEADWAY_DATA_TAG=0.1.0 $0 planet-v1.19 planet-v1.19
+    HEADWAY_DATA_TAG=dev $0 k8s/planet.env
+    HEADWAY_DATA_TAG=dev $0 k8s/seattle.env
 EOF
 }
 
-AREA_TAG=$1
-if [ -z "${AREA_TAG}" ]; then
-  echo "missing tag"
-  usage
-  exit 1
-fi
-
-# These files depend on the area of the map (seattle, planet, etc.)
-AREA=$2
-if [ -z "${AREA}" ]; then
-  echo "missing area"
-  usage
-  exit 1
-fi
-
-if [ -z "${HEADWAY_DATA_TAG}" ]; then
-    source "${SCRIPT_DIR}/_headway_version.sh"
-fi
-
-CONFIG_FILE="${APP_ROOT}/.env"
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-else
-    echo "Missing ${CONFIG_FILE}. See ${CONFIG_FILE}-example"
+if [ ! $# -eq 1 ]; then
+    usage
     exit 1
 fi
 
-upload "${AREA}.valhalla.tar.zst"      "${HEADWAY_DATA_TAG}/${AREA_TAG}"
-upload "${AREA}.elasticsearch.tar.zst" "${HEADWAY_DATA_TAG}/${AREA_TAG}"
-upload "${AREA}.mbtiles"              "${HEADWAY_DATA_TAG}/${AREA_TAG}"
-upload "${AREA}.placeholder.tar.zst"   "${HEADWAY_DATA_TAG}/${AREA_TAG}"
-upload "${AREA}.osm.pbf"              "${HEADWAY_DATA_TAG}/${AREA_TAG}"
+source "${REPO_ROOT}/.env"
 
-# transit files only exist when transit is enabled
-if [ -f "${DATA_ROOT}/${AREA}.graph.obj.zst" ]; then
-upload "${AREA}.graph.obj.zst"         "${HEADWAY_DATA_TAG}/${AREA_TAG}"
-upload "${AREA}.gtfs.tar.zst"          "${HEADWAY_DATA_TAG}/${AREA_TAG}"
+# stash env vars in local before they get clobbered by _headway_version.sh
+local_container_tag=$HEADWAY_CONTAINER_TAG
+local_data_tag=$HEADWAY_DATA_TAG
+source "${REPO_ROOT}/bin/_headway_version.sh"
+
+if [ ! -z "$HEADWAY_TAG" ]; then
+    HEADWAY_CONTAINER_TAG="$HEADWAY_TAG"
+    HEADWAY_DATA_TAG="$HEADWAY_TAG"
 fi
+
+export HEADWAY_CONTAINER_TAG="${local_container_tag:-$HEADWAY_CONTAINER_TAG}"
+export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
+
+DEPLOYMENT_ENV_FILE="$1"
+source "$DEPLOYMENT_ENV_FILE"
+
+set -o nounset
+
+upload "${HEADWAY_AREA}.valhalla.tar.zst"      "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+upload "${HEADWAY_AREA}.elasticsearch.tar.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+upload "${HEADWAY_AREA}.mbtiles"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+upload "${HEADWAY_AREA}.placeholder.tar.zst"   "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+upload "${HEADWAY_AREA}.osm.pbf"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+
+for TRANSIT_AREA in $HEADWAY_TRANSIT_AREAS; do
+
+upload "${TRANSIT_AREA}.graph.obj.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+upload "${TRANSIT_AREA}.gtfs.tar.zst"  "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+
+done
 
 # These files are generic across all areas
 upload natural_earth.mbtiles          "${HEADWAY_DATA_TAG}"

@@ -39,7 +39,7 @@ services:
     restart: always
     env_file: .env
     volumes:
-      - "opentripplanner_data:/data/:ro"
+      - "opentripplanner_data:/var/opentripplanner/:ro"
     depends_on:
       opentripplanner-init:
         condition: service_completed_successfully
