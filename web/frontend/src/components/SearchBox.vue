@@ -1,36 +1,25 @@
 <template>
   <div class="search-box">
     <q-input
-      ref="autoCompleteInput"
-      :label="$props.hint ? $props.hint : $t('where_to_question')"
+      ref="inputField"
+      :label="$props.hint || $t('where_to_question')"
       v-model="inputText"
       clearable
       :readonly="readonly"
       :input-style="{ color: 'black' }"
       :outlined="true"
-      :debounce="0"
       :dense="true"
       v-on:clear="selectPlace(undefined)"
       v-on:blur="onBlur"
-      v-on:beforeinput="
-  (event: Event) =>
-    updateAutocompleteEventBeforeInput(
-      event,
-      autoCompleteMenu()
-      )
-      "
-      v-on:update:model-value="
-        () => updateAutocompleteEventRawString(autoCompleteMenu())
-      "
-    >
-    </q-input>
+      v-on:update:model-value="inputTextDidChange"
+    />
     <q-menu
       auto-close
-      ref="autoCompleteMenu"
+      ref="autocompleteMenu"
       :no-focus="true"
       :no-refocus="true"
       v-on:before-hide="removeHoverMarkers"
-      :target="($refs.autoCompleteInput as Element)"
+      :target="($refs.inputField as Element)"
     >
       <q-list>
         <q-item
@@ -38,8 +27,8 @@
           v-for="item in autocompleteOptions"
           clickable
           v-on:click="selectPlace(item)"
-          v-on:mouseenter="hoverPlace(item)"
-          v-on:mouseleave="hoverPlace(undefined)"
+          v-on:mouseenter="onHoverPlace(item)"
+          v-on:mouseleave="onHoverPlace(undefined)"
         >
           <q-item-section>
             <q-item-label>{{
@@ -65,13 +54,11 @@
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
-import { Event, Marker } from 'maplibre-gl';
+import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
-import { QMenu, Platform } from 'quasar';
+import { QInput, QMenu, Platform } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
-
-const isAndroid = /(android)/i.test(navigator.userAgent);
 
 export default defineComponent({
   name: 'SearchBox',
@@ -81,6 +68,12 @@ export default defineComponent({
     readonly: Boolean,
   },
   methods: {
+    autocompleteMenu(): QMenu {
+      return this.$refs.autocompleteMenu as QMenu;
+    },
+    inputField(): QInput {
+      return this.$refs.inputField as QInput;
+    },
     onBlur(): void {
       if (Platform.is.ios) {
         // iOS (on at least 16.1) "helpfully" moves the focused input towards
@@ -103,8 +96,46 @@ export default defineComponent({
         window.scroll(0, -1);
       }
     },
-    autoCompleteMenu(): QMenu {
-      return this.$refs.autoCompleteMenu as QMenu;
+    inputTextDidChange() {
+      this.autocompleteMenu().show();
+      this.removeHoverMarkers();
+      this.updateAutocomplete(this.inputText);
+    },
+    removeHoverMarkers() {
+      if (this.hoverMarker) {
+        this.hoverMarker.remove();
+        this.hoverMarker = undefined;
+      }
+    },
+    selectPlace(place?: Place) {
+      this.$emit('didSelectPlace', place);
+      this.removeHoverMarkers();
+    },
+    onHoverPlace(place?: Place) {
+      if (!supportsHover()) {
+        // FIX: selecting autocomplete item on mobile requires double
+        // tapping.
+        //
+        // On touch devices, where hover is not supported, this method is
+        // fired upon tapping. I don't fully understand why, but maybe
+        // mutating the state in this method would rebuild the component,
+        // canceling any outstanding event handlers on the old component.
+        return;
+      }
+      this.placeHovered = place;
+      this.removeHoverMarkers();
+
+      if (!map) {
+        console.error('map was unexpectedly unset');
+        return;
+      }
+
+      if (place) {
+        this.hoverMarker = new Marker({ color: '#11111155' }).setLngLat(
+          place.point
+        );
+        this.hoverMarker.addTo(map);
+      }
     },
   },
   watch: {
@@ -117,29 +148,18 @@ export default defineComponent({
     },
   },
   emits: ['didSelectPlace'],
-  unmounted: function () {
-    this.onUnmounted();
+  unmounted(): void {
+    this.removeHoverMarkers();
   },
-  beforeUnmount: function () {
-    this.onUnmounted();
-  },
-  setup: function (props, ctx) {
+  setup() {
     const inputText = ref('');
     const placeHovered: Ref<Place | undefined> = ref(undefined);
     const autocompleteOptions: Ref<Place[] | undefined> = ref([]);
+    const hoverMarker: Ref<Marker | undefined> = ref(undefined);
+
     let requestIdx = 0;
     let mostRecentResultsRequestIdx = 0;
-
-    var hoverMarker: Marker | undefined = undefined;
-
-    const _updateAutocomplete = async function (
-      currentTextValue: string,
-      target?: HTMLInputElement
-    ) {
-      const value = target?.value || currentTextValue;
-      if (!value) {
-        return;
-      }
+    async function _updateAutocomplete(text: string): Promise<void> {
       let focus = undefined;
       if (map && map.getZoom() > 6) {
         focus = map.getCenter();
@@ -150,7 +170,7 @@ export default defineComponent({
 
       let places: Place[] = [];
       try {
-        const results = await PeliasClient.autocomplete(value, focus);
+        const results = await PeliasClient.autocomplete(text, focus);
         for (const feature of results.features) {
           if (!feature.properties?.gid) {
             console.error('feature was missing gid');
@@ -170,7 +190,7 @@ export default defineComponent({
       }
       mostRecentResultsRequestIdx = thisRequestIdx;
       autocompleteOptions.value = places;
-    };
+    }
     const throttleMs = 200;
     const updateAutocomplete = throttle(_updateAutocomplete, throttleMs, {
       trailing: true,
@@ -178,87 +198,10 @@ export default defineComponent({
 
     return {
       inputText,
+      hoverMarker,
+      updateAutocomplete,
       autocompleteOptions,
       placeHovered,
-      deferHide(menu: QMenu) {
-        setTimeout(() => {
-          menu.hide();
-          if (hoverMarker) {
-            hoverMarker.remove();
-            hoverMarker = undefined;
-          }
-        }, 500);
-      },
-      removeHoverMarkers() {
-        if (hoverMarker) {
-          hoverMarker.remove();
-          hoverMarker = undefined;
-        }
-      },
-      updateAutocompleteEventRawString(menu: QMenu) {
-        menu.show();
-        if (placeHovered.value) {
-          placeHovered.value = undefined;
-        }
-        if (!isAndroid) {
-          setTimeout(() => updateAutocomplete(inputText.value));
-        }
-      },
-      updateAutocompleteEventBeforeInput(event: Event, menu: QMenu) {
-        const inputEvent = event as InputEvent;
-        menu.show();
-        if (placeHovered.value) {
-          placeHovered.value = undefined;
-        }
-        if (isAndroid) {
-          setTimeout(() =>
-            updateAutocomplete(
-              inputText.value,
-              inputEvent.target as HTMLInputElement
-            )
-          );
-        }
-      },
-      selectPlace(place?: Place) {
-        ctx.emit('didSelectPlace', place);
-        setTimeout(() => {
-          if (hoverMarker) hoverMarker.remove();
-        });
-      },
-      hoverPlace(place?: Place) {
-        if (!supportsHover()) {
-          // FIX: selecting automcomplete item on mobile requires double
-          // tapping.
-          //
-          // On touch devices, where hover is not supported, this method is
-          // fired upon tapping. I don't fully understand why, but maybe
-          // mutating the state in this method would rebuild the component,
-          // canceling any outstanding event handlers on the old component.
-          return;
-        }
-        placeHovered.value = place;
-
-        if (hoverMarker) {
-          hoverMarker.remove();
-        }
-
-        if (!map) {
-          console.error('map was unexpectedly unset');
-          return;
-        }
-
-        if (place) {
-          hoverMarker = new Marker({ color: '#11111155' }).setLngLat(
-            place.point
-          );
-          hoverMarker.addTo(map);
-        }
-      },
-      onUnmounted() {
-        if (hoverMarker) {
-          hoverMarker.remove();
-        }
-      },
     };
   },
 });
