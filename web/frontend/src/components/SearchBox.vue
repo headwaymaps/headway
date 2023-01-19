@@ -69,6 +69,7 @@ import { Event, Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
 import { QMenu, Platform } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
+import PeliasClient from 'src/services/PeliasClient';
 
 const isAndroid = /(android)/i.test(navigator.userAgent);
 
@@ -135,45 +136,40 @@ export default defineComponent({
       currentTextValue: string,
       target?: HTMLInputElement
     ) {
-      const value = target ? target.value : currentTextValue;
+      const value = target?.value || currentTextValue;
       if (!value) {
         return;
       }
-      let url = undefined;
+      let focus = undefined;
       if (map && map.getZoom() > 6) {
-        const mapCenter = map?.getCenter();
-        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(
-          value
-        )}&focus.point.lon=${mapCenter?.lng}&focus.point.lat=${mapCenter?.lat}`;
-      } else {
-        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}`;
+        focus = map.getCenter();
       }
+
       const thisRequestIdx = requestIdx;
       requestIdx++;
-      const response = await fetch(url);
-      if (response.status != 200) {
-        if (thisRequestIdx > mostRecentResultsRequestIdx) {
-          // Don't clobber existing good results with an error from a stale request
-          autocompleteOptions.value = [];
+
+      let places: Place[] = [];
+      try {
+        const results = await PeliasClient.autocomplete(value, focus);
+        for (const feature of results.features) {
+          if (!feature.properties?.gid) {
+            console.error('feature was missing gid');
+            continue;
+          }
+          let gid = feature.properties.gid;
+          let id = PlaceId.gid(gid);
+          places.push(Place.fromFeature(id, feature));
         }
-        return;
+      } catch (e) {
+        console.log('error with autocomplete', e);
       }
+
       if (thisRequestIdx < mostRecentResultsRequestIdx) {
         // not updating autocomplete for a stale req
         return;
       }
       mostRecentResultsRequestIdx = thisRequestIdx;
-
-      const results = await response.json();
-      var options: Place[] = [];
-      for (const feature of results.features) {
-        // TODO: Not sure if this ever happens.
-        console.assert(feature.properties.gid);
-        let gid = feature.properties.gid;
-        let id = PlaceId.gid(gid);
-        options.push(Place.fromFeature(id, feature));
-      }
-      autocompleteOptions.value = options;
+      autocompleteOptions.value = places;
     };
     const throttleMs = 200;
     const updateAutocomplete = throttle(_updateAutocomplete, throttleMs, {
