@@ -1,7 +1,7 @@
 # <p align=center>Headway</p>
 
 <p align=center>
-<img alt="GitHub Actions status badge" src="https://github.com/headwaymaps/headway/actions/workflows/main.yml/badge.svg?branch=main"/>
+<img alt="GitHub Actions status badge" src="https://github.com/headwaymaps/headway/actions/workflows/checks.yml/badge.svg?branch=main"/>
 <img alt="License badge" src="https://img.shields.io/github/license/headwaymaps/headway"/>
 <img alt="GitHub last commit badge" src="https://img.shields.io/github/last-commit/headwaymaps/headway"/>
 <img alt="GitHub commit activity badge" src="https://img.shields.io/github/commit-activity/m/headwaymaps/headway"/>
