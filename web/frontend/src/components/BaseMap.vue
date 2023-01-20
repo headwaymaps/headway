@@ -387,6 +387,7 @@ export default defineComponent({
       positionOptions: { enableHighAccuracy: true },
       showAccuracyCircle: true,
       showUserLocation: true,
+      trackUserLocation: true,
     });
     map.addControl(geolocate, 'bottom-right');
     map.on('load', () => {
