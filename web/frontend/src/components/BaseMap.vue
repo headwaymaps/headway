@@ -23,6 +23,7 @@ import { mapFeatureToPlace } from 'src/utils/models';
 import { debounce } from 'lodash';
 import { PlaceId } from 'src/models/Place';
 import TripLayerId from 'src/models/TripLayerId';
+import env from 'src/utils/env';
 
 export var map: maplibregl.Map | null = null;
 const mapContainerId = 'map';
@@ -369,6 +370,7 @@ export default defineComponent({
       showUserLocation: true,
       trackUserLocation: true,
     });
+    env.geolocation.register(geolocate);
     map.addControl(geolocate, 'bottom-right');
     map.on('load', () => {
       this.loaded = true;
