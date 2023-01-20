@@ -1,5 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { LngLat } from 'maplibre-gl';
+import Place from 'src/models/Place';
+import { DistanceUnits } from './models';
 import Prefs from './Prefs';
 
 /**
@@ -62,12 +64,80 @@ test('unpersisted storage', () => {
 test('most recent center', () => {
   const storage = new UnpersistedStorage();
   const prefs = new Prefs(storage);
-  expect(prefs.mostRecentMapCenter()).toBe(null);
+  expect(prefs.mostRecentMapCenter).toBe(null);
 
   prefs.setMostRecentMapCenter(new LngLat(1.0, 2.0));
-  expect(prefs.mostRecentMapCenter()).toStrictEqual([1.0, 2.0]);
+  expect(prefs.mostRecentMapCenter).toStrictEqual([1.0, 2.0]);
 
   prefs.setMostRecentMapCenter(new LngLat(3.0, 4.0));
   prefs.setMostRecentMapCenter([5.0, 6.0]);
-  expect(prefs.mostRecentMapCenter()).toStrictEqual([5.0, 6.0]);
+  expect(prefs.mostRecentMapCenter).toStrictEqual([5.0, 6.0]);
+});
+
+test('distance units default', () => {
+  const storage = new UnpersistedStorage();
+  const fromPlace = Place.bareLocation(new LngLat(0, 0));
+  const prefs = new Prefs(storage);
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Kilometers);
+});
+
+test('distance units from fromPlace (mi)', () => {
+  const storage = new UnpersistedStorage();
+  const fromPlace = Place.bareLocation(new LngLat(0, 0));
+  fromPlace.countryCode = 'US';
+  const prefs = new Prefs(storage);
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Miles);
+});
+
+test('distance units from fromPlace (km)', () => {
+  const storage = new UnpersistedStorage();
+  const fromPlace = Place.bareLocation(new LngLat(0, 0));
+  fromPlace.countryCode = 'CA';
+  const prefs = new Prefs(storage);
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Kilometers);
+});
+
+test('distance units prefer fromPlace over toPlace', () => {
+  const storage = new UnpersistedStorage();
+  const fromPlace = Place.bareLocation(new LngLat(0, 0));
+  fromPlace.countryCode = 'US';
+  const toPlace = Place.bareLocation(new LngLat(0, 0));
+  toPlace.countryCode = 'CA';
+  const prefs = new Prefs(storage);
+  expect(prefs.distanceUnits(fromPlace, toPlace)).toBe(DistanceUnits.Miles);
+});
+
+test('distance units from toPlace', () => {
+  const storage = new UnpersistedStorage();
+  const fromPlace = Place.bareLocation(new LngLat(0, 0));
+  fromPlace.countryCode = undefined;
+  const toPlace = Place.bareLocation(new LngLat(0, 0));
+  fromPlace.countryCode = 'US';
+  const prefs = new Prefs(storage);
+  expect(prefs.distanceUnits(fromPlace, toPlace)).toBe(DistanceUnits.Miles);
+});
+
+test('distance units from storage', () => {
+  const storage = new UnpersistedStorage();
+  const prefs = new Prefs(storage);
+
+  // sanity check that we default to KM
+  const fromPlace = Place.bareLocation(new LngLat(0, 0));
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Kilometers);
+
+  // specify country code to get different units
+  fromPlace.countryCode = 'US';
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Miles);
+
+  // remember past units
+  fromPlace.countryCode = undefined;
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Miles);
+
+  // specifying new country code forces new units
+  fromPlace.countryCode = 'CA';
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Kilometers);
+
+  // And that becomes the new default
+  fromPlace.countryCode = undefined;
+  expect(prefs.distanceUnits(fromPlace)).toBe(DistanceUnits.Kilometers);
 });

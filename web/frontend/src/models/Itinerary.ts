@@ -140,12 +140,13 @@ export default class Itinerary implements Trip {
   }
 
   public walkingDistanceFormatted(): string {
-    let distance = this.walkingDistanceMeters;
-    if (this.distanceUnits != DistanceUnits.Kilometers) {
-      distance = kilometersToMiles(distance / 1000);
+    const km = this.walkingDistanceMeters / 1000;
+    if (this.distanceUnits == DistanceUnits.Kilometers) {
+      return formatDistance(km, DistanceUnits.Kilometers);
+    } else {
+      const miles = kilometersToMiles(km);
+      return formatDistance(miles, DistanceUnits.Miles);
     }
-
-    return formatDistance(distance, this.distanceUnits);
   }
 
   public get viaRouteFormatted(): string | undefined {

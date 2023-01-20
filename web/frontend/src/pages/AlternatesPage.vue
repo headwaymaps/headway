@@ -62,7 +62,6 @@ import {
   sourceMarker,
   getBaseMap,
 } from 'src/components/BaseMap.vue';
-import { DistanceUnits } from 'src/utils/models';
 import { Component, defineComponent, Ref, ref } from 'vue';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
@@ -74,9 +73,7 @@ import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
 import TripLayerId from 'src/models/TripLayerId';
 import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
-
-let toPlace: Ref<Place | undefined> = ref(undefined);
-let fromPlace: Ref<Place | undefined> = ref(undefined);
+import Prefs from 'src/utils/Prefs';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -163,18 +160,18 @@ export default defineComponent({
       }
     },
     clickedSwap(newFromValue?: Place, newToValue?: Place) {
-      fromPlace.value = newFromValue;
-      toPlace.value = newToValue;
+      this.fromPlace = newFromValue;
+      this.toPlace = newToValue;
       this.rewriteUrl();
     },
     rewriteUrl: async function () {
-      if (!fromPlace.value && !toPlace.value) {
+      if (!this.fromPlace && !this.toPlace) {
         this.$router.push('/');
         return;
       }
 
-      const fromEncoded = fromPlace.value?.urlEncodedId() ?? '_';
-      const toEncoded = toPlace.value?.urlEncodedId() ?? '_';
+      const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
+      const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
       this.$router.push(`/directions/${this.mode}/${toEncoded}/${fromEncoded}`);
       await this.updateTrips();
     },
@@ -189,12 +186,12 @@ export default defineComponent({
       map.removeAllLayers();
       map.removeAllMarkers();
 
-      if (fromPlace.value && toPlace.value) {
+      if (this.fromPlace && this.toPlace) {
         const result = await fetchBestTrips(
-          fromPlace.value.point,
-          toPlace.value.point,
+          this.fromPlace.point,
+          this.toPlace.point,
           this.mode,
-          fromPlace.value.preferredDistanceUnits() ?? DistanceUnits.Kilometers
+          Prefs.stored.distanceUnits(this.fromPlace, this.toPlace)
         );
         if (result.ok) {
           const trips = result.value;
@@ -211,17 +208,17 @@ export default defineComponent({
         this.error = undefined;
       }
 
-      if (fromPlace.value) {
+      if (this.fromPlace) {
         map.pushMarker(
           'source_marker',
-          sourceMarker().setLngLat(fromPlace.value.point)
+          sourceMarker().setLngLat(this.fromPlace.point)
         );
       }
 
-      if (toPlace.value) {
+      if (this.toPlace) {
         map.pushMarker(
           'destination_marker',
-          destinationMarker().setLngLat(toPlace.value.point)
+          destinationMarker().setLngLat(this.toPlace.point)
         );
       }
     },
@@ -263,8 +260,7 @@ export default defineComponent({
           map.on('mouseout', layerId.toString(), () => {
             map.setCursor('');
           });
-          map.on('click', layerId.toString(), (e) => {
-            console.log('clicked', e);
+          map.on('click', layerId.toString(), () => {
             this.clickTrip(trip);
           });
         }
@@ -313,12 +309,12 @@ export default defineComponent({
   },
   mounted: async function () {
     if (this.to != '_') {
-      toPlace.value = await PlaceStorage.fetchFromSerializedId(
+      this.toPlace = await PlaceStorage.fetchFromSerializedId(
         this.to as string
       );
     }
     if (this.from != '_') {
-      fromPlace.value = await PlaceStorage.fetchFromSerializedId(
+      this.fromPlace = await PlaceStorage.fetchFromSerializedId(
         this.from as string
       );
     }
@@ -326,6 +322,9 @@ export default defineComponent({
     await this.rewriteUrl();
   },
   setup: function () {
+    let toPlace: Ref<Place | undefined> = ref(undefined);
+    let fromPlace: Ref<Place | undefined> = ref(undefined);
+
     return {
       toPlace,
       fromPlace,

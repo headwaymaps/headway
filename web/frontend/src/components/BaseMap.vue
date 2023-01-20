@@ -31,10 +31,10 @@ async function loadMap(): Promise<maplibregl.Map> {
   let initialCenter: LngLatLike = [0, 0];
   let initialZoom = 1;
 
-  const mostRecentMapCenter = Prefs.stored().mostRecentMapCenter();
+  const mostRecentMapCenter = Prefs.stored.mostRecentMapCenter;
   if (mostRecentMapCenter) {
     initialCenter = mostRecentMapCenter;
-    const mostRecentMapZoom = Prefs.stored().mostRecentMapZoom();
+    const mostRecentMapZoom = Prefs.stored.mostRecentMapZoom;
     if (mostRecentMapZoom) {
       initialZoom = Math.min(10, mostRecentMapZoom);
     }
@@ -419,8 +419,8 @@ export default defineComponent({
     map.on(
       'moveend',
       debounce(() => {
-        Prefs.stored().setMostRecentMapCenter(map.getCenter());
-        Prefs.stored().setMostRecentMapZoom(map.getZoom());
+        Prefs.stored.setMostRecentMapCenter(map.getCenter());
+        Prefs.stored.setMostRecentMapZoom(map.getZoom());
       }, 2000)
     );
 

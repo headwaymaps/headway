@@ -214,7 +214,7 @@ export default class Place {
     if (imperialDogs.includes(this.countryCode)) {
       return DistanceUnits.Miles;
     } else {
-      return undefined;
+      return DistanceUnits.Kilometers;
     }
   }
 }

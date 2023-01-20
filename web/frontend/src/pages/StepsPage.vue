@@ -48,9 +48,6 @@ import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import TripLayerId from 'src/models/TripLayerId';
 
-let toPlace: Ref<Place | undefined> = ref(undefined);
-let fromPlace: Ref<Place | undefined> = ref(undefined);
-
 export default defineComponent({
   name: 'StepsPage',
   props: {
@@ -92,8 +89,8 @@ export default defineComponent({
     },
 
     goToAlternates() {
-      const fromEncoded = fromPlace.value?.urlEncodedId() ?? '_';
-      const toEncoded = toPlace.value?.urlEncodedId() ?? '_';
+      const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
+      const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
       this.$router.push(`/directions/${this.mode}/${toEncoded}/${fromEncoded}`);
     },
 
@@ -104,18 +101,18 @@ export default defineComponent({
         return;
       }
 
-      const fromEncoded = fromPlace.value?.urlEncodedId() ?? '_';
-      const toEncoded = toPlace.value?.urlEncodedId() ?? '_';
+      const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
+      const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
       this.$router.push(
         `/directions/${this.mode}/${toEncoded}/${fromEncoded}/${this.tripIdx}`
       );
 
-      if (fromPlace.value && toPlace.value) {
+      if (this.fromPlace && this.toPlace) {
         const result = await fetchBestTrips(
-          fromPlace.value.point,
-          toPlace.value.point,
+          this.fromPlace.point,
+          this.toPlace.point,
           this.mode,
-          fromPlace.value.preferredDistanceUnits() ?? DistanceUnits.Kilometers
+          this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
         );
         if (!result.ok) {
           console.error('fetchBestTrips.error', result.error);
@@ -161,10 +158,10 @@ export default defineComponent({
     },
   },
   mounted: async function () {
-    toPlace.value = await PlaceStorage.fetchFromSerializedId(
+    this.toPlace = await PlaceStorage.fetchFromSerializedId(
       this.$props.to as string
     );
-    fromPlace.value = await PlaceStorage.fetchFromSerializedId(
+    this.fromPlace = await PlaceStorage.fetchFromSerializedId(
       this.$props.from as string
     );
 
@@ -190,21 +187,24 @@ export default defineComponent({
     });
 
     map.removeAllMarkers();
-    if (fromPlace.value) {
+    if (this.fromPlace) {
       map.pushMarker(
         'source_marker',
-        sourceMarker().setLngLat(fromPlace.value.point)
+        sourceMarker().setLngLat(this.fromPlace.point)
       );
     }
 
-    if (toPlace.value) {
+    if (this.toPlace) {
       map.pushMarker(
         'destination_marker',
-        destinationMarker().setLngLat(toPlace.value.point)
+        destinationMarker().setLngLat(this.toPlace.point)
       );
     }
   },
   setup: function () {
+    let toPlace: Ref<Place | undefined> = ref(undefined);
+    let fromPlace: Ref<Place | undefined> = ref(undefined);
+
     return {
       toPlace,
       fromPlace,
