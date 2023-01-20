@@ -83,7 +83,7 @@ function clearAllTimeouts() {
 /**
  * Polyfill for geolocation permission
  */
-async function geolocationPermissionState(): Promise<string> {
+async function geolocationPermissionState(): Promise<PermissionState> {
   if (navigator.permissions === undefined) {
     // assume "unknown" on platforms like Safari 15 which don't
     // support the permissions API.
