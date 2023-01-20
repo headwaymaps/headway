@@ -3,7 +3,7 @@ import { isEqual } from 'lodash';
 
 export default class Prefs {
   private static _stored: Prefs | undefined;
-  static stored(): Prefs {
+  static get stored(): Prefs {
     if (Prefs._stored === undefined) {
       Prefs._stored = new Prefs(window.localStorage);
     }
@@ -17,7 +17,7 @@ export default class Prefs {
   }
 
   private _mostRecentMapZoom: number | undefined | null;
-  mostRecentMapZoom(): number | null {
+  get mostRecentMapZoom(): number | null {
     if (this._mostRecentMapZoom !== undefined) {
       return this._mostRecentMapZoom;
     }
@@ -54,7 +54,7 @@ export default class Prefs {
   }
 
   private _mostRecentMapCenter: LngLatLike | undefined | null;
-  mostRecentMapCenter(): LngLatLike | null {
+  get mostRecentMapCenter(): LngLatLike | null {
     if (this._mostRecentMapCenter !== undefined) {
       return this._mostRecentMapCenter;
     }
@@ -82,7 +82,7 @@ export default class Prefs {
     }
   }
 
-  setMostRecentMapCenter(lnglat: LngLatLike) {
+  setMostRecentMapCenter(lnglat: LngLatLike): void {
     const coords = LngLat.convert(lnglat).toArray();
 
     if (isEqual(coords, [0, 0])) {

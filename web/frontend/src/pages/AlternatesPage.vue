@@ -260,8 +260,7 @@ export default defineComponent({
           map.on('mouseout', layerId.toString(), () => {
             map.setCursor('');
           });
-          map.on('click', layerId.toString(), (e) => {
-            console.log('clicked', e);
+          map.on('click', layerId.toString(), () => {
             this.clickTrip(trip);
           });
         }
