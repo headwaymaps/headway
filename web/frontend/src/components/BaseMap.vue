@@ -80,22 +80,6 @@ function clearAllTimeouts() {
   mapTouchTimeouts.length = 0;
 }
 
-/**
- * Polyfill for geolocation permission
- */
-async function geolocationPermissionState(): Promise<PermissionState> {
-  if (navigator.permissions === undefined) {
-    // assume "unknown" on platforms like Safari 15 which don't
-    // support the permissions API.
-    return 'prompt';
-  } else {
-    const result = await navigator.permissions.query({
-      name: 'geolocation',
-    });
-    return result.state;
-  }
-}
-
 export interface BaseMapInterface {
   flyTo: (location: LngLatLike, zoom: number) => Promise<void>;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
@@ -139,7 +123,6 @@ export default defineComponent({
   data: function (): {
     flyToLocation: { center: LngLatLike; zoom: number } | undefined;
     boundsToFit: LngLatBoundsLike | undefined;
-    hasGeolocated: boolean;
     markers: Map<string, Marker>;
     layers: string[];
     loaded: boolean;
@@ -149,7 +132,6 @@ export default defineComponent({
     return {
       flyToLocation: undefined,
       boundsToFit: undefined,
-      hasGeolocated: false,
       markers: new Map(),
       layers: [],
       loaded: false,
@@ -308,8 +290,7 @@ export default defineComponent({
       });
     },
     flyTo: async function (location: LngLatLike, zoom: number): Promise<void> {
-      const permissionState = await geolocationPermissionState();
-      if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
+      if (this.loaded) {
         map?.flyTo({ center: location, zoom: zoom }, { flying: true });
       } else {
         this.$data.flyToLocation = { center: location, zoom: zoom };
@@ -319,13 +300,12 @@ export default defineComponent({
       bounds: LngLatBoundsLike,
       options: FitBoundsOptions = {}
     ) {
-      const permissionState = await geolocationPermissionState();
       const defaultOptions = {
         padding: Math.min(window.innerWidth, window.innerHeight) / 8,
       };
       options = { ...defaultOptions, ...(options || {}) };
 
-      if (this.$data.hasGeolocated === true || permissionState !== 'granted') {
+      if (this.loaded) {
         map?.fitBounds(bounds, options);
       } else {
         this.$data.boundsToFit = bounds;
@@ -392,6 +372,14 @@ export default defineComponent({
     map.addControl(geolocate, 'bottom-right');
     map.on('load', () => {
       this.loaded = true;
+      if (this.flyToLocation) {
+        this.flyTo(this.flyToLocation.center, this.flyToLocation.zoom);
+        this.flyToLocation = undefined;
+      }
+      if (this.boundsToFit) {
+        this.fitBounds(this.boundsToFit);
+        this.boundsToFit = undefined;
+      }
     });
     map.on('click', (event: MapMouseEvent) => {
       this.touchHandlers.get('click')?.forEach((value) => value(event));
@@ -474,29 +462,6 @@ export default defineComponent({
       }
     });
 
-    setTimeout(async () => {
-      const permissionState = await geolocationPermissionState();
-      if (permissionState === 'granted') {
-        map.on('load', () => {
-          geolocate.trigger();
-          geolocate.on('geolocate', () => {
-            if (!this.$data.hasGeolocated) {
-              // prevent the default "zoom" that occurs when we automatically `trigger`
-              // the geolocate button.
-              map.stop();
-              if (this.$data.flyToLocation) {
-                map.flyTo(this.$data.flyToLocation, { flying: true });
-                this.$data.flyToLocation = undefined;
-              } else if (this.$data.boundsToFit) {
-                this.fitBounds(this.$data.boundsToFit);
-                this.$data.boundsToFit = undefined;
-              }
-            }
-            this.$data.hasGeolocated = true;
-          });
-        });
-      }
-    });
     map.on('load', () => {
       const layers = map.getStyle().layers;
       if (layers) {
