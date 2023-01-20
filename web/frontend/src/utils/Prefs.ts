@@ -1,5 +1,7 @@
 import { LngLat, LngLatLike } from 'maplibre-gl';
 import { isEqual } from 'lodash';
+import { DistanceUnits } from './models';
+import Place from 'src/models/Place';
 
 export default class Prefs {
   private static _stored: Prefs | undefined;
@@ -98,5 +100,47 @@ export default class Prefs {
     const json = JSON.stringify(coords);
     this.storage.setItem('mostRecentMapCenter', json);
     this._mostRecentMapCenter = coords as [number, number];
+  }
+
+  private _mostRecentDistanceUnits: DistanceUnits | undefined | null;
+  setMostRecentDistanceUnits(distanceUnits: DistanceUnits): void {
+    if (!Object.values(DistanceUnits).includes(distanceUnits)) {
+      throw new Error(`invalid DistanceUnits ${distanceUnits}`);
+    }
+    this.storage.setItem('distanceUnits', distanceUnits);
+    this._mostRecentDistanceUnits = distanceUnits as DistanceUnits;
+  }
+  get mostRecentDistanceUnits(): DistanceUnits | null {
+    if (this._mostRecentDistanceUnits !== undefined) {
+      return this._mostRecentDistanceUnits;
+    }
+    const storedValue = this.storage.getItem('distanceUnits');
+    if (!storedValue) {
+      return null;
+    }
+
+    if (!Object.values(DistanceUnits).includes(storedValue as DistanceUnits)) {
+      throw new Error(`invalid DistanceUnits ${storedValue}`);
+    }
+
+    const distanceUnits = storedValue as DistanceUnits;
+    this._mostRecentDistanceUnits = distanceUnits;
+    return distanceUnits;
+  }
+
+  distanceUnits(from: Place, to?: Place): DistanceUnits {
+    const distanceUnits =
+      from.preferredDistanceUnits() || to?.preferredDistanceUnits();
+    if (distanceUnits) {
+      if (this.mostRecentDistanceUnits != distanceUnits) {
+        this.setMostRecentDistanceUnits(distanceUnits);
+      }
+      return distanceUnits;
+    } else if (this.mostRecentDistanceUnits) {
+      return this.mostRecentDistanceUnits;
+    } else {
+      console.warn('Assuming KM since no known or stored distance units');
+      return DistanceUnits.Kilometers;
+    }
   }
 }

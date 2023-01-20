@@ -62,7 +62,6 @@ import {
   sourceMarker,
   getBaseMap,
 } from 'src/components/BaseMap.vue';
-import { DistanceUnits } from 'src/utils/models';
 import { Component, defineComponent, Ref, ref } from 'vue';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
@@ -74,6 +73,7 @@ import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
 import TripLayerId from 'src/models/TripLayerId';
 import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
+import Prefs from 'src/utils/Prefs';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -191,7 +191,7 @@ export default defineComponent({
           this.fromPlace.point,
           this.toPlace.point,
           this.mode,
-          this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
+          Prefs.stored.distanceUnits(this.fromPlace, this.toPlace)
         );
         if (result.ok) {
           const trips = result.value;
