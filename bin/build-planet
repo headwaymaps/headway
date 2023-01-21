@@ -20,5 +20,16 @@ fi
 AREA=maps-earth-planet-v1.21
 
 CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG"
+$CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
 
+TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
+TRANSIT_AREA=Seattle
+CMD="earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}"
+CMD="earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}"
+$CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
+
+TRANSIT_FEEDS=data/LosAngeles-2023-01-21.gtfs_feeds.csv
+TRANSIT_AREA=LosAngeles
+CMD="earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}"
+CMD="earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}"
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
