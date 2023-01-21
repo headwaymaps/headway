@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+set -xe
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -13,13 +13,13 @@ EARTHLY_ARGS=${@:1}
 
 if [ -z "$HEADWAY_CONTAINER_TAG" ]
 then
-source ${SCRIPT_DIR}/_headway_version.sh
+source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
 # This job assumes you've already downloaded the planet file into the repository root
-AREA=maps-earth-planet-v1.21
+source "${SCRIPT_DIR}/../k8s/planet.env"
 
-CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG"
+CMD="earthly $EARTHLY_ARGS -P +build --area=$HEADWAY_AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG"
 $CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
 
 TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
