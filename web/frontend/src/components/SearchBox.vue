@@ -97,9 +97,8 @@ export default defineComponent({
       }
     },
     inputTextDidChange() {
-      this.autocompleteMenu().show();
       this.removeHoverMarkers();
-      this.updateAutocomplete(this.inputText);
+      this.updateAutocomplete();
     },
     removeHoverMarkers() {
       if (this.hoverMarker) {
@@ -142,7 +141,7 @@ export default defineComponent({
     forceText: {
       immediate: true,
       deep: true,
-      handler(newVal) {
+      handler(newVal?: string) {
         this.inputText = newVal;
       },
     },
@@ -152,21 +151,27 @@ export default defineComponent({
     this.removeHoverMarkers();
   },
   setup() {
-    const inputText = ref('');
+    const inputText: Ref<string | undefined> = ref(undefined);
     const placeHovered: Ref<Place | undefined> = ref(undefined);
     const autocompleteOptions: Ref<Place[] | undefined> = ref([]);
     const hoverMarker: Ref<Marker | undefined> = ref(undefined);
 
-    let requestIdx = 0;
-    let mostRecentResultsRequestIdx = 0;
-    async function _updateAutocomplete(text: string): Promise<void> {
+    async function _updateAutocomplete(): Promise<void> {
+      if (!inputText.value) {
+        autocompleteOptions.value = undefined;
+        return;
+      }
+
+      let text = inputText.value.trim();
+      if (text.length == 0) {
+        autocompleteOptions.value = undefined;
+        return;
+      }
+
       let focus = undefined;
       if (map && map.getZoom() > 6) {
         focus = map.getCenter();
       }
-
-      const thisRequestIdx = requestIdx;
-      requestIdx++;
 
       let places: Place[] = [];
       try {
@@ -184,11 +189,18 @@ export default defineComponent({
         console.log('error with autocomplete', e);
       }
 
-      if (thisRequestIdx < mostRecentResultsRequestIdx) {
-        // not updating autocomplete for a stale req
+      // We want to update autocomplete as the user extends a query.
+      // But we don't want to show a no longer relevant, e.g. if the user deleted or edited characters.
+      //
+      // request text: "Se",   current inputField: "Sea",  <-- show stale request results, the user is still typing out the word
+      // request text: "Sea",  current inputField: "Seatt" <-- show stale request results, the user is still typing out the word
+      // request text: "Seat", current inputField: "Sea",  <-- discard stale request results, the user has deleted part of that previous query
+      // request text: "S",    current inputField: "",     <-- discard stale request results, the user has deleted the last letter of the query
+      if (!inputText.value.trim().includes(text)) {
+        // discarding old results
         return;
       }
-      mostRecentResultsRequestIdx = thisRequestIdx;
+
       autocompleteOptions.value = places;
     }
     const throttleMs = 200;
