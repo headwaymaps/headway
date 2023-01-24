@@ -10,6 +10,7 @@
       :outlined="true"
       :dense="true"
       v-on:clear="selectPlace(undefined)"
+      v-on:keydown="onKeyDown"
       v-on:blur="onBlur"
       v-on:update:model-value="inputTextDidChange"
     />
@@ -20,22 +21,21 @@
       :no-refocus="true"
       v-on:before-hide="removeHoverMarkers"
       :target="($refs.inputField as Element)"
+      v-if="!resultsCallback"
     >
       <q-list>
         <q-item
-          :key="item?.serializedId()"
-          v-for="item in autocompleteOptions"
+          :key="place.serializedId()"
+          v-for="place in placeChoices"
           clickable
-          v-on:click="selectPlace(item)"
-          v-on:mouseenter="onHoverPlace(item)"
+          v-on:click="selectPlace(place)"
+          v-on:mouseenter="onHoverPlace(place)"
           v-on:mouseleave="onHoverPlace(undefined)"
         >
           <q-item-section>
-            <q-item-label>{{
-              item?.name ? item.name : item?.address
-            }}</q-item-label>
-            <q-item-label v-if="item?.name" caption>{{
-              item.address
+            <q-item-label>{{ place.name ?? place.address }}</q-item-label>
+            <q-item-label v-if="place.name" caption>{{
+              place.address
             }}</q-item-label>
           </q-item-section>
         </q-item>
@@ -52,13 +52,15 @@
 </style>
 
 <script lang="ts">
-import { defineComponent, Ref, ref } from 'vue';
+import { defineComponent, PropType, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
 import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
 import { QInput, QMenu, Platform } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
+import Markers from 'src/utils/Markers';
+import { supportsHover } from 'src/utils/misc';
 
 export default defineComponent({
   name: 'SearchBox',
@@ -66,6 +68,7 @@ export default defineComponent({
     forceText: String,
     hint: String,
     readonly: Boolean,
+    resultsCallback: Function as PropType<(results?: Place[]) => void>,
   },
   methods: {
     autocompleteMenu(): QMenu {
@@ -73,6 +76,14 @@ export default defineComponent({
     },
     inputField(): QInput {
       return this.$refs.inputField as QInput;
+    },
+    onKeyDown(event: KeyboardEvent): void {
+      if (event.key == 'Enter') {
+        let searchText = this.inputField().modelValue;
+        if (searchText) {
+          this.$emit('didSubmitSearch', searchText.toString());
+        }
+      }
     },
     onBlur(): void {
       if (Platform.is.ios) {
@@ -130,9 +141,7 @@ export default defineComponent({
       }
 
       if (place) {
-        this.hoverMarker = new Marker({ color: '#11111155' }).setLngLat(
-          place.point
-        );
+        this.hoverMarker = Markers.inactive().setLngLat(place.point);
         this.hoverMarker.addTo(map);
       }
     },
@@ -145,26 +154,31 @@ export default defineComponent({
         this.inputText = newVal;
       },
     },
+    placeChoices: {
+      handler(newVal?: Place[]) {
+        this.resultsCallback?.(newVal);
+      },
+    },
   },
-  emits: ['didSelectPlace'],
+  emits: ['didSelectPlace', 'didSubmitSearch'],
   unmounted(): void {
     this.removeHoverMarkers();
   },
   setup() {
     const inputText: Ref<string | undefined> = ref(undefined);
     const placeHovered: Ref<Place | undefined> = ref(undefined);
-    const autocompleteOptions: Ref<Place[] | undefined> = ref([]);
-    const hoverMarker: Ref<Marker | undefined> = ref(undefined);
+    const placeChoices: Ref<Place[] | undefined> = ref([]);
+    var hoverMarker: Ref<Marker | undefined> = ref(undefined);
 
     async function _updateAutocomplete(): Promise<void> {
       if (!inputText.value) {
-        autocompleteOptions.value = undefined;
+        placeChoices.value = undefined;
         return;
       }
 
-      let text = inputText.value.trim();
-      if (text.length == 0) {
-        autocompleteOptions.value = undefined;
+      let searchText = inputText.value.trim();
+      if (searchText.length == 0) {
+        placeChoices.value = undefined;
         return;
       }
 
@@ -175,7 +189,7 @@ export default defineComponent({
 
       let places: Place[] = [];
       try {
-        const results = await PeliasClient.autocomplete(text, focus);
+        const results = await PeliasClient.autocomplete(searchText, focus);
         for (const feature of results.features) {
           if (!feature.properties?.gid) {
             console.error('feature was missing gid');
@@ -186,7 +200,7 @@ export default defineComponent({
           places.push(Place.fromFeature(id, feature));
         }
       } catch (e) {
-        console.log('error with autocomplete', e);
+        console.warn('error with autocomplete', e);
       }
 
       // We want to update autocomplete as the user extends a query.
@@ -196,12 +210,12 @@ export default defineComponent({
       // request text: "Sea",  current inputField: "Seatt" <-- show stale request results, the user is still typing out the word
       // request text: "Seat", current inputField: "Sea",  <-- discard stale request results, the user has deleted part of that previous query
       // request text: "S",    current inputField: "",     <-- discard stale request results, the user has deleted the last letter of the query
-      if (!inputText.value.trim().includes(text)) {
+      if (!inputText.value.trim().includes(searchText)) {
         // discarding old results
         return;
       }
 
-      autocompleteOptions.value = places;
+      placeChoices.value = places;
     }
     const throttleMs = 200;
     const updateAutocomplete = throttle(_updateAutocomplete, throttleMs, {
@@ -212,13 +226,9 @@ export default defineComponent({
       inputText,
       hoverMarker,
       updateAutocomplete,
-      autocompleteOptions,
+      placeChoices,
       placeHovered,
     };
   },
 });
-
-function supportsHover(): boolean {
-  return window.matchMedia('(hover: hover)').matches;
-}
 </script>

@@ -1,0 +1,9 @@
+.list-item {
+  border-bottom: solid $separator 1px;
+  padding: 16px;
+}
+
+.list-item--selected {
+  border-left: solid $accent 8px;
+  padding-left: 8px;
+}

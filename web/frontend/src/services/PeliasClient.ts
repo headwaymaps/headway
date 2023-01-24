@@ -40,4 +40,27 @@ export default class PeliasClient {
       throw new Error(`error response from pelias: ${response}`);
     }
   }
+
+  // This endpoint is unused for now. The results are very different and (in my
+  // estimation) worse in some cases, so we only use the "autocomplete" search
+  // for now.
+  //
+  // See https://github.com/pelias/pelias/issues/938
+  static async search(
+    text: string,
+    focus?: LngLat
+  ): Promise<AutocompleteResponse> {
+    let url = `/pelias/v1/search?text=${encodeURIComponent(text)}`;
+    if (focus) {
+      url += `&focus.point.lon=${focus.lng}&focus.point.lat=${focus.lat}`;
+    }
+
+    const response = await fetch(url);
+
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw new Error(`error response from pelias: ${response}`);
+    }
+  }
 }
