@@ -477,7 +477,7 @@ export default defineComponent({
               }
             });
             this.on('mouseout', layer.id, () => {
-              this.setCursor('pointer');
+              this.setCursor('');
             });
             this.on('click', layer.id, (event) => {
               if (event.features && event.features[0]) {
