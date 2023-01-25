@@ -50,6 +50,7 @@ import SearchBox from 'src/components/SearchBox.vue';
 import Place from 'src/models/Place';
 import { LngLat } from 'maplibre-gl';
 import { placeDisplayName } from 'src/i18n/utils';
+import env from 'src/utils/env';
 
 export default defineComponent({
   name: 'TripSearch',
@@ -89,8 +90,9 @@ export default defineComponent({
         maximumAge: 60000,
         timeout: 10000,
       };
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
+
+      env.geolocation.getCurrentPosition(
+        (position: GeolocationPosition) => {
           let lngLat = new LngLat(
             position.coords.longitude,
             position.coords.latitude
@@ -99,9 +101,7 @@ export default defineComponent({
           place.name = this.$t('my_location');
           this.didSelectFromPlace(place);
         },
-        (error) => {
-          console.error(error);
-        },
+        console.error,
         options
       );
     },
