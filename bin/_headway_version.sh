@@ -17,7 +17,7 @@
 #
 # Major bumps to HEADWAY_DATA_TAG mean new versions of assets must
 # be built and deployed before the corresponding containers can be deployed.
-export HEADWAY_DATA_TAG=0.2.0
+export HEADWAY_DATA_TAG=0.3.0
 
 # Tracks backwards incompatibility between container deployments.
 #
@@ -27,5 +27,30 @@ export HEADWAY_DATA_TAG=0.2.0
 #
 # Of course, you can always do a fresh deploy of the entire system if you are
 # OK with downtime or have a blue/green deployment setup.
-export HEADWAY_CONTAINER_TAG=0.3.0
+export HEADWAY_CONTAINER_TAG=0.4.0
 
+
+# # Schema change Log
+#
+# This documents the changes to the schema tag's over time, not *every* change
+# in headway.
+#
+# ## DATA v0.3.0, CONTAINER v0.4.0
+#
+# BREAKING DATA: Updated OTP container/build, regenerated artifact
+# BREAKING DATA: Updated Valhalla, regenerated artifact
+#
+# ## DATA v0.2.0, CONTAINER v0.3.0
+#
+# NEW CONTAINER: Added transitmux and opentriplanner-${AREA} k8s service
+# BREAKING CONTAINER: removed singular opentriplanner service
+#
+# ## DATA v0.1.0, CONTAINER v0.2.0
+#
+# NEW DATA: zstd compression (maybe this should have been a breaking bump?)
+#
+# ## DATA v0.1.0, CONTAINER v0.1.0
+#
+# Lots of breaking changes happened before this, but 0.1.0 marks the beginning
+# of trying to track them.
+#

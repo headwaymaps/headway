@@ -10,12 +10,12 @@ function elastic_status(){
 }
 
 echo 'waiting for elasticsearch service to come up';
-retry_count=30
+max_retry_seconds=60
 
-i=1
-while [[ "$i" -le "$retry_count" ]]; do
+SECONDS=0
+while [[ "$SECONDS" -le "$max_retry_seconds" ]]; do
 if [[ $(elastic_status) -eq 200 ]]; then
-    echo "Elasticsearch up!"
+    echo "Elasticsearch up after waiting ${SECONDS} second(s)."
     exit 0
 elif [[ $(elastic_status) -eq 408 ]]; then
     # 408 indicates the server is up but not yet yellow status
@@ -24,7 +24,6 @@ else
     printf "."
 fi
 sleep 1
-i=$(($i + 1))
 done
 
 echo -e "\n"

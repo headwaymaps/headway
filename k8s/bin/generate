@@ -6,25 +6,26 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 function usage() {
 cat << EOF
-usage: $0 <env-file>
+usage: $0 <env-file> <output-dir>
 examples:
-    $0 seattle.env
 
-Download assets prefixed with something other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=0.2.0 $0 seattle.env
+Use containers and map-data version tags as specified in bin/_headway_version.sh
+    $0 planet.env planet
 
-Deploy containers from a tag other than what's in bin/_headway_version.sh
-    HEADWAY_CONTAINER_TAG=0.2.0 $0 seattle.env
+Use containers from a tag other than what's in bin/_headway_version.sh
+    HEADWAY_DATA_TAG=dev $0 planet.env planet-dev
 
-Use assets and containers other than what's in bin/_headway_version.sh
-    HEADWAY_TAG=dev $0 planet.env
+Use containers and map-data version tags other than whats specified in bin/_headway_version.sh
+    HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 seattle.env seattle-dev
 EOF
 }
 
-if [ ! $# -eq 1 ]; then
+if [ ! $# -eq 2 ]; then
     usage
     exit 1
 fi
+DEPLOYMENT_ENV_FILE="$1"
+OUTPUT_DIR="$2"
 
 source "${REPO_ROOT}/.env"
 
@@ -33,15 +34,9 @@ local_container_tag=$HEADWAY_CONTAINER_TAG
 local_data_tag=$HEADWAY_DATA_TAG
 source "${REPO_ROOT}/bin/_headway_version.sh"
 
-if [ ! -z "$HEADWAY_TAG" ]; then
-    HEADWAY_CONTAINER_TAG="$HEADWAY_TAG"
-    HEADWAY_DATA_TAG="$HEADWAY_TAG"
-fi
-
 export HEADWAY_CONTAINER_TAG="${local_container_tag:-$HEADWAY_CONTAINER_TAG}"
 export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
 
-DEPLOYMENT_ENV_FILE="$1"
 source "$DEPLOYMENT_ENV_FILE"
 
 PELIAS_CONFIG_FILE="${REPO_ROOT}/data/${HEADWAY_AREA}.pelias.json"
@@ -64,7 +59,6 @@ render_template() {
 
 set -o nounset
 
-OUTPUT_DIR="${HEADWAY_AREA_TAG}-${HEADWAY_CONTAINER_TAG}-containers-${HEADWAY_DATA_TAG}-schema"
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*
 

@@ -1,7 +1,35 @@
 #!/bin/bash -e
 
+function usage() {
+cat << EOF
+usage: $0 <site.env>
+examples:
+    $0 k8s/planet.env
+
+Use an upload prefix other than what's in bin/_headway_version.sh
+    HEADWAY_DATA_TAG=dev $0 k8s/planet.env
+    HEADWAY_DATA_TAG=dev $0 k8s/seattle.env
+EOF
+}
+
+if [ ! $# -eq 1 ]; then
+    usage
+    exit 1
+fi
+
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${REPO_ROOT}/data"
+
+upload_pids=()
+function kill_uploads() {
+    echo "Killing any in-progress uploads before exiting"
+    for pid in ${upload_pids[*]}; do
+        kill "${pid[*]}"
+    done
+}
+
+trap kill_uploads EXIT
 
 function upload() {
   INPUT=$1
@@ -22,25 +50,8 @@ function upload() {
   # Note you'll need to be authenticated to run this.
   #   e.g. (source ~/openrc.sh && bin/publish-data)
   echo "Uploading ${INPUT_PATH} -> s3://${BUCKET}/${RESOURCE}"
-  swift upload --segment-size=5G --skip-identical "$BUCKET" "$INPUT_PATH" --object-name="$RESOURCE"
+  swift upload --segment-size=5G --skip-identical "$BUCKET" "$INPUT_PATH" --object-name="$RESOURCE" & upload_pids+=($!)
 }
-
-function usage() {
-cat << EOF
-usage: $0 <site.env>
-examples:
-    $0 k8s/planet.env
-
-Use an upload prefix other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev $0 k8s/planet.env
-    HEADWAY_DATA_TAG=dev $0 k8s/seattle.env
-EOF
-}
-
-if [ ! $# -eq 1 ]; then
-    usage
-    exit 1
-fi
 
 source "${REPO_ROOT}/.env"
 
@@ -77,3 +88,16 @@ done
 
 # These files are generic across all areas
 upload natural_earth.mbtiles          "${HEADWAY_DATA_TAG}"
+
+rets=()
+for pid in ${upload_pids[*]}; do
+  wait $pid
+  status=$?
+  rets+=($status)
+  if [ ! $status ]; then
+    echo "error in upload"
+    exit $status
+  fi
+done
+
+echo "Return codes: ${rets[*]}"

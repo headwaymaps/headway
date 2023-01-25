@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+set -xe
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -9,16 +9,29 @@ log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
 log_dir=/pool1/logs
 log_file="${log_dir}/${log_filename}"
 
+function with_log {
+  $@ > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
+}
+
 EARTHLY_ARGS=${@:1}
 
 if [ -z "$HEADWAY_CONTAINER_TAG" ]
 then
-source ${SCRIPT_DIR}/_headway_version.sh
+source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
 # This job assumes you've already downloaded the planet file into the repository root
-AREA=maps-earth-planet-v1.21
+source "${SCRIPT_DIR}/../k8s/planet.env"
 
-CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG"
+# with_log earthly $EARTHLY_ARGS -P +build --area=$HEADWAY_AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG
 
-$CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
+TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
+TRANSIT_AREA=Seattle
+with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
+with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
+
+TRANSIT_FEEDS=data/LosAngeles-2023-01-21.gtfs_feeds.csv
+TRANSIT_AREA=LosAngeles
+with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
+with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
+
