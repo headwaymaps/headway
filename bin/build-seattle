@@ -9,6 +9,10 @@ log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
 log_dir=/pool1/logs
 log_file="${log_dir}/${log_filename}"
 
+function with_log {
+  $@ > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
+}
+
 EARTHLY_ARGS=${@:1}
 
 if [ -z "$HEADWAY_CONTAINER_TAG" ]
@@ -20,6 +24,4 @@ fi
 # This job will download the seattle.osm data from bbike
 AREA=Seattle
 TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
-CMD="earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_CONTAINER_TAG --transit_feeds=$TRANSIT_FEEDS"
-
-$CMD > >(tee "${log_file}.out") 2> >(tee "${log_file}.err")
+with_log earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_CONTAINER_TAG --transit_feeds=$TRANSIT_FEEDS
