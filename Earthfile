@@ -396,16 +396,7 @@ gtfs-build:
 otp-base:
     # The version tag is ignored when sha256 is specified, but I'm leaving it
     # in to document which "release" our sha pins to.
-    #
-    # I encountered errors when serviging from the latest "stable" release, so
-    # I'm running of a more recent version which doesn't have this issue.
-    #
-    # Error from 2.2.0 was:
-    #     headway-opentripplanner-1            | 01:41:14.080 ERROR (OTPMain.java:58) An uncaught error occurred inside OTP: Cannot invoke "java.util.Set.iterator()" because "patterns" is null
-    #     headway-opentripplanner-1            | java.lang.NullPointerException: Cannot invoke "java.util.Set.iterator()" because "patterns" is null
-    #
-    # FROM opentripplanner/opentripplanner:2.2.0@sha256:c908f27d57be586c814c2b9b2356ab8f53da3c6bce3feaa48138cea750a81f0a
-    FROM opentripplanner/opentripplanner:2.3.0_2023-01-17T14-05@sha256:794c9ef30ba6e49d91eebd0ae5673c3cbbaa40b8ed806243f9f666a3d8dc5afb
+    FROM opentripplanner/opentripplanner:2.2.0@sha256:c908f27d57be586c814c2b9b2356ab8f53da3c6bce3feaa48138cea750a81f0a
 
     RUN mkdir /var/opentripplanner
 
