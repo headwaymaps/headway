@@ -50,14 +50,14 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 15
-            failureThreshold: 10
+            failureThreshold: 20
           readinessProbe:
             httpGet:
               path: /
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 15
-            failureThreshold: 10
+            failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
           ephemeral:
