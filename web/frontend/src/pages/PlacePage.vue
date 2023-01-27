@@ -1,7 +1,7 @@
 <template>
   <div class="top-card">
     <search-box
-      :force-text="place ? placeDisplayName(place) : undefined"
+      :force-place="place"
       v-on:did-select-place="searchBoxDidSelectPlace"
     />
   </div>

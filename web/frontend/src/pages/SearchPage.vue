@@ -1,7 +1,7 @@
 <template>
   <div class="top-card">
     <search-box
-      :force-text="searchText"
+      :initial-input-text="searchText"
       :results-callback="searchBoxDidUpdateResults"
       v-on:did-select-place="searchBoxDidSelectPlace"
       v-on:did-submit-search="searchBoxDidSubmitSearch"
@@ -26,7 +26,7 @@
 </template>
 
 <script lang="ts">
-import { getBaseMap } from 'src/components/BaseMap.vue';
+import { baseMapPromise, getBaseMap } from 'src/components/BaseMap.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import SearchListItem from 'src/components/SearchListItem.vue';
 import Place, { PlaceId } from 'src/models/Place';
@@ -62,10 +62,7 @@ export default defineComponent({
     },
     searchBoxDidSelectPlace(place?: Place): void {
       if (place) {
-        console.assert(
-          false,
-          'this method is (currently) only called when clearing the text field'
-        );
+        this.$router.push(`/place/${place.urlEncodedId()}`);
       } else {
         // User "cleared" search field
         this.$router.push('/');
@@ -127,11 +124,7 @@ export default defineComponent({
         return;
       }
 
-      let map = getBaseMap();
-      if (!map) {
-        console.error('map was unexpectedly unset');
-        return;
-      }
+      let map = await baseMapPromise;
 
       let focus = undefined;
       if (map.getZoom() > 6) {
@@ -203,12 +196,8 @@ export default defineComponent({
   mounted(): void {
     this.updateSearch(this.searchText);
   },
-  unmounted(): void {
-    const map = getBaseMap();
-    if (!map) {
-      console.error('map was unexpectedly unset');
-      return;
-    }
+  async unmounted(): Promise<void> {
+    const map = await baseMapPromise;
     this.placeChoices = [];
     map.removeAllMarkers();
   },

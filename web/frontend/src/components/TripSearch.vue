@@ -4,7 +4,7 @@
       <search-box
         :hint="$t('search.from')"
         :style="{ flex: 1 }"
-        :force-text="fromPlace ? placeDisplayName(fromPlace) : ''"
+        :force-place="fromPlace"
         v-on:did-select-place="didSelectFromPlace"
       />
       <q-btn
@@ -21,7 +21,7 @@
       <search-box
         :hint="$t('search.to')"
         :style="{ flex: 1 }"
-        :force-text="toPlace ? placeDisplayName(toPlace) : ''"
+        :force-place="toPlace"
         v-on:did-select-place="didSelectToPlace"
       />
       <q-btn

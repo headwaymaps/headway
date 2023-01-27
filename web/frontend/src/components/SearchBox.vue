@@ -1,46 +1,43 @@
 <template>
   <div class="search-box">
-    <q-input
-      ref="inputField"
-      :label="$props.hint || $t('where_to_question')"
-      v-model="inputText"
+    <q-select
+      ref="selectField"
+      use-input
+      behavior="menu"
+      hide-dropdown-icon
+      outlined
+      dense
+      fill-input
+      hide-selected
+      input-class="search-box-input"
       clearable
+      :label="$props.hint || $t('where_to_question')"
       :readonly="readonly"
-      :input-style="{ color: 'black' }"
-      :outlined="true"
-      :dense="true"
-      v-on:clear="selectPlace(undefined)"
+      :model-value="selectedPlace"
+      @update:model-value="selectPlace"
+      @filter="onFilter"
+      :options="placeChoices"
+      :option-label="(place: Place) => place.name ?? place.address ?? ''"
       v-on:keydown="onKeyDown"
       v-on:blur="onBlur"
-      v-on:update:model-value="inputTextDidChange"
-    />
-    <q-menu
-      auto-close
-      ref="autocompleteMenu"
-      :no-focus="true"
-      :no-refocus="true"
-      v-on:before-hide="removeHoverMarkers"
-      :target="($refs.inputField as Element)"
-      v-if="!resultsCallback"
+      input-debounce="0"
     >
-      <q-list>
+      <template #option="{ opt, selected, itemProps }">
         <q-item
-          :key="place.serializedId()"
-          v-for="place in placeChoices"
-          clickable
-          v-on:click="selectPlace(place)"
-          v-on:mouseenter="onHoverPlace(place)"
+          v-bind="itemProps"
+          v-on:mouseenter="onHoverPlace(opt)"
           v-on:mouseleave="onHoverPlace(undefined)"
+          :style="selected ? 'border-left: solid black 2px;' : ''"
         >
           <q-item-section>
-            <q-item-label>{{ place.name ?? place.address }}</q-item-label>
-            <q-item-label v-if="place.name" caption>{{
-              place.address
+            <q-item-label>{{ opt.name ?? opt.address }}</q-item-label>
+            <q-item-label v-if="opt.name" caption>{{
+              opt.address
             }}</q-item-label>
           </q-item-section>
         </q-item>
-      </q-list>
-    </q-menu>
+      </template>
+    </q-select>
   </div>
 </template>
 
@@ -56,7 +53,7 @@ import { defineComponent, PropType, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
 import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
-import { QInput, QMenu, Platform } from 'quasar';
+import { Platform, QSelect } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
 import Markers from 'src/utils/Markers';
@@ -65,23 +62,34 @@ import { supportsHover } from 'src/utils/misc';
 export default defineComponent({
   name: 'SearchBox',
   props: {
-    forceText: String,
     hint: String,
     readonly: Boolean,
     resultsCallback: Function as PropType<(results?: Place[]) => void>,
+    forcePlace: Place,
+    initialInputText: String,
+  },
+  data(): {
+    selectedPlace?: Place;
+  } {
+    return { selectedPlace: this.forcePlace };
   },
   methods: {
-    autocompleteMenu(): QMenu {
-      return this.$refs.autocompleteMenu as QMenu;
-    },
-    inputField(): QInput {
-      return this.$refs.inputField as QInput;
+    async onFilter(
+      inputText: string,
+      doneFn: (callbackFn: () => void, afterFn?: (ref: QSelect) => void) => void
+    ) {
+      // HACK: we call the `doneFn` immediately, otherwise the search results keep
+      // flickering while the user types out their query.
+      doneFn(() => {
+        /* I'm not sure why this method is required.. I don't need to do anything further */
+      });
+      await this.updateAutocomplete();
     },
     onKeyDown(event: KeyboardEvent): void {
       if (event.key == 'Enter') {
-        let searchText = this.inputField().modelValue;
+        let searchText = this.currentSearchText();
         if (searchText) {
-          this.$emit('didSubmitSearch', searchText.toString());
+          this.$emit('didSubmitSearch', searchText);
         }
       }
     },
@@ -118,6 +126,7 @@ export default defineComponent({
       }
     },
     selectPlace(place?: Place) {
+      this.selectedPlace = place;
       this.$emit('didSelectPlace', place);
       this.removeHoverMarkers();
     },
@@ -147,39 +156,68 @@ export default defineComponent({
     },
   },
   watch: {
-    forceText: {
-      immediate: true,
-      deep: true,
-      handler(newVal?: string) {
-        this.inputText = newVal;
-      },
-    },
-    placeChoices: {
-      handler(newVal?: Place[]) {
-        this.resultsCallback?.(newVal);
+    forcePlace: {
+      handler(newValue?: Place) {
+        this.selectedPlace = newValue;
       },
     },
   },
   emits: ['didSelectPlace', 'didSubmitSearch'],
+  mounted(): void {
+    if (this.initialInputText) {
+      this.selectField?.updateInputValue(this.initialInputText);
+    }
+  },
   unmounted(): void {
+    console.assert(!this.unmounted, 'should only unmount once');
+    this.unmounted = true;
     this.removeHoverMarkers();
   },
   setup() {
-    const inputText: Ref<string | undefined> = ref(undefined);
     const placeHovered: Ref<Place | undefined> = ref(undefined);
-    const placeChoices: Ref<Place[] | undefined> = ref([]);
-    var hoverMarker: Ref<Marker | undefined> = ref(undefined);
+    const placeChoices: Ref<Place[] | undefined> = ref(undefined);
+    const hoverMarker: Ref<Marker | undefined> = ref(undefined);
+    const selectField: Ref<QSelect | null> = ref(null);
+    const mostRecentlyCompletedSearchText: Ref<string> = ref('');
+    const unmounted: Ref<boolean> = ref(false);
+
+    function currentSearchText(): string {
+      // This is a dirty probably brittle hack.
+      //
+      // AFAICT there's no way to get the *current* text in the input field. All
+      // the available "blessed" ways rely on this value propogating via async
+      // callbacks (e.g. @input-value or via @filter), but we want to handle the
+      // "Enter" key (on keydown) which happens before those other callbacks
+      // are called. Thus we need to punch through the abstractions and just grab
+      // the value directly from the input element.
+
+      //let inputEl: HTMLInputElement = $('input.search-box-input', this.selectField().$el);
+      let inputEl: HTMLInputElement = selectField.value?.$el.querySelector(
+        'input.search-box-input'
+      );
+      console.assert(
+        inputEl,
+        'expected to find input element within search box'
+      );
+      return inputEl.value;
+    }
 
     async function _updateAutocomplete(): Promise<void> {
-      if (!inputText.value) {
+      let searchText = currentSearchText();
+      if (searchText.length == 0) {
+        mostRecentlyCompletedSearchText.value = '';
         placeChoices.value = undefined;
         return;
       }
 
-      let searchText = inputText.value.trim();
-      if (searchText.length == 0) {
+      // If we're continuing to type out our search, keep the old results
+      // up while we find the new ones - else, we clear the stale results here.
+      if (searchText.includes(mostRecentlyCompletedSearchText.value)) {
+        // console.debug('keeping old results while adding to input text');
+      } else {
+        // console.debug('immediately clearing old results since the input text is no longer relvant');
+        mostRecentlyCompletedSearchText.value = '';
         placeChoices.value = undefined;
-        return;
       }
 
       let focus = undefined;
@@ -203,18 +241,25 @@ export default defineComponent({
         console.warn('error with autocomplete', e);
       }
 
-      // We want to update autocomplete as the user extends a query.
-      // But we don't want to show a no longer relevant, e.g. if the user deleted or edited characters.
+      // We have `awaited`, and need to make sure it makes sense to proceed...
+      //
+      // We *do* want to update autocomplete as the user extends a query.
+      //
+      // But we don't want to show a no longer relevant result, e.g. if the user
+      // deleted or edited characters, or if we are out-of-order: hearing back
+      // from request #1 *after* we've already heard back from request #2. This
+      // isn't a rare edge-case — often longer queries will return faster than
+      // shorter prefix queries which have more matches.
       //
       // request text: "Se",   current inputField: "Sea",  <-- show stale request results, the user is still typing out the word
       // request text: "Sea",  current inputField: "Seatt" <-- show stale request results, the user is still typing out the word
       // request text: "Seat", current inputField: "Sea",  <-- discard stale request results, the user has deleted part of that previous query
       // request text: "S",    current inputField: "",     <-- discard stale request results, the user has deleted the last letter of the query
-      if (!inputText.value.trim().includes(searchText)) {
+      if (unmounted.value || !currentSearchText().includes(searchText)) {
         // discarding old results
         return;
       }
-
+      mostRecentlyCompletedSearchText.value = searchText;
       placeChoices.value = places;
     }
     const throttleMs = 200;
@@ -223,11 +268,13 @@ export default defineComponent({
     });
 
     return {
-      inputText,
       hoverMarker,
+      selectField,
       updateAutocomplete,
       placeChoices,
       placeHovered,
+      currentSearchText,
+      unmounted,
     };
   },
 });

@@ -126,6 +126,11 @@ export function getBaseMap(): BaseMapInterface | undefined {
   return baseMapMethods;
 }
 
+let baseMapPromiseResolver: (baseMap: BaseMapInterface) => void;
+export const baseMapPromise = new Promise<BaseMapInterface>((resolver) => {
+  baseMapPromiseResolver = resolver;
+});
+
 export default defineComponent({
   name: 'BaseMap',
   data: function (): {
@@ -515,6 +520,10 @@ export default defineComponent({
           }
         }
       }
+      if (!baseMapMethods) {
+        throw new Error('baseMapMethods must remain set');
+      }
+      baseMapPromiseResolver(baseMapMethods);
     });
   },
 });
