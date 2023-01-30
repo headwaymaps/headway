@@ -199,7 +199,7 @@ pelias-import-base:
     ARG --required area
     ARG countries
     RUN mkdir -p /data/openstreetmap
-    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap    
+    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap
     WORKDIR /config
     COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
     COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
@@ -297,11 +297,11 @@ planetiler-download:
     FROM +downloader-base
     ARG PLANETILER_VERSION=v0.5.0
     ARG PLANETILER_HASH=5f08d8f351751373084b1c2abd21bb38cbf66357dd2a02d2692d3561f16db70b
-    
+
     RUN wget -nv -O /data/planetiler.jar https://github.com/onthegomap/planetiler/releases/download/${PLANETILER_VERSION}/planetiler.jar
     RUN ls -l /data
     RUN echo "${PLANETILER_HASH}  /data/planetiler.jar" | sha256sum --check
-    
+
     SAVE ARTIFACT /data/planetiler.jar /planetiler.jar
 
 planetiler-image:
