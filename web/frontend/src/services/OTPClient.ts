@@ -7,10 +7,19 @@ export type OTPLegGeometry = {
 };
 
 export enum OTPMode {
-  Walk = 'WALK',
+  Bicycle = 'BICYCLE',
   Bus = 'BUS',
+  Car = 'CAR',
+  CableCar = 'CABLE_CAR',
+  Ferry = 'FERRY',
+  Funicular = 'FUNICULAR',
+  Gondola = 'GONDOLA',
+  Rail = 'RAIL',
+  Subway = 'SUBWAY',
   Train = 'TRAIN',
+  Transit = 'TRANSIT',
   Tram = 'TRAM',
+  Walk = 'WALK',
 }
 
 // incomplete

@@ -176,11 +176,24 @@ export class ItineraryLeg {
       case OTPMode.Walk:
         return '🚶‍♀️';
       case OTPMode.Bus:
+      case OTPMode.Transit:
         return '🚍' + this.raw.routeShortName;
-      case OTPMode.Tram:
-        return '🚊' + this.raw.routeShortName;
       case OTPMode.Train:
         return '🚆' + this.raw.routeShortName;
+      case OTPMode.Subway:
+        return '🚇' + this.raw.routeShortName;
+      case OTPMode.Bicycle:
+        return '🚲' + this.raw.routeShortName;
+      case OTPMode.CableCar:
+      case OTPMode.Tram:
+        return '🚊' + this.raw.routeShortName;
+      case OTPMode.Funicular:
+        return '🚡' + this.raw.routeShortName;
+      case OTPMode.Gondola:
+        return '🚠' + this.raw.routeShortName;
+      default:
+        console.warn('no icon for mode', this.mode);
+        return '🟩' + this.raw.routeShortName;
     }
   }
 
