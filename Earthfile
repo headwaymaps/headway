@@ -444,7 +444,7 @@ otp-serve-image:
         && apt-get install -y --no-install-recommends netcat \
         && rm -rf /var/lib/apt/lists/*
 
-    HEALTHCHECK --interval=5s --start-period=20s \
+    HEALTHCHECK --interval=5s --start-period=120s \
         CMD nc -z localhost ${PORT}
 
     ARG tag
