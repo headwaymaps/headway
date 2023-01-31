@@ -1,8 +1,9 @@
-name: Push
+name: Push `latest` containers
 
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -18,4 +19,5 @@ jobs:
       - name: Earthly version check
         run: earthly --version
       - name: Push images
-        run: earthly --push +images
+        run: earthly --push +images --tag "latest ${{ github.ref_name }}"
+

@@ -30,12 +30,11 @@ OUTPUT_DIR="$2"
 source "${REPO_ROOT}/.env"
 
 # stash env vars in local before they get clobbered by _headway_version.sh
-local_container_tag=$HEADWAY_CONTAINER_TAG
 local_data_tag=$HEADWAY_DATA_TAG
 source "${REPO_ROOT}/bin/_headway_version.sh"
-
-export HEADWAY_CONTAINER_TAG="${local_container_tag:-$HEADWAY_CONTAINER_TAG}"
 export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
+
+export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-latest}"
 
 source "$DEPLOYMENT_ENV_FILE"
 
