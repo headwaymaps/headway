@@ -19,5 +19,5 @@ jobs:
       - name: Earthly version check
         run: earthly --version
       - name: Push images
-        run: earthly --push +images --tag "latest ${{ github.ref_name }}"
+        run: earthly --push +images --tags "latest ${{ github.ref_name }}"
 

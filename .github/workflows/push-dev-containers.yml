@@ -18,4 +18,4 @@ jobs:
       - name: Earthly version check
         run: earthly --version
       - name: Push images
-        run: earthly --push +images --tag=dev
+        run: earthly --push +images --tags=dev
