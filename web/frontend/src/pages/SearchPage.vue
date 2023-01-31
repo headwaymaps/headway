@@ -2,7 +2,6 @@
   <div class="top-card">
     <search-box
       :initial-input-text="searchText"
-      :results-callback="searchBoxDidUpdateResults"
       v-on:did-select-place="searchBoxDidSelectPlace"
       v-on:did-submit-search="searchBoxDidSubmitSearch"
     />
@@ -67,10 +66,6 @@ export default defineComponent({
         // User "cleared" search field
         this.$router.push('/');
       }
-    },
-    searchBoxDidUpdateResults(places?: Place[]) {
-      this.placeChoices = places ?? [];
-      this.renderPlacesOnMap();
     },
     searchBoxDidClearSearch() {
       this.$router.push('/');
