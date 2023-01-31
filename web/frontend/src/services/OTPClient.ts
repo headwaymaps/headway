@@ -43,7 +43,10 @@ export type OTPItineraryLeg = {
   mode: OTPMode;
   transitLeg: boolean;
   legGeometry: OTPLegGeometry;
+  // Seems to always be set, but may be an empty string, e.g. for a walk
+  route: string;
   routeShortName?: string;
+  routeLongName?: string;
   from: { name: string; lat: number; lon: number };
   to: { name: string; lat: number; lon: number };
 };

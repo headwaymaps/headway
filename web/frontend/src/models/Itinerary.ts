@@ -171,30 +171,36 @@ export class ItineraryLeg {
     this.raw = otp;
   }
 
-  get shortName(): string {
+  get emoji(): string | undefined {
     switch (this.mode) {
       case OTPMode.Walk:
         return '🚶‍♀️';
       case OTPMode.Bus:
       case OTPMode.Transit:
-        return '🚍' + this.raw.routeShortName;
+        return '🚍';
       case OTPMode.Train:
-        return '🚆' + this.raw.routeShortName;
+        return '🚆';
       case OTPMode.Subway:
-        return '🚇' + this.raw.routeShortName;
+        return '🚇';
       case OTPMode.Bicycle:
-        return '🚲' + this.raw.routeShortName;
+        return '🚲';
       case OTPMode.CableCar:
       case OTPMode.Tram:
-        return '🚊' + this.raw.routeShortName;
+        return '🚊';
       case OTPMode.Funicular:
-        return '🚡' + this.raw.routeShortName;
+        return '🚡';
       case OTPMode.Gondola:
-        return '🚠' + this.raw.routeShortName;
+        return '🚠';
       default:
-        console.warn('no icon for mode', this.mode);
-        return '🟩' + this.raw.routeShortName;
+        console.warn('no emoji for mode', this.mode);
+        return undefined;
     }
+  }
+
+  get shortName(): string {
+    const emoji = this.emoji;
+    const shortName = this.raw.routeShortName ?? this.raw.route;
+    return `${emoji} ${shortName}`.trim();
   }
 
   get mode(): OTPMode {
