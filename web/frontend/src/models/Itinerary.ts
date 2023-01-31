@@ -16,7 +16,7 @@ import {
   kilometersToMiles,
 } from 'src/utils/format';
 import { decodeOtpPath } from 'src/third_party/decodePath';
-import Trip from './Trip';
+import Trip, { LineStyles } from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
 
 export enum ItineraryErrorCode {
@@ -218,11 +218,23 @@ export class ItineraryLeg {
   }
 
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
-    return {
-      'line-color': active ? (this.transitLeg ? '#E21919' : '#1976D2') : '#777',
-      'line-width': this.transitLeg ? 6 : 4,
-      'line-dasharray': this.transitLeg ? [1] : [1, 2],
-    };
+    if (active) {
+      if (this.mode == OTPMode.Walk) {
+        return LineStyles.walkingActive;
+      } else {
+        if (this.raw.routeColor) {
+          return LineStyles.activeColored(`#${this.raw.routeColor}`);
+        } else {
+          return LineStyles.active;
+        }
+      }
+    } else {
+      if (this.mode == OTPMode.Walk) {
+        return LineStyles.walkingInactive;
+      } else {
+        return LineStyles.inactive;
+      }
+    }
   }
 
   get sourceName(): string {

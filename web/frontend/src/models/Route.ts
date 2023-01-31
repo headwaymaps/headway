@@ -6,12 +6,14 @@ import {
   ValhallaRouteLegManeuver,
   ValhallaError,
   ValhallaErrorCode,
+  ValhallaRouteLeg,
+  ValhallaTravelMode,
 } from 'src/services/ValhallaClient';
 import { formatDuration } from 'src/utils/format';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { decodeValhallaPath } from 'src/third_party/decodePath';
 import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
-import Trip, { TripLeg } from './Trip';
+import Trip, { LineStyles, TripLeg } from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
 
 export enum RouteErrorCode {
@@ -73,7 +75,7 @@ export default class Route implements Trip {
   }
 
   public get legs(): TripLeg[] {
-    return this.valhallaRoute.legs.map((vLeg): TripLeg => {
+    return this.valhallaRoute.legs.map((vLeg: ValhallaRouteLeg): TripLeg => {
       return {
         geometry(): GeoJSON.LineString {
           const points: [number, number][] = [];
@@ -87,16 +89,24 @@ export default class Route implements Trip {
         },
         paintStyle(active: boolean): LineLayerSpecification['paint'] {
           if (active) {
-            return {
-              'line-color': '#1976D2',
-              'line-width': 6,
-            };
+            const firstManeuver = vLeg.maneuvers[0];
+            console.assert(
+              firstManeuver,
+              'expected at least one maneuver to be set'
+            );
+            const isWalking =
+              firstManeuver?.travel_mode == ValhallaTravelMode.Walk;
+
+            // Currently anyway valhalla legs are single-mode. If we change that
+            // we'll have to revisit this logic which assumes that the first
+            // maneuver sets the mode for the entire leg.
+            if (isWalking) {
+              return LineStyles.walkingActive;
+            } else {
+              return LineStyles.active;
+            }
           } else {
-            return {
-              'line-color': '#777',
-              'line-width': 4,
-              'line-dasharray': [0.5, 2],
-            };
+            return LineStyles.inactive;
           }
         },
       };

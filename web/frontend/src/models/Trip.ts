@@ -50,3 +50,30 @@ export async function fetchBestTrips(
     }
   }
 }
+
+export const LineStyles = {
+  activeColored(color: string): LineLayerSpecification['paint'] {
+    return {
+      'line-color': color,
+      'line-width': 6,
+    };
+  },
+  active: {
+    'line-color': '#1976D2',
+    'line-width': 6,
+  },
+  inactive: {
+    'line-color': '#777',
+    'line-width': 4,
+  },
+  walkingActive: {
+    'line-color': '#1976D2',
+    'line-dasharray': [0, 1.5],
+    'line-width': 8,
+  },
+  walkingInactive: {
+    'line-color': '#777',
+    'line-dasharray': [0, 1.5],
+    'line-width': 8,
+  },
+};

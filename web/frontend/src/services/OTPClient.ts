@@ -9,16 +9,16 @@ export type OTPLegGeometry = {
 export enum OTPMode {
   Bicycle = 'BICYCLE',
   Bus = 'BUS',
-  Car = 'CAR',
   CableCar = 'CABLE_CAR',
+  Car = 'CAR',
   Ferry = 'FERRY',
   Funicular = 'FUNICULAR',
   Gondola = 'GONDOLA',
   Rail = 'RAIL',
   Subway = 'SUBWAY',
   Train = 'TRAIN',
-  Transit = 'TRANSIT',
   Tram = 'TRAM',
+  Transit = 'TRANSIT',
   Walk = 'WALK',
 }
 
@@ -47,6 +47,7 @@ export type OTPItineraryLeg = {
   route: string;
   routeShortName?: string;
   routeLongName?: string;
+  routeColor?: string;
   from: { name: string; lat: number; lon: number };
   to: { name: string; lat: number; lon: number };
 };

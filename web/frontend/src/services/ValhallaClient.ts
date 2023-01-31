@@ -7,6 +7,7 @@ export interface ValhallaRouteLegManeuver {
   begin_shape_index: number;
   end_shape_index: number;
   street_names?: string[];
+  travel_mode: ValhallaTravelMode;
   time: number;
   cost: number;
   length: number;
@@ -35,6 +36,15 @@ export interface ValhallaRouteSummary {
   min_lon: number;
   max_lat: number;
   max_lon: number;
+}
+
+// From https://github.com/valhalla/valhalla-docs/blob/master/turn-by-turn/api-reference.md
+// See also: travel_type for transit sub types like tram, ferry, etc.
+export enum ValhallaTravelMode {
+  Bicycle = 'bicycle',
+  Drive = 'drive',
+  Transit = 'transit',
+  Walk = 'pedestrian',
 }
 
 // incomplete
