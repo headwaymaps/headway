@@ -17,14 +17,14 @@ build:
     ARG countries
 
     # tag for created docker containers
-    ARG tag="latest"
+    ARG tags="dev"
 
     # Run +gtfs-enumerate to build an appropriate input for transit_feeds.
     # If omitted, you cannot enable transit routing.
     ARG transit_feeds
 
     BUILD +save --area=${area} --countries=${countries} --transit_feeds=${transit_feeds}
-    BUILD +images --tag=${tag}
+    BUILD +images --tags=${tags}
 
 save:
     FROM +save-base
@@ -119,18 +119,18 @@ save-tileserver-natural-earth:
 
 images:
     FROM debian:bullseye-slim
-    ARG tag="latest"
+    ARG tags="dev"
     ARG branding
-    BUILD +transitmux-serve-image --tag=${tag}
-    BUILD +otp-serve-image --tag=${tag}
-    BUILD +valhalla-serve-image --tag=${tag}
-    BUILD +web-serve-image --tag=${tag} --branding=${branding}
-    BUILD +tileserver-serve-image --tag=${tag}
-    BUILD +otp-init-image --tag=${tag}
-    BUILD +valhalla-init-image --tag=${tag}
-    BUILD +web-init-image --tag=${tag}
-    BUILD +tileserver-init-image --tag=${tag}
-    BUILD +pelias-init-image --tag=${tag}
+    BUILD +transitmux-serve-image --tags=${tags}
+    BUILD +otp-serve-image --tags=${tags}
+    BUILD +valhalla-serve-image --tags=${tags}
+    BUILD +web-serve-image --tags=${tags} --branding=${branding}
+    BUILD +tileserver-serve-image --tags=${tags}
+    BUILD +otp-init-image --tags=${tags}
+    BUILD +valhalla-init-image --tags=${tags}
+    BUILD +web-init-image --tags=${tags}
+    BUILD +tileserver-init-image --tags=${tags}
+    BUILD +pelias-init-image --tags=${tags}
 
 extract:
     FROM +downloader-base
@@ -150,8 +150,10 @@ pelias-init-image:
     RUN mkdir -p /app
     COPY ./services/pelias/init* /app/
     CMD ["echo", "run a specific command"]
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:${tag}
+    END
 
 pelias-guess-country:
     FROM debian:bullseye-slim
@@ -425,8 +427,10 @@ otp-init-image:
     FROM +downloader-base
     COPY ./services/otp/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner-init:${tag}
+    END
 
 otp-serve-image:
     FROM +otp-base
@@ -447,8 +451,10 @@ otp-serve-image:
     HEALTHCHECK --interval=5s --start-period=120s \
         CMD nc -z localhost ${PORT}
 
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:${tag}
+    END
 
 build-transitmux:
     FROM rust
@@ -484,8 +490,10 @@ transitmux-serve-image:
     ENTRYPOINT ["/home/transitmux/transitmux-server"]
     CMD ["http://opentripplanner:8000/otp/routers"]
 
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/transitmux:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/transitmux:${tag}
+    END
 
 ##############################
 # Valhalla
@@ -537,16 +545,20 @@ valhalla-init-image:
     ENTRYPOINT ["/bin/bash"]
     USER root
     CMD ["/app/init.sh"]
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla-init:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/valhalla-init:${tag}
+    END
 
 valhalla-serve-image:
     FROM +valhalla-base-image
     ENTRYPOINT ["valhalla_service"]
     USER valhalla
     CMD ["/data/valhalla.json"]
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/valhalla:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/valhalla:${tag}
+    END
 
 ##############################
 # tileserver-gl-light
@@ -606,8 +618,10 @@ tileserver-init-image:
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:${tag}
+    END
 
 tileserver-serve-image:
     FROM node:16
@@ -634,8 +648,10 @@ tileserver-serve-image:
 
     ENV HEADWAY_PUBLIC_URL=http://127.0.0.1:8080
     CMD ["/app/configure_run.sh"]
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/tileserver:${tag}
+    END
 
 ##############################
 # Web
@@ -660,8 +676,10 @@ web-init-image:
     ENV HEADWAY_SHARED_VOL=/data
     CMD ["/app/init.sh"]
 
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/headway-init:${tag}
+    END
 
 web-serve-image:
     FROM nginx
@@ -683,8 +701,10 @@ web-serve-image:
     ENV ESC=$
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
 
-    ARG tag
-    SAVE IMAGE --push ghcr.io/headwaymaps/headway:${tag}
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/headway:${tag}
+    END
 
 ##############################
 # Generic base images
