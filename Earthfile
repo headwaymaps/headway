@@ -199,7 +199,7 @@ pelias-import-base:
     ARG --required area
     ARG countries
     RUN mkdir -p /data/openstreetmap
-    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap    
+    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap
     WORKDIR /config
     COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
     COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
@@ -297,11 +297,11 @@ planetiler-download:
     FROM +downloader-base
     ARG PLANETILER_VERSION=v0.5.0
     ARG PLANETILER_HASH=5f08d8f351751373084b1c2abd21bb38cbf66357dd2a02d2692d3561f16db70b
-    
+
     RUN wget -nv -O /data/planetiler.jar https://github.com/onthegomap/planetiler/releases/download/${PLANETILER_VERSION}/planetiler.jar
     RUN ls -l /data
     RUN echo "${PLANETILER_HASH}  /data/planetiler.jar" | sha256sum --check
-    
+
     SAVE ARTIFACT /data/planetiler.jar /planetiler.jar
 
 planetiler-image:
@@ -444,7 +444,7 @@ otp-serve-image:
         && apt-get install -y --no-install-recommends netcat \
         && rm -rf /var/lib/apt/lists/*
 
-    HEALTHCHECK --interval=5s --start-period=20s \
+    HEALTHCHECK --interval=5s --start-period=120s \
         CMD nc -z localhost ${PORT}
 
     ARG tag
@@ -492,7 +492,9 @@ transitmux-serve-image:
 ##############################
 
 valhalla-base-image:
-    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.3.0
+    # The version tag is ignored when sha256 is specified, but I'm leaving it
+    # in to document which "release" our sha pins to.
+    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.3.0@sha256:5915ee1d44b6ef17cdd3c9514fd636dcb836a250be83d9893f448bb28d1ccfcf
 
     USER root
     WORKDIR /tiles
