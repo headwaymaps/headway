@@ -75,9 +75,7 @@
   border-left: dashed $walkColor 6px;
 }
 
-.timeline-edge-BUS,
-.timeline-edge-TRAIN,
-.timeline-edge-TRAM {
+.timeline-edge:not(.timeline-edge-WALK) {
   border-left: solid $transitColor 6px;
 }
 
