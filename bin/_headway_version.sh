@@ -19,17 +19,6 @@
 # be built and deployed before the corresponding containers can be deployed.
 export HEADWAY_DATA_TAG=0.3.0
 
-# Tracks backwards incompatibility between container deployments.
-#
-# Major bumps to HEADWAY_CONTAINER_TAG might require a fresh deploy
-# of the entire system. Minor or patch bumps should be deployable by replacing
-# individual containers in place.
-#
-# Of course, you can always do a fresh deploy of the entire system if you are
-# OK with downtime or have a blue/green deployment setup.
-export HEADWAY_CONTAINER_TAG=0.4.0
-
-
 # # Schema change Log
 #
 # This documents the changes to the schema tag's over time, not *every* change
