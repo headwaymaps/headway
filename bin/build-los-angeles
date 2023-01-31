@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -x
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+bin_name=$(basename $0)
+log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
+log_dir=/pool1/logs
+log_file="${log_dir}/${log_filename}"
+
+function with_log {
+  $@ > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
+}
+
+EARTHLY_ARGS=${@:1}
+
+if [ -z "$HEADWAY_CONTAINER_TAG" ]
+then
+    # The seattle deployment is for testing, and thus always uses dev containers
+    HEADWAY_CONTAINER_TAG=dev
+fi
+
+# This job will download the seattle.osm data from bbike
+AREA=LosAngeles
+TRANSIT_FEEDS=data/LosAngeles-2023-01-21.gtfs_feeds.csv
+with_log earthly $EARTHLY_ARGS -P +build --countries=US --area=$AREA --tag=$HEADWAY_CONTAINER_TAG --transit_feeds=$TRANSIT_FEEDS
