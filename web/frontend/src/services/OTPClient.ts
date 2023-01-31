@@ -7,10 +7,19 @@ export type OTPLegGeometry = {
 };
 
 export enum OTPMode {
-  Walk = 'WALK',
+  Bicycle = 'BICYCLE',
   Bus = 'BUS',
+  Car = 'CAR',
+  CableCar = 'CABLE_CAR',
+  Ferry = 'FERRY',
+  Funicular = 'FUNICULAR',
+  Gondola = 'GONDOLA',
+  Rail = 'RAIL',
+  Subway = 'SUBWAY',
   Train = 'TRAIN',
+  Transit = 'TRANSIT',
   Tram = 'TRAM',
+  Walk = 'WALK',
 }
 
 // incomplete
@@ -34,7 +43,10 @@ export type OTPItineraryLeg = {
   mode: OTPMode;
   transitLeg: boolean;
   legGeometry: OTPLegGeometry;
+  // Seems to always be set, but may be an empty string, e.g. for a walk
+  route: string;
   routeShortName?: string;
+  routeLongName?: string;
   from: { name: string; lat: number; lon: number };
   to: { name: string; lat: number; lon: number };
 };
