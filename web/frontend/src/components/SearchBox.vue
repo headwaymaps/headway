@@ -1,43 +1,59 @@
 <template>
   <div class="search-box">
-    <q-select
-      ref="selectField"
-      use-input
-      behavior="menu"
-      hide-dropdown-icon
-      outlined
-      dense
-      fill-input
-      hide-selected
-      input-class="search-box-input"
-      clearable
+    <q-input
+      ref="autoCompleteInput"
       :label="$props.hint || $t('where_to_question')"
+      v-model="inputText"
+      clearable
       :readonly="readonly"
-      :model-value="selectedPlace"
-      @update:model-value="selectPlace"
-      @filter="onFilter"
-      :options="placeChoices"
-      :option-label="(place: Place) => place.name ?? place.address ?? ''"
-      v-on:keydown="onKeyDown"
+      :outlined="true"
+      :debounce="0"
+      :dense="true"
+      v-on:clear="selectPlace(undefined)"
       v-on:blur="onBlur"
-      input-debounce="0"
+      v-on:beforeinput="
+        () => {
+          if (isAndroid) {
+            updateAutocomplete(autoCompleteMenu());
+          }
+        }
+      "
+      v-on:update:model-value="
+        () => {
+          if (!isAndroid) {
+            updateAutocomplete(autoCompleteMenu());
+          }
+        }
+      "
+      v-on:keydown="onKeyDown"
     >
-      <template #option="{ opt, selected, itemProps }">
+    </q-input>
+    <q-menu
+      auto-close
+      ref="autoCompleteMenu"
+      :no-focus="true"
+      :no-refocus="true"
+      v-on:before-hide="removeHoverMarkers"
+      :target="($refs.autoCompleteInput as Element)"
+    >
+      <q-list>
         <q-item
-          v-bind="itemProps"
-          v-on:mouseenter="onHoverPlace(opt)"
-          v-on:mouseleave="onHoverPlace(undefined)"
-          :style="selected ? 'border-left: solid black 2px;' : ''"
+          :key="place.serializedId()"
+          v-for="place in placeChoices"
+          clickable
+          v-on:click="selectPlace(place)"
+          v-on:mouseenter="hoverPlace(place)"
+          v-on:mouseleave="hoverPlace(undefined)"
         >
           <q-item-section>
-            <q-item-label>{{ opt.name ?? opt.address }}</q-item-label>
-            <q-item-label v-if="opt.name" caption>{{
-              opt.address
+            <q-item-label>{{ place.name || place.address }}</q-item-label>
+            <q-item-label v-if="place.name" caption>{{
+              place.address
             }}</q-item-label>
           </q-item-section>
         </q-item>
-      </template>
-    </q-select>
+      </q-list>
+    </q-menu>
   </div>
 </template>
 
@@ -49,11 +65,11 @@
 </style>
 
 <script lang="ts">
-import { defineComponent, PropType, Ref, ref } from 'vue';
+import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
 import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
-import { Platform, QSelect } from 'quasar';
+import { QMenu, Platform, QInput } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
 import Markers from 'src/utils/Markers';
@@ -62,32 +78,21 @@ import { supportsHover } from 'src/utils/misc';
 export default defineComponent({
   name: 'SearchBox',
   props: {
+    initialInputText: String,
+    initialPlace: Place,
     hint: String,
     readonly: Boolean,
-    resultsCallback: Function as PropType<(results?: Place[]) => void>,
-    forcePlace: Place,
-    initialInputText: String,
   },
   data(): {
-    selectedPlace?: Place;
+    isAndroid: boolean;
   } {
-    return { selectedPlace: this.forcePlace };
+    const isAndroid = /(android)/i.test(navigator.userAgent);
+    return { isAndroid };
   },
   methods: {
-    async onFilter(
-      inputText: string,
-      doneFn: (callbackFn: () => void, afterFn?: (ref: QSelect) => void) => void
-    ) {
-      // HACK: we call the `doneFn` immediately, otherwise the search results keep
-      // flickering while the user types out their query.
-      doneFn(() => {
-        /* I'm not sure why this method is required.. I don't need to do anything further */
-      });
-      await this.updateAutocomplete();
-    },
     onKeyDown(event: KeyboardEvent): void {
       if (event.key == 'Enter') {
-        let searchText = this.currentSearchText();
+        let searchText = this.inputText;
         if (searchText) {
           this.$emit('didSubmitSearch', searchText);
         }
@@ -115,95 +120,33 @@ export default defineComponent({
         window.scroll(0, -1);
       }
     },
-    inputTextDidChange() {
-      this.removeHoverMarkers();
-      this.updateAutocomplete();
+    autoCompleteMenu(): QMenu {
+      return this.$refs.autoCompleteMenu as QMenu;
     },
-    removeHoverMarkers() {
-      if (this.hoverMarker) {
-        this.hoverMarker.remove();
-        this.hoverMarker = undefined;
-      }
-    },
-    selectPlace(place?: Place) {
-      this.selectedPlace = place;
-      this.$emit('didSelectPlace', place);
-      this.removeHoverMarkers();
-    },
-    onHoverPlace(place?: Place) {
-      if (!supportsHover()) {
-        // FIX: selecting autocomplete item on mobile requires double
-        // tapping.
-        //
-        // On touch devices, where hover is not supported, this method is
-        // fired upon tapping. I don't fully understand why, but maybe
-        // mutating the state in this method would rebuild the component,
-        // canceling any outstanding event handlers on the old component.
-        return;
-      }
-      this.placeHovered = place;
-      this.removeHoverMarkers();
-
-      if (!map) {
-        console.error('map was unexpectedly unset');
-        return;
-      }
-
-      if (place) {
-        this.hoverMarker = Markers.inactive().setLngLat(place.point);
-        this.hoverMarker.addTo(map);
-      }
+    autoCompleteInput(): QInput {
+      return this.$refs.autoCompleteInput as QInput;
     },
   },
   watch: {
-    forcePlace: {
+    initialPlace: {
       handler(newValue?: Place) {
-        this.selectedPlace = newValue;
+        this.inputText = newValue?.displayName() || '';
       },
     },
   },
   emits: ['didSelectPlace', 'didSubmitSearch'],
-  mounted(): void {
-    if (this.initialInputText) {
-      this.selectField?.updateInputValue(this.initialInputText);
-    }
-  },
-  unmounted(): void {
-    console.assert(!this.unmounted, 'should only unmount once');
-    this.unmounted = true;
-    this.removeHoverMarkers();
-  },
-  setup() {
+  setup: function (props, ctx) {
+    const inputText: Ref<string | undefined> = ref(
+      props.initialInputText || props.initialPlace?.displayName() || ''
+    );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
-    const placeChoices: Ref<Place[] | undefined> = ref(undefined);
-    const hoverMarker: Ref<Marker | undefined> = ref(undefined);
-    const selectField: Ref<QSelect | null> = ref(null);
+    const placeChoices: Ref<Place[] | undefined> = ref([]);
     const mostRecentlyCompletedSearchText: Ref<string> = ref('');
-    const unmounted: Ref<boolean> = ref(false);
+    const isUnmounted = ref(false);
+    let hoverMarker: Marker | undefined = undefined;
 
-    function currentSearchText(): string {
-      // This is a dirty probably brittle hack.
-      //
-      // AFAICT there's no way to get the *current* text in the input field. All
-      // the available "blessed" ways rely on this value propogating via async
-      // callbacks (e.g. @input-value or via @filter), but we want to handle the
-      // "Enter" key (on keydown) which happens before those other callbacks
-      // are called. Thus we need to punch through the abstractions and just grab
-      // the value directly from the input element.
-
-      //let inputEl: HTMLInputElement = $('input.search-box-input', this.selectField().$el);
-      let inputEl: HTMLInputElement = selectField.value?.$el.querySelector(
-        'input.search-box-input'
-      );
-      console.assert(
-        inputEl,
-        'expected to find input element within search box'
-      );
-      return inputEl.value;
-    }
-
-    async function _updateAutocomplete(): Promise<void> {
-      let searchText = currentSearchText();
+    const _updatePlaceChoices = async function () {
+      const searchText = inputText.value ?? '';
       if (searchText.length == 0) {
         mostRecentlyCompletedSearchText.value = '';
         placeChoices.value = undefined;
@@ -242,8 +185,11 @@ export default defineComponent({
       }
 
       // We have `awaited`, and need to make sure it makes sense to proceed...
-      //
-      // We *do* want to update autocomplete as the user extends a query.
+      // Firstly - Quit if the user has left the page.
+      if (isUnmounted.value) {
+        return;
+      }
+      // Secondly - We *do* want to update autocomplete as the user extends a query.
       //
       // But we don't want to show a no longer relevant result, e.g. if the user
       // deleted or edited characters, or if we are out-of-order: hearing back
@@ -255,26 +201,77 @@ export default defineComponent({
       // request text: "Sea",  current inputField: "Seatt" <-- show stale request results, the user is still typing out the word
       // request text: "Seat", current inputField: "Sea",  <-- discard stale request results, the user has deleted part of that previous query
       // request text: "S",    current inputField: "",     <-- discard stale request results, the user has deleted the last letter of the query
-      if (unmounted.value || !currentSearchText().includes(searchText)) {
+      if (!(inputText.value || '').includes(searchText)) {
         // discarding old results
         return;
       }
+
       mostRecentlyCompletedSearchText.value = searchText;
       placeChoices.value = places;
-    }
+    };
     const throttleMs = 200;
-    const updateAutocomplete = throttle(_updateAutocomplete, throttleMs, {
+    const updatePlaceChoices = throttle(_updatePlaceChoices, throttleMs, {
       trailing: true,
     });
 
+    function removeHoverMarkers() {
+      if (hoverMarker) {
+        hoverMarker.remove();
+        hoverMarker = undefined;
+      }
+    }
+
     return {
-      hoverMarker,
-      selectField,
-      updateAutocomplete,
+      inputText,
       placeChoices,
       placeHovered,
-      currentSearchText,
-      unmounted,
+      deferHide(menu: QMenu) {
+        setTimeout(() => {
+          menu.hide();
+          removeHoverMarkers();
+        }, 500);
+      },
+      removeHoverMarkers,
+      updateAutocomplete(menu: QMenu) {
+        menu.show();
+        if (placeHovered.value) {
+          placeHovered.value = undefined;
+        }
+        updatePlaceChoices();
+      },
+      selectPlace(place?: Place) {
+        ctx.emit('didSelectPlace', place);
+        removeHoverMarkers();
+      },
+      hoverPlace(place?: Place) {
+        if (!supportsHover()) {
+          // FIX: selecting automcomplete item on mobile requires double
+          // tapping.
+          //
+          // On touch devices, where hover is not supported, this method is
+          // fired upon tapping. I don't fully understand why, but maybe
+          // mutating the state in this method would rebuild the component,
+          // canceling any outstanding event handlers on the old component.
+          return;
+        }
+        placeHovered.value = place;
+
+        removeHoverMarkers();
+
+        if (!map) {
+          console.error('map was unexpectedly unset');
+          return;
+        }
+
+        if (place) {
+          hoverMarker = Markers.inactive().setLngLat(place.point);
+          hoverMarker.addTo(map);
+        }
+      },
+      unmounted() {
+        removeHoverMarkers();
+        isUnmounted.value = true;
+      },
     };
   },
 });

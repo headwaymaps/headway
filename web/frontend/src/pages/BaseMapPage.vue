@@ -2,7 +2,10 @@
   <div class="top-card">
     <search-box
       v-on:did-select-place="searchBoxDidSelectPlace"
-      v-on:did-submit-search="searchBoxDidSubmitSearch"
+      v-on:did-submit-search="
+        (searchText) =>
+          $router.push(`/search/${encodeURIComponent(searchText)}`)
+      "
     />
   </div>
 </template>
@@ -55,9 +58,6 @@ export default defineComponent({
   name: 'BaseMapPage',
   components: { SearchBox },
   methods: {
-    searchBoxDidSubmitSearch(searchText: string) {
-      this.$router.push(`/search/${encodeURIComponent(searchText)}`);
-    },
     searchBoxDidSelectPlace(place?: Place) {
       if (place) {
         this.$router.push(`/place/${place.urlEncodedId()}`);

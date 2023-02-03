@@ -57,7 +57,7 @@ export default defineComponent({
   methods: {
     searchBoxDidSubmitSearch(searchText: string): void {
       this.updateSearch(searchText);
-      this.$router.push(`/search/${encodeURIComponent(searchText)}`);
+      this.$router.replace(`/search/${encodeURIComponent(searchText)}`);
     },
     searchBoxDidSelectPlace(place?: Place): void {
       if (place) {
@@ -66,9 +66,6 @@ export default defineComponent({
         // User "cleared" search field
         this.$router.push('/');
       }
-    },
-    searchBoxDidClearSearch() {
-      this.$router.push('/');
     },
     didClickSearchListItem(place: Place): void {
       this.selectedPlace = place;

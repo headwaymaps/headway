@@ -8,13 +8,13 @@
         <search-box
           :hint="$t('search.from')"
           :style="{ flex: 1 }"
-          :force-place="fromPlace"
+          :initial-place="fromPlace"
           readonly
         />
         <search-box
           :hint="$t('search.to')"
           :style="{ flex: 1 }"
-          :force-place="toPlace"
+          :initial-place="toPlace"
           readonly
         />
       </div>
