@@ -92,6 +92,7 @@ export default defineComponent({
   methods: {
     onKeyDown(event: KeyboardEvent): void {
       if (event.key == 'Enter') {
+        this.mostRecentSearchIdx++;
         let searchText = this.inputText;
         if (searchText) {
           this.$emit('didSubmitSearch', searchText);
@@ -141,6 +142,7 @@ export default defineComponent({
     );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
     const placeChoices: Ref<Place[] | undefined> = ref([]);
+    const mostRecentSearchIdx = ref(0);
     const mostRecentlyCompletedSearchText: Ref<string> = ref('');
     const isUnmounted = ref(false);
     let hoverMarker: Marker | undefined = undefined;
@@ -152,6 +154,11 @@ export default defineComponent({
         placeChoices.value = undefined;
         return;
       }
+
+      // Note: this Idx is for a *search* not for an autocomplete. We want
+      // to skip any autocompletes UI if the user has subsequently submitted a
+      // full blown search.
+      const thisSearchIdx = mostRecentSearchIdx.value;
 
       // If we're continuing to type out our search, keep the old results
       // up while we find the new ones - else, we clear the stale results here.
@@ -185,11 +192,21 @@ export default defineComponent({
       }
 
       // We have `awaited`, and need to make sure it makes sense to proceed...
+
       // Firstly - Quit if the user has left the page.
       if (isUnmounted.value) {
         return;
       }
-      // Secondly - We *do* want to update autocomplete as the user extends a query.
+
+      // Next, cancel the autocomplete if the user has pressed Enter to search
+      // in the meanwhile so we don't pop up the autocomplete menu.
+      if (mostRecentSearchIdx.value > thisSearchIdx) {
+        console.log('bailing after receiving autocomplete results');
+        return;
+      }
+      console.log('proceding after receiving autcomplete results');
+
+      // Finally - we *do* want to update autocomplete as the user extends a query.
       //
       // But we don't want to show a no longer relevant result, e.g. if the user
       // deleted or edited characters, or if we are out-of-order: hearing back
@@ -225,6 +242,7 @@ export default defineComponent({
       inputText,
       placeChoices,
       placeHovered,
+      mostRecentSearchIdx,
       deferHide(menu: QMenu) {
         setTimeout(() => {
           menu.hide();
