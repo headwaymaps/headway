@@ -2,26 +2,30 @@
   <div class="search-box">
     <q-input
       ref="autoCompleteInput"
-      :label="$props.hint ? $props.hint : $t('where_to_question')"
+      :label="$props.hint || $t('where_to_question')"
       v-model="inputText"
       clearable
       :readonly="readonly"
-      :input-style="{ color: 'black' }"
       :outlined="true"
       :debounce="0"
       :dense="true"
       v-on:clear="selectPlace(undefined)"
       v-on:blur="onBlur"
       v-on:beforeinput="
-  (event: Event) =>
-    updateAutocompleteEventBeforeInput(
-      event,
-      autoCompleteMenu()
-      )
+        () => {
+          if (isAndroid) {
+            updateAutocomplete(autoCompleteMenu());
+          }
+        }
       "
       v-on:update:model-value="
-        () => updateAutocompleteEventRawString(autoCompleteMenu())
+        () => {
+          if (!isAndroid) {
+            updateAutocomplete(autoCompleteMenu());
+          }
+        }
       "
+      v-on:keydown="onKeyDown"
     >
     </q-input>
     <q-menu
@@ -34,19 +38,17 @@
     >
       <q-list>
         <q-item
-          :key="item?.serializedId()"
-          v-for="item in autocompleteOptions"
+          :key="place.serializedId()"
+          v-for="place in placeChoices"
           clickable
-          v-on:click="selectPlace(item)"
-          v-on:mouseenter="hoverPlace(item)"
+          v-on:click="selectPlace(place)"
+          v-on:mouseenter="hoverPlace(place)"
           v-on:mouseleave="hoverPlace(undefined)"
         >
           <q-item-section>
-            <q-item-label>{{
-              item?.name ? item.name : item?.address
-            }}</q-item-label>
-            <q-item-label v-if="item?.name" caption>{{
-              item.address
+            <q-item-label>{{ place.name || place.address }}</q-item-label>
+            <q-item-label v-if="place.name" caption>{{
+              place.address
             }}</q-item-label>
           </q-item-section>
         </q-item>
@@ -65,21 +67,38 @@
 <script lang="ts">
 import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
-import { Event, Marker } from 'maplibre-gl';
+import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
-import { QMenu, Platform } from 'quasar';
+import { QMenu, Platform, QInput } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
-
-const isAndroid = /(android)/i.test(navigator.userAgent);
+import PeliasClient from 'src/services/PeliasClient';
+import Markers from 'src/utils/Markers';
+import { supportsHover } from 'src/utils/misc';
 
 export default defineComponent({
   name: 'SearchBox',
   props: {
-    forceText: String,
+    initialInputText: String,
+    initialPlace: Place,
     hint: String,
     readonly: Boolean,
   },
+  data(): {
+    isAndroid: boolean;
+  } {
+    const isAndroid = /(android)/i.test(navigator.userAgent);
+    return { isAndroid };
+  },
   methods: {
+    onKeyDown(event: KeyboardEvent): void {
+      if (event.key == 'Enter') {
+        this.mostRecentSearchIdx++;
+        let searchText = this.inputText;
+        if (searchText) {
+          this.$emit('didSubmitSearch', searchText);
+        }
+      }
+    },
     onBlur(): void {
       if (Platform.is.ios) {
         // iOS (on at least 16.1) "helpfully" moves the focused input towards
@@ -105,129 +124,142 @@ export default defineComponent({
     autoCompleteMenu(): QMenu {
       return this.$refs.autoCompleteMenu as QMenu;
     },
+    autoCompleteInput(): QInput {
+      return this.$refs.autoCompleteInput as QInput;
+    },
   },
   watch: {
-    forceText: {
-      immediate: true,
-      deep: true,
-      handler(newVal) {
-        this.inputText = newVal;
+    initialPlace: {
+      handler(newValue?: Place) {
+        this.inputText = newValue?.displayName() || '';
       },
     },
   },
-  emits: ['didSelectPlace'],
-  unmounted: function () {
-    this.onUnmounted();
-  },
-  beforeUnmount: function () {
-    this.onUnmounted();
-  },
+  emits: ['didSelectPlace', 'didSubmitSearch'],
   setup: function (props, ctx) {
-    const inputText = ref('');
+    const inputText: Ref<string | undefined> = ref(
+      props.initialInputText || props.initialPlace?.displayName() || ''
+    );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
-    const autocompleteOptions: Ref<Place[] | undefined> = ref([]);
-    let requestIdx = 0;
-    let mostRecentResultsRequestIdx = 0;
+    const placeChoices: Ref<Place[] | undefined> = ref([]);
+    const mostRecentSearchIdx = ref(0);
+    const mostRecentlyCompletedSearchText: Ref<string> = ref('');
+    const isUnmounted = ref(false);
+    let hoverMarker: Marker | undefined = undefined;
 
-    var hoverMarker: Marker | undefined = undefined;
-
-    const _updateAutocomplete = async function (
-      currentTextValue: string,
-      target?: HTMLInputElement
-    ) {
-      const value = target ? target.value : currentTextValue;
-      if (!value) {
+    const _updatePlaceChoices = async function () {
+      const searchText = inputText.value ?? '';
+      if (searchText.length == 0) {
+        mostRecentlyCompletedSearchText.value = '';
+        placeChoices.value = undefined;
         return;
       }
-      let url = undefined;
-      if (map && map.getZoom() > 6) {
-        const mapCenter = map?.getCenter();
-        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(
-          value
-        )}&focus.point.lon=${mapCenter?.lng}&focus.point.lat=${mapCenter?.lat}`;
+
+      // Note: this Idx is for a *search* not for an autocomplete. We want
+      // to skip any autocompletes UI if the user has subsequently submitted a
+      // full blown search.
+      const thisSearchIdx = mostRecentSearchIdx.value;
+
+      // If we're continuing to type out our search, keep the old results
+      // up while we find the new ones - else, we clear the stale results here.
+      if (searchText.includes(mostRecentlyCompletedSearchText.value)) {
+        // console.debug('keeping old results while adding to input text');
       } else {
-        url = `/pelias/v1/autocomplete?text=${encodeURIComponent(value)}`;
+        // console.debug('immediately clearing old results since the input text is no longer relvant');
+        mostRecentlyCompletedSearchText.value = '';
+        placeChoices.value = undefined;
       }
-      const thisRequestIdx = requestIdx;
-      requestIdx++;
-      const response = await fetch(url);
-      if (response.status != 200) {
-        if (thisRequestIdx > mostRecentResultsRequestIdx) {
-          // Don't clobber existing good results with an error from a stale request
-          autocompleteOptions.value = [];
-        }
-        return;
-      }
-      if (thisRequestIdx < mostRecentResultsRequestIdx) {
-        // not updating autocomplete for a stale req
-        return;
-      }
-      mostRecentResultsRequestIdx = thisRequestIdx;
 
-      const results = await response.json();
-      var options: Place[] = [];
-      for (const feature of results.features) {
-        // TODO: Not sure if this ever happens.
-        console.assert(feature.properties.gid);
-        let gid = feature.properties.gid;
-        let id = PlaceId.gid(gid);
-        options.push(Place.fromFeature(id, feature));
+      let focus = undefined;
+      if (map && map.getZoom() > 6) {
+        focus = map.getCenter();
       }
-      autocompleteOptions.value = options;
+
+      let places: Place[] = [];
+      try {
+        const results = await PeliasClient.autocomplete(searchText, focus);
+        for (const feature of results.features) {
+          if (!feature.properties?.gid) {
+            console.error('feature was missing gid');
+            continue;
+          }
+          let gid = feature.properties.gid;
+          let id = PlaceId.gid(gid);
+          places.push(Place.fromFeature(id, feature));
+        }
+      } catch (e) {
+        console.warn('error with autocomplete', e);
+      }
+
+      // We have `awaited`, and need to make sure it makes sense to proceed...
+
+      // Firstly - Quit if the user has left the page.
+      if (isUnmounted.value) {
+        return;
+      }
+
+      // Next, cancel the autocomplete if the user has pressed Enter to search
+      // in the meanwhile so we don't pop up the autocomplete menu.
+      if (mostRecentSearchIdx.value > thisSearchIdx) {
+        console.log('bailing after receiving autocomplete results');
+        return;
+      }
+      console.log('proceding after receiving autcomplete results');
+
+      // Finally - we *do* want to update autocomplete as the user extends a query.
+      //
+      // But we don't want to show a no longer relevant result, e.g. if the user
+      // deleted or edited characters, or if we are out-of-order: hearing back
+      // from request #1 *after* we've already heard back from request #2. This
+      // isn't a rare edge-case — often longer queries will return faster than
+      // shorter prefix queries which have more matches.
+      //
+      // request text: "Se",   current inputField: "Sea",  <-- show stale request results, the user is still typing out the word
+      // request text: "Sea",  current inputField: "Seatt" <-- show stale request results, the user is still typing out the word
+      // request text: "Seat", current inputField: "Sea",  <-- discard stale request results, the user has deleted part of that previous query
+      // request text: "S",    current inputField: "",     <-- discard stale request results, the user has deleted the last letter of the query
+      if (!(inputText.value || '').includes(searchText)) {
+        // discarding old results
+        return;
+      }
+
+      mostRecentlyCompletedSearchText.value = searchText;
+      placeChoices.value = places;
     };
     const throttleMs = 200;
-    const updateAutocomplete = throttle(_updateAutocomplete, throttleMs, {
+    const updatePlaceChoices = throttle(_updatePlaceChoices, throttleMs, {
       trailing: true,
     });
 
+    function removeHoverMarkers() {
+      if (hoverMarker) {
+        hoverMarker.remove();
+        hoverMarker = undefined;
+      }
+    }
+
     return {
       inputText,
-      autocompleteOptions,
+      placeChoices,
       placeHovered,
+      mostRecentSearchIdx,
       deferHide(menu: QMenu) {
         setTimeout(() => {
           menu.hide();
-          if (hoverMarker) {
-            hoverMarker.remove();
-            hoverMarker = undefined;
-          }
+          removeHoverMarkers();
         }, 500);
       },
-      removeHoverMarkers() {
-        if (hoverMarker) {
-          hoverMarker.remove();
-          hoverMarker = undefined;
-        }
-      },
-      updateAutocompleteEventRawString(menu: QMenu) {
+      removeHoverMarkers,
+      updateAutocomplete(menu: QMenu) {
         menu.show();
         if (placeHovered.value) {
           placeHovered.value = undefined;
         }
-        if (!isAndroid) {
-          setTimeout(() => updateAutocomplete(inputText.value));
-        }
-      },
-      updateAutocompleteEventBeforeInput(event: Event, menu: QMenu) {
-        const inputEvent = event as InputEvent;
-        menu.show();
-        if (placeHovered.value) {
-          placeHovered.value = undefined;
-        }
-        if (isAndroid) {
-          setTimeout(() =>
-            updateAutocomplete(
-              inputText.value,
-              inputEvent.target as HTMLInputElement
-            )
-          );
-        }
+        updatePlaceChoices();
       },
       selectPlace(place?: Place) {
         ctx.emit('didSelectPlace', place);
-        setTimeout(() => {
-          if (hoverMarker) hoverMarker.remove();
-        });
+        removeHoverMarkers();
       },
       hoverPlace(place?: Place) {
         if (!supportsHover()) {
@@ -242,9 +274,7 @@ export default defineComponent({
         }
         placeHovered.value = place;
 
-        if (hoverMarker) {
-          hoverMarker.remove();
-        }
+        removeHoverMarkers();
 
         if (!map) {
           console.error('map was unexpectedly unset');
@@ -252,22 +282,15 @@ export default defineComponent({
         }
 
         if (place) {
-          hoverMarker = new Marker({ color: '#11111155' }).setLngLat(
-            place.point
-          );
+          hoverMarker = Markers.inactive().setLngLat(place.point);
           hoverMarker.addTo(map);
         }
       },
-      onUnmounted() {
-        if (hoverMarker) {
-          hoverMarker.remove();
-        }
+      unmounted() {
+        removeHoverMarkers();
+        isUnmounted.value = true;
       },
     };
   },
 });
-
-function supportsHover(): boolean {
-  return window.matchMedia('(hover: hover)').matches;
-}
 </script>

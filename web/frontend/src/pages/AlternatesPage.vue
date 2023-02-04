@@ -57,11 +57,7 @@
 </style>
 
 <script lang="ts">
-import {
-  destinationMarker,
-  sourceMarker,
-  getBaseMap,
-} from 'src/components/BaseMap.vue';
+import { getBaseMap } from 'src/components/BaseMap.vue';
 import { Component, defineComponent, Ref, ref } from 'vue';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
@@ -74,6 +70,7 @@ import TripLayerId from 'src/models/TripLayerId';
 import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
 import Prefs from 'src/utils/Prefs';
+import Markers from 'src/utils/Markers';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -211,14 +208,14 @@ export default defineComponent({
       if (this.fromPlace) {
         map.pushMarker(
           'source_marker',
-          sourceMarker().setLngLat(this.fromPlace.point)
+          Markers.tripStart().setLngLat(this.fromPlace.point)
         );
       }
 
       if (this.toPlace) {
         map.pushMarker(
           'destination_marker',
-          destinationMarker().setLngLat(this.toPlace.point)
+          Markers.tripEnd().setLngLat(this.toPlace.point)
         );
       }
     },

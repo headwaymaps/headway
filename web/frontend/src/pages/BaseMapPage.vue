@@ -1,6 +1,12 @@
 <template>
   <div class="top-card">
-    <search-box v-on:did-select-place="searchBoxDidSelectPlace" />
+    <search-box
+      v-on:did-select-place="searchBoxDidSelectPlace"
+      v-on:did-submit-search="
+        (searchText) =>
+          $router.push(`/search/${encodeURIComponent(searchText)}`)
+      "
+    />
   </div>
 </template>
 

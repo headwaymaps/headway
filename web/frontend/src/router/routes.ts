@@ -27,6 +27,18 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/search/:searchText',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        name: 'search',
+        path: '/search/:searchText',
+        props: true,
+        component: () => import('pages/SearchPage.vue'),
+      },
+    ],
+  },
+  {
     path: '/directions/:mode/:to',
     component: () => import('layouts/MainLayout.vue'),
     children: [

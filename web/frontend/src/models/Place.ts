@@ -172,13 +172,30 @@ export default class Place {
     }
 
     const countryCode = feature.properties?.country_code;
-    console.assert(countryCode, 'no country code found for feature', feature);
+    const address = localizeAddress(feature.properties);
+
+    // This happens when searching for continent - e.g. "North America"
+    if (
+      feature.properties?.layer == 'continent' ||
+      feature.properties?.layer == 'empire'
+    ) {
+      console.assert(
+        !countryCode,
+        'expecting continent to have no countryCode',
+        feature
+      );
+      console.assert(
+        !address,
+        'expecting continent to have no address',
+        feature
+      );
+    } else {
+      console.assert(countryCode, 'no country code found for feature', feature);
+      console.assert(address, 'no address found for feature', feature);
+    }
 
     const name = feature.properties?.name;
     console.assert(name, 'no name found for feature', feature);
-
-    const address = localizeAddress(feature.properties);
-    console.assert(address, 'no address found for feature', feature);
 
     const place = new Place(id, location, bbox, countryCode, name, address);
     return place;

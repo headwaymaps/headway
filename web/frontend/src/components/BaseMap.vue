@@ -6,8 +6,11 @@
 import { defineComponent } from 'vue';
 import maplibregl, {
   FitBoundsOptions,
+  FlyToOptions,
   LayerSpecification,
   LineLayerSpecification,
+  LngLat,
+  LngLatBounds,
   LngLatBoundsLike,
   LngLatLike,
   MapLayerEventType,
@@ -21,7 +24,7 @@ import Prefs from 'src/utils/Prefs';
 import Config from 'src/utils/Config';
 import { mapFeatureToPlace } from 'src/utils/models';
 import { debounce } from 'lodash';
-import { PlaceId } from 'src/models/Place';
+import Place, { PlaceId } from 'src/models/Place';
 import TripLayerId from 'src/models/TripLayerId';
 import env from 'src/utils/env';
 
@@ -82,7 +85,11 @@ function clearAllTimeouts() {
 }
 
 export interface BaseMapInterface {
-  flyTo: (location: LngLatLike, zoom: number) => Promise<void>;
+  getZoom: () => number;
+  getCenter: () => LngLat;
+  getBounds: () => LngLatBounds;
+  flyTo: (location: LngLatLike, zoom?: number) => void;
+  flyToPlace: (place: Place) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   setCursor: (key: string) => void;
   pushMarker: (key: string, marker: Marker) => void;
@@ -115,15 +122,20 @@ export interface BaseMapInterface {
 var baseMapMethods: BaseMapInterface | undefined = undefined;
 
 // There really has to be a better way to do this, but we only ever have 1 base map so I guess it works.
-export function getBaseMap() {
+export function getBaseMap(): BaseMapInterface | undefined {
   return baseMapMethods;
 }
+
+let baseMapPromiseResolver: (baseMap: BaseMapInterface) => void;
+export const baseMapPromise = new Promise<BaseMapInterface>((resolver) => {
+  baseMapPromiseResolver = resolver;
+});
 
 export default defineComponent({
   name: 'BaseMap',
   data: function (): {
-    flyToLocation: { center: LngLatLike; zoom: number } | undefined;
-    boundsToFit: LngLatBoundsLike | undefined;
+    flyToLocation?: { center: LngLatLike; zoom?: number };
+    boundsToFit?: LngLatBoundsLike;
     markers: Map<string, Marker>;
     layers: string[];
     loaded: boolean;
@@ -290,17 +302,30 @@ export default defineComponent({
         map.getCanvas().style.cursor = value;
       });
     },
-    flyTo: async function (location: LngLatLike, zoom: number): Promise<void> {
+    flyToPlace(place: Place): void {
+      if (place.bbox) {
+        // prefer bounds when available so we don't "overzoom" on a large
+        // entity like an entire city.
+        this.fitBounds(place.bbox, { maxZoom: 16 });
+      } else {
+        this.flyTo(place.point, 16);
+      }
+    },
+    flyTo: function (location: LngLatLike, zoom?: number): void {
       if (this.loaded) {
-        map?.flyTo({ center: location, zoom: zoom }, { flying: true });
+        let flyToOptions: FlyToOptions = { center: location };
+        if (zoom) {
+          flyToOptions.zoom = zoom;
+        }
+        map?.flyTo(flyToOptions, { flying: true });
       } else {
         this.$data.flyToLocation = { center: location, zoom: zoom };
       }
     },
-    fitBounds: async function (
+    fitBounds: function (
       bounds: LngLatBoundsLike,
       options: FitBoundsOptions = {}
-    ) {
+    ): void {
       const defaultOptions = {
         padding: Math.min(window.innerWidth, window.innerHeight) / 8,
       };
@@ -343,7 +368,11 @@ export default defineComponent({
     let map = await loadMap();
     // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
     baseMapMethods = {
+      getCenter: () => map.getCenter(),
+      getBounds: () => map.getBounds(),
+      getZoom: () => map.getZoom(),
       setCursor: this.setCursor,
+      flyToPlace: this.flyToPlace,
       flyTo: this.flyTo,
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
@@ -491,18 +520,11 @@ export default defineComponent({
           }
         }
       }
+      if (!baseMapMethods) {
+        throw new Error('baseMapMethods must remain set');
+      }
+      baseMapPromiseResolver(baseMapMethods);
     });
   },
 });
-
-export function sourceMarker(): Marker {
-  let element = document.createElement('div');
-  element.innerHTML =
-    '<svg display="block" height="20" width="20"><circle cx="10" cy="10" r="7" stroke="#111" stroke-width="2" fill="white" /></svg>';
-  return new Marker({ element });
-}
-
-export function destinationMarker(): Marker {
-  return new Marker({ color: '#111111' });
-}
 </script>

@@ -1,8 +1,12 @@
 <template>
   <div class="top-card">
     <search-box
-      :force-text="place ? placeDisplayName(place) : undefined"
+      :initial-place="place"
       v-on:did-select-place="searchBoxDidSelectPlace"
+      v-on:did-submit-search="
+        (searchText) =>
+          $router.push(`/search/${encodeURIComponent(searchText)}`)
+      "
     />
   </div>
 
@@ -12,13 +16,14 @@
 </template>
 
 <script lang="ts">
-import { LngLat, Marker } from 'maplibre-gl';
+import { LngLat } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
 import { placeDisplayName } from 'src/i18n/utils';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
+import Markers from 'src/utils/Markers';
 
 function renderOnMap(place: Place) {
   const map = getBaseMap();
@@ -27,18 +32,9 @@ function renderOnMap(place: Place) {
     return;
   }
 
-  if (place.bbox) {
-    // prefer bounds when available so we don't "overzoom" on a large
-    // entity like an entire city.
-    map.fitBounds(place.bbox, { maxZoom: 16 });
-  } else {
-    map.flyTo(place.point, 16);
-  }
+  map.flyToPlace(place);
 
-  map.pushMarker(
-    'active_marker',
-    new Marker({ color: '#111111' }).setLngLat(place.point)
-  );
+  map.pushMarker('active_marker', Markers.active().setLngLat(place.point));
   map.removeAllLayers();
   map.removeMarkersExcept(['active_marker']);
 }

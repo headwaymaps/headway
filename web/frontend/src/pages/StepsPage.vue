@@ -8,13 +8,13 @@
         <search-box
           :hint="$t('search.from')"
           :style="{ flex: 1 }"
-          :force-text="fromPlace?.name"
+          :initial-place="fromPlace"
           readonly
         />
         <search-box
           :hint="$t('search.to')"
           :style="{ flex: 1 }"
-          :force-text="toPlace?.name"
+          :initial-place="toPlace"
           readonly
         />
       </div>
@@ -34,11 +34,7 @@
 </style>
 
 <script lang="ts">
-import {
-  destinationMarker,
-  getBaseMap,
-  sourceMarker,
-} from 'src/components/BaseMap.vue';
+import { getBaseMap } from 'src/components/BaseMap.vue';
 import { TravelMode, DistanceUnits } from 'src/utils/models';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { defineComponent, Component, Ref, ref } from 'vue';
@@ -47,6 +43,7 @@ import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import TripLayerId from 'src/models/TripLayerId';
+import Markers from 'src/utils/Markers';
 
 export default defineComponent({
   name: 'StepsPage',
@@ -190,14 +187,14 @@ export default defineComponent({
     if (this.fromPlace) {
       map.pushMarker(
         'source_marker',
-        sourceMarker().setLngLat(this.fromPlace.point)
+        Markers.tripStart().setLngLat(this.fromPlace.point)
       );
     }
 
     if (this.toPlace) {
       map.pushMarker(
         'destination_marker',
-        destinationMarker().setLngLat(this.toPlace.point)
+        Markers.tripEnd().setLngLat(this.toPlace.point)
       );
     }
   },
