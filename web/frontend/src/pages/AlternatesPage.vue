@@ -19,6 +19,7 @@
         >
       </div>
     </div>
+    <q-linear-progress v-if="isLoading" indeterminate />
     <q-list v-if="trips.length > 0">
       <trip-list-item
         v-for="trip in trips"
@@ -82,10 +83,11 @@ export default defineComponent({
     to: String,
     from: String,
   },
-  data: function (): {
+  data(): {
     trips: Trip[];
     error?: TripFetchError;
-    activeTrip: Trip | undefined;
+    activeTrip?: Trip;
+    isLoading: boolean;
     // only used by transit
     earliestStart: number;
     latestArrival: number;
@@ -94,6 +96,7 @@ export default defineComponent({
       trips: [],
       error: undefined,
       activeTrip: undefined,
+      isLoading: false,
       earliestStart: 0,
       latestArrival: 0,
     };
@@ -184,6 +187,11 @@ export default defineComponent({
       map.removeAllMarkers();
 
       if (this.fromPlace && this.toPlace) {
+        this.isLoading = true;
+        this.trips = [];
+        this.error = undefined;
+        this.activeTrip = undefined;
+
         const result = await fetchBestTrips(
           this.fromPlace.point,
           this.toPlace.point,
@@ -200,9 +208,11 @@ export default defineComponent({
           this.trips = [];
           this.error = result.error;
         }
+        this.isLoading = false;
       } else {
         this.trips = [];
         this.error = undefined;
+        this.isLoading = false;
       }
 
       if (this.fromPlace) {
