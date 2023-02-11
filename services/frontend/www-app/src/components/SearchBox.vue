@@ -131,14 +131,14 @@ export default defineComponent({
   watch: {
     initialPlace: {
       handler(newValue?: Place) {
-        this.inputText = newValue?.displayName() || '';
+        this.inputText = newValue?.displayName();
       },
     },
   },
   emits: ['didSelectPlace', 'didSubmitSearch'],
   setup: function (props, ctx) {
     const inputText: Ref<string | undefined> = ref(
-      props.initialInputText || props.initialPlace?.displayName() || ''
+      props.initialInputText || props.initialPlace?.displayName()
     );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
     const placeChoices: Ref<Place[] | undefined> = ref([]);
