@@ -199,6 +199,7 @@ export default defineComponent({
           Prefs.stored.distanceUnits(this.fromPlace, this.toPlace)
         );
         if (result.ok) {
+          // TODO: handle exceptions in fetch and multiple searches
           const trips = result.value;
           this.calculateTransitStats(trips);
           this.trips = trips;
