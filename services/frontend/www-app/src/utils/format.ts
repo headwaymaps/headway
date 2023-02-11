@@ -1,3 +1,4 @@
+import { LngLat, LngLatLike } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import { DistanceUnits } from './models';
 
@@ -60,6 +61,16 @@ export function formatDuration(
     }
   }
   return timeString;
+}
+
+export function formatLngLatAsLatLng(point: LngLatLike): string {
+  const lngLat = LngLat.convert(point);
+  const northOrSouth = lngLat.lat < 0 ? 'S' : 'N';
+  const eastOrWest = lngLat.lng < 0 ? 'W' : 'E';
+
+  const fmt = (f: number) => Math.abs(f).toFixed(6);
+
+  return `${fmt(lngLat.lat)}°${northOrSouth}, ${fmt(lngLat.lng)}°${eastOrWest}`;
 }
 
 export function formatTime(millis: number): string {

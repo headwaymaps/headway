@@ -15,6 +15,7 @@
 <script lang="ts">
 import { i18n } from 'src/i18n/lang';
 import Place from 'src/models/Place';
+import { formatLngLatAsLatLng } from 'src/utils/format';
 import { defineComponent } from 'vue';
 import TravelModeBar from './TravelModeBar.vue';
 
@@ -41,7 +42,7 @@ export default defineComponent({
       if (this.place.name && this.place.address) {
         return this.place.address;
       } else {
-        return undefined;
+        return formatLngLatAsLatLng(this.place.point);
       }
     },
   },

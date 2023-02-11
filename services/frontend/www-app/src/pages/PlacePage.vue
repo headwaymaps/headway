@@ -11,18 +11,17 @@
   </div>
 
   <div class="bottom-card">
-    <place-card :place="place" />
+    <place-card :place="place" v-if="place" />
   </div>
 </template>
 
 <script lang="ts">
-import { LngLat } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
 import { placeDisplayName } from 'src/i18n/utils';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
 import SearchBox from 'src/components/SearchBox.vue';
-import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
+import Place, { PlaceStorage } from 'src/models/Place';
 import Markers from 'src/utils/Markers';
 
 function renderOnMap(place: Place) {
@@ -48,9 +47,9 @@ export default defineComponent({
     },
   },
   components: { PlaceCard, SearchBox },
-  data: function (): { place: Place } {
+  data: function (): { place?: Place } {
     return {
-      place: emptyPlace(),
+      place: undefined,
     };
   },
   watch: {
@@ -89,9 +88,4 @@ export default defineComponent({
     }
   },
 });
-
-function emptyPlace(): Place {
-  let nullIsland = new LngLat(0, 0);
-  return new Place(PlaceId.location(nullIsland), nullIsland);
-}
 </script>

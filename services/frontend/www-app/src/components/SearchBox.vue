@@ -74,6 +74,7 @@ import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
 import Markers from 'src/utils/Markers';
 import { supportsHover } from 'src/utils/misc';
+import { placeDisplayName } from 'src/i18n/utils';
 
 export default defineComponent({
   name: 'SearchBox',
@@ -131,14 +132,15 @@ export default defineComponent({
   watch: {
     initialPlace: {
       handler(newValue?: Place) {
-        this.inputText = newValue?.displayName() || '';
+        this.inputText = newValue ? placeDisplayName(newValue) : undefined;
       },
     },
   },
   emits: ['didSelectPlace', 'didSubmitSearch'],
   setup: function (props, ctx) {
     const inputText: Ref<string | undefined> = ref(
-      props.initialInputText || props.initialPlace?.displayName() || ''
+      props.initialInputText ||
+        (props.initialPlace ? placeDisplayName(props.initialPlace) : undefined)
     );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
     const placeChoices: Ref<Place[] | undefined> = ref([]);
