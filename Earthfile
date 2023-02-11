@@ -361,7 +361,7 @@ gtfs-enumerate:
     IF [ ! -z "${BBOX}" ]
         ENV HEADWAY_BBOX=${BBOX}
     ELSE
-        COPY web/bboxes.csv /gtfs/bboxes.csv
+        COPY services/gtfs/bboxes.csv /gtfs/bboxes.csv
         ARG guessed_bbox=$(grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2)
         ENV HEADWAY_BBOX=${guessed_bbox}
     END
@@ -660,19 +660,19 @@ tileserver-serve-image:
 web-build:
     FROM node:16-slim
     RUN yarn global add @quasar/cli
-    COPY ./web/frontend /frontend
-    WORKDIR /frontend
+    COPY ./services/frontend/www-app /www-app
+    WORKDIR /www-app
     ARG branding
     IF [ ! -z ${branding} ]
         RUN sed -i "s/.*productName.*/  \"productName\": \"${branding}\",/" package.json
     END
     RUN yarn install && quasar build
-    SAVE ARTIFACT /frontend/dist/spa /spa
+    SAVE ARTIFACT /www-app/dist/spa /spa
 
 web-init-image:
     FROM +downloader-base
 
-    COPY ./services/nginx/init.sh ./services/nginx/generate_config.sh /app/
+    COPY ./services/frontend/init.sh ./services/frontend/generate_config.sh /app/
     ENV HEADWAY_SHARED_VOL=/data
     CMD ["/app/init.sh"]
 
@@ -687,7 +687,7 @@ web-serve-image:
     ARG branding
     COPY (+web-build/spa --branding=${branding}) /usr/share/nginx/html/
 
-    COPY services/nginx/nginx.conf.template /etc/nginx/templates/nginx.conf.template
+    COPY services/frontend/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
     ENV HEADWAY_PUBLIC_URL=http://127.0.0.1:8080
     ENV HEADWAY_SHARED_VOL=/data

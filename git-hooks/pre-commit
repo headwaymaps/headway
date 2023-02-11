@@ -10,7 +10,7 @@
 
 set -e
 
-(cd web/frontend &&
+(cd services/frontend/www-app &&
   yarn format &&
   yarn lint &&
   yarn tsc)
