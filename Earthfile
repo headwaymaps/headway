@@ -361,7 +361,7 @@ gtfs-enumerate:
     IF [ ! -z "${BBOX}" ]
         ENV HEADWAY_BBOX=${BBOX}
     ELSE
-        COPY web/bboxes.csv /gtfs/bboxes.csv
+        COPY services/gtfs/bboxes.csv /gtfs/bboxes.csv
         ARG guessed_bbox=$(grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2)
         ENV HEADWAY_BBOX=${guessed_bbox}
     END
