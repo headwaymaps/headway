@@ -136,9 +136,13 @@ export default defineComponent({
         // to show such different results.
         this.isLoading = true;
         this.placeChoices = [];
-        const results = await PeliasClient.autocomplete(searchText, focus);
-        // TODO: handle execptions in fetch and multiple searches
-        this.isLoading = false;
+        const results = await PeliasClient.autocomplete(
+          searchText,
+          focus
+        ).finally(() => {
+          this.isLoading = false;
+        });
+
         if (!results.bbox) {
           console.error('search results missing bounding box');
         } else if (results.bbox.length != 4) {
