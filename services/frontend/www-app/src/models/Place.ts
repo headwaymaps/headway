@@ -218,10 +218,6 @@ export default class Place {
     return this.id.urlEncoded();
   }
 
-  public displayName(): string | undefined {
-    return this.name;
-  }
-
   public preferredDistanceUnits(): DistanceUnits | undefined {
     const imperialDogs = ['US', 'GB', 'LR', 'MM'];
     if (!this.countryCode) {

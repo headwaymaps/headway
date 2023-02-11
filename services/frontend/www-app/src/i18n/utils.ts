@@ -1,5 +1,5 @@
-import { i18n } from './lang';
 import Place from 'src/models/Place';
+import { formatLngLatAsLatLng } from 'src/utils/format';
 
 export function placeDisplayName(place: Place): string {
   if (place.name) {
@@ -8,5 +8,5 @@ export function placeDisplayName(place: Place): string {
   if (place.address) {
     return place.address;
   }
-  return i18n.global.t('dropped_pin');
+  return formatLngLatAsLatLng(place.point);
 }
