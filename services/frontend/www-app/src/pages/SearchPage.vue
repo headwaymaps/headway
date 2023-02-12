@@ -8,6 +8,7 @@
   </div>
 
   <div class="bottom-card">
+    <q-linear-progress v-if="isLoading" indeterminate />
     <q-list>
       <search-list-item
         v-for="place in placeChoices"
@@ -46,11 +47,13 @@ export default defineComponent({
     placeChoices: Place[];
     selectedPlace?: Place;
     hoveredPlace?: Place;
+    isLoading: boolean;
   } {
     return {
       placeChoices: [],
       selectedPlace: undefined,
       hoveredPlace: undefined,
+      isLoading: false,
     };
   },
   components: { SearchBox, SearchListItem },
@@ -131,7 +134,15 @@ export default defineComponent({
         //
         // So for now we're using autocomplete. Otherwise I think it's too weird
         // to show such different results.
-        const results = await PeliasClient.autocomplete(searchText, focus);
+        this.isLoading = true;
+        this.placeChoices = [];
+        const results = await PeliasClient.autocomplete(
+          searchText,
+          focus
+        ).finally(() => {
+          this.isLoading = false;
+        });
+
         if (!results.bbox) {
           console.error('search results missing bounding box');
         } else if (results.bbox.length != 4) {

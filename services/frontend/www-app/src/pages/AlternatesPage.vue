@@ -197,7 +197,10 @@ export default defineComponent({
           this.toPlace.point,
           this.mode,
           Prefs.stored.distanceUnits(this.fromPlace, this.toPlace)
-        );
+        ).finally(() => {
+          this.isLoading = false;
+        });
+
         if (result.ok) {
           const trips = result.value;
           this.calculateTransitStats(trips);
@@ -208,7 +211,6 @@ export default defineComponent({
           this.trips = [];
           this.error = result.error;
         }
-        this.isLoading = false;
       } else {
         this.trips = [];
         this.error = undefined;
