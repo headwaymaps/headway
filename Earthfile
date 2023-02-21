@@ -63,18 +63,26 @@ save-gtfs:
     FROM +save-base
     ARG --required area
     ARG --required transit_feeds
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /gtfs.tar.zst
+
+    COPY +cache-buster/todays_date .
+    ARG cache_key=$(cat todays_date)
+
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs.tar.zst
+
     # This isn't used at runtime, but it might be useful to archive the input
-    SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}.gtfs.tar.zst
+    SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}-${cache_key}.gtfs.tar.zst
 
 save-otp:
     FROM +save-base
     ARG --required area
     ARG --required transit_feeds
 
-    COPY (+otp-build/graph.obj --area=${area} --transit_feeds=${transit_feeds}) /graph.obj
+    COPY +cache-buster/todays_date .
+    ARG cache_key=$(cat todays_date)
+
+    COPY (+otp-build/graph.obj --area=${area} --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /graph.obj
     RUN zstd /graph.obj
-    SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${area}.graph.obj.zst
+    SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${area}-${cache_key}.graph.obj.zst
 
 save-mbtiles:
     FROM +save-base
@@ -380,6 +388,10 @@ gtfs-get-mobilitydb:
 gtfs-build:
     FROM +gtfs-base
     ARG --required transit_feeds
+    ARG --required cache_key
+
+    # Make sure everything is re-run when cache_key changes
+    RUN touch "cache-buster-${cache_key}"
 
     COPY "${transit_feeds}" /gtfs/gtfs_feeds.csv
 
@@ -407,8 +419,9 @@ otp-build:
 
     ARG --required transit_feeds
     ARG --required area
+    ARG --required cache_key
 
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /var/opentripplanner
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /var/opentripplanner
     COPY (+extract/data.osm.pbf --area=${area}) /var/opentripplanner
 
     WORKDIR /var/opentripplanner

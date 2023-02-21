@@ -23,15 +23,7 @@ fi
 # This job assumes you've already downloaded the planet file into the repository root
 source "${SCRIPT_DIR}/../k8s/planet.env"
 
-# with_log earthly $EARTHLY_ARGS -P +build --area=$HEADWAY_AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG
+with_log earthly $EARTHLY_ARGS -P +build --area=$HEADWAY_AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG
 
-TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
-TRANSIT_AREA=Seattle
-with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
-with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
-
-TRANSIT_FEEDS=data/LosAngeles-2023-01-21.gtfs_feeds.csv
-TRANSIT_AREA=LosAngeles
-with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
-with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
+bin/build-transit
 

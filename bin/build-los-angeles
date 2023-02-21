@@ -17,7 +17,7 @@ EARTHLY_ARGS=${@:1}
 
 if [ -z "$HEADWAY_CONTAINER_TAG" ]
 then
-    # The seattle deployment is for testing, and thus always uses dev containers
+    # The los angeles deployment is for testing, and thus always uses dev containers
     HEADWAY_CONTAINER_TAG=dev
 fi
 

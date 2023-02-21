@@ -32,25 +32,26 @@ function kill_uploads() {
 trap kill_uploads EXIT
 
 function upload() {
-  INPUT=$1
+  INPUT_GLOB=$1
   OUTPUT_PREFIX=$2
 
-  RESOURCE="${OUTPUT_PREFIX}/$(basename $INPUT)"
-  BUCKET=$HEADWAY_S3_BUCKET
-
-  INPUT_PATH="${DATA_ROOT}/${INPUT}"
-  if [ ! -f "$INPUT_PATH" ]; then
-    echo "target file doesn't exist: '${INPUT_PATH}'"
-    exit 1;
+  INPUT_PATH_GLOB="${DATA_ROOT}/${INPUT_GLOB}"
+  if ! ls $INPUT_PATH_GLOB 1> /dev/null 2>&1; then
+    echo "target file doesn't exist: '${INPUT_PATH_GLOB}'"
+    exit 1
   fi
 
-  # I'm seeing much faster uploads with the openstack swift client vs the aws cli
-  # Plus, my host seems to be pretty flaky with large uploads via the `aws s3` cli.
-  #
-  # Note you'll need to be authenticated to run this.
-  #   e.g. (source ~/openrc.sh && bin/publish-data)
-  echo "Uploading ${INPUT_PATH} -> s3://${BUCKET}/${RESOURCE}"
-  swift upload --segment-size=5G --skip-identical "$BUCKET" "$INPUT_PATH" --object-name="$RESOURCE" & upload_pids+=($!)
+  for INPUT_PATH in $INPUT_PATH_GLOB; do
+    RESOURCE="${OUTPUT_PREFIX}/$(basename "$INPUT_PATH")"
+    BUCKET=$HEADWAY_S3_BUCKET
+    # I'm seeing much faster uploads with the openstack swift client vs the aws cli
+    # Plus, my host seems to be pretty flaky with large uploads via the `aws s3` cli.
+    #
+    # Note you'll need to be authenticated to run this.
+    #   e.g. (source ~/openrc.sh && bin/publish-data)
+    echo "Uploading ${INPUT_PATH} -> s3://${BUCKET}/${RESOURCE}"
+    swift upload --segment-size=5G --skip-identical "$BUCKET" "$INPUT_PATH" --object-name="$RESOURCE" & upload_pids+=($!)
+  done
 }
 
 source "${REPO_ROOT}/.env"
@@ -80,14 +81,13 @@ upload "${HEADWAY_AREA}.placeholder.tar.zst"   "${HEADWAY_DATA_TAG}/${HEADWAY_AR
 upload "${HEADWAY_AREA}.osm.pbf"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 
 for TRANSIT_AREA in $HEADWAY_TRANSIT_AREAS; do
-
-  upload "${TRANSIT_AREA}.graph.obj.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-  upload "${TRANSIT_AREA}.gtfs.tar.zst"  "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-
+  upload "${TRANSIT_AREA}*.gtfs_feeds.csv" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+  upload "${TRANSIT_AREA}*.graph.obj.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+  upload "${TRANSIT_AREA}*.gtfs.tar.zst"  "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 done
 
 # These files are generic across all areas
-upload natural_earth.mbtiles          "${HEADWAY_DATA_TAG}"
+upload natural_earth.mbtiles "${HEADWAY_DATA_TAG}"
 
 rets=()
 for pid in ${upload_pids[*]}; do
