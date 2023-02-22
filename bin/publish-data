@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 function usage() {
-cat << EOF
+  cat << EOF
 usage: $0 <site.env>
 examples:
     $0 k8s/planet.env
@@ -13,8 +13,8 @@ EOF
 }
 
 if [ ! $# -eq 1 ]; then
-    usage
-    exit 1
+  usage
+  exit 1
 fi
 
 
@@ -23,10 +23,10 @@ DATA_ROOT="${REPO_ROOT}/data"
 
 upload_pids=()
 function kill_uploads() {
-    echo "Killing any in-progress uploads before exiting"
-    for pid in ${upload_pids[*]}; do
-        kill "${pid[*]}"
-    done
+  echo "Killing any in-progress uploads before exiting"
+  for pid in ${upload_pids[*]}; do
+    kill "${pid[*]}"
+  done
 }
 
 trap kill_uploads EXIT
@@ -40,8 +40,8 @@ function upload() {
 
   INPUT_PATH="${DATA_ROOT}/${INPUT}"
   if [ ! -f "$INPUT_PATH" ]; then
-      echo "target file doesn't exist: '${INPUT_PATH}'"
-      exit 1;
+    echo "target file doesn't exist: '${INPUT_PATH}'"
+    exit 1;
   fi
 
   # I'm seeing much faster uploads with the openstack swift client vs the aws cli
@@ -61,8 +61,8 @@ local_data_tag=$HEADWAY_DATA_TAG
 source "${REPO_ROOT}/bin/_headway_version.sh"
 
 if [ ! -z "$HEADWAY_TAG" ]; then
-    HEADWAY_CONTAINER_TAG="$HEADWAY_TAG"
-    HEADWAY_DATA_TAG="$HEADWAY_TAG"
+  HEADWAY_CONTAINER_TAG="$HEADWAY_TAG"
+  HEADWAY_DATA_TAG="$HEADWAY_TAG"
 fi
 
 export HEADWAY_CONTAINER_TAG="${local_container_tag:-$HEADWAY_CONTAINER_TAG}"
@@ -81,8 +81,8 @@ upload "${HEADWAY_AREA}.osm.pbf"               "${HEADWAY_DATA_TAG}/${HEADWAY_AR
 
 for TRANSIT_AREA in $HEADWAY_TRANSIT_AREAS; do
 
-upload "${TRANSIT_AREA}.graph.obj.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "${TRANSIT_AREA}.gtfs.tar.zst"  "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+  upload "${TRANSIT_AREA}.graph.obj.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+  upload "${TRANSIT_AREA}.gtfs.tar.zst"  "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 
 done
 
