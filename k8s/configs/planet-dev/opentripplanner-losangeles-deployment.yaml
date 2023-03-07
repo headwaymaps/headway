@@ -33,6 +33,10 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:dev
+          env:
+            name: "JAVA_OPTS"
+            # It makes to keep this in sync to be just under the resources.limits.memory
+            value: "-Xmx 4G"
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -41,7 +45,8 @@ spec:
               mountPath: /var/opentripplanner
           resources:
             limits:
-              memory: 4.5Gi
+              # It makes to keep this in sync to be just above env.JAVA_OPTS.-Xmx
+              memory: 4.2Gi
             requests:
               memory: 500Mi
           livenessProbe:
