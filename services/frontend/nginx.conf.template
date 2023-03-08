@@ -43,10 +43,22 @@ http {
 
     location /static/  {
       alias ${HEADWAY_SHARED_VOL}/;
+      expires 5m;
+      add_header Cache-Control "public";
     }
 
     location / {
       try_files ${ESC}uri /index.html;
+      # Short lived cache for non-asset pages
+      expires 5m;
+      add_header Cache-Control "public";
+    }
+
+    location ~* \.(?:css|js|jpg|svg)$ {
+      expires 30d;
+      # We aggressively cache assets, since our asset URLs contain a
+      # cache-buster
+      add_header Cache-Control "public";
     }
   }
 }
