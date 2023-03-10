@@ -17,5 +17,7 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u headwaymaps --password-stdin
       - name: Earthly version check
         run: earthly --version
-      - name: Push images
+      - name: Push dev images
         run: earthly --push +images --tags=dev
+      - name: Push dev branded images
+        run: earthly --push +images --branding=maps.earth --tags "maps-earth-dev"

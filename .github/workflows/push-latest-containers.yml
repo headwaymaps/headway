@@ -6,8 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  build:
-    name: Push images to ghcr.io
+  build-latest:
+    name: Push latest images to ghcr.io
     runs-on: ubuntu-latest
     steps:
       - uses: earthly/actions-setup@v1
@@ -19,6 +19,8 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u headwaymaps --password-stdin
       - name: Earthly version check
         run: earthly --version
-      - name: Push images
+      - name: Push latest images
         run: earthly --push +images --tags "latest ${{ github.ref_name }}"
+      - name: Push latest branded images
+        run: earthly --push +images --branding=maps.earth --tags "maps-earth-latest maps-earth-${{ github.ref_name }}"
 
