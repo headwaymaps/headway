@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/opentripplanner-init:dev
+          image: ghcr.io/headwaymaps/opentripplanner-init:maps-earth-dev
           imagePullPolicy: Always
           volumeMounts:
             - name: opentripplanner-volume
@@ -32,7 +32,7 @@ spec:
               memory: 128Mi
       containers:
         - name: main
-          image: ghcr.io/headwaymaps/opentripplanner:dev
+          image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
           env:
             - name: "JAVA_OPTS"
               # It makes to keep this in sync to be just under the resources.limits.memory

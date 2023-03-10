@@ -32,7 +32,7 @@ spec:
                     storage: 1Mi
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/pelias-init:latest
+          image: ghcr.io/headwaymaps/pelias-init:maps-earth-latest
           imagePullPolicy: Always
           volumeMounts:
             - name: elasticsearch-volume
