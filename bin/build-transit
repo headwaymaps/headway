@@ -15,21 +15,12 @@ function with_log {
 
 EARTHLY_ARGS=${@:1}
 
-if [ -z "$HEADWAY_CONTAINER_TAG" ]
-then
-source "${SCRIPT_DIR}/_headway_version.sh"
-fi
-
-# This job assumes you've already downloaded the planet file into the repository root
-source "${SCRIPT_DIR}/../k8s/planet.env"
-
 TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
 TRANSIT_AREA=Seattle
-with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
-with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
+with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
+with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
 
 TRANSIT_FEEDS=data/LosAngeles-2023-01-21.gtfs_feeds.csv
 TRANSIT_AREA=LosAngeles
-with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
-with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --tag=${HEADWAY_CONTAINER_TAG} --transit_feeds=${TRANSIT_FEEDS}
-
+with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
+with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
