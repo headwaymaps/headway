@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: ghcr.io/headwaymaps/transitmux:dev
+          image: ghcr.io/headwaymaps/transitmux:maps-earth-dev
           imagePullPolicy: Always
           args: ["http://opentripplanner-seattle:8000/otp/routers"]
           ports:

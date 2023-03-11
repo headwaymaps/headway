@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/pelias-init:dev
+          image: ghcr.io/headwaymaps/pelias-init:maps-earth-dev
           imagePullPolicy: Always
           volumeMounts:
             - name: placeholder-volume
