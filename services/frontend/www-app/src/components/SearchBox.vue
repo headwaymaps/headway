@@ -134,7 +134,7 @@ import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
 import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
-import { QMenu, Platform, QInput } from 'quasar';
+import { Platform } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
 import Markers from 'src/utils/Markers';
@@ -168,7 +168,7 @@ export default defineComponent({
     },
     onInput(): void {
       this.inputText = this.autoCompleteInput().value;
-      this.updateAutocomplete(this.autoCompleteMenu());
+      this.updateAutocomplete();
     },
     onBlur(): void {
       if (Platform.is.ios) {
@@ -192,8 +192,8 @@ export default defineComponent({
         window.scroll(0, -1);
       }
     },
-    autoCompleteMenu(): QMenu {
-      return this.$refs.autoCompleteMenu as QMenu;
+    autoCompleteMenu(): HTMLElement {
+      return this.$refs.autoCompleteMenu as HTMLElement;
     },
     autoCompleteInput(): HTMLInputElement {
       return this.$refs.autoCompleteInput as HTMLInputElement;
@@ -320,8 +320,7 @@ export default defineComponent({
       placeHovered,
       mostRecentSearchIdx,
       removeHoverMarkers,
-      updateAutocomplete(menu: QMenu) {
-        console.log('updateAutocomplete. menu:', menu);
+      updateAutocomplete() {
         if (placeHovered.value) {
           placeHovered.value = undefined;
         }
