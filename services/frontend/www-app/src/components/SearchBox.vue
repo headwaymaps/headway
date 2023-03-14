@@ -9,6 +9,7 @@
         :readonly="readonly"
         :debounce="0"
         :dense="true"
+        type="search"
         @blur="onBlur"
         @input="onInput"
         @keydown="onKeyDown"
@@ -25,24 +26,11 @@
         @click="clear()"
       />
     </div>
-    <q-menu
-      square
-      fit
-      auto-close
+    <div
       ref="autoCompleteMenu"
-      :no-focus="true"
-      :no-refocus="true"
+      class="auto-complete-menu"
       v-on:before-hide="removeHoverMarkers"
-      @show="menuShowing = true"
-      @hide="menuShowing = false"
-      :target="(($refs.autoCompleteInput as Element)?.parentNode as Element)"
-      :style="{
-        border: 'solid black 2px',
-        'border-top': 'none',
-        'border-radius': '0 0 4px 4px',
-        opacity: (placeChoices?.length ?? 0) == 0 ? 0 : 1,
-      }"
-      :offset="[0, 0]"
+      :hidden="!(placeChoices && placeChoices.length > 0)"
     >
       <q-list>
         <q-item
@@ -61,22 +49,38 @@
           </q-item-section>
         </q-item>
       </q-list>
-    </q-menu>
+    </div>
   </div>
 </template>
 
 <style lang="scss">
 .search-box {
-  border: solid black 1px;
+  border: solid #aaa 1px;
   border-radius: 4px;
   background-color: white;
-  padding: 4px 8px;
 
-  &:has(input:focus) {
-    box-shadow: 0 0 2px 1px black;
+  .auto-complete-menu {
+    display: none;
+
+    .q-item:first-child {
+      border-top: solid #aaa 1px;
+    }
+    .q-item {
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+  }
+
+  &:focus-within {
+    box-shadow: 0 0 2px 1px #666;
+
+    .auto-complete-menu {
+      display: block;
+    }
   }
 
   .input-field {
+    padding: 4px 8px;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -88,9 +92,6 @@
 
     input:focus {
       outline: none;
-    }
-
-    button.clear-btn {
     }
   }
 }
@@ -166,8 +167,10 @@ export default defineComponent({
       return this.$refs.autoCompleteInput as HTMLInputElement;
     },
     clear(): void {
+      this.inputText = '';
       this.selectPlace(undefined);
-      this.autoCompleteInput().value = '';
+      this.placeChoices = undefined;
+      this.autoCompleteInput().focus();
     },
   },
   watch: {
@@ -284,16 +287,9 @@ export default defineComponent({
       placeChoices,
       placeHovered,
       mostRecentSearchIdx,
-      deferHide(menu: QMenu) {
-        setTimeout(() => {
-          menu.hide();
-          removeHoverMarkers();
-        }, 500);
-      },
       removeHoverMarkers,
       updateAutocomplete(menu: QMenu) {
         console.log('updateAutocomplete. menu:', menu);
-        menu.show();
         if (placeHovered.value) {
           placeHovered.value = undefined;
         }
