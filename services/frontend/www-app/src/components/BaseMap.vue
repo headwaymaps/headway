@@ -2,9 +2,61 @@
   <div id="map"></div>
 </template>
 
+<style lang="scss">
+.headway-ctrl-scale {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+  padding-left: 4px;
+  cursor: pointer;
+}
+
+.headway-ctrl-scale-text {
+  color: black;
+  text-shadow: 0px 0px 2px white, 0px 0px 2px white, 0px 0px 2px white;
+}
+
+.headway-ctrl-scale-ruler {
+  height: 4px;
+  border: solid black 1.5px;
+  border-top: none;
+}
+
+.desktop .headway-ctrl-wrapper {
+  background: #fffa;
+  gap: 8px;
+}
+
+.mobile .headway-ctrl-wrapper {
+  float: right;
+  gap: 16px;
+  margin: 8px;
+}
+
+.headway-ctrl-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  clear: both;
+  font-size: 80%;
+
+  .maplibregl-ctrl {
+    margin: 0;
+  }
+
+  .maplibregl-ctrl-attrib {
+    background: none;
+    color: black;
+  }
+}
+</style>
+
 <script lang="ts">
 import { defineComponent } from 'vue';
+import ScaleControl from 'src/ui/ScaleControl';
 import maplibregl, {
+  AttributionControl,
   FitBoundsOptions,
   FlyToOptions,
   LayerSpecification,
@@ -27,6 +79,8 @@ import { debounce } from 'lodash';
 import Place, { PlaceId } from 'src/models/Place';
 import TripLayerId from 'src/models/TripLayerId';
 import env from 'src/utils/env';
+import { Platform } from 'quasar';
+import WrapperControl from 'src/ui/WrapperControl';
 
 export var map: maplibregl.Map | null = null;
 const mapContainerId = 'map';
@@ -49,6 +103,7 @@ async function loadMap(): Promise<maplibregl.Map> {
     style: '/tileserver/styles/basic/style.json', // style URL
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
+    attributionControl: false,
   };
 
   let bounds = Config.maxBounds;
@@ -387,20 +442,41 @@ export default defineComponent({
       removeAllLayers: this.removeAllLayers,
       on: this.on,
     };
-    var nav = new maplibregl.NavigationControl({
-      visualizePitch: true,
-      showCompass: true,
-      showZoom: true,
-    });
-    map.addControl(nav, 'top-right');
-    var geolocate = new maplibregl.GeolocateControl({
+
+    // Ironically the "compact" representation takes up a lot more vertical space, since we have other
+    // controls in the bottom right, this the compact version is taking up a more contentious resource.
+    const attributionControl = new AttributionControl({ compact: false });
+    const scaleControl = new ScaleControl({ maxWidth: 120 });
+    const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       showAccuracyCircle: true,
       showUserLocation: true,
       trackUserLocation: true,
     });
     env.geolocation.register(geolocate);
-    map.addControl(geolocate, 'bottom-right');
+
+    const nav = new maplibregl.NavigationControl({
+      visualizePitch: true,
+      showCompass: true,
+      showZoom: true,
+    });
+    map.addControl(nav, 'top-right');
+
+    if (Platform.is.desktop) {
+      let wrapperControl = new WrapperControl();
+      wrapperControl.pushChild(scaleControl);
+      wrapperControl.pushChild(attributionControl);
+      map.addControl(wrapperControl, 'bottom-right');
+      map.addControl(geolocate, 'bottom-right');
+    } else {
+      map.addControl(attributionControl, 'bottom-right');
+
+      let wrapperControl = new WrapperControl();
+      wrapperControl.pushChild(scaleControl);
+      wrapperControl.pushChild(geolocate);
+      map.addControl(wrapperControl, 'bottom-right');
+    }
+
     map.on('load', () => {
       this.loaded = true;
       if (this.flyToLocation) {

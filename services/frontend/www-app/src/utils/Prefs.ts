@@ -128,6 +128,33 @@ export default class Prefs {
     return distanceUnits;
   }
 
+  private _mapScaleDistanceUnits: DistanceUnits | undefined | null;
+  setMapScaleDistanceUnits(distanceUnits: DistanceUnits): void {
+    if (!Object.values(DistanceUnits).includes(distanceUnits)) {
+      throw new Error(`invalid mapScaleDistanceUnits ${distanceUnits}`);
+    }
+    this.storage.setItem('mapScaleDistanceUnits', distanceUnits);
+    this._mapScaleDistanceUnits = distanceUnits as DistanceUnits;
+  }
+
+  get mapScaleDistanceUnits(): DistanceUnits | null {
+    if (this._mostRecentDistanceUnits !== undefined) {
+      return this._mostRecentDistanceUnits;
+    }
+    const storedValue = this.storage.getItem('mapScaleDistanceUnits');
+    if (!storedValue) {
+      return null;
+    }
+
+    if (!Object.values(DistanceUnits).includes(storedValue as DistanceUnits)) {
+      throw new Error(`invalid mapScaleDistanceUnits ${storedValue}`);
+    }
+
+    const distanceUnits = storedValue as DistanceUnits;
+    this._mapScaleDistanceUnits = distanceUnits;
+    return distanceUnits;
+  }
+
   distanceUnits(from: Place, to?: Place): DistanceUnits {
     const distanceUnits =
       from.preferredDistanceUnits() || to?.preferredDistanceUnits();

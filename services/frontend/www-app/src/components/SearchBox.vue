@@ -203,10 +203,8 @@ export default defineComponent({
       // Next, cancel the autocomplete if the user has pressed Enter to search
       // in the meanwhile so we don't pop up the autocomplete menu.
       if (mostRecentSearchIdx.value > thisSearchIdx) {
-        console.log('bailing after receiving autocomplete results');
         return;
       }
-      console.log('proceding after receiving autcomplete results');
 
       // Finally - we *do* want to update autocomplete as the user extends a query.
       //
