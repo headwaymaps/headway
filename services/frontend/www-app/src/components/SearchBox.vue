@@ -1,32 +1,30 @@
 <template>
   <div class="search-box">
-    <q-input
-      ref="autoCompleteInput"
-      :label="$props.hint || $t('where_to_question')"
-      v-model="inputText"
-      clearable
-      :readonly="readonly"
-      :debounce="0"
-      :dense="true"
-      v-on:clear="selectPlace(undefined)"
-      v-on:blur="onBlur"
-      v-on:beforeinput="
-        () => {
-          if (isAndroid) {
-            updateAutocomplete(autoCompleteMenu());
-          }
-        }
-      "
-      v-on:update:model-value="
-        () => {
-          if (!isAndroid) {
-            updateAutocomplete(autoCompleteMenu());
-          }
-        }
-      "
-      v-on:keydown="onKeyDown"
-    >
-    </q-input>
+    <div class="input-field">
+      <input
+        ref="autoCompleteInput"
+        :placeholder="$props.hint || $t('where_to_question')"
+        :value="inputText"
+        clearable
+        :readonly="readonly"
+        :debounce="0"
+        :dense="true"
+        @blur="onBlur"
+        @input="onInput"
+        @keydown="onKeyDown"
+      />
+      <q-btn
+        round
+        dense
+        unelevated
+        padding="0"
+        class="clear-button"
+        icon="cancel"
+        color="transparent"
+        text-color="grey"
+        @click="clear()"
+      />
+    </div>
     <q-menu
       square
       fit
@@ -69,13 +67,31 @@
 
 <style lang="scss">
 .search-box {
-  border-radius: 4px 4px 0 0;
-  border: solid black 2px;
-  border-bottom: none;
-  padding: 4px;
+  border: solid black 1px;
+  border-radius: 4px;
   background-color: white;
-  .q-field--highlighted .q-field__control:before {
-    // border: solid blue 4px;
+  padding: 4px 8px;
+
+  &:has(input:focus) {
+    box-shadow: 0 0 2px 1px black;
+  }
+
+  .input-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    input {
+      flex: 1;
+      border: none;
+      background-color: transparent;
+    }
+
+    input:focus {
+      outline: none;
+    }
+
+    button.clear-btn {
+    }
   }
 }
 </style>
@@ -117,6 +133,10 @@ export default defineComponent({
         }
       }
     },
+    onInput(): void {
+      this.inputText = this.autoCompleteInput().value;
+      this.updateAutocomplete(this.autoCompleteMenu());
+    },
     onBlur(): void {
       if (Platform.is.ios) {
         // iOS (on at least 16.1) "helpfully" moves the focused input towards
@@ -142,8 +162,12 @@ export default defineComponent({
     autoCompleteMenu(): QMenu {
       return this.$refs.autoCompleteMenu as QMenu;
     },
-    autoCompleteInput(): QInput {
-      return this.$refs.autoCompleteInput as QInput;
+    autoCompleteInput(): HTMLInputElement {
+      return this.$refs.autoCompleteInput as HTMLInputElement;
+    },
+    clear(): void {
+      this.selectPlace(undefined);
+      this.autoCompleteInput().value = '';
     },
   },
   watch: {
@@ -268,6 +292,7 @@ export default defineComponent({
       },
       removeHoverMarkers,
       updateAutocomplete(menu: QMenu) {
+        console.log('updateAutocomplete. menu:', menu);
         menu.show();
         if (placeHovered.value) {
           placeHovered.value = undefined;
