@@ -29,6 +29,7 @@
     >
     </q-input>
     <q-menu
+      fit
       auto-close
       ref="autoCompleteMenu"
       :no-focus="true"
