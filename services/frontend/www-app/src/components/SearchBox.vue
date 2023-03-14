@@ -62,19 +62,26 @@
   border-radius: 4px;
 
   .auto-complete-menu {
-    // display: none;
+    display: none;
     position: absolute;
+    // safari
     width: calc(100% + 3px);
     left: -1.5px;
+    // chrome
+    width: calc(100% + 2px);
+    left: -1px;
 
     background-color: white;
     border: solid #aaa 1px;
     border-top: none;
     border-radius: 0 0 4px 4px;
 
-    // box-shadow: offset-x | offset-y | blur-radius | spread-radius | color
-    box-shadow: 0 0 2px 1px #aaa;
-    // clip-path: inset(Tpx Rpx Bpx Lpx);
+    // note the shadow is "brighter" than the shadow around the input text.
+    // I'm not sure why this is required, but it matches better this way.
+    // (tested on Safari and Chrome on macos)
+    box-shadow: 0 0 2px 1px #ccc;
+
+    // prevent box shadow from casting "up" onto tex field
     clip-path: inset(0 -4px -4px -4px);
 
     .q-item {
@@ -89,7 +96,6 @@
     }
   }
 
-  box-shadow: 0 0 3px 1px #aaa;
   &:focus-within {
     box-shadow: 0 0 3px 1px #aaa;
 
