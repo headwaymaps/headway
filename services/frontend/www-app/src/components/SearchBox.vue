@@ -329,6 +329,11 @@ export default defineComponent({
       selectPlace(place?: Place) {
         ctx.emit('didSelectPlace', place);
         removeHoverMarkers();
+        // dimiss menu when a place is selected
+        if (place) {
+          let el = (document.activeElement as HTMLElement);
+          el.blur();
+        }
       },
       hoverPlace(place?: Place) {
         if (!supportsHover()) {
