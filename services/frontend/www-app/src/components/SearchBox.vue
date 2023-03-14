@@ -6,7 +6,6 @@
       v-model="inputText"
       clearable
       :readonly="readonly"
-      :outlined="true"
       :debounce="0"
       :dense="true"
       v-on:clear="selectPlace(undefined)"
@@ -29,13 +28,23 @@
     >
     </q-input>
     <q-menu
+      square
       fit
       auto-close
       ref="autoCompleteMenu"
       :no-focus="true"
       :no-refocus="true"
       v-on:before-hide="removeHoverMarkers"
-      :target="($refs.autoCompleteInput as Element)"
+      @show="menuShowing = true"
+      @hide="menuShowing = false"
+      :target="(($refs.autoCompleteInput as Element)?.parentNode as Element)"
+      :style="{
+        border: 'solid black 2px',
+        'border-top': 'none',
+        'border-radius': '0 0 4px 4px',
+        opacity: (placeChoices?.length ?? 0) == 0 ? 0 : 1,
+      }"
+      :offset="[0, 0]"
     >
       <q-list>
         <q-item
@@ -60,8 +69,14 @@
 
 <style lang="scss">
 .search-box {
-  background: white;
-  border-radius: 4px;
+  border-radius: 4px 4px 0 0;
+  border: solid black 2px;
+  border-bottom: none;
+  padding: 4px;
+  background-color: white;
+  .q-field--highlighted .q-field__control:before {
+    // border: solid blue 4px;
+  }
 }
 </style>
 
@@ -87,9 +102,10 @@ export default defineComponent({
   },
   data(): {
     isAndroid: boolean;
+    menuShowing: boolean;
   } {
     const isAndroid = /(android)/i.test(navigator.userAgent);
-    return { isAndroid };
+    return { isAndroid, menuShowing: false };
   },
   methods: {
     onKeyDown(event: KeyboardEvent): void {
