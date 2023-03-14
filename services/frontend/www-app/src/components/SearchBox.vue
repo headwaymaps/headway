@@ -55,26 +55,50 @@
 
 <style lang="scss">
 .search-box {
+  position: relative;
+
+  background-color: white;
   border: solid #aaa 1px;
   border-radius: 4px;
-  background-color: white;
 
   .auto-complete-menu {
-    display: none;
+    // display: none;
+    position: absolute;
+    width: calc(100% + 3px);
+    left: -1.5px;
 
-    .q-item:first-child {
-      border-top: solid #aaa 1px;
-    }
+    background-color: white;
+    border: solid #aaa 1px;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+
+    // box-shadow: offset-x | offset-y | blur-radius | spread-radius | color
+    box-shadow: 0 0 2px 1px #aaa;
+    // clip-path: inset(Tpx Rpx Bpx Lpx);
+    clip-path: inset(0 -4px -4px -4px);
+
     .q-item {
       padding-left: 8px;
       padding-right: 8px;
     }
+
+    z-index: 1;
+
+    .q-item:first-child {
+      border-top: solid #aaa 1px;
+    }
   }
 
+  box-shadow: 0 0 3px 1px #aaa;
   &:focus-within {
-    box-shadow: 0 0 2px 1px #666;
+    box-shadow: 0 0 3px 1px #aaa;
 
-    .auto-complete-menu {
+    &:has(.auto-complete-menu .q-item:first-child) {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    .auto-complete-menu:has(.q-item) {
       display: block;
     }
   }

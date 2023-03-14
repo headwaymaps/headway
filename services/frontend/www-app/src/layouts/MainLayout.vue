@@ -60,6 +60,8 @@
 }
 
 #map {
+  z-index: 0;
+
   @media screen and (max-width: 800px) {
     // This is tall enough to keep the map UI from overlapping.
     // Ironically the "wide"/"desktop" layout is slightly less tall than the
