@@ -58,28 +58,23 @@
   position: relative;
 
   background-color: white;
-  border: solid #aaa 1px;
+
+  box-shadow: 0 0 2px 1px #666;
   border-radius: 4px;
 
   .auto-complete-menu {
     display: none;
     position: absolute;
-    // safari
-    width: calc(100% + 3px);
-    left: -1.5px;
-    // chrome
-    width: calc(100% + 2px);
-    left: -1px;
+    width: 100%;
 
     background-color: white;
-    border: solid #aaa 1px;
     border-top: none;
     border-radius: 0 0 4px 4px;
 
     // note the shadow is "brighter" than the shadow around the input text.
     // I'm not sure why this is required, but it matches better this way.
     // (tested on Safari and Chrome on macos)
-    box-shadow: 0 0 2px 1px #ccc;
+    box-shadow: 0 0 3px 2px #333;
 
     // prevent box shadow from casting "up" onto tex field
     clip-path: inset(0 -4px -4px -4px);
@@ -97,7 +92,7 @@
   }
 
   &:focus-within {
-    box-shadow: 0 0 3px 1px #aaa;
+    box-shadow: 0 0 3px 2px #222;
 
     &:has(.auto-complete-menu .q-item:first-child) {
       border-bottom-left-radius: 0;
@@ -110,8 +105,10 @@
   }
 
   .input-field {
+    font-size: 16px;
     padding: 4px 8px;
     display: flex;
+    height: 100%;
     flex-direction: row;
     align-items: center;
     input {
@@ -122,6 +119,11 @@
 
     input:focus {
       outline: none;
+    }
+
+    // only show clear-button when input is empty
+    &:has(input:placeholder-shown) .clear-button {
+      visibility: hidden;
     }
   }
 }

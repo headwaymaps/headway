@@ -8,7 +8,7 @@
         v-on:did-select-place="didSelectFromPlace"
       />
       <q-btn
-        size="small"
+        size="12px"
         :style="{ marginLeft: '0.5em', marginRight: 0 }"
         flat
         round
@@ -25,7 +25,7 @@
         v-on:did-select-place="didSelectToPlace"
       />
       <q-btn
-        size="small"
+        size="12px"
         :style="{ marginLeft: '0.5em', marginRight: 0 }"
         flat
         round
