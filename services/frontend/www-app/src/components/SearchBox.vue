@@ -67,8 +67,10 @@
     display: none;
     position: absolute;
     width: 100%;
+    max-height: 80vh;
 
     background-color: white;
+    overflow-y: scroll;
     border-top: none;
     border-radius: 0 0 4px 4px;
 
@@ -91,10 +93,6 @@
     }
 
     z-index: 1;
-
-    .q-item:first-child {
-      border-top: solid #ddd 1px;
-    }
   }
 
   &:focus-within {
@@ -103,6 +101,10 @@
     &:has(.auto-complete-menu .q-item:first-child) {
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
+    }
+
+    &:has(.auto-complete-menu .q-item:first-child) .input-field {
+      border-bottom: solid #ddd 1px;
     }
 
     .auto-complete-menu:has(.q-item) {
