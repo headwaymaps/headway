@@ -258,7 +258,11 @@ export default defineComponent({
   },
   watch: {
     initialPlace: {
-      handler(newValue?: Place) {
+      handler(newValue?: Place, oldValue?: Place) {
+        if (newValue != oldValue) {
+          this.placeChoices = [];
+        }
+
         this.inputText = newValue ? placeDisplayName(newValue) : undefined;
       },
     },
