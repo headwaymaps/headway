@@ -25,7 +25,7 @@
       z-index: 1;
       position: absolute;
       left: 0;
-      width: calc(max(33%, 370px) - 32px);
+      width: calc(min(max(33%, 370px), 500px) - 32px);
       margin: 16px;
       border: none;
       padding: 0;

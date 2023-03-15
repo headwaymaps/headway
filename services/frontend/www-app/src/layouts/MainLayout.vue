@@ -39,7 +39,7 @@
   }
   @media screen and (min-width: 800px) {
     order: 1;
-    width: max(33%, 370px);
+    width: min(max(33%, 370px), 500px);
   }
   padding: 16px;
 }
@@ -56,7 +56,7 @@
 
   @media screen and (min-width: 800px) {
     order: 2;
-    width: max(33%, 370px);
+    width: min(max(33%, 370px), 500px);
     flex: 1;
   }
 }
@@ -75,7 +75,7 @@
   }
 
   @media screen and (min-width: 800px) {
-    width: min(67%, calc(100% - 370px));
+    width: max(calc(100% - 500px), min(67%, calc(100% - 370px)));
     height: 100%;
   }
 }
