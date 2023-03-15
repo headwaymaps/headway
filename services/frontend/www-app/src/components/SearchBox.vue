@@ -34,10 +34,10 @@
     >
       <q-list>
         <q-item
+          clickable
           :key="place.serializedId()"
           v-for="(place, index) in placeChoices"
           :class="index == highlightedIndex ? 'highlighted' : ''"
-          clickable
           v-on:click="selectPlace(place)"
           v-on:mouseenter="hoverPlace(place)"
           v-on:mouseleave="hoverPlace(undefined)"
@@ -85,7 +85,6 @@
     .q-item {
       padding-left: 8px;
       padding-right: 8px;
-      cursor: pointer;
     }
 
     .q-item.highlighted {
