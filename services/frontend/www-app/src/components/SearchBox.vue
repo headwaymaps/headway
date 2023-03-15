@@ -6,11 +6,7 @@
         :tabindex="tabindex ?? 0"
         :placeholder="$props.hint || $t('where_to_question')"
         :value="inputText"
-        clearable
         :readonly="readonly"
-        :debounce="0"
-        :dense="true"
-        type="search"
         @blur="onBlur"
         @input="onInput"
         @keydown="onKeyDown"
@@ -112,6 +108,10 @@
     }
   }
 
+  &:has(input[readonly]) {
+    box-shadow: none;
+    border: dashed #aaa 1px;
+  }
   .input-field {
     font-size: 16px;
     padding: 4px 8px;
@@ -129,9 +129,11 @@
       outline: none;
     }
 
-    // only show clear-button when input is empty
-    &:has(input:placeholder-shown) .clear-button {
-      visibility: hidden;
+    // only show clear-button when input has content
+    // and is editable
+    &:has(input:placeholder-shown) .clear-button,
+    &:has(input[readonly]) .clear-button {
+      display: none;
     }
   }
 }
@@ -382,7 +384,7 @@ export default defineComponent({
       selectPlace(place?: Place) {
         ctx.emit('didSelectPlace', place);
         removeHoverMarkers();
-        // dimiss menu when a place is selected
+        // dismiss menu when a place is selected
         if (place) {
           let el = document.activeElement as HTMLElement;
           el.blur();
