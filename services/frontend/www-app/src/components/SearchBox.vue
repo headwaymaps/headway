@@ -175,7 +175,6 @@ export default defineComponent({
         this.highlightedIndex =
           (this.highlightedIndex + 1) % this.placeChoices.length;
       }
-      console.log('highlightedIndex', this.highlightedIndex);
     },
     highlightPrevious(): void {
       if (this.placeChoices.length == 0) {
@@ -190,10 +189,8 @@ export default defineComponent({
       } else {
         this.highlightedIndex = this.highlightedIndex - 1;
       }
-      console.log('highlightedIndex', this.highlightedIndex);
     },
     onKeyDown(event: KeyboardEvent): void {
-      console.log('pressed other key', event.key, event);
       if (event.key == 'Enter') {
         if (this.highlightedIndex != undefined) {
           const place = this.placeChoices[this.highlightedIndex];
@@ -381,7 +378,6 @@ export default defineComponent({
         updatePlaceChoices();
       },
       selectPlace(place?: Place) {
-        console.log('selected place', place);
         ctx.emit('didSelectPlace', place);
         removeHoverMarkers();
         // dimiss menu when a place is selected
