@@ -1,6 +1,7 @@
 <template>
   <div class="top-card">
     <search-box
+      :tabindex="1"
       v-on:did-select-place="searchBoxDidSelectPlace"
       v-on:did-submit-search="
         (searchText) =>

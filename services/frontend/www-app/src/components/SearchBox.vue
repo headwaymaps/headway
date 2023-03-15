@@ -3,6 +3,7 @@
     <div class="input-field">
       <input
         ref="autoCompleteInput"
+        :tabindex="tabindex ?? 0"
         :placeholder="$props.hint || $t('where_to_question')"
         :value="inputText"
         clearable
@@ -151,6 +152,7 @@ import { placeDisplayName } from 'src/i18n/utils';
 export default defineComponent({
   name: 'SearchBox',
   props: {
+    tabindex: Number,
     initialInputText: String,
     initialPlace: Place,
     hint: String,
