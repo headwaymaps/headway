@@ -39,7 +39,7 @@
   }
   @media screen and (min-width: 800px) {
     order: 1;
-    width: min(max(33%, 370px), 500px);
+    width: var(--left-panel-width);
   }
   padding: 16px;
 }
@@ -56,9 +56,18 @@
 
   @media screen and (min-width: 800px) {
     order: 2;
-    width: min(max(33%, 370px), 500px);
+    width: var(--left-panel-width);
     flex: 1;
   }
+}
+
+:root {
+  --left-panel-max-width: 500px;
+  --left-panel-min-width: 370px;
+  --left-panel-width: min(
+    max(33%, var(--left-panel-min-width)),
+    var(--left-panel-max-width)
+  );
 }
 
 #map {
@@ -75,7 +84,7 @@
   }
 
   @media screen and (min-width: 800px) {
-    width: max(calc(100% - 500px), min(67%, calc(100% - 370px)));
+    width: calc(100% - var(--left-panel-width));
     height: 100%;
   }
 }
