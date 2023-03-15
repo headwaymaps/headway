@@ -27,7 +27,6 @@
       ref="autoCompleteMenu"
       class="auto-complete-menu"
       v-on:before-hide="removeHoverMarkers"
-      :hidden="placeChoices.length == 0"
     >
       <q-list>
         <q-item
