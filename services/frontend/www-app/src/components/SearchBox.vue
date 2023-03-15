@@ -30,12 +30,13 @@
       ref="autoCompleteMenu"
       class="auto-complete-menu"
       v-on:before-hide="removeHoverMarkers"
-      :hidden="!(placeChoices && placeChoices.length > 0)"
+      :hidden="placeChoices.length == 0"
     >
       <q-list>
         <q-item
           :key="place.serializedId()"
-          v-for="place in placeChoices"
+          v-for="(place, index) in placeChoices"
+          :class="index == highlightedIndex ? 'highlighted' : ''"
           clickable
           v-on:click="selectPlace(place)"
           v-on:mouseenter="hoverPlace(place)"
@@ -82,6 +83,9 @@
     .q-item {
       padding-left: 8px;
       padding-right: 8px;
+    }
+    .q-item.highlighted {
+      background-color: yellow;
     }
 
     z-index: 1;
@@ -151,19 +155,54 @@ export default defineComponent({
   },
   data(): {
     isAndroid: boolean;
-    menuShowing: boolean;
   } {
     const isAndroid = /(android)/i.test(navigator.userAgent);
-    return { isAndroid, menuShowing: false };
+    return { isAndroid };
   },
   methods: {
+    highlightNext(): void {
+      if (this.placeChoices.length == 0) {
+        this.highlightedIndex = undefined;
+        return;
+      }
+
+      if (this.highlightedIndex === undefined) {
+        this.highlightedIndex = 0;
+      } else {
+        this.highlightedIndex =
+          (this.highlightedIndex + 1) % this.placeChoices.length;
+      }
+      console.log('highlightedIndex', this.highlightedIndex);
+    },
+    highlightPrevious(): void {
+      if (this.placeChoices.length == 0) {
+        this.highlightedIndex = undefined;
+        return;
+      }
+
+      if (this.highlightedIndex === undefined) {
+        this.highlightedIndex = this.placeChoices.length - 1;
+      } else if (this.highlightedIndex == 0) {
+        this.highlightedIndex = this.placeChoices.length - 1;
+      } else {
+        this.highlightedIndex = this.highlightedIndex - 1;
+      }
+      console.log('highlightedIndex', this.highlightedIndex);
+    },
     onKeyDown(event: KeyboardEvent): void {
+      console.log('pressed other key', event.key, event);
       if (event.key == 'Enter') {
         this.mostRecentSearchIdx++;
         let searchText = this.inputText;
         if (searchText) {
           this.$emit('didSubmitSearch', searchText);
         }
+      } else if (event.key == 'ArrowDown') {
+        this.highlightNext();
+        event.preventDefault();
+      } else if (event.key == 'ArrowUp') {
+        this.highlightPrevious();
+        event.preventDefault();
       }
     },
     onInput(): void {
@@ -201,7 +240,7 @@ export default defineComponent({
     clear(): void {
       this.inputText = '';
       this.selectPlace(undefined);
-      this.placeChoices = undefined;
+      this.placeChoices = [];
       this.autoCompleteInput().focus();
     },
   },
@@ -219,7 +258,8 @@ export default defineComponent({
         (props.initialPlace ? placeDisplayName(props.initialPlace) : undefined)
     );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
-    const placeChoices: Ref<Place[] | undefined> = ref([]);
+    const highlightedIndex: Ref<number | undefined> = ref(undefined);
+    const placeChoices: Ref<Place[]> = ref([]);
     const mostRecentSearchIdx = ref(0);
     const mostRecentlyCompletedSearchText: Ref<string> = ref('');
     const isUnmounted = ref(false);
@@ -229,7 +269,7 @@ export default defineComponent({
       const searchText = inputText.value ?? '';
       if (searchText.length == 0) {
         mostRecentlyCompletedSearchText.value = '';
-        placeChoices.value = undefined;
+        placeChoices.value = [];
         return;
       }
 
@@ -245,7 +285,7 @@ export default defineComponent({
       } else {
         // console.debug('immediately clearing old results since the input text is no longer relvant');
         mostRecentlyCompletedSearchText.value = '';
-        placeChoices.value = undefined;
+        placeChoices.value = [];
       }
 
       let focus = undefined;
@@ -318,12 +358,14 @@ export default defineComponent({
       inputText,
       placeChoices,
       placeHovered,
+      highlightedIndex,
       mostRecentSearchIdx,
       removeHoverMarkers,
       updateAutocomplete() {
         if (placeHovered.value) {
           placeHovered.value = undefined;
         }
+        highlightedIndex.value = undefined;
         updatePlaceChoices();
       },
       selectPlace(place?: Place) {
@@ -331,7 +373,7 @@ export default defineComponent({
         removeHoverMarkers();
         // dimiss menu when a place is selected
         if (place) {
-          let el = (document.activeElement as HTMLElement);
+          let el = document.activeElement as HTMLElement;
           el.blur();
         }
       },
