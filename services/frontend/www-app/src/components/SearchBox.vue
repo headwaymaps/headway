@@ -83,15 +83,17 @@
     .q-item {
       padding-left: 8px;
       padding-right: 8px;
+      cursor: pointer;
     }
+
     .q-item.highlighted {
-      background-color: yellow;
+      background-color: #ededed;
     }
 
     z-index: 1;
 
     .q-item:first-child {
-      border-top: solid #aaa 1px;
+      border-top: solid #ddd 1px;
     }
   }
 
@@ -192,6 +194,15 @@ export default defineComponent({
     onKeyDown(event: KeyboardEvent): void {
       console.log('pressed other key', event.key, event);
       if (event.key == 'Enter') {
+        if (this.highlightedIndex != undefined) {
+          const place = this.placeChoices[this.highlightedIndex];
+          if (!place) {
+            console.assert(false, 'missing place for highlightedIndex');
+            return;
+          }
+          this.selectPlace(place);
+          return;
+        }
         this.mostRecentSearchIdx++;
         let searchText = this.inputText;
         if (searchText) {
@@ -369,6 +380,7 @@ export default defineComponent({
         updatePlaceChoices();
       },
       selectPlace(place?: Place) {
+        console.log('selected place', place);
         ctx.emit('didSelectPlace', place);
         removeHoverMarkers();
         // dimiss menu when a place is selected
@@ -379,7 +391,7 @@ export default defineComponent({
       },
       hoverPlace(place?: Place) {
         if (!supportsHover()) {
-          // FIX: selecting automcomplete item on mobile requires double
+          // FIX: selecting autocomplete item on mobile requires double
           // tapping.
           //
           // On touch devices, where hover is not supported, this method is

@@ -32,8 +32,10 @@
     order: 1;
 
     box-shadow: 0px 0px 5px #00000088;
-    // need z-index to cast shadow onto map
-    z-index: 1;
+    // needs z-index for:
+    //   - casting shadow onto map
+    //   - search results autocomplete menu rendered above .bottom-card
+    z-index: 2;
   }
   @media screen and (min-width: 800px) {
     order: 1;
