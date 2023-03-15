@@ -5,10 +5,11 @@
         :hint="$t('search.from')"
         :style="{ flex: 1 }"
         :initial-place="fromPlace"
+        :tabindex="1"
         v-on:did-select-place="didSelectFromPlace"
       />
       <q-btn
-        size="small"
+        size="12px"
         :style="{ marginLeft: '0.5em', marginRight: 0 }"
         flat
         round
@@ -22,10 +23,11 @@
         :hint="$t('search.to')"
         :style="{ flex: 1 }"
         :initial-place="toPlace"
+        :tabindex="2"
         v-on:did-select-place="didSelectToPlace"
       />
       <q-btn
-        size="small"
+        size="12px"
         :style="{ marginLeft: '0.5em', marginRight: 0 }"
         flat
         round

@@ -1,46 +1,39 @@
 <template>
   <div class="search-box">
-    <q-input
-      ref="autoCompleteInput"
-      :label="$props.hint || $t('where_to_question')"
-      v-model="inputText"
-      clearable
-      :readonly="readonly"
-      :outlined="true"
-      :debounce="0"
-      :dense="true"
-      v-on:clear="selectPlace(undefined)"
-      v-on:blur="onBlur"
-      v-on:beforeinput="
-        () => {
-          if (isAndroid) {
-            updateAutocomplete(autoCompleteMenu());
-          }
-        }
-      "
-      v-on:update:model-value="
-        () => {
-          if (!isAndroid) {
-            updateAutocomplete(autoCompleteMenu());
-          }
-        }
-      "
-      v-on:keydown="onKeyDown"
-    >
-    </q-input>
-    <q-menu
-      auto-close
+    <div class="input-field">
+      <input
+        ref="autoCompleteInput"
+        :tabindex="tabindex ?? 0"
+        :placeholder="$props.hint || $t('where_to_question')"
+        :value="inputText"
+        :readonly="readonly"
+        @blur="onBlur"
+        @input="onInput"
+        @keydown="onKeyDown"
+      />
+      <q-btn
+        round
+        dense
+        unelevated
+        padding="0"
+        class="clear-button"
+        icon="cancel"
+        color="transparent"
+        text-color="grey"
+        @click="clear()"
+      />
+    </div>
+    <div
       ref="autoCompleteMenu"
-      :no-focus="true"
-      :no-refocus="true"
+      class="auto-complete-menu"
       v-on:before-hide="removeHoverMarkers"
-      :target="($refs.autoCompleteInput as Element)"
     >
       <q-list>
         <q-item
-          :key="place.serializedId()"
-          v-for="place in placeChoices"
           clickable
+          :key="place.serializedId()"
+          v-for="(place, index) in placeChoices"
+          :class="index == highlightedIndex ? 'highlighted' : ''"
           v-on:click="selectPlace(place)"
           v-on:mouseenter="hoverPlace(place)"
           v-on:mouseleave="hoverPlace(undefined)"
@@ -53,14 +46,95 @@
           </q-item-section>
         </q-item>
       </q-list>
-    </q-menu>
+    </div>
   </div>
 </template>
 
 <style lang="scss">
 .search-box {
-  background: white;
+  position: relative;
+
+  background-color: white;
+
+  box-shadow: 0 0 2px 1px #666;
   border-radius: 4px;
+
+  .auto-complete-menu {
+    display: none;
+    position: absolute;
+    width: 100%;
+    max-height: 80vh;
+
+    background-color: white;
+    overflow-y: scroll;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+
+    // note the shadow is "brighter" than the shadow around the input text.
+    // I'm not sure why this is required, but it matches better this way.
+    // (tested on Safari and Chrome on macos)
+    box-shadow: 0 0 3px 2px #333;
+
+    // prevent box shadow from casting "up" onto tex field
+    clip-path: inset(0 -4px -4px -4px);
+
+    .q-item {
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    .q-item.highlighted {
+      background-color: #ededed;
+    }
+
+    z-index: 1;
+  }
+
+  &:focus-within {
+    box-shadow: 0 0 3px 2px #222;
+
+    &:has(.auto-complete-menu .q-item:first-child) {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    &:has(.auto-complete-menu .q-item:first-child) .input-field {
+      border-bottom: solid #ddd 1px;
+    }
+
+    .auto-complete-menu:has(.q-item) {
+      display: block;
+    }
+  }
+
+  &:has(input[readonly]) {
+    box-shadow: none;
+    border: dashed #aaa 1px;
+  }
+  .input-field {
+    font-size: 16px;
+    padding: 4px 8px;
+    display: flex;
+    height: 100%;
+    flex-direction: row;
+    align-items: center;
+    input {
+      flex: 1;
+      border: none;
+      background-color: transparent;
+    }
+
+    input:focus {
+      outline: none;
+    }
+
+    // only show clear-button when input has content
+    // and is editable
+    &:has(input:placeholder-shown) .clear-button,
+    &:has(input[readonly]) .clear-button {
+      display: none;
+    }
+  }
 }
 </style>
 
@@ -69,7 +143,7 @@ import { defineComponent, Ref, ref } from 'vue';
 import { throttle } from 'lodash';
 import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
-import { QMenu, Platform, QInput } from 'quasar';
+import { Platform } from 'quasar';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
 import Markers from 'src/utils/Markers';
@@ -79,6 +153,7 @@ import { placeDisplayName } from 'src/i18n/utils';
 export default defineComponent({
   name: 'SearchBox',
   props: {
+    tabindex: Number,
     initialInputText: String,
     initialPlace: Place,
     hint: String,
@@ -91,14 +166,60 @@ export default defineComponent({
     return { isAndroid };
   },
   methods: {
+    highlightNext(): void {
+      if (this.placeChoices.length == 0) {
+        this.highlightedIndex = undefined;
+        return;
+      }
+
+      if (this.highlightedIndex === undefined) {
+        this.highlightedIndex = 0;
+      } else {
+        this.highlightedIndex =
+          (this.highlightedIndex + 1) % this.placeChoices.length;
+      }
+    },
+    highlightPrevious(): void {
+      if (this.placeChoices.length == 0) {
+        this.highlightedIndex = undefined;
+        return;
+      }
+
+      if (this.highlightedIndex === undefined) {
+        this.highlightedIndex = this.placeChoices.length - 1;
+      } else if (this.highlightedIndex == 0) {
+        this.highlightedIndex = this.placeChoices.length - 1;
+      } else {
+        this.highlightedIndex = this.highlightedIndex - 1;
+      }
+    },
     onKeyDown(event: KeyboardEvent): void {
       if (event.key == 'Enter') {
+        if (this.highlightedIndex != undefined) {
+          const place = this.placeChoices[this.highlightedIndex];
+          if (!place) {
+            console.assert(false, 'missing place for highlightedIndex');
+            return;
+          }
+          this.selectPlace(place);
+          return;
+        }
         this.mostRecentSearchIdx++;
         let searchText = this.inputText;
         if (searchText) {
           this.$emit('didSubmitSearch', searchText);
         }
+      } else if (event.key == 'ArrowDown') {
+        this.highlightNext();
+        event.preventDefault();
+      } else if (event.key == 'ArrowUp') {
+        this.highlightPrevious();
+        event.preventDefault();
       }
+    },
+    onInput(): void {
+      this.inputText = this.autoCompleteInput().value;
+      this.updateAutocomplete();
     },
     onBlur(): void {
       if (Platform.is.ios) {
@@ -122,11 +243,17 @@ export default defineComponent({
         window.scroll(0, -1);
       }
     },
-    autoCompleteMenu(): QMenu {
-      return this.$refs.autoCompleteMenu as QMenu;
+    autoCompleteMenu(): HTMLElement {
+      return this.$refs.autoCompleteMenu as HTMLElement;
     },
-    autoCompleteInput(): QInput {
-      return this.$refs.autoCompleteInput as QInput;
+    autoCompleteInput(): HTMLInputElement {
+      return this.$refs.autoCompleteInput as HTMLInputElement;
+    },
+    clear(): void {
+      this.inputText = '';
+      this.selectPlace(undefined);
+      this.placeChoices = [];
+      this.autoCompleteInput().focus();
     },
   },
   watch: {
@@ -143,7 +270,8 @@ export default defineComponent({
         (props.initialPlace ? placeDisplayName(props.initialPlace) : undefined)
     );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
-    const placeChoices: Ref<Place[] | undefined> = ref([]);
+    const highlightedIndex: Ref<number | undefined> = ref(undefined);
+    const placeChoices: Ref<Place[]> = ref([]);
     const mostRecentSearchIdx = ref(0);
     const mostRecentlyCompletedSearchText: Ref<string> = ref('');
     const isUnmounted = ref(false);
@@ -153,7 +281,7 @@ export default defineComponent({
       const searchText = inputText.value ?? '';
       if (searchText.length == 0) {
         mostRecentlyCompletedSearchText.value = '';
-        placeChoices.value = undefined;
+        placeChoices.value = [];
         return;
       }
 
@@ -169,7 +297,7 @@ export default defineComponent({
       } else {
         // console.debug('immediately clearing old results since the input text is no longer relvant');
         mostRecentlyCompletedSearchText.value = '';
-        placeChoices.value = undefined;
+        placeChoices.value = [];
       }
 
       let focus = undefined;
@@ -242,28 +370,28 @@ export default defineComponent({
       inputText,
       placeChoices,
       placeHovered,
+      highlightedIndex,
       mostRecentSearchIdx,
-      deferHide(menu: QMenu) {
-        setTimeout(() => {
-          menu.hide();
-          removeHoverMarkers();
-        }, 500);
-      },
       removeHoverMarkers,
-      updateAutocomplete(menu: QMenu) {
-        menu.show();
+      updateAutocomplete() {
         if (placeHovered.value) {
           placeHovered.value = undefined;
         }
+        highlightedIndex.value = undefined;
         updatePlaceChoices();
       },
       selectPlace(place?: Place) {
         ctx.emit('didSelectPlace', place);
         removeHoverMarkers();
+        // dismiss menu when a place is selected
+        if (place) {
+          let el = document.activeElement as HTMLElement;
+          el.blur();
+        }
       },
       hoverPlace(place?: Place) {
         if (!supportsHover()) {
-          // FIX: selecting automcomplete item on mobile requires double
+          // FIX: selecting autocomplete item on mobile requires double
           // tapping.
           //
           // On touch devices, where hover is not supported, this method is
