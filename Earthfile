@@ -63,18 +63,34 @@ save-gtfs:
     FROM +save-base
     ARG --required area
     ARG --required transit_feeds
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /gtfs.tar.zst
+
+    COPY +cache-buster/todays_date .
+    ARG cache_key=$(cat todays_date)
+
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs.tar.zst
+
     # This isn't used at runtime, but it might be useful to archive the input
-    SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}.gtfs.tar.zst
+    SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}-${cache_key}.gtfs.tar.zst
 
 save-otp:
     FROM +save-base
     ARG --required area
     ARG --required transit_feeds
 
-    COPY (+otp-build/graph.obj --area=${area} --transit_feeds=${transit_feeds}) /graph.obj
+    # See usage in otp-build
+    ARG clip_to_area
+
+    COPY +cache-buster/todays_date .
+    ARG cache_key=$(cat todays_date)
+
+    COPY (+otp-build/graph.obj --area=${area} --clip_to_area=${clip_to_area} --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /graph.obj
+
     RUN zstd /graph.obj
-    SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${area}.graph.obj.zst
+    ARG output_name=$clip_to_area
+    IF [ -n "$output_name" ]
+        ARG output_name="$area"
+    END
+    SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${output_name}-${cache_key}.graph.obj.zst
 
 save-mbtiles:
     FROM +save-base
@@ -135,10 +151,39 @@ images:
 extract:
     FROM +downloader-base
     ARG --required area
-    COPY --if-exists ${area}.osm.pbf /data/data.osm.pbf
-    IF [ ! -f "/data/data.osm.pbf" ]
-        RUN wget -nv -U headway/1.0 -O /data/data.osm.pbf "https://download.bbbike.org/osm/bbbike/${area}/${area}.osm.pbf"
+    ARG clip_bbox
+
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends osmium-tool \
+        && rm -rf /var/lib/apt/lists/*
+
+    WORKDIR /data
+
+    COPY --if-exists ${area}.osm.pbf data.osm.pbf
+    IF [ ! -f data.osm.pbf ]
+        RUN wget -nv -U headway/1.0 -O data.osm.pbf "https://download.bbbike.org/osm/bbbike/${area}/${area}.osm.pbf"
     END
+
+    IF [ ! -f data.osm.pbf ]
+        RUN echo "osm file not found"
+        RUN exit 1
+    END
+
+    IF [ -n "${clip_bbox}" ]
+        # I don't understand why the following line doesn't work:
+        #    ARG comma_separated_bbox=$(echo ${clip_bbox} | sed 's/ /,/g')
+        # ... but anway, here's a 2-line work around:
+        RUN echo ${clip_bbox} | sed 's/ /,/g' > comma_separated_bbox.txt
+        ARG comma_separated_bbox=$(cat comma_separated_bbox.txt)
+
+        # It'd be nice to mv rather than cp, but I get this weird error:
+        # >    mv: cannot move 'data.osm.pbf' to a subdirectory of itself, 'unclipped.osm.pbf'
+        # I'm not sure if this is a bug with large files+docker+zfs or what.
+        # RUN mv data.osm.pbf unclipped.osm.pbf && \
+        RUN cp data.osm.pbf unclipped.osm.pbf && rm data.osm.pbf && \
+            osmium extract --bbox="$comma_separated_bbox" unclipped.osm.pbf --output=data.osm.pbf
+    END
+
     SAVE ARTIFACT /data/data.osm.pbf /data.osm.pbf
 
 ##############################
@@ -356,20 +401,22 @@ gtfs-enumerate:
     COPY (+gtfs-get-mobilitydb/mobilitydb.csv --cache_key=${cache_key}) mobilitydb.csv
 
     ARG --required area
-    ARG bbox
-    ENV BBOX=${bbox}
-    IF [ ! -z "${BBOX}" ]
-        ENV HEADWAY_BBOX=${BBOX}
-    ELSE
-        COPY services/gtfs/bboxes.csv /gtfs/bboxes.csv
-        ARG guessed_bbox=$(grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2)
-        ENV HEADWAY_BBOX=${guessed_bbox}
-    END
-
+    COPY (+bbox/bbox.txt --area=${area}) bbox.txt
+    ARG bbox=$(cat bbox.txt)
+    ENV HEADWAY_BBOX=${bbox}
     COPY ./services/gtfs/enumerate_gtfs_feeds.py /gtfs/
     RUN python /gtfs/enumerate_gtfs_feeds.py mobilitydb.csv
 
     SAVE ARTIFACT /gtfs_feeds/gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}-${cache_key}.gtfs_feeds.csv
+
+bbox:
+    FROM debian:bullseye-slim
+    ARG --required area
+    COPY services/gtfs/bboxes.csv /gtfs/bboxes.csv
+    # ensure `area` has an entry in bboxes.csv, otherwise you'll need to add one
+    RUN test $(grep "${area}:" /gtfs/bboxes.csv | wc -l) -eq 1
+    RUN grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2 | tee bbox.txt 
+    SAVE ARTIFACT bbox.txt /bbox.txt
 
 gtfs-get-mobilitydb:
     FROM +gtfs-base
@@ -380,6 +427,10 @@ gtfs-get-mobilitydb:
 gtfs-build:
     FROM +gtfs-base
     ARG --required transit_feeds
+    ARG --required cache_key
+
+    # Make sure everything is re-run when cache_key changes
+    RUN touch "cache-buster-${cache_key}"
 
     COPY "${transit_feeds}" /gtfs/gtfs_feeds.csv
 
@@ -407,9 +458,7 @@ otp-build:
 
     ARG --required transit_feeds
     ARG --required area
-
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds}) /var/opentripplanner
-    COPY (+extract/data.osm.pbf --area=${area}) /var/opentripplanner
+    ARG --required cache_key
 
     WORKDIR /var/opentripplanner
 
@@ -417,6 +466,26 @@ otp-build:
         && apt-get install -y --no-install-recommends zstd \
         && rm -rf /var/lib/apt/lists/*
 
+    ARG clip_to_area
+    IF [ -n "$clip_to_area" ]
+        # Clip the mapping data to the area's bbox to save memory.
+        #
+        # This option is only relevant if you are configuring small transit
+        # zones within an otherwise huge map. OTP reads all the map data into
+        # memory, which can be very large.
+        #
+        # In the case of feeds which are only partially within our bbox,
+        # curently we'd clip the mapping data for any parts of the feed that
+        # fall outside of the bbox - if the proves problematic, we may want to
+        # compute the bbox from gtfs/shapes.txt
+        COPY (+bbox/bbox.txt --area=${clip_to_area}) bbox.txt
+        ARG clip_bbox=$(cat bbox.txt)
+        COPY (+extract/data.osm.pbf --area=${area} --clip_bbox=${clip_bbox}) /var/opentripplanner
+    ELSE
+        COPY (+extract/data.osm.pbf --area=${area}) /var/opentripplanner
+    END
+
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /var/opentripplanner
     RUN tar --zstd -xf gtfs.tar.zst
 
     RUN --entrypoint -- --build --save
