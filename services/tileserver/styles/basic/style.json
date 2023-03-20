@@ -1297,6 +1297,27 @@
       }
     },
     {
+      "id": "route_ferry",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        ["==", "$type", "LineString"],
+        ["in", "class", "ferry"]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#99d",
+        "line-width": 2,
+        "line-dasharray": [0.3, 2]
+      }
+    },
+    {
       "id": "water_name_line",
       "type": "symbol",
       "source": "openmaptiles",
