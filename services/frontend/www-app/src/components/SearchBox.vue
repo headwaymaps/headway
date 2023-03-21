@@ -206,6 +206,9 @@ export default defineComponent({
         }
         this.mostRecentSearchIdx++;
         let searchText = this.inputText;
+        // If the user hit enter, don't pop autocomplete results over the search
+        // results.
+        this.autoCompleteInput().blur();
         if (searchText) {
           this.$emit('didSubmitSearch', searchText);
         }
@@ -277,14 +280,19 @@ export default defineComponent({
     const highlightedIndex: Ref<number | undefined> = ref(undefined);
     const placeChoices: Ref<Place[]> = ref([]);
     const mostRecentSearchIdx = ref(0);
-    const mostRecentlyCompletedSearchText: Ref<string> = ref('');
     const isUnmounted = ref(false);
     let hoverMarker: Marker | undefined = undefined;
 
+    type Query = { text: string; idx: number };
+
+    let searchIdx = 0;
+    let mostRecentlyCompletedQuery = { text: '', idx: 0 };
+
     const _updatePlaceChoices = async function () {
-      const searchText = inputText.value ?? '';
-      if (searchText.length == 0) {
-        mostRecentlyCompletedSearchText.value = '';
+      searchIdx++;
+      let query: Query = { text: inputText.value ?? '', idx: searchIdx };
+      if (query.text.length == 0) {
+        mostRecentlyCompletedQuery = query;
         placeChoices.value = [];
         return;
       }
@@ -294,13 +302,13 @@ export default defineComponent({
       // full blown search.
       const thisSearchIdx = mostRecentSearchIdx.value;
 
-      // If we're continuing to type out our search, keep the old results
-      // up while we find the new ones - else, we clear the stale results here.
-      if (searchText.includes(mostRecentlyCompletedSearchText.value)) {
-        // console.debug('keeping old results while adding to input text');
+      // Keep the autocomplete menu up only if it's still relevant.
+      if (query.text.includes(mostRecentlyCompletedQuery.text)) {
+        // console.debug('keeping old results while appending to input field');
+      } else if (mostRecentlyCompletedQuery.text.includes(query.text)) {
+        // console.debug('keeping old results while deleting characters from input field');
       } else {
         // console.debug('immediately clearing old results since the input text is no longer relvant');
-        mostRecentlyCompletedSearchText.value = '';
         placeChoices.value = [];
       }
 
@@ -311,7 +319,7 @@ export default defineComponent({
 
       let places: Place[] = [];
       try {
-        const results = await PeliasClient.autocomplete(searchText, focus);
+        const results = await PeliasClient.autocomplete(query.text, focus);
         for (const feature of results.features) {
           if (!feature.properties?.gid) {
             console.error('feature was missing gid');
@@ -329,33 +337,28 @@ export default defineComponent({
 
       // Firstly - Quit if the user has left the page.
       if (isUnmounted.value) {
+        // console.log('isUnmounted');
         return;
       }
 
       // Next, cancel the autocomplete if the user has pressed Enter to search
-      // in the meanwhile so we don't pop up the autocomplete menu.
+      // in the meanwhile so we don't pop up the autocomplete menu over their
+      // search results.
       if (mostRecentSearchIdx.value > thisSearchIdx) {
+        // console.log(`mostRecentSearchIdx.value > thisSearchIdx (${mostRecentSearchIdx.value} > ${thisSearchIdx})`);
         return;
       }
 
-      // Finally - we *do* want to update autocomplete as the user extends a query.
-      //
-      // But we don't want to show a no longer relevant result, e.g. if the user
-      // deleted or edited characters, or if we are out-of-order: hearing back
-      // from request #1 *after* we've already heard back from request #2. This
-      // isn't a rare edge-case — often longer queries will return faster than
-      // shorter prefix queries which have more matches.
-      //
-      // request text: "Se",   current inputField: "Sea",  <-- show stale request results, the user is still typing out the word
-      // request text: "Sea",  current inputField: "Seatt" <-- show stale request results, the user is still typing out the word
-      // request text: "Seat", current inputField: "Sea",  <-- discard stale request results, the user has deleted part of that previous query
-      // request text: "S",    current inputField: "",     <-- discard stale request results, the user has deleted the last letter of the query
-      if (!(inputText.value || '').includes(searchText)) {
-        // discarding old results
+      // Finally - update the results as long as they are more recent.
+      // It is *common* to receive results out of order - short queries take
+      // longer since they have more matches.
+      if (query.idx < mostRecentlyCompletedQuery.idx) {
+        // console.log(`discarding irrelevant results. inputText: ${inputText.value}`, query);
         return;
       }
 
-      mostRecentlyCompletedSearchText.value = searchText;
+      // console.log('completed query', query)
+      mostRecentlyCompletedQuery = query;
       placeChoices.value = places;
     };
     const throttleMs = 200;
