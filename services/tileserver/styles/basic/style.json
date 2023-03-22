@@ -146,6 +146,22 @@
       }
     },
     {
+      "id": "landcover_sand",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "filter": ["all", ["==", "class", "sand"]],
+      "paint": {"fill-color": "rgba(247, 239, 195, 1)"}
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "filter": ["all", ["!=", "brunnel", "tunnel"]],
+      "paint": {"fill-color": "rgb(158,189,255)"}
+    },
+    {
       "id": "waterway_river",
       "type": "line",
       "source": "openmaptiles",
@@ -168,22 +184,6 @@
         "line-color": "#a0c8f0",
         "line-width": {"base": 1.3, "stops": [[13, 0.5], [20, 6]]}
       }
-    },
-    {
-      "id": "water",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "water",
-      "filter": ["all", ["!=", "brunnel", "tunnel"]],
-      "paint": {"fill-color": "rgb(158,189,255)"}
-    },
-    {
-      "id": "landcover_sand",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "landcover",
-      "filter": ["all", ["==", "class", "sand"]],
-      "paint": {"fill-color": "rgba(247, 239, 195, 1)"}
     },
     {
       "id": "aeroway_fill",
