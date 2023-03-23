@@ -17,7 +17,6 @@ if [ ! $# -eq 1 ]; then
   exit 1
 fi
 
-
 REPO_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${REPO_ROOT}/data"
 
@@ -57,16 +56,13 @@ function upload() {
 source "${REPO_ROOT}/.env"
 
 # stash env vars in local before they get clobbered by _headway_version.sh
-local_container_tag=$HEADWAY_CONTAINER_TAG
 local_data_tag=$HEADWAY_DATA_TAG
 source "${REPO_ROOT}/bin/_headway_version.sh"
 
 if [ ! -z "$HEADWAY_TAG" ]; then
-  HEADWAY_CONTAINER_TAG="$HEADWAY_TAG"
   HEADWAY_DATA_TAG="$HEADWAY_TAG"
 fi
 
-export HEADWAY_CONTAINER_TAG="${local_container_tag:-$HEADWAY_CONTAINER_TAG}"
 export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
 
 DEPLOYMENT_ENV_FILE="$1"

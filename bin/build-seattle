@@ -15,13 +15,7 @@ function with_log {
 
 EARTHLY_ARGS=${@:1}
 
-if [ -z "$HEADWAY_CONTAINER_TAG" ]
-then
-    # The seattle deployment is for testing, and thus always uses dev containers
-    HEADWAY_CONTAINER_TAG=dev
-fi
-
 # This job will download the seattle.osm data from bbike
 AREA=Seattle
 TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
-with_log earthly $EARTHLY_ARGS -P +build --area=$AREA --tag=$HEADWAY_CONTAINER_TAG --transit_feeds=$TRANSIT_FEEDS
+with_log earthly $EARTHLY_ARGS -P +build --area=$AREA --transit_feeds=$TRANSIT_FEEDS
