@@ -35,7 +35,7 @@ spec:
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-latest
           env:
             - name: "JAVA_OPTS"
-              # It makes to keep this in sync to be just under the resources.limits.memory
+              # keep this in sync to be just under the resources.limits.memory
               value: "-Xmx4G"
           imagePullPolicy: Always
           ports:
@@ -45,7 +45,7 @@ spec:
               mountPath: /var/opentripplanner
           resources:
             limits:
-              # It makes to keep this in sync to be just above env.JAVA_OPTS.-Xmx
+              # keep this in sync to be just above env.JAVA_OPTS.-Xmx
               memory: 4.25Gi
             requests:
               memory: 500Mi
