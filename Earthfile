@@ -35,7 +35,7 @@ save:
     BUILD +save-mbtiles --area=${area}
     IF [ ! -z "${transit_feeds}" ]
         BUILD +save-gtfs --area=${area} --transit_feeds=${transit_feeds}
-        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds}
+        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
     END
     BUILD +save-valhalla --area=${area}
     BUILD +save-elasticsearch --area=${area} --countries=${countries}
@@ -59,6 +59,20 @@ save-extract:
     # This isn't used at runtime, but it might be useful to archive the input
     SAVE ARTIFACT /data.osm.pbf AS LOCAL ./data/${area}.osm.pbf
 
+save-transit-zones:
+    ARG --required area
+    ARG --required transit_zones
+    BUILD +save-gtfs-zones --area=${area} --transit_zones=${transit_zones}
+    BUILD +save-otp-zones --area=${area} --transit_zones=${transit_zones}
+
+save-gtfs-zones:
+    FROM +save-base
+    ARG --required area
+    ARG --required transit_zones
+    FOR transit_feeds IN $transit_zones
+        BUILD +save-gtfs --area=${area} --transit_feeds=${transit_feeds}
+    END
+
 save-gtfs:
     FROM +save-base
     ARG --required area
@@ -67,29 +81,45 @@ save-gtfs:
     COPY +cache-buster/todays_date .
     ARG cache_key=$(cat todays_date)
 
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs.tar.zst
+    ARG output_prefix=$(basename $transit_feeds .gtfs_feeds.csv)
 
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs.tar.zst
     # This isn't used at runtime, but it might be useful to archive the input
-    SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}-${cache_key}.gtfs.tar.zst
+    SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}-${output_prefix}-${cache_key}.gtfs.tar.zst
+
+save-otp-zones:
+    FROM +save-base
+    ARG --required area
+    ARG --required transit_zones
+    FOR transit_feeds IN $transit_zones
+        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=1
+    END
 
 save-otp:
     FROM +save-base
     ARG --required area
     ARG --required transit_feeds
+    ARG --required clip_to_gtfs
 
-    # See usage in otp-build
-    ARG clip_to_area
+    # When working with a very large (e.g. planet sized) osm.pbf, we can't support
+    # transit for the entire thing, but we can support smaller transit zones within the
+    # planet.
+    # We extract a bbox'd area of the input osm.pbf around the actual transit
+    # zone for OTP to have any chance of fitting into memory.
+    ARG transit_zone=$(basename $transit_feeds .gtfs_feeds.csv)
+    IF [ -n "$clip_to_gtfs" ]
+        ARG output_name="${area}-${transit_zone}"
+    ELSE
+        ARG clip_to_gtfs=0
+        ARG output_name="${transit_zone}"
+    END
 
     COPY +cache-buster/todays_date .
     ARG cache_key=$(cat todays_date)
 
-    COPY (+otp-build/graph.obj --area=${area} --clip_to_area=${clip_to_area} --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /graph.obj
+    COPY (+otp-build/graph.obj --area=${area} --clip_to_gtfs=${clip_to_gtfs} --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /graph.obj
 
     RUN zstd /graph.obj
-    ARG output_name=$clip_to_area
-    IF [ -n "$output_name" ]
-        ARG output_name="$area"
-    END
     SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${output_name}-${cache_key}.graph.obj.zst
 
 save-mbtiles:
@@ -409,13 +439,37 @@ gtfs-enumerate:
 
     SAVE ARTIFACT /gtfs_feeds/gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}-${cache_key}.gtfs_feeds.csv
 
+gtfs-compute-bbox:
+    FROM rust
+    ARG --required transit_feeds
+    ARG --required cache_key
+
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends zstd \
+        && rm -rf /var/lib/apt/lists/*
+
+    COPY ./services/gtfs/gtfs_bbox .
+    WORKDIR gtfs_bbox
+    RUN cargo build --release
+
+    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) gtfs.tar.zst
+
+    RUN mkdir gtfs_zips gtfs && \
+        (cd gtfs_zips && \
+            tar --zstd -xf ../gtfs.tar.zst && \
+            ls *.zip | while read zip_file; do unzip -d ../gtfs/$(basename $zip_file .zip) $zip_file; done)
+
+    RUN cargo run --release gtfs/* > bbox.txt
+
+    SAVE ARTIFACT bbox.txt /bbox.txt
+
 bbox:
     FROM debian:bullseye-slim
     ARG --required area
     COPY services/gtfs/bboxes.csv /gtfs/bboxes.csv
     # ensure `area` has an entry in bboxes.csv, otherwise you'll need to add one
     RUN test $(grep "${area}:" /gtfs/bboxes.csv | wc -l) -eq 1
-    RUN grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2 | tee bbox.txt 
+    RUN grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2 | tee bbox.txt
     SAVE ARTIFACT bbox.txt /bbox.txt
 
 gtfs-get-mobilitydb:
@@ -429,16 +483,17 @@ gtfs-build:
     ARG --required transit_feeds
     ARG --required cache_key
 
-    # Make sure everything is re-run when cache_key changes
-    RUN touch "cache-buster-${cache_key}"
-
-    COPY "${transit_feeds}" /gtfs/gtfs_feeds.csv
-
-    COPY ./services/gtfs/download_gtfs_feeds.py /gtfs/
-    RUN python /gtfs/download_gtfs_feeds.py
     RUN apt-get update \
         && apt-get install -y --no-install-recommends zstd \
         && rm -rf /var/lib/apt/lists/*
+
+    COPY "${transit_feeds}" /gtfs/gtfs_feeds.csv
+    COPY ./services/gtfs/download_gtfs_feeds.py /gtfs/
+
+    # re-run when cache_key changes
+    RUN touch "cache-buster-${cache_key}"
+
+    RUN python /gtfs/download_gtfs_feeds.py
     RUN cd /gtfs_feeds && ls *.zip | tar --zstd -cf /gtfs/gtfs.tar.zst --files-from -
     SAVE ARTIFACT /gtfs/gtfs.tar.zst /gtfs.tar.zst
 
@@ -456,8 +511,16 @@ otp-base:
 otp-build:
     FROM +otp-base
 
-    ARG --required transit_feeds
     ARG --required area
+
+    # Clip the mapping data area to the transit_feeds's bbox to save memory.
+    #
+    # This option is only relevant if you are configuring small transit
+    # zones within an otherwise huge map. OTP reads all the map data into
+    # memory, which can be very large.
+    ARG clip_to_gtfs
+
+    ARG --required transit_feeds
     ARG --required cache_key
 
     WORKDIR /var/opentripplanner
@@ -466,19 +529,8 @@ otp-build:
         && apt-get install -y --no-install-recommends zstd \
         && rm -rf /var/lib/apt/lists/*
 
-    ARG clip_to_area
-    IF [ -n "$clip_to_area" ]
-        # Clip the mapping data to the area's bbox to save memory.
-        #
-        # This option is only relevant if you are configuring small transit
-        # zones within an otherwise huge map. OTP reads all the map data into
-        # memory, which can be very large.
-        #
-        # In the case of feeds which are only partially within our bbox,
-        # curently we'd clip the mapping data for any parts of the feed that
-        # fall outside of the bbox - if the proves problematic, we may want to
-        # compute the bbox from gtfs/shapes.txt
-        COPY (+bbox/bbox.txt --area=${clip_to_area}) bbox.txt
+    IF [ -n "$clip_to_gtfs" ]
+        COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache-key=${cache_key}) bbox.txt
         ARG clip_bbox=$(cat bbox.txt)
         COPY (+extract/data.osm.pbf --area=${area} --clip_bbox=${clip_bbox}) /var/opentripplanner
     ELSE
@@ -530,9 +582,9 @@ build-transitmux:
 
     WORKDIR transitmux
 
-    # This speeds up rebuilds of transitmux by caching the prebuilt
+    # This speeds up rebuilds of rust projectst by caching the prebuilt
     # dependencies in a separate docker layer. Without this, every change to
-    # transitmux requires re-downloading and re-building all the project deps,
+    # the source requires re-downloading and re-building all the project deps,
     # which takes a while.
     COPY ./services/transitmux/Cargo.toml .
     COPY ./services/transitmux/Cargo.lock .

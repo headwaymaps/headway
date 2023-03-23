@@ -1,30 +1,17 @@
 #!/bin/bash
 
 set -xe
+set -o nounset
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
-bin_name=$(basename $0)
-log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
-log_dir=/pool1/logs
-log_file="${log_dir}/${log_filename}"
-
-function with_log {
-  $@ > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
-}
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
 
 EARTHLY_ARGS=${@:1}
 
 # This job assumes you've already downloaded the planet file into the repository root
-source "${SCRIPT_DIR}/../k8s/planet.env"
-PLANET_AREA="$HEADWAY_AREA"
+CONFIG_DIR="builds/planet"
 
-TRANSIT_FEEDS=data/Seattle-2023-01-04.gtfs_feeds.csv
-TRANSIT_AREA=Seattle
-with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
-with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${PLANET_AREA} --clip_to_area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
+source "${CONFIG_DIR}/env.sh"
+TRANSIT_ZONES=$(ls ${CONFIG_DIR}/gtfs/*)
 
-TRANSIT_FEEDS=data/LosAngeles-2023-01-21.gtfs_feeds.csv
-TRANSIT_AREA=LosAngeles
-with_log earthly ${EARTHLY_ARGS} -P +save-gtfs --area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
-with_log earthly ${EARTHLY_ARGS} -P +save-otp --area=${PLANET_AREA} --clip_to_area=${TRANSIT_AREA} --transit_feeds=${TRANSIT_FEEDS}
+earthly ${EARTHLY_ARGS} +save-transit-zones --area="$HEADWAY_AREA" --transit_zones="$TRANSIT_ZONES"
