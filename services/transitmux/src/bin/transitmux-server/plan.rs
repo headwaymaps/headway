@@ -56,7 +56,7 @@ where
 {
     use serde::de::Error;
 
-    let s: &str = Deserialize::deserialize(deserializer)?;
+    let s: String = Deserialize::deserialize(deserializer)?;
     use std::str::FromStr;
     let mut iter = s.split(',').map(f64::from_str);
 
