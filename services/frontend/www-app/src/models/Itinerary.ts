@@ -171,7 +171,7 @@ export class ItineraryLeg {
     this.raw = otp;
   }
 
-  get emoji(): string | undefined {
+  get emoji(): string {
     switch (this.mode) {
       case OTPMode.Walk:
         return '🚶‍♀️';
@@ -179,6 +179,7 @@ export class ItineraryLeg {
       case OTPMode.Transit:
         return '🚍';
       case OTPMode.Train:
+      case OTPMode.Rail:
         return '🚆';
       case OTPMode.Subway:
         return '🚇';
@@ -191,9 +192,13 @@ export class ItineraryLeg {
         return '🚡';
       case OTPMode.Gondola:
         return '🚠';
+      case OTPMode.Car:
+        return '🚙';
+      case OTPMode.Ferry:
+        return '⛴️';
       default:
-        console.warn('no emoji for mode', this.mode);
-        return undefined;
+        console.error('no emoji for mode', this.mode);
+        return '';
     }
   }
 
