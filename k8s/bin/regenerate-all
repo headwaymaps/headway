@@ -7,6 +7,6 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 cd "$REPO_ROOT/k8s"
 
-HEADWAY_CONTAINER_TAG=maps-earth-dev HEADWAY_DATA_TAG=dev bin/generate seattle.env configs/seattle-dev
-HEADWAY_CONTAINER_TAG=maps-earth-dev bin/generate planet.env configs/planet-dev
-HEADWAY_CONTAINER_TAG=maps-earth-latest bin/generate planet.env configs/planet
+HEADWAY_CONTAINER_TAG=maps-earth-dev HEADWAY_DATA_TAG=dev bin/generate ../builds/seattle/env.sh configs/seattle-dev
+HEADWAY_CONTAINER_TAG=maps-earth-dev bin/generate ../builds/planet/env.sh configs/planet-dev
+HEADWAY_CONTAINER_TAG=maps-earth-latest bin/generate ../builds/planet/env.sh configs/planet

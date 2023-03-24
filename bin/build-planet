@@ -21,9 +21,9 @@ source "${SCRIPT_DIR}/_headway_version.sh"
 fi
 
 # This job assumes you've already downloaded the planet file into the repository root
-source "${SCRIPT_DIR}/../k8s/planet.env"
+source "${SCRIPT_DIR}/../builds/planet/env.sh"
 
-with_log earthly $EARTHLY_ARGS -P +build --area=$HEADWAY_AREA --countries=ALL --tag=$HEADWAY_CONTAINER_TAG
+with_log earthly $EARTHLY_ARGS -P +build --area=$HEADWAY_AREA --countries=ALL
 
 bin/build-transit
 
