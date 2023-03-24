@@ -1,5 +1,5 @@
 <template>
-  <div class="top-card">
+  <div>
     <div style="display: flex">
       <search-box
         :hint="$t('search.from')"
@@ -42,6 +42,33 @@
       :to-place="toPlace"
       :from-place="fromPlace"
     />
+    <div :hidden="!isTransit()" style="margin-top: 8px; margin-bottom: -8px">
+      <div v-if="searchTime || searchDate">
+        <q-btn
+          flat
+          :label="$t('trip_search_depart_at')"
+          size="sm"
+          @click="didClickDepartAt"
+        />
+        <input
+          type="time"
+          :value="initialSearchTime"
+          @change="(event) => searchTime = (event.target as HTMLInputElement).value"
+        />
+        <input
+          type="date"
+          :value="initialSearchDate"
+          @change="(event) => searchDate = (event.target as HTMLInputElement).value"
+        />
+      </div>
+      <q-btn
+        v-else
+        flat
+        :label="$t('trip_search_depart_now')"
+        size="sm"
+        @click="didClickDepartNow"
+      />
+    </div>
   </div>
 </template>
 <script lang="ts">
@@ -80,9 +107,50 @@ export default defineComponent({
       >,
       required: true,
     },
+    initialSearchTime: {
+      type: String,
+    },
+    initialSearchDate: {
+      type: String,
+    },
+    timeDidChange: {
+      type: Function as PropType<(newValue: string) => void>,
+      required: true,
+    },
+    dateDidChange: {
+      type: Function as PropType<(newValue: string) => void>,
+      required: true,
+    },
+  },
+  data(): { searchTime?: string; searchDate?: string } {
+    return {
+      searchTime: this.initialSearchTime,
+      searchDate: this.initialSearchDate,
+    };
+  },
+  watch: {
+    searchTime: function (newValue: string) {
+      this.timeDidChange(newValue);
+    },
+    searchDate: function (newValue: string) {
+      this.dateDidChange(newValue);
+    },
   },
   components: { SearchBox, TravelModeBar },
   methods: {
+    isTransit(): boolean {
+      return this.currentMode == TravelMode.Transit;
+    },
+    didClickDepartAt() {
+      this.searchTime = undefined;
+      this.searchDate = undefined;
+    },
+    didClickDepartNow() {
+      // BRITTLE: search date needs to be set first
+      // beacuse OTP will error if a time is set without a date.
+      this.searchDate = dateToInput(new Date());
+      this.searchTime = timeToInput(new Date());
+    },
     didClickSwap() {
       this.didSwapPlaces(this.toPlace, this.fromPlace);
     },
@@ -110,4 +178,22 @@ export default defineComponent({
     placeDisplayName,
   },
 });
+
+function dateToInput(date: Date) {
+  return (
+    date.getFullYear() +
+    '-' +
+    ('0' + (date.getMonth() + 1)).slice(-2) +
+    '-' +
+    ('0' + date.getDate()).slice(-2)
+  );
+}
+
+function timeToInput(date: Date) {
+  return (
+    ('0' + date.getHours()).slice(-2) +
+    ':' +
+    ('0' + date.getMinutes()).slice(-2)
+  );
+}
 </script>

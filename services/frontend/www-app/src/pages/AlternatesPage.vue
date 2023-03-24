@@ -1,12 +1,18 @@
 <template>
-  <trip-search
-    :from-place="fromPlace"
-    :to-place="toPlace"
-    :current-mode="mode"
-    :did-select-from-place="searchBoxDidSelectFromPlace"
-    :did-select-to-place="searchBoxDidSelectToPlace"
-    :did-swap-places="clickedSwap"
-  />
+  <div class="top-card">
+    <trip-search
+      :from-place="fromPlace"
+      :to-place="toPlace"
+      :current-mode="mode"
+      :initial-search-time="searchTime"
+      :initial-search-date="searchDate"
+      :did-select-from-place="searchBoxDidSelectFromPlace"
+      :did-select-to-place="searchBoxDidSelectToPlace"
+      :did-swap-places="clickedSwap"
+      :time-did-change="searchTimeDidChange"
+      :date-did-change="searchDateDidChange"
+    />
+  </div>
   <div class="bottom-card">
     <div class="search-error" v-if="error">
       <p>
@@ -72,6 +78,7 @@ import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
+import { useRoute } from 'vue-router';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -152,17 +159,39 @@ export default defineComponent({
     showTripSteps(trip: Trip) {
       let index = this.$data.trips.indexOf(trip);
       if (index !== -1 && this.to && this.from) {
-        this.$router.push(
-          `/directions/${this.mode}/${encodeURIComponent(
-            this.to
-          )}/${encodeURIComponent(this.from)}/${index}`
-        );
+        let path = `/directions/${this.mode}/${encodeURIComponent(
+          this.to
+        )}/${encodeURIComponent(this.from)}/${index}`;
+        let query = this.dateTimeQuery();
+        this.$router.push({ path, query });
       }
     },
     clickedSwap(newFromValue?: Place, newToValue?: Place) {
       this.fromPlace = newFromValue;
       this.toPlace = newToValue;
       this.rewriteUrl();
+    },
+    searchTimeDidChange(newValue: string) {
+      this.searchTime = newValue;
+      this.rewriteUrl();
+    },
+    searchDateDidChange(newValue: string) {
+      this.searchDate = newValue;
+      this.rewriteUrl();
+    },
+    dateTimeQuery(): Record<string, string> {
+      let query: Record<string, string> = {};
+      if (this.searchDate) {
+        query['searchDate'] = this.searchDate;
+      }
+      if (this.searchTime) {
+        query['searchTime'] = this.searchTime;
+      }
+      return query;
+    },
+    dateTimeQueryString(): string {
+      let query = new URLSearchParams(this.dateTimeQuery());
+      return query.toString();
     },
     rewriteUrl: async function () {
       if (!this.fromPlace && !this.toPlace) {
@@ -172,10 +201,17 @@ export default defineComponent({
 
       const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
       const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
-      this.$router.push(`/directions/${this.mode}/${toEncoded}/${fromEncoded}`);
+
+      let path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
+
+      let queryString = this.dateTimeQueryString();
+      if (queryString.length > 0) {
+        path += '?' + queryString;
+      }
+
+      this.$router.push(path);
       await this.updateTrips();
     },
-
     async updateTrips(): Promise<void> {
       let map = getBaseMap();
       if (!map) {
@@ -196,7 +232,9 @@ export default defineComponent({
           this.fromPlace.point,
           this.toPlace.point,
           this.mode,
-          Prefs.stored.distanceUnits(this.fromPlace, this.toPlace)
+          Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
+          this.searchTime,
+          this.searchDate
         ).finally(() => {
           this.isLoading = false;
         });
@@ -327,16 +365,27 @@ export default defineComponent({
         this.from as string
       );
     }
-
     await this.rewriteUrl();
   },
   setup: function () {
-    let toPlace: Ref<Place | undefined> = ref(undefined);
-    let fromPlace: Ref<Place | undefined> = ref(undefined);
+    const toPlace: Ref<Place | undefined> = ref(undefined);
+    const fromPlace: Ref<Place | undefined> = ref(undefined);
+    const searchTime: Ref<string | undefined> = ref(undefined);
+    const searchDate: Ref<string | undefined> = ref(undefined);
+
+    const route = useRoute();
+    if (typeof route.query.searchTime == 'string') {
+      searchTime.value = route.query.searchTime;
+    }
+    if (typeof route.query.searchDate == 'string') {
+      searchDate.value = route.query.searchDate;
+    }
 
     return {
       toPlace,
       fromPlace,
+      searchTime,
+      searchDate,
     };
   },
 });

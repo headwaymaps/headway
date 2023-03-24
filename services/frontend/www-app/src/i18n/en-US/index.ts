@@ -54,4 +54,6 @@ export default {
   },
   walk_distance: '{preformattedDistance} walk',
   route_picker_show_route_details_btn: 'Details',
+  trip_search_depart_at: 'Leave at',
+  trip_search_depart_now: 'Leave now',
 };

@@ -96,9 +96,17 @@ export default class Itinerary implements Trip {
   public static async fetchBest(
     from: LngLat,
     to: LngLat,
-    distanceUnits: DistanceUnits
+    distanceUnits: DistanceUnits,
+    departureTime?: string,
+    departureDate?: string
   ): Promise<Result<Itinerary[], ItineraryError>> {
-    const result = await OTPClient.fetchItineraries(from, to, 5);
+    const result = await OTPClient.fetchItineraries(
+      from,
+      to,
+      5,
+      departureTime,
+      departureDate
+    );
     if (result.ok) {
       return Ok(
         result.value.map((otp) => Itinerary.fromOtp(otp, distanceUnits))
