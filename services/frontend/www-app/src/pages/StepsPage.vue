@@ -88,7 +88,9 @@ export default defineComponent({
     goToAlternates() {
       const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
       const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
-      this.$router.push(`/directions/${this.mode}/${toEncoded}/${fromEncoded}`);
+      let path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
+      let query = this.dateTimeQuery();
+      this.$router.push({ path, query });
     },
 
     rewriteUrl: async function () {
@@ -109,7 +111,9 @@ export default defineComponent({
           this.fromPlace.point,
           this.toPlace.point,
           this.mode,
-          this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers
+          this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers,
+          this.searchTime,
+          this.searchDate
         );
         if (!result.ok) {
           console.error('fetchBestTrips.error', result.error);
@@ -153,6 +157,16 @@ export default defineComponent({
       }
       map.removeLayersExcept(layerIds);
     },
+    dateTimeQuery(): Record<string, string> {
+      let query: Record<string, string> = {};
+      if (this.searchDate) {
+        query['searchDate'] = this.searchDate;
+      }
+      if (this.searchTime) {
+        query['searchTime'] = this.searchTime;
+      }
+      return query;
+    },
   },
   mounted: async function () {
     this.toPlace = await PlaceStorage.fetchFromSerializedId(
@@ -161,6 +175,12 @@ export default defineComponent({
     this.fromPlace = await PlaceStorage.fetchFromSerializedId(
       this.$props.from as string
     );
+    if (typeof this.$route.query.searchTime == 'string') {
+      this.searchTime = this.$route.query.searchTime;
+    }
+    if (typeof this.$route.query.searchDate == 'string') {
+      this.searchDate = this.$route.query.searchDate;
+    }
 
     await this.rewriteUrl();
 
@@ -199,12 +219,16 @@ export default defineComponent({
     }
   },
   setup: function () {
-    let toPlace: Ref<Place | undefined> = ref(undefined);
-    let fromPlace: Ref<Place | undefined> = ref(undefined);
+    const toPlace: Ref<Place | undefined> = ref(undefined);
+    const fromPlace: Ref<Place | undefined> = ref(undefined);
+    const searchTime: Ref<string | undefined> = ref(undefined);
+    const searchDate: Ref<string | undefined> = ref(undefined);
 
     return {
       toPlace,
       fromPlace,
+      searchTime,
+      searchDate,
     };
   },
 });

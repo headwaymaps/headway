@@ -63,6 +63,18 @@ export type OTPItinerary = {
 };
 
 // incomplete
+export type OTPPlanRequest = {
+  fromPlace: string;
+  toPlace: string;
+  // It'd be nice to typecheck this as numeric, but it would require some
+  // additional type juggling elsewhere
+  //numItineraries?: number,
+  numItineraries?: string;
+  time?: string;
+  date?: string;
+};
+
+// incomplete
 export type OTPPlanResponse = {
   plan: {
     itineraries: OTPItinerary[];
@@ -80,11 +92,33 @@ export class OTPClient {
   public static async fetchItineraries(
     from: LngLat,
     to: LngLat,
-    count: number
+    count: number,
+    time?: string,
+    date?: string
   ): Promise<Result<OTPItinerary[], OTPError>> {
-    const response = await fetch(
-      `/transitmux/plan?fromPlace=${from.lat},${from.lng}&toPlace=${to.lat},${to.lng}&numItineraries=${count}`
-    );
+    const params: OTPPlanRequest = {
+      fromPlace: `${from.lat},${from.lng}`,
+      toPlace: `${to.lat},${to.lng}`,
+      numItineraries: `${count}`,
+    };
+
+    // The OTP API assumes current date and time if neither are specified.
+    // If only date is specified, the current time at that date is assumed.
+    // If only time is specified, it's an error.
+    if (time) {
+      console.assert(
+        date,
+        'The OTP API requires that if time is specified, date must also be specified'
+      );
+      params['time'] = time;
+    }
+    if (date) {
+      params['date'] = date;
+    }
+
+    const query = new URLSearchParams(params).toString();
+
+    const response = await fetch('/transitmux/plan?' + query);
     if (response.ok) {
       const responseJson: OTPPlanResponse = await response.json();
       if (responseJson.plan.itineraries.length > 0) {
