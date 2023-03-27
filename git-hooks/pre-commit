@@ -17,5 +17,10 @@ set -e
 
 (cd services/transitmux &&
     cargo fmt &&
-    cargo clippy -- -D warnings &&
-    cargo test)
+    cargo clippy --all-features -- -D warnings &&
+    cargo test --all-features)
+
+(cd services/gtfs/gtfs_bbox &&
+    cargo fmt &&
+    cargo clippy --all-features -- -D warnings &&
+    cargo test --all-features)

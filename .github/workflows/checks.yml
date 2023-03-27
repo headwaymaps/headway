@@ -55,3 +55,26 @@ jobs:
       - run: cargo clippy --all-features
       - run: cargo test --all-features
       - run: cargo build --release
+  gtfs_bbox:
+    defaults:
+      run:
+        working-directory: services/gtfs/gtfs_bbox
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            services/transitmux/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-features
+      - run: cargo test --all-features
+      - run: cargo build --release
