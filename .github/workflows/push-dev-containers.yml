@@ -18,6 +18,6 @@ jobs:
       - name: Earthly version check
         run: earthly --version
       - name: Push dev images
-        run: earthly --push +images --tags=dev
+        run: earthly --use-inline-cache --save-inline-cache --push +images --tags=dev
       - name: Push dev branded images
-        run: earthly --push +images --branding=maps.earth --tags "maps-earth-dev"
+        run: earthly --use-inline-cache --push +images --branding=maps.earth --tags "maps-earth-dev"

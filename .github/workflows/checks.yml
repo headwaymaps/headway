@@ -14,7 +14,7 @@ jobs:
       - uses: earthly/actions-setup@v1
       - uses: actions/checkout@v2
       - run: earthly --version
-      - run: earthly -P +build --area=Bogota
+      - run: earthly -P --use-inline-cache +build --area=Bogota
   www_checks:
     defaults:
       run:

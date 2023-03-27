@@ -20,7 +20,7 @@ jobs:
       - name: Earthly version check
         run: earthly --version
       - name: Push latest images
-        run: earthly --push +images --tags "latest ${{ github.ref_name }}"
+        run: earthly --use-inline-cache --save-inline-cache --push +images --tags "latest ${{ github.ref_name }}"
       - name: Push latest branded images
-        run: earthly --push +images --branding=maps.earth --tags "maps-earth-latest maps-earth-${{ github.ref_name }}"
+        run: earthly --use-inline-cache --push +images --branding=maps.earth --tags "maps-earth-latest maps-earth-${{ github.ref_name }}"
 
