@@ -12,6 +12,11 @@ EARTHLY_ARGS=${@:1}
 CONFIG_DIR="builds/planet"
 
 source "${CONFIG_DIR}/env.sh"
-TRANSIT_ZONES=$(ls ${CONFIG_DIR}/gtfs/*)
+TRANSIT_ZONES=$(ls ${CONFIG_DIR}/gtfs/*.gtfs_feeds.csv)
 
-earthly ${EARTHLY_ARGS} +save-transit-zones --area="$HEADWAY_AREA" --transit_zones="$TRANSIT_ZONES"
+BUILD_CONFIG="${CONFIG_DIR}/gtfs/build-config.json"
+if [ ! -f "$BUILD_CONFIG" ]; then
+    BUILD_CONFIG=""
+fi
+
+earthly ${EARTHLY_ARGS} +save-transit-zones --area="$HEADWAY_AREA" --transit_zones="$TRANSIT_ZONES" --otp_build_config="$BUILD_CONFIG"
