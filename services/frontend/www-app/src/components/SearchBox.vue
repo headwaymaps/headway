@@ -337,7 +337,7 @@ export default defineComponent({
 
       // Firstly - Quit if the user has left the page.
       if (isUnmounted.value) {
-        // console.log('isUnmounted');
+        // console.debug('isUnmounted');
         return;
       }
 
@@ -345,7 +345,7 @@ export default defineComponent({
       // in the meanwhile so we don't pop up the autocomplete menu over their
       // search results.
       if (mostRecentSearchIdx.value > thisSearchIdx) {
-        // console.log(`mostRecentSearchIdx.value > thisSearchIdx (${mostRecentSearchIdx.value} > ${thisSearchIdx})`);
+        // console.debug(`mostRecentSearchIdx.value > thisSearchIdx (${mostRecentSearchIdx.value} > ${thisSearchIdx})`);
         return;
       }
 
@@ -353,11 +353,11 @@ export default defineComponent({
       // It is *common* to receive results out of order - short queries take
       // longer since they have more matches.
       if (query.idx < mostRecentlyCompletedQuery.idx) {
-        // console.log(`discarding irrelevant results. inputText: ${inputText.value}`, query);
+        // console.debug(`discarding irrelevant results. inputText: ${inputText.value}`, query);
         return;
       }
 
-      // console.log('completed query', query)
+      // console.debug('completed query', query)
       mostRecentlyCompletedQuery = query;
       placeChoices.value = places;
     };

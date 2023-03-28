@@ -72,6 +72,7 @@ export type OTPPlanRequest = {
   numItineraries?: string;
   time?: string;
   date?: string;
+  arriveBy?: string;
 };
 
 // incomplete
@@ -94,7 +95,8 @@ export class OTPClient {
     to: LngLat,
     count: number,
     time?: string,
-    date?: string
+    date?: string,
+    arriveBy?: boolean
   ): Promise<Result<OTPItinerary[], OTPError>> {
     const params: OTPPlanRequest = {
       fromPlace: `${from.lat},${from.lng}`,
@@ -114,6 +116,9 @@ export class OTPClient {
     }
     if (date) {
       params['date'] = date;
+    }
+    if (arriveBy) {
+      params['arriveBy'] = true.toString();
     }
 
     const query = new URLSearchParams(params).toString();

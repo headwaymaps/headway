@@ -27,7 +27,8 @@ export async function fetchBestTrips(
   mode: TravelMode,
   distanceUnits: DistanceUnits,
   departureTime?: string,
-  departureDate?: string
+  departureDate?: string,
+  arriveBy?: boolean
 ): Promise<Result<Trip[], TripFetchError>> {
   switch (mode) {
     case TravelMode.Walk:
@@ -47,7 +48,8 @@ export async function fetchBestTrips(
         to,
         distanceUnits,
         departureTime,
-        departureDate
+        departureDate,
+        arriveBy
       );
       if (result.ok) {
         return Ok(result.value);

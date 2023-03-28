@@ -4,13 +4,11 @@
       :from-place="fromPlace"
       :to-place="toPlace"
       :current-mode="mode"
-      :initial-search-time="searchTime"
-      :initial-search-date="searchDate"
+      :initial-search="{ searchTime, searchDate, arriveBy }"
       :did-select-from-place="searchBoxDidSelectFromPlace"
       :did-select-to-place="searchBoxDidSelectToPlace"
       :did-swap-places="clickedSwap"
-      :time-did-change="searchTimeDidChange"
-      :date-did-change="searchDateDidChange"
+      :search-did-change="searchDidChange"
     />
   </div>
   <div class="bottom-card">
@@ -162,7 +160,7 @@ export default defineComponent({
         let path = `/directions/${this.mode}/${encodeURIComponent(
           this.to
         )}/${encodeURIComponent(this.from)}/${index}`;
-        let query = this.dateTimeQuery();
+        let query = this.searchQuery();
         this.$router.push({ path, query });
       }
     },
@@ -171,15 +169,17 @@ export default defineComponent({
       this.toPlace = newToValue;
       this.rewriteUrl();
     },
-    searchTimeDidChange(newValue: string) {
-      this.searchTime = newValue;
+    searchDidChange(newValue: {
+      searchTime?: string;
+      searchDate?: string;
+      arriveBy?: boolean;
+    }) {
+      this.searchTime = newValue.searchTime;
+      this.searchDate = newValue.searchDate;
+      this.arriveBy = newValue.arriveBy;
       this.rewriteUrl();
     },
-    searchDateDidChange(newValue: string) {
-      this.searchDate = newValue;
-      this.rewriteUrl();
-    },
-    dateTimeQuery(): Record<string, string> {
+    searchQuery(): Record<string, string> {
       let query: Record<string, string> = {};
       if (this.searchDate) {
         query['searchDate'] = this.searchDate;
@@ -187,10 +187,13 @@ export default defineComponent({
       if (this.searchTime) {
         query['searchTime'] = this.searchTime;
       }
+      if (this.arriveBy) {
+        query['arriveBy'] = this.arriveBy.toString();
+      }
       return query;
     },
-    dateTimeQueryString(): string {
-      let query = new URLSearchParams(this.dateTimeQuery());
+    searchQueryString(): string {
+      let query = new URLSearchParams(this.searchQuery());
       return query.toString();
     },
     rewriteUrl: async function () {
@@ -204,7 +207,7 @@ export default defineComponent({
 
       let path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
 
-      let queryString = this.dateTimeQueryString();
+      let queryString = this.searchQueryString();
       if (queryString.length > 0) {
         path += '?' + queryString;
       }
@@ -234,7 +237,8 @@ export default defineComponent({
           this.mode,
           Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
           this.searchTime,
-          this.searchDate
+          this.searchDate,
+          this.arriveBy
         ).finally(() => {
           this.isLoading = false;
         });
@@ -372,6 +376,7 @@ export default defineComponent({
     const fromPlace: Ref<Place | undefined> = ref(undefined);
     const searchTime: Ref<string | undefined> = ref(undefined);
     const searchDate: Ref<string | undefined> = ref(undefined);
+    const arriveBy: Ref<boolean | undefined> = ref(undefined);
 
     const route = useRoute();
     if (typeof route.query.searchTime == 'string') {
@@ -380,12 +385,16 @@ export default defineComponent({
     if (typeof route.query.searchDate == 'string') {
       searchDate.value = route.query.searchDate;
     }
+    if (typeof route.query.arriveBy == 'string') {
+      arriveBy.value = route.query.arriveBy === 'true';
+    }
 
     return {
       toPlace,
       fromPlace,
       searchTime,
       searchDate,
+      arriveBy,
     };
   },
 });

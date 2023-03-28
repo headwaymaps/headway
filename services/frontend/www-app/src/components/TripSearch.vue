@@ -45,19 +45,29 @@
     <div :hidden="!isTransit()" style="margin-top: 8px; margin-bottom: -8px">
       <div v-if="searchTime || searchDate">
         <q-btn
+          v-if="!arriveBy"
           flat
           :label="$t('trip_search_depart_at')"
           size="sm"
           @click="didClickDepartAt"
+          style="margin-right: 8px"
+        />
+        <q-btn
+          v-if="arriveBy"
+          flat
+          :label="$t('trip_search_arrive_by')"
+          size="sm"
+          @click="didClickArriveBy"
+          style="margin-right: 8px"
         />
         <input
           type="time"
-          :value="initialSearchTime"
+          :value="initialSearch.searchTime"
           @change="(event) => searchTime = (event.target as HTMLInputElement).value"
         />
         <input
           type="date"
-          :value="initialSearchDate"
+          :value="initialSearch.searchDate"
           @change="(event) => searchDate = (event.target as HTMLInputElement).value"
         />
       </div>
@@ -107,33 +117,37 @@ export default defineComponent({
       >,
       required: true,
     },
-    initialSearchTime: {
-      type: String,
-    },
-    initialSearchDate: {
-      type: String,
-    },
-    timeDidChange: {
-      type: Function as PropType<(newValue: string) => void>,
+    initialSearch: {
+      type: Object as PropType<{
+        searchTime?: string;
+        searchDate?: string;
+        arriveBy?: boolean;
+      }>,
       required: true,
     },
-    dateDidChange: {
-      type: Function as PropType<(newValue: string) => void>,
+    searchDidChange: {
+      type: Function as PropType<
+        (newValue: {
+          searchTime?: string;
+          searchDate?: string;
+          arriveBy?: boolean;
+        }) => void
+      >,
       required: true,
     },
   },
-  data(): { searchTime?: string; searchDate?: string } {
-    return {
-      searchTime: this.initialSearchTime,
-      searchDate: this.initialSearchDate,
-    };
+  data(): { searchTime?: string; searchDate?: string; arriveBy?: boolean } {
+    return Object.assign({}, this.initialSearch);
   },
   watch: {
-    searchTime: function (newValue: string) {
-      this.timeDidChange(newValue);
+    searchTime: function () {
+      this.searchDidChange(this.$data);
     },
-    searchDate: function (newValue: string) {
-      this.dateDidChange(newValue);
+    searchDate: function () {
+      this.searchDidChange(this.$data);
+    },
+    arriveBy: function () {
+      this.searchDidChange(this.$data);
     },
   },
   components: { SearchBox, TravelModeBar },
@@ -142,6 +156,10 @@ export default defineComponent({
       return this.currentMode == TravelMode.Transit;
     },
     didClickDepartAt() {
+      this.arriveBy = true;
+    },
+    didClickArriveBy() {
+      this.arriveBy = false;
       this.searchTime = undefined;
       this.searchDate = undefined;
     },

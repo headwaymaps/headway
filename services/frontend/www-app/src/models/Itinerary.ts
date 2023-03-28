@@ -98,14 +98,16 @@ export default class Itinerary implements Trip {
     to: LngLat,
     distanceUnits: DistanceUnits,
     departureTime?: string,
-    departureDate?: string
+    departureDate?: string,
+    arriveBy?: boolean
   ): Promise<Result<Itinerary[], ItineraryError>> {
     const result = await OTPClient.fetchItineraries(
       from,
       to,
       5,
       departureTime,
-      departureDate
+      departureDate,
+      arriveBy
     );
     if (result.ok) {
       return Ok(
