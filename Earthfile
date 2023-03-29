@@ -546,7 +546,7 @@ otp-build:
     END
 
     IF [ -n "$clip_to_gtfs" ]
-        COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache-key=${cache_key}) bbox.txt
+        COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache_key=${cache_key}) bbox.txt
         ARG clip_bbox=$(cat bbox.txt)
         COPY (+extract/data.osm.pbf --area=${area} --clip_bbox=${clip_bbox}) /var/opentripplanner
     ELSE
