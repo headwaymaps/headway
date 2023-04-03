@@ -120,6 +120,12 @@ export class PlaceStorage {
   }
 }
 
+type PlaceProperties = {
+  countryCode?: string;
+  name?: string;
+  address?: string;
+};
+
 /// Wrapper around a pelias response
 export default class Place {
   id: PlaceId;
@@ -133,16 +139,14 @@ export default class Place {
     id: PlaceId,
     point: LngLat,
     bbox?: LngLatBounds,
-    countryCode?: string,
-    name?: string,
-    address?: string
+    props: PlaceProperties = {}
   ) {
     this.id = id;
     this.point = point;
     this.bbox = bbox;
-    this.countryCode = countryCode;
-    this.name = name;
-    this.address = address;
+    this.countryCode = props.countryCode;
+    this.name = props.name;
+    this.address = props.address;
   }
 
   static fromFeature(id: PlaceId, feature: GeoJSON.Feature): Place {
@@ -197,17 +201,20 @@ export default class Place {
     const name = feature.properties?.name;
     console.assert(name, 'no name found for feature', feature);
 
-    const place = new Place(id, location, bbox, countryCode, name, address);
+    // "addendum": {
+    //   "osm": {
+    //       "website": "https://www.adasbooks.com",
+    //       "phone": "+1 206 322 1058",
+    //       "opening_hours": "Su-Th 08:00-21:00; Fr-Sa 08:00-22:00"
+    //   }
+    // }
+
+    const place = new Place(id, location, bbox, { countryCode, name, address });
     return place;
   }
 
   static bareLocation(location: LngLat) {
-    return new Place(
-      PlaceId.location(location),
-      location,
-      undefined,
-      undefined
-    );
+    return new Place(PlaceId.location(location), location);
   }
 
   public serializedId(): string {
