@@ -8,20 +8,19 @@
     <travel-mode-bar :to-place="place" />
   </q-card-section>
   <q-card-section>
-    <div class="text" v-if="secondaryName()">
-      <div v-if="secondaryName()">
-        <q-icon name="location_on" style="margin-right: 8px" />
-        {{ secondaryName() }}
-      </div>
-      <div v-if="website()">
-        <q-icon name="public" style="margin-right: 8px" />
-        <a :href="website()">{{ website() }}</a>
-      </div>
-      <div v-if="phone()">
-        <q-icon name="phone" style="margin-right: 8px" />
-        <a :href="'tel:' + phone()">{{ phone() }}</a>
-      </div>
-    </div>
+    <place-field
+      v-if="secondaryName()"
+      :copy-text="secondaryName()!"
+      icon="location_on"
+    >
+      {{ secondaryName() }}
+    </place-field>
+    <place-field v-if="website()" :copy-text="website()!" icon="public">
+      <a :href="website()">{{ website() }}</a>
+    </place-field>
+    <place-field v-if="phone()" :copy-text="phone()!" icon="phone">
+      <a :href="'tel:' + phone()">{{ phone() }}</a>
+    </place-field>
   </q-card-section>
 </template>
 
@@ -31,6 +30,7 @@ import Place from 'src/models/Place';
 import { formatLngLatAsLatLng } from 'src/utils/format';
 import { defineComponent } from 'vue';
 import TravelModeBar from './TravelModeBar.vue';
+import PlaceField from './PlaceField.vue';
 
 export default defineComponent({
   name: 'PlaceCard',
@@ -66,6 +66,6 @@ export default defineComponent({
       return this.place.phone;
     },
   },
-  components: { TravelModeBar },
+  components: { TravelModeBar, PlaceField },
 });
 </script>
