@@ -124,6 +124,8 @@ type PlaceProperties = {
   countryCode?: string;
   name?: string;
   address?: string;
+  phone?: string;
+  website?: string;
 };
 
 /// Wrapper around a pelias response
@@ -134,6 +136,8 @@ export default class Place {
   countryCode?: string;
   public address?: string | null;
   name?: string;
+  public phone?: string;
+  public website?: string;
 
   constructor(
     id: PlaceId,
@@ -147,6 +151,8 @@ export default class Place {
     this.countryCode = props.countryCode;
     this.name = props.name;
     this.address = props.address;
+    this.phone = props.phone;
+    this.website = props.website;
   }
 
   static fromFeature(id: PlaceId, feature: GeoJSON.Feature): Place {
@@ -208,8 +214,16 @@ export default class Place {
     //       "opening_hours": "Su-Th 08:00-21:00; Fr-Sa 08:00-22:00"
     //   }
     // }
+    const website = feature.properties?.addendum?.osm?.website;
+    const phone = feature.properties?.addendum?.osm?.phone;
 
-    const place = new Place(id, location, bbox, { countryCode, name, address });
+    const place = new Place(id, location, bbox, {
+      countryCode,
+      name,
+      address,
+      website,
+      phone,
+    });
     return place;
   }
 
