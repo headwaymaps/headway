@@ -85,4 +85,12 @@ module.exports = {
     // allow debugger during development only
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
   },
+  overrides: [
+    {
+      files: ['**.test.ts'],
+      rules: {
+        '@typescript-eslint/no-non-null-assertion': 0,
+      },
+    },
+  ],
 };

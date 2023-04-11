@@ -1,6 +1,7 @@
 import { localizeAddress, DistanceUnits } from '../utils/models';
 import PeliasClient from 'src/services/PeliasClient';
 import { LngLat, LngLatBounds } from 'maplibre-gl';
+import OSMID from './OSMID';
 
 /// PlaceId can be either a LngLat or a gid (but not both).
 type GID = string;
@@ -57,11 +58,34 @@ export class PlaceId {
   }
 
   get type(): string {
-    if (location) {
+    if (this.location) {
       return 'location';
     } else {
       return 'gid';
     }
+  }
+
+  osmVenueId(): OSMID | undefined {
+    if (!this.gid) {
+      return undefined;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_, osmIdString] = this.gid.split('openstreetmap:venue:');
+    if (osmIdString) {
+      return OSMID.deserialize(osmIdString);
+    }
+  }
+
+  public editOSMVenueUrl(): URL | undefined {
+    // https://www.openstreetmap.org/edit?editor=id&node=12345
+    const osmVenueId = this.osmVenueId();
+    if (!osmVenueId) {
+      return;
+    }
+    const url = new URL('https://www.openstreetmap.org/edit');
+    url.searchParams.set('editor', 'id');
+    url.searchParams.set(osmVenueId.idType, osmVenueId.idNumber.toString());
+    return url;
   }
 }
 

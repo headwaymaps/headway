@@ -21,6 +21,33 @@
     <place-field v-if="phone()" :copy-text="phone()!" icon="phone">
       <a :href="'tel:' + phone()">{{ phone() }}</a>
     </place-field>
+    <div
+      v-if="isEditable()"
+      :style="{
+        margin: '8px -16px',
+        padding: '8px 16px',
+        backgroundColor: showEditPanel ? '#eaeaea' : undefined,
+      }"
+    >
+      <div style="text-align: right">
+        <q-btn flat :ripple="false" @click="didToggleEdit">{{
+          $t('edit_poi_button')
+        }}</q-btn>
+      </div>
+      <div v-if="showEditPanel" style="margin-top: 8px">
+        <p>{{ $t('edit_poi_about_osm') }}</p>
+        <div style="text-align: center">
+          <q-btn
+            size="12px"
+            flat
+            :ripple="false"
+            icon-right="launch"
+            :href="osmEditUrl()"
+            >{{ $t('edit_poi_on_osm_button') }}</q-btn
+          >
+        </div>
+      </div>
+    </div>
   </q-card-section>
 </template>
 
@@ -41,7 +68,15 @@ export default defineComponent({
       required: true,
     },
   },
+  data(): {
+    showEditPanel: boolean;
+  } {
+    return { showEditPanel: false };
+  },
   methods: {
+    didToggleEdit(): void {
+      this.showEditPanel = !this.showEditPanel;
+    },
     primaryName(): string {
       if (this.place.name) {
         return this.place.name;
@@ -64,6 +99,16 @@ export default defineComponent({
     },
     phone(): string | undefined {
       return this.place.phone;
+    },
+    isEditable(): boolean {
+      return !!this.osmEditUrl();
+    },
+    osmEditUrl(): string | undefined {
+      try {
+        return this.place.id.editOSMVenueUrl()?.toString();
+      } catch {
+        return undefined;
+      }
     },
   },
   components: { TravelModeBar, PlaceField },
