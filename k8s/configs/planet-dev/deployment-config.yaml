@@ -3,17 +3,17 @@ kind: ConfigMap
 metadata:
   name: deployment-config
 data:
-  area: maps-earth-planet-v1.24
+  area: maps-earth-planet-v1.25
   public-url: https://maps.earth
   bbox: ""
   enable-transit-routing: "1"
   natural-earth-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/natural_earth.mbtiles
-  mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.24/maps-earth-planet-v1.24.mbtiles
-  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.24/maps-earth-planet-v1.24.valhalla.tar.zst
-  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.24/maps-earth-planet-v1.24.placeholder.tar.zst
-  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.24/maps-earth-planet-v1.24.elasticsearch.tar.zst
-  otp-graph-urls.pugetsound: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.24/PugetSound.graph.obj.zst
-  otp-graph-urls.losangeles: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.24/LosAngeles.graph.obj.zst
+  mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.mbtiles
+  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.valhalla.tar.zst
+  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.placeholder.tar.zst
+  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.elasticsearch.tar.zst
+  otp-graph-urls.pugetsound: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.25/PugetSound.graph.obj.zst
+  otp-graph-urls.losangeles: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/0.4.0/maps-earth-planet-v1.25/LosAngeles.graph.obj.zst
   pelias-config-json: |
     {
       "logger": {

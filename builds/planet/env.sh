@@ -1,4 +1,4 @@
-export HEADWAY_AREA=maps-earth-planet-v1.24
+export HEADWAY_AREA=maps-earth-planet-v1.25
 export HEADWAY_AREA_TAG="$HEADWAY_AREA"
 export HEADWAY_PUBLIC_URL=https://maps.earth
 export HEADWAY_SERVICE_PORT=30400
