@@ -7,10 +7,15 @@
     <q-btn
       class="col-1"
       icon="content_copy"
+      v-if="copyText"
       unelevated
       :ripple="false"
       size="sm"
-      @click="copyToClipboard(copyText)"
+      @click="
+        if (copyText) {
+          copyToClipboard(copyText);
+        }
+      "
     />
   </q-item>
 </template>
@@ -25,10 +30,7 @@ export default defineComponent({
       type: String,
       required: true,
     },
-    copyText: {
-      type: String,
-      required: true,
-    },
+    copyText: String,
   },
   methods: {
     copyToClipboard(text: string): void {

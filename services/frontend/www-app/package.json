@@ -18,6 +18,7 @@
     "@quasar/extras": "^1.0.0",
     "lodash": "^4.17.21",
     "maplibre-gl": "^2.3.0",
+    "opening_hours": "^3.8.0",
     "quasar": "^2.6.0",
     "vite-plugin-rewrite-all": "^1.0.0",
     "vue": "^3.0.0",

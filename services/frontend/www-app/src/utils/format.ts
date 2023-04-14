@@ -73,8 +73,27 @@ export function formatLngLatAsLatLng(point: LngLatLike): string {
   return `${fmt(lngLat.lat)}°${northOrSouth}, ${fmt(lngLat.lng)}°${eastOrWest}`;
 }
 
-export function formatTime(millis: number): string {
-  return new Date(millis).toLocaleTimeString([], { timeStyle: 'short' });
+export function formatTime(dateArgs: number | string | Date): string {
+  return new Date(dateArgs).toLocaleTimeString([], { timeStyle: 'short' });
+}
+
+/**
+ * Very concise time formatting
+ *
+ * 10:00 AM -> 10 AM
+ * 10:01 AM -> 10:01 AM (unchanged when minutes are non-zero)
+ */
+export function formatTimeTruncatingEmptyMinutes(
+  dateArgs: number | string | Date
+): string {
+  // This is admittedly a hack, and probably doesn't won't improve some
+  // localizations, but I don't know of a better way that doesn't break other
+  // localizations.
+  return formatTime(dateArgs).replace(':00', '');
+}
+
+export function dayOfWeek(dateArgs: number | string | Date): string {
+  return new Date(dateArgs).toLocaleString([], { weekday: 'short' });
 }
 
 export function kilometersToMiles(kilometers: number): number {
