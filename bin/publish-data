@@ -2,13 +2,14 @@
 
 function usage() {
   cat << EOF
-usage: $0 <site.env>
+usage: $0 <build-dir>
 examples:
-    $0 builds/planet/env.sh
+    $0 planet
+    $0 seattle
 
 Use an upload prefix other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev $0 builds/planet/env.sh
-    HEADWAY_DATA_TAG=dev $0 builds/seattle/env.sh
+    HEADWAY_DATA_TAG=dev $0 planet
+    HEADWAY_DATA_TAG=dev $0 seattle
 EOF
 }
 
@@ -65,7 +66,11 @@ fi
 
 export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
 
-DEPLOYMENT_ENV_FILE="$1"
+DEPLOYMENT_ENV_FILE="${REPO_ROOT}/builds/$1/env.sh"
+if [ ! -f "$DEPLOYMENT_ENV_FILE" ]; then
+    echo "missing file ${DEPLOYMENT_ENV_FILE}"
+    exit 1
+fi
 source "$DEPLOYMENT_ENV_FILE"
 
 set -o nounset
