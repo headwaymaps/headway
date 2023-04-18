@@ -7,12 +7,12 @@ data:
   public-url: https://seattle.maps.earth
   bbox: "-122.462 47.394 -122.005 47.831"
   enable-transit-routing: "1"
-  natural-earth-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/natural_earth.mbtiles
-  mbtiles-source-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.mbtiles
-  valhalla-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.valhalla.tar.zst
-  placeholder-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.placeholder.tar.zst
-  elasticsearch-artifact-url: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.elasticsearch.tar.zst
-  otp-graph-urls.seattle: https://storage.us-west-or.cloud.ovh.us/v1/AUTH_7f440916c359460f8ca71f785ffe3f28/maps.earth/dev/seattle-latest/Seattle.graph.obj.zst
+  natural-earth-source-url: https://data.example.com/dev/natural_earth.mbtiles
+  mbtiles-source-url: https://data.example.com/dev/seattle-latest/Seattle.mbtiles
+  valhalla-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.valhalla.tar.zst
+  placeholder-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.placeholder.tar.zst
+  elasticsearch-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.elasticsearch.tar.zst
+  otp-graph-urls.seattle: https://data.example.com/dev/seattle-latest/Seattle.graph.obj.zst
   pelias-config-json: |
     {
       "logger": {

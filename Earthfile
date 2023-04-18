@@ -62,8 +62,9 @@ save-extract:
 save-transit-zones:
     ARG --required area
     ARG --required transit_zones
+    ARG otp_build_config
     BUILD +save-gtfs-zones --area=${area} --transit_zones=${transit_zones}
-    BUILD +save-otp-zones --area=${area} --transit_zones=${transit_zones}
+    BUILD +save-otp-zones --area=${area} --transit_zones=${transit_zones} --otp_build_config=${otp_build_config}
 
 save-gtfs-zones:
     FROM +save-base
@@ -91,8 +92,9 @@ save-otp-zones:
     FROM +save-base
     ARG --required area
     ARG --required transit_zones
+    ARG otp_build_config
     FOR transit_feeds IN $transit_zones
-        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=1
+        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=1 --otp_build_config=${otp_build_config}
     END
 
 save-otp:
@@ -100,6 +102,7 @@ save-otp:
     ARG --required area
     ARG --required transit_feeds
     ARG --required clip_to_gtfs
+    ARG otp_build_config
 
     # When working with a very large (e.g. planet sized) osm.pbf, we can't support
     # transit for the entire thing, but we can support smaller transit zones within the
@@ -117,7 +120,12 @@ save-otp:
     COPY +cache-buster/todays_date .
     ARG cache_key=$(cat todays_date)
 
-    COPY (+otp-build/graph.obj --area=${area} --clip_to_gtfs=${clip_to_gtfs} --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /graph.obj
+    COPY (+otp-build/graph.obj --area=${area} \
+                               --clip_to_gtfs=${clip_to_gtfs} \
+                               --transit_feeds=${transit_feeds} \
+                               --cache_key=${cache_key} \
+                               --otp_build_config=${otp_build_config} \
+    ) /graph.obj
 
     RUN zstd /graph.obj
     SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${output_name}-${cache_key}.graph.obj.zst
@@ -504,7 +512,8 @@ gtfs-build:
 otp-base:
     # The version tag is ignored when sha256 is specified, but I'm leaving it
     # in to document which "release" our sha pins to.
-    FROM opentripplanner/opentripplanner:2.2.0@sha256:c908f27d57be586c814c2b9b2356ab8f53da3c6bce3feaa48138cea750a81f0a
+    # FROM opentripplanner/opentripplanner:2.2.0@sha256:c908f27d57be586c814c2b9b2356ab8f53da3c6bce3feaa48138cea750a81f0a
+    FROM opentripplanner/opentripplanner:2.3.0_2023-03-29T12-20@sha256:688ff3116a8e782fcb6ba8fcbbf5f671813dbcd92686078d5b5475d6776b2bb4
 
     RUN mkdir /var/opentripplanner
 
@@ -523,14 +532,22 @@ otp-build:
     ARG --required transit_feeds
     ARG --required cache_key
 
+    # Optional path to configuration that specifies non-default build options
+    # See https://docs.opentripplanner.org/en/v2.2.0/BuildConfiguration
+    ARG otp_build_config
+
     WORKDIR /var/opentripplanner
 
     RUN apt-get update \
         && apt-get install -y --no-install-recommends zstd \
         && rm -rf /var/lib/apt/lists/*
 
+    IF [ -n "$otp_build_config" ]
+        COPY "${otp_build_config}" /var/opentripplanner/build-config.json
+    END
+
     IF [ -n "$clip_to_gtfs" ]
-        COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache-key=${cache_key}) bbox.txt
+        COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache_key=${cache_key}) bbox.txt
         ARG clip_bbox=$(cat bbox.txt)
         COPY (+extract/data.osm.pbf --area=${area} --clip_bbox=${clip_bbox}) /var/opentripplanner
     ELSE

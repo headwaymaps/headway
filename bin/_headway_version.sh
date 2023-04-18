@@ -15,14 +15,18 @@
 # Tracks backwards incompatibilities between the built assets (map tiles, OTP
 # graph, etc.)
 #
-# Major bumps to HEADWAY_DATA_TAG mean new versions of assets must
-# be built and deployed before the corresponding containers can be deployed.
-export HEADWAY_DATA_TAG=0.3.0
+# Major bumps to HEADWAY_DATA_TAG mean new versions of assets must be built and
+# deployed before the corresponding containers can be deployed.
+#
+# A bump in the DATA tag pretty much always implies a bump in the CONTAINER
+# tag, but not necessarily vice-versa.
+export HEADWAY_DATA_TAG=0.4.0
 
 # # Schema change Log
 #
-# This documents the changes to the schema tag's over time, not *every* change
-# in headway.
+# ## DATA v0.4.0, CONTAINER v0.5.0
+#
+# BREAKING DATA: Updated OTP container/build, regenerated artifact
 #
 # ## DATA v0.3.0, CONTAINER v0.4.0
 #
