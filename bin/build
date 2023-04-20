@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+bin_name=$(basename $0)
+log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
+log_dir=/pool1/logs
+log_file="${log_dir}/${log_filename}"
+
+function with_log {
+  $@ > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
+}
+
+BUILD_CONFIG=$1
+if [ -z "$BUILD_CONFIG" ]; then
+    cat <<EOS
+$0 must specify build config
+e.g.
+    $0 planet
+    $0 seattle
+EOS
+    exit 1
+fi
+shift
+
+EARTHLY_ARGS=${@:1}
+
+# This planet job requires that you've previously downloaded the planet file into the repository root
+CONFIG_DIR="builds/$BUILD_CONFIG"
+source "${CONFIG_DIR}/env.sh"
+
+with_log earthly $EARTHLY_ARGS -P +build --area="$HEADWAY_AREA" --countries="$HEADWAY_COUNTRIES"
+
+bin/build-transit "$BUILD_CONFIG" $EARTHLY_ARGS
+

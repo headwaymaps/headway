@@ -1,17 +1,25 @@
 #!/bin/bash
 
-set -xe
-set -o nounset
+set -e
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
 
+BUILD_CONFIG=$1
+if [ -z "$BUILD_CONFIG" ]; then
+    echo "$0 must specify build config"
+    echo "e.g. $0 planet"
+    exit 1
+fi
+shift
+
+set -o nounset
+
 EARTHLY_ARGS=${@:1}
 
-# This job assumes you've already downloaded the planet file into the repository root
-CONFIG_DIR="builds/planet"
-
+CONFIG_DIR="builds/$BUILD_CONFIG"
 source "${CONFIG_DIR}/env.sh"
+
 TRANSIT_ZONES=$(ls ${CONFIG_DIR}/gtfs/*.gtfs_feeds.csv)
 
 BUILD_CONFIG="${CONFIG_DIR}/gtfs/build-config.json"
