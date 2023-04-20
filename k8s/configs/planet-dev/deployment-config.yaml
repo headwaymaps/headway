@@ -7,13 +7,13 @@ data:
   public-url: https://maps.earth
   bbox: ""
   enable-transit-routing: "1"
-  natural-earth-source-url: https://data.example.com/0.4.0/natural_earth.mbtiles
-  mbtiles-source-url: https://data.example.com/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.mbtiles
-  valhalla-artifact-url: https://data.example.com/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.valhalla.tar.zst
-  placeholder-artifact-url: https://data.example.com/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.placeholder.tar.zst
-  elasticsearch-artifact-url: https://data.example.com/0.4.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.elasticsearch.tar.zst
-  otp-graph-urls.pugetsound: https://data.example.com/0.4.0/maps-earth-planet-v1.25/PugetSound.graph.obj.zst
-  otp-graph-urls.losangeles: https://data.example.com/0.4.0/maps-earth-planet-v1.25/LosAngeles.graph.obj.zst
+  natural-earth-source-url: https://data.example.com/0.5.0/natural_earth.mbtiles
+  mbtiles-source-url: https://data.example.com/0.5.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.mbtiles
+  valhalla-artifact-url: https://data.example.com/0.5.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.valhalla.tar.zst
+  placeholder-artifact-url: https://data.example.com/0.5.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.placeholder.tar.zst
+  elasticsearch-artifact-url: https://data.example.com/0.5.0/maps-earth-planet-v1.25/maps-earth-planet-v1.25.elasticsearch.tar.zst
+  otp-graph-urls.pugetsound: https://data.example.com/0.5.0/maps-earth-planet-v1.25/PugetSound.graph.obj.zst
+  otp-graph-urls.losangeles: https://data.example.com/0.5.0/maps-earth-planet-v1.25/LosAngeles.graph.obj.zst
   pelias-config-json: |
     {
       "logger": {
