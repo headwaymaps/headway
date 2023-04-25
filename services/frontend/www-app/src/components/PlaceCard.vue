@@ -1,7 +1,7 @@
 <template>
   <q-card-section>
     <div class="text-subtitle1">
-      {{ primaryName() }}
+      {{ primaryName }}
     </div>
   </q-card-section>
   <q-card-section>
@@ -9,20 +9,20 @@
   </q-card-section>
   <q-card-section>
     <place-field
-      v-if="secondaryName()"
-      :copy-text="secondaryName()!"
+      v-if="secondaryName"
+      :copy-text="secondaryName"
       icon="location_on"
     >
-      {{ secondaryName() }}
+      {{ secondaryName }}
     </place-field>
-    <place-field v-if="website()" :copy-text="website()!" icon="public">
-      <a :href="website()">{{ website() }}</a>
+    <place-field v-if="website" :copy-text="website" icon="public">
+      <a :href="website">{{ website }}</a>
     </place-field>
-    <place-field v-if="phone()" :copy-text="phone()!" icon="phone">
-      <a :href="'tel:' + phone()">{{ phone() }}</a>
+    <place-field v-if="phone" :copy-text="phone" icon="phone">
+      <a :href="'tel:' + phone">{{ phone }}</a>
     </place-field>
-    <place-field v-if="openingHours()" icon="access_time">
-      <opening-hours-status :opening-hours="openingHours()!" />
+    <place-field v-if="openingHours" icon="access_time">
+      <opening-hours-status :opening-hours="openingHours" />
       <q-btn
         flat
         size="sm"
@@ -37,11 +37,11 @@
         }}
       </q-btn>
     </place-field>
-    <place-field v-if="openingHours() && showMoreOpeningHours" icon="none">
-      <opening-hours-table :opening-hours="openingHours()!" />
+    <place-field v-if="openingHours && showMoreOpeningHours" icon="none">
+      <opening-hours-table :opening-hours="openingHours" />
     </place-field>
     <div
-      v-if="isEditable()"
+      v-if="isEditable"
       :style="{
         margin: '8px -16px',
         padding: '8px 16px',
@@ -61,7 +61,7 @@
             flat
             :ripple="false"
             icon-right="launch"
-            :href="osmEditUrl()"
+            :href="osmEditUrl"
             >{{ $t('edit_poi_on_osm_button') }}</q-btn
           >
         </div>
@@ -112,6 +112,8 @@ export default defineComponent({
     didToggleShowMoreOpeningHours() {
       this.showMoreOpeningHours = !this.showMoreOpeningHours;
     },
+  },
+  computed: {
     primaryName(): string {
       if (this.place.name) {
         return this.place.name;
@@ -138,11 +140,10 @@ export default defineComponent({
     openingHours(): OpeningHours | undefined {
       if (this.place.openingHours) {
         try {
-          const openingHours = OpeningHours.fromOsmString(
+          return OpeningHours.fromOsmString(
             this.place.openingHours,
             this.rightNow
           );
-          return openingHours;
         } catch (error) {
           console.warn(
             'Error parsing opening hours',
@@ -151,9 +152,10 @@ export default defineComponent({
           );
         }
       }
+      return undefined;
     },
     isEditable(): boolean {
-      return !!this.osmEditUrl();
+      return !!this.osmEditUrl;
     },
     osmEditUrl(): string | undefined {
       try {

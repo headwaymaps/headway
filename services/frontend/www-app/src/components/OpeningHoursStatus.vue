@@ -57,14 +57,14 @@ export default defineComponent({
       required: true,
     },
   },
-  data(): {
-    formattedTime?: string;
-  } {
-    return {
-      formattedTime: this.openingHours.nextChange
-        ? formatTimeTruncatingEmptyMinutes(this.openingHours.nextChange)
-        : undefined,
-    };
+  computed: {
+    formattedTime(): string | undefined {
+      if (this.openingHours.nextChange) {
+        return formatTimeTruncatingEmptyMinutes(this.openingHours.nextChange);
+      } else {
+        return undefined;
+      }
+    },
   },
   methods: {
     dayOfWeek,
