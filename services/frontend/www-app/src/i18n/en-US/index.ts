@@ -61,4 +61,14 @@ export default {
   edit_poi_on_osm_button: 'Edit on OpenStreetMap',
   edit_poi_about_osm:
     'This data is from OpenStreetMap, a community maintained mapping project. You can edit OpenStreetMap, and your edits will eventually be reflected here.',
+  opening_hours_is_open: 'Open',
+  opening_hours_is_open_until_$time: 'Open until {time}',
+  opening_hours_is_open_until_later_$day_$time: 'Open until {time} {day}',
+  opening_hours_is_open_until_tomorrow_$time: 'Open until {time} tomorrow',
+  opening_hours_is_closed: 'Closed',
+  opening_hours_is_closed_until_$time: 'Closed until {time}',
+  opening_hours_is_closed_until_later_$day_$time: 'Closed until {time} {day}',
+  opening_hours_is_closed_until_tomorrow_$time: 'Closed until {time} tomorrow',
+  opening_hours_show_more_times: 'Show hours',
+  opening_hours_hide_more_times: 'Hide hours',
 };

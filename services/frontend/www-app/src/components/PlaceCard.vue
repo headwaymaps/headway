@@ -1,7 +1,7 @@
 <template>
   <q-card-section>
     <div class="text-subtitle1">
-      {{ primaryName() }}
+      {{ primaryName }}
     </div>
   </q-card-section>
   <q-card-section>
@@ -9,20 +9,39 @@
   </q-card-section>
   <q-card-section>
     <place-field
-      v-if="secondaryName()"
-      :copy-text="secondaryName()!"
+      v-if="secondaryName"
+      :copy-text="secondaryName"
       icon="location_on"
     >
-      {{ secondaryName() }}
+      {{ secondaryName }}
     </place-field>
-    <place-field v-if="website()" :copy-text="website()!" icon="public">
-      <a :href="website()">{{ website() }}</a>
+    <place-field v-if="website" :copy-text="website" icon="public">
+      <a :href="website">{{ website }}</a>
     </place-field>
-    <place-field v-if="phone()" :copy-text="phone()!" icon="phone">
-      <a :href="'tel:' + phone()">{{ phone() }}</a>
+    <place-field v-if="phone" :copy-text="phone" icon="phone">
+      <a :href="'tel:' + phone">{{ phone }}</a>
+    </place-field>
+    <place-field v-if="openingHours" icon="access_time">
+      <opening-hours-status :opening-hours="openingHours" />
+      <q-btn
+        flat
+        size="sm"
+        :ripple="false"
+        @click="didToggleShowMoreOpeningHours"
+        style="margin-left: 8px"
+      >
+        {{
+          showMoreOpeningHours
+            ? $t('opening_hours_hide_more_times')
+            : $t('opening_hours_show_more_times')
+        }}
+      </q-btn>
+    </place-field>
+    <place-field v-if="openingHours && showMoreOpeningHours" icon="none">
+      <opening-hours-table :opening-hours="openingHours" />
     </place-field>
     <div
-      v-if="isEditable()"
+      v-if="isEditable"
       :style="{
         margin: '8px -16px',
         padding: '8px 16px',
@@ -42,7 +61,7 @@
             flat
             :ripple="false"
             icon-right="launch"
-            :href="osmEditUrl()"
+            :href="osmEditUrl"
             >{{ $t('edit_poi_on_osm_button') }}</q-btn
           >
         </div>
@@ -54,10 +73,13 @@
 <script lang="ts">
 import { i18n } from 'src/i18n/lang';
 import Place from 'src/models/Place';
+import OpeningHours from 'src/models/OpeningHours';
 import { formatLngLatAsLatLng } from 'src/utils/format';
 import { defineComponent } from 'vue';
-import TravelModeBar from './TravelModeBar.vue';
+import OpeningHoursTable from './OpeningHoursTable.vue';
+import OpeningHoursStatus from './OpeningHoursStatus.vue';
 import PlaceField from './PlaceField.vue';
+import TravelModeBar from './TravelModeBar.vue';
 
 export default defineComponent({
   name: 'PlaceCard',
@@ -69,14 +91,29 @@ export default defineComponent({
     },
   },
   data(): {
+    rightNow: Date;
     showEditPanel: boolean;
+    showMoreOpeningHours: boolean;
   } {
-    return { showEditPanel: false };
+    return {
+      // We memoize "now" to get consistent results
+      // and it can also be useful for debugging to fake the current time
+      // e.g. Sunday evening
+      // rightNow: new Date('2012/11/11 9:30 PM'),
+      rightNow: new Date(),
+      showEditPanel: false,
+      showMoreOpeningHours: false,
+    };
   },
   methods: {
     didToggleEdit(): void {
       this.showEditPanel = !this.showEditPanel;
     },
+    didToggleShowMoreOpeningHours() {
+      this.showMoreOpeningHours = !this.showMoreOpeningHours;
+    },
+  },
+  computed: {
     primaryName(): string {
       if (this.place.name) {
         return this.place.name;
@@ -100,8 +137,25 @@ export default defineComponent({
     phone(): string | undefined {
       return this.place.phone;
     },
+    openingHours(): OpeningHours | undefined {
+      if (this.place.openingHours) {
+        try {
+          return OpeningHours.fromOsmString(
+            this.place.openingHours,
+            this.rightNow
+          );
+        } catch (error) {
+          console.warn(
+            'Error parsing opening hours',
+            this.place.openingHours,
+            error
+          );
+        }
+      }
+      return undefined;
+    },
     isEditable(): boolean {
-      return !!this.osmEditUrl();
+      return !!this.osmEditUrl;
     },
     osmEditUrl(): string | undefined {
       try {
@@ -111,6 +165,11 @@ export default defineComponent({
       }
     },
   },
-  components: { TravelModeBar, PlaceField },
+  components: {
+    OpeningHoursStatus,
+    OpeningHoursTable,
+    PlaceField,
+    TravelModeBar,
+  },
 });
 </script>
