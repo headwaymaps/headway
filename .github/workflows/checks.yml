@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: earthly/actions-setup@v1
+        with:
+          # pinning to `latest` requires using the GH API, which causes spurious rate limiting errors
+          version: "0.7.4"
       - uses: actions/checkout@v2
       - run: earthly --version
       - run: earthly -P +build --area=Bogota
