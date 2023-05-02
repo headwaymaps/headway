@@ -7,7 +7,7 @@
               time: formattedTime,
             })
           : openingHours.nextChangeIsTomorrow
-          ? $t('opening_hours_is_open_until_tomorrow$time', {
+          ? $t('opening_hours_is_open_until_tomorrow_$time', {
               time: formattedTime,
             })
           : $t('opening_hours_is_open_until_later_$day_$time', {
