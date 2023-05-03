@@ -115,5 +115,8 @@ export default defineComponent({
     appClass: String,
   },
   components: { BaseMap },
+  mounted() {
+    this.$q.screen.setSizes({ md: 800 });
+  },
 });
 </script>

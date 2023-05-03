@@ -124,9 +124,9 @@ export default defineComponent({
   },
   methods: {
     backIcon(): string {
-      if (this.$q.platform.is.desktop) {
+      if (this.$q.screen.md) {
         return 'close';
-      } else if (this.$q.platform.is.ios) {
+      } else if (this.$q.platform.is.mac || this.$q.platform.is.ios) {
         return 'arrow_back_ios';
       } else {
         return 'arrow_back';

@@ -7,10 +7,7 @@
     />
   </div>
 
-  <div
-    :class="'bottom-card' + (selectedPlace ? ' selected-place' : '')"
-    ref="bottomCard"
-  >
+  <div class="bottom-card" ref="bottomCard">
     <q-linear-progress v-if="isLoading" indeterminate />
     <div class="selected-place-card" v-if="selectedPlace">
       <place-card
@@ -23,7 +20,7 @@
         "
       />
     </div>
-    <q-list class="search-results">
+    <q-list class="search-results" v-if="$q.screen.md || !selectedPlace">
       <search-list-item
         v-for="place in searchResults?.places"
         v-bind:key="place.id.serialized()"
@@ -40,19 +37,9 @@
 </template>
 
 <style lang="scss">
-.selected-place .search-results {
-  @media screen and (max-width: 799px) {
-    // hide search results while showing selected place on mobile
-    display: none;
-  }
-}
-
 .selected-place-card {
-  @media screen and (max-width: 799px) {
-    // on mobile
-  }
   @media screen and (min-width: 800px) {
-    // on desktop
+    // on "desktop" layout
     position: absolute;
     z-index: 1;
     left: var(--left-panel-width);
@@ -126,16 +113,21 @@ export default defineComponent({
 
       let options: FlyToOptions | undefined;
 
-      // This abuses the fact that the "selected place card" is the same
-      // width as the bottomCard. We could use $refs.selectedPlaceCard,
-      // but it might not be visible to measure yet.
-      if (this.$refs.bottomCard) {
-        let placeCard: HTMLElement = this.$refs.bottomCard as HTMLElement;
-        let xOffset = placeCard.offsetWidth / 2;
+      if (!this.$refs.bottomCard) {
+        console.error('bottomCard was unset');
+        return;
+      }
+
+      let bottomCard: HTMLElement = this.$refs.bottomCard as HTMLElement;
+      if (this.$q.screen.md) {
+        // This abuses the fact that the "selected place card" is the same
+        // width as the bottomCard. We could use $refs.selectedPlaceCard,
+        // but it might not be visible to measure yet.
+        let xOffset = bottomCard.offsetWidth;
         if (place.bbox) {
-          options = { offset: [xOffset / 2, 0] };
+          options = { offset: [xOffset / 4, 0] };
         } else {
-          options = { offset: [xOffset, 0] };
+          options = { offset: [xOffset / 2, 0] };
         }
       }
       map.flyToPlace(place, options);
