@@ -60,7 +60,7 @@ export default defineComponent({
     clickedManeuver: function (maneuver: ValhallaRouteLegManeuver) {
       const location = this.geometry.coordinates[maneuver.begin_shape_index];
       let coord: [number, number] = [location[0], location[1]];
-      getBaseMap()?.flyTo(coord, 16);
+      getBaseMap()?.flyTo(coord, { zoom: 16 });
     },
   },
 });

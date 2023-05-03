@@ -127,7 +127,7 @@ export default defineComponent({
     formatTime,
     formatDuration,
     clickedStep: (step: Step): void => {
-      getBaseMap()?.flyTo(step.position, 16);
+      getBaseMap()?.flyTo(step.position, { zoom: 16 });
     },
   },
 });
