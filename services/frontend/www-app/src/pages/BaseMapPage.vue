@@ -15,7 +15,7 @@
 // override some styles from the default layout.
 .front-page {
   .top-card {
-    @media screen and (max-width: 800px) {
+    @media screen and (max-width: 799px) {
       width: 100%;
       padding: 16px;
       border-bottom: solid #ccc 1px;

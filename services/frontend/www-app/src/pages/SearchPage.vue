@@ -41,14 +41,14 @@
 
 <style lang="scss">
 .selected-place .search-results {
-  @media screen and (max-width: 800px) {
+  @media screen and (max-width: 799px) {
     // hide search results while showing selected place on mobile
     display: none;
   }
 }
 
 .selected-place-card {
-  @media screen and (max-width: 800px) {
+  @media screen and (max-width: 799px) {
     // on mobile
   }
   @media screen and (min-width: 800px) {

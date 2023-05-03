@@ -79,7 +79,7 @@
 </template>
 <style lang="scss">
 // mobile layout
-@media screen and (max-width: 800px) {
+@media screen and (max-width: 799px) {
   .title-bar {
     flex-direction: row-reverse;
   }

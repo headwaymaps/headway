@@ -8,7 +8,7 @@
 <style lang="scss">
 .platform-ios {
   .app-container {
-    @media screen and (max-width: 800px) {
+    @media screen and (max-width: 799px) {
       height: -webkit-fill-available;
     }
   }
@@ -28,7 +28,7 @@
 
 .top-card {
   border-bottom: solid #ccc 1px;
-  @media screen and (max-width: 800px) {
+  @media screen and (max-width: 799px) {
     order: 1;
 
     box-shadow: 0px 0px 5px #00000088;
@@ -46,7 +46,7 @@
 
 .bottom-card {
   overflow-y: scroll;
-  @media screen and (max-width: 800px) {
+  @media screen and (max-width: 799px) {
     order: 3;
     width: 100%;
     box-shadow: 0px 0px 5px #00000088;
@@ -73,7 +73,7 @@
 #map {
   z-index: 0;
 
-  @media screen and (max-width: 800px) {
+  @media screen and (max-width: 799px) {
     // This is tall enough to keep the map UI from overlapping.
     // Ironically the "wide"/"desktop" layout is slightly less tall than the
     // "mobile optimized" layout, which only needs about 170px
