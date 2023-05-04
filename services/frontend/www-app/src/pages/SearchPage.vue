@@ -7,11 +7,22 @@
     />
   </div>
 
-  <div class="bottom-card">
+  <div class="bottom-card" ref="bottomCard">
     <q-linear-progress v-if="isLoading" indeterminate />
-    <q-list>
+    <div class="selected-place-card" v-if="selectedPlace">
+      <place-card
+        :place="selectedPlace"
+        :did-press-close="
+          () => {
+            selectedPlace = undefined;
+            boundMapToSearchResults();
+          }
+        "
+      />
+    </div>
+    <q-list class="search-results" v-if="$q.screen.md || !selectedPlace">
       <search-list-item
-        v-for="place in placeChoices"
+        v-for="place in searchResults?.places"
         v-bind:key="place.id.serialized()"
         :place="place"
         :active="place == selectedPlace"
@@ -25,15 +36,36 @@
   </div>
 </template>
 
+<style lang="scss">
+.selected-place-card {
+  @media screen and (min-width: 800px) {
+    // on "desktop" layout
+    position: absolute;
+    z-index: 1;
+    left: var(--left-panel-width);
+    margin-top: 16px;
+    margin-left: 16px;
+    border-radius: 4px;
+    width: var(--left-panel-width);
+    box-shadow: 0px 0px 5px #00000088;
+    background-color: white;
+  }
+}
+</style>
+
 <script lang="ts">
 import { baseMapPromise, getBaseMap } from 'src/components/BaseMap.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import SearchListItem from 'src/components/SearchListItem.vue';
+import PlaceCard from 'src/components/PlaceCard.vue';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
 import Markers from 'src/utils/Markers';
 import { supportsHover } from 'src/utils/misc';
 import { defineComponent } from 'vue';
+import { FlyToOptions, LngLatBoundsLike } from 'maplibre-gl';
+
+type SearchResults = { places: Place[]; bbox: LngLatBoundsLike | undefined };
 
 export default defineComponent({
   name: 'SearchPage',
@@ -44,19 +76,19 @@ export default defineComponent({
     },
   },
   data(): {
-    placeChoices: Place[];
+    searchResults?: SearchResults;
     selectedPlace?: Place;
     hoveredPlace?: Place;
     isLoading: boolean;
   } {
     return {
-      placeChoices: [],
+      searchResults: undefined,
       selectedPlace: undefined,
       hoveredPlace: undefined,
       isLoading: false,
     };
   },
-  components: { SearchBox, SearchListItem },
+  components: { PlaceCard, SearchBox, SearchListItem },
   methods: {
     searchBoxDidSubmitSearch(searchText: string): void {
       this.updateSearch(searchText);
@@ -78,7 +110,27 @@ export default defineComponent({
         console.error('map was unexpectedly nil');
         return;
       }
-      map.flyToPlace(place);
+
+      let options: FlyToOptions | undefined;
+
+      if (!this.$refs.bottomCard) {
+        console.error('bottomCard was unset');
+        return;
+      }
+
+      let bottomCard: HTMLElement = this.$refs.bottomCard as HTMLElement;
+      if (this.$q.screen.md) {
+        // This abuses the fact that the "selected place card" is the same
+        // width as the bottomCard. We could use $refs.selectedPlaceCard,
+        // but it might not be visible to measure yet.
+        let xOffset = bottomCard.offsetWidth;
+        if (place.bbox) {
+          options = { offset: [xOffset / 4, 0] };
+        } else {
+          options = { offset: [xOffset / 2, 0] };
+        }
+      }
+      map.flyToPlace(place, options);
     },
     didHoverSearchListItem(place?: Place): void {
       if (!supportsHover()) {
@@ -115,7 +167,7 @@ export default defineComponent({
     },
     async updateSearch(searchText: string): Promise<void> {
       if (searchText.length == 0) {
-        this.placeChoices = [];
+        this.searchResults = undefined;
         return;
       }
 
@@ -127,6 +179,8 @@ export default defineComponent({
       }
 
       let places: Place[] = [];
+      let bbox: LngLatBoundsLike | undefined = undefined;
+
       try {
         // The search endpoint results are worse for categorical searches like "coffee"
         // See: https://github.com/pelias/pelias/issues/938
@@ -135,7 +189,7 @@ export default defineComponent({
         // So for now we're using autocomplete. Otherwise I think it's too weird
         // to show such different results.
         this.isLoading = true;
-        this.placeChoices = [];
+        this.searchResults = undefined;
         const results = await PeliasClient.autocomplete(
           searchText,
           focus
@@ -148,7 +202,7 @@ export default defineComponent({
         } else if (results.bbox.length != 4) {
           console.error('unexpected bbox dimensions');
         } else {
-          map.fitBounds(results.bbox);
+          bbox = results.bbox;
         }
 
         for (const feature of results.features) {
@@ -164,8 +218,15 @@ export default defineComponent({
         console.warn('error with autocomplete', e);
       }
 
-      this.placeChoices = places;
+      this.searchResults = { places, bbox };
       this.renderPlacesOnMap();
+      this.boundMapToSearchResults();
+    },
+    async boundMapToSearchResults() {
+      let map = await baseMapPromise;
+      if (this.searchResults?.bbox) {
+        map.fitBounds(this.searchResults.bbox);
+      }
     },
     renderPlacesOnMap() {
       const map = getBaseMap();
@@ -175,7 +236,7 @@ export default defineComponent({
       }
 
       map.removeAllMarkers();
-      this.placeChoices.forEach((place: Place, idx: number) => {
+      this.searchResults?.places.forEach((place: Place, idx: number) => {
         if (place == this.selectedPlace || place == this.hoveredPlace) {
           return;
         }
@@ -201,7 +262,7 @@ export default defineComponent({
   },
   async unmounted(): Promise<void> {
     const map = await baseMapPromise;
-    this.placeChoices = [];
+    this.searchResults = undefined;
     map.removeAllMarkers();
   },
 });

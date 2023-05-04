@@ -27,7 +27,7 @@
 
 <style lang="scss">
 .steps-page-bottom-card {
-  @media screen and (max-width: 800px) {
+  @media screen and (max-width: 799px) {
     max-height: calc(100% - 350px);
   }
 }

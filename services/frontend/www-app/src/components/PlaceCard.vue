@@ -1,7 +1,17 @@
 <template>
   <q-card-section>
-    <div class="text-subtitle1">
-      {{ primaryName }}
+    <div class="text-subtitle1 title-bar" style="display: flex">
+      <span style="flex: 1">{{ primaryName }}</span>
+      <q-btn
+        v-if="didPressClose"
+        class="close-btn"
+        size="sm"
+        round
+        unelevated
+        :ripple="false"
+        :icon="backIcon()"
+        @click="() => didPressClose!()"
+      />
     </div>
   </q-card-section>
   <q-card-section>
@@ -43,8 +53,6 @@
     <div
       v-if="isEditable"
       :style="{
-        margin: '8px -16px',
-        padding: '8px 16px',
         backgroundColor: showEditPanel ? '#eaeaea' : undefined,
       }"
     >
@@ -69,6 +77,14 @@
     </div>
   </q-card-section>
 </template>
+<style lang="scss">
+// mobile layout
+@media screen and (max-width: 799px) {
+  .title-bar {
+    flex-direction: row-reverse;
+  }
+}
+</style>
 
 <script lang="ts">
 import { i18n } from 'src/i18n/lang';
@@ -89,6 +105,7 @@ export default defineComponent({
       type: Place,
       required: true,
     },
+    didPressClose: Function,
   },
   data(): {
     rightNow: Date;
@@ -106,6 +123,15 @@ export default defineComponent({
     };
   },
   methods: {
+    backIcon(): string {
+      if (this.$q.screen.md) {
+        return 'close';
+      } else if (this.$q.platform.is.mac || this.$q.platform.is.ios) {
+        return 'arrow_back_ios';
+      } else {
+        return 'arrow_back';
+      }
+    },
     didToggleEdit(): void {
       this.showEditPanel = !this.showEditPanel;
     },

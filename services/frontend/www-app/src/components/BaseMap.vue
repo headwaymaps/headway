@@ -143,8 +143,8 @@ export interface BaseMapInterface {
   getZoom: () => number;
   getCenter: () => LngLat;
   getBounds: () => LngLatBounds;
-  flyTo: (location: LngLatLike, zoom?: number) => void;
-  flyToPlace: (place: Place) => void;
+  flyTo: (location: LngLatLike, options?: FlyToOptions) => void;
+  flyToPlace: (place: Place, options?: FlyToOptions) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   setCursor: (key: string) => void;
   pushMarker: (key: string, marker: Marker) => void;
@@ -189,7 +189,7 @@ export const baseMapPromise = new Promise<BaseMapInterface>((resolver) => {
 export default defineComponent({
   name: 'BaseMap',
   data: function (): {
-    flyToLocation?: { center: LngLatLike; zoom?: number };
+    flyToOptions?: FlyToOptions;
     boundsToFit?: LngLatBoundsLike;
     markers: Map<string, Marker>;
     layers: string[];
@@ -198,7 +198,7 @@ export default defineComponent({
     touchHandlerIdx: number;
   } {
     return {
-      flyToLocation: undefined,
+      flyToOptions: undefined,
       boundsToFit: undefined,
       markers: new Map(),
       layers: [],
@@ -357,24 +357,30 @@ export default defineComponent({
         map.getCanvas().style.cursor = value;
       });
     },
-    flyToPlace(place: Place): void {
+    flyToPlace(place: Place, options?: FlyToOptions): void {
       if (place.bbox) {
+        const defaultOptions = {
+          maxZoom: 16,
+        };
+        options = { ...defaultOptions, ...(options || {}) };
         // prefer bounds when available so we don't "overzoom" on a large
         // entity like an entire city.
-        this.fitBounds(place.bbox, { maxZoom: 16 });
+        this.fitBounds(place.bbox, options);
       } else {
-        this.flyTo(place.point, 16);
+        const defaultOptions = {
+          maxZoom: 16,
+          zoom: 16,
+        };
+        options = { ...defaultOptions, ...(options || {}) };
+        this.flyTo(place.point, options);
       }
     },
-    flyTo: function (location: LngLatLike, zoom?: number): void {
+    flyTo: function (location: LngLatLike, options: FlyToOptions = {}): void {
       if (this.loaded) {
-        let flyToOptions: FlyToOptions = { center: location };
-        if (zoom) {
-          flyToOptions.zoom = zoom;
-        }
-        map?.flyTo(flyToOptions, { flying: true });
+        options['center'] = location;
+        map?.flyTo(options, { flying: true });
       } else {
-        this.$data.flyToLocation = { center: location, zoom: zoom };
+        this.$data.flyToOptions = options;
       }
     },
     fitBounds: function (
@@ -479,9 +485,10 @@ export default defineComponent({
 
     map.on('load', () => {
       this.loaded = true;
-      if (this.flyToLocation) {
-        this.flyTo(this.flyToLocation.center, this.flyToLocation.zoom);
-        this.flyToLocation = undefined;
+      if (this.flyToOptions) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        this.flyTo(this.flyToOptions.center!, this.flyToOptions);
+        this.flyToOptions = undefined;
       }
       if (this.boundsToFit) {
         this.fitBounds(this.boundsToFit);
