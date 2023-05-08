@@ -124,7 +124,7 @@ export default defineComponent({
   },
   methods: {
     backIcon(): string {
-      if (this.$q.screen.md) {
+      if (this.$q.screen.gt.sm) {
         return 'close';
       } else if (this.$q.platform.is.mac || this.$q.platform.is.ios) {
         return 'arrow_back_ios';

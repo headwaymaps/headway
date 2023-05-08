@@ -20,7 +20,7 @@
         "
       />
     </div>
-    <q-list class="search-results" v-if="$q.screen.md || !selectedPlace">
+    <q-list class="search-results" v-if="$q.screen.gt.sm || !selectedPlace">
       <search-list-item
         v-for="place in searchResults?.places"
         v-bind:key="place.id.serialized()"
@@ -119,7 +119,7 @@ export default defineComponent({
       }
 
       let bottomCard: HTMLElement = this.$refs.bottomCard as HTMLElement;
-      if (this.$q.screen.md) {
+      if (this.$q.screen.gt.sm) {
         // This abuses the fact that the "selected place card" is the same
         // width as the bottomCard. We could use $refs.selectedPlaceCard,
         // but it might not be visible to measure yet.
