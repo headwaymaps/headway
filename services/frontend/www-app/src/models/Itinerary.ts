@@ -160,7 +160,7 @@ export default class Itinerary implements Trip {
   }
 
   public get viaRouteFormatted(): string | undefined {
-    return this.legs.map((leg) => leg.shortName).join('→');
+    return this.legs.map((leg) => leg.shortName).join(' → ');
   }
 
   public get bounds(): LngLatBounds {

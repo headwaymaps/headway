@@ -2,7 +2,7 @@
   <q-item-label>
     {{ trip.startStopTimesFormatted() }}
   </q-item-label>
-  <q-item-label caption>
+  <q-item-label>
     {{ trip.viaRouteFormatted }}
   </q-item-label>
   <q-item-label caption :hidden="!active">
