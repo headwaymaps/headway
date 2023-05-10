@@ -12,7 +12,19 @@
       })
     }}
   </q-item-label>
+  <ul class="alert-list" :hidden="!active" v-if="trip.hasAlerts">
+    <li v-for="alert in trip.alerts" v-bind:key="JSON.stringify(alert)">
+      ⚠️ {{ alert.headerText }}
+    </li>
+  </ul>
 </template>
+<style lang="scss">
+.alert-list {
+  list-style: none;
+  padding: 0;
+}
+</style>
+
 <script lang="ts">
 import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';

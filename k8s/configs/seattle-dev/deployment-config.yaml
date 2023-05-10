@@ -12,7 +12,6 @@ data:
   valhalla-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.valhalla.tar.zst
   placeholder-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.placeholder.tar.zst
   elasticsearch-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.elasticsearch.tar.zst
-  otp-graph-urls.seattle: https://data.example.com/dev/seattle-latest/Seattle.graph.obj.zst
   pelias-config-json: |
     {
       "logger": {

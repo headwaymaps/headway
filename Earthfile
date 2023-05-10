@@ -95,6 +95,7 @@ save-otp-zones:
     ARG otp_build_config
     FOR transit_feeds IN $transit_zones
         BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=1 --otp_build_config=${otp_build_config}
+        BUILD +save-otp-router-config --transit_feeds=${transit_feeds}
     END
 
 save-otp:
@@ -422,6 +423,8 @@ cache-buster:
 gtfs-enumerate:
     FROM +gtfs-base
 
+    COPY ./services/gtfs/filter_feeds.py /gtfs/
+
     # Earthly caches computed ARGs - subsequent runs will use the cache_key
     # that was computed last time, unless something else has busted the cache.
     #
@@ -441,11 +444,9 @@ gtfs-enumerate:
     ARG --required area
     COPY (+bbox/bbox.txt --area=${area}) bbox.txt
     ARG bbox=$(cat bbox.txt)
-    ENV HEADWAY_BBOX=${bbox}
-    COPY ./services/gtfs/enumerate_gtfs_feeds.py /gtfs/
-    RUN python /gtfs/enumerate_gtfs_feeds.py mobilitydb.csv
+    RUN python /gtfs/filter_feeds.py --bbox="${bbox}" --gtfs-rt-service-alerts < mobilitydb.csv > gtfs_feeds.csv
 
-    SAVE ARTIFACT /gtfs_feeds/gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}-${cache_key}.gtfs_feeds.csv
+    SAVE ARTIFACT gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}-${cache_key}.gtfs_feeds.csv
 
 gtfs-compute-bbox:
     FROM rust
@@ -486,6 +487,20 @@ gtfs-get-mobilitydb:
     RUN curl 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media' > mobilitydb.csv
     SAVE ARTIFACT mobilitydb.csv mobilitydb.csv AS LOCAL "./data/mobilitydb-${cache_key}.csv"
 
+save-otp-router-config:
+    FROM +gtfs-base
+    ARG --required transit_feeds
+    ARG transit_zone=$(basename $transit_feeds | sed 's/.gtfs_feeds.csv//')
+
+    COPY "${transit_feeds}" gtfs_feeds.csv
+    COPY ./services/gtfs/filter_feeds.py /gtfs
+    COPY ./services/gtfs/otp_router_config.py /gtfs
+    WORKDIR /gtfs
+
+    RUN ./otp_router_config.py < gtfs_feeds.csv > router-config.json
+
+    SAVE ARTIFACT router-config.json /router-config.json AS LOCAL "./data/otp/${transit_zone}-router-config.json"
+
 gtfs-build:
     FROM +gtfs-base
     ARG --required transit_feeds
@@ -495,15 +510,16 @@ gtfs-build:
         && apt-get install -y --no-install-recommends zstd \
         && rm -rf /var/lib/apt/lists/*
 
-    COPY "${transit_feeds}" /gtfs/gtfs_feeds.csv
-    COPY ./services/gtfs/download_gtfs_feeds.py /gtfs/
+    COPY "${transit_feeds}" gtfs_feeds.csv
+    COPY ./services/gtfs/download_gtfs_feeds.py ./
 
     # re-run when cache_key changes
     RUN touch "cache-buster-${cache_key}"
 
-    RUN python /gtfs/download_gtfs_feeds.py
-    RUN cd /gtfs_feeds && ls *.zip | tar --zstd -cf /gtfs/gtfs.tar.zst --files-from -
+    RUN ./download_gtfs_feeds.py --output=downloads < gtfs_feeds.csv
+    RUN cd downloads && ls *.zip | tar --zstd -cf /gtfs/gtfs.tar.zst --files-from -
     SAVE ARTIFACT /gtfs/gtfs.tar.zst /gtfs.tar.zst
+
 
 ##############################
 # OpenTripPlanner

@@ -1,6 +1,7 @@
 import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import {
+  OTPAlert,
   OTPClient,
   OTPError,
   OTPErrorId,
@@ -160,7 +161,28 @@ export default class Itinerary implements Trip {
   }
 
   public get viaRouteFormatted(): string | undefined {
-    return this.legs.map((leg) => leg.shortName).join(' → ');
+    return this.legs
+      .map((leg) => {
+        if (leg.alerts.length > 0) {
+          return leg.shortName + '⚠️';
+        } else {
+          return leg.shortName;
+        }
+      })
+      .join(' → ');
+  }
+
+  public get alerts(): LegAlert[] {
+    return this.legs.map((l) => l.alerts).flat();
+  }
+
+  public get hasAlerts(): boolean {
+    for (const leg of this.legs) {
+      if (leg.alerts.length > 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public get bounds(): LngLatBounds {
@@ -282,5 +304,25 @@ export class ItineraryLeg {
 
   get endTime(): number {
     return this.raw.endTime;
+  }
+
+  get alerts(): LegAlert[] {
+    return this.raw.alerts?.map((a) => new LegAlert(a)) || [];
+  }
+}
+
+class LegAlert {
+  raw: OTPAlert;
+
+  constructor(otp: OTPAlert) {
+    this.raw = otp;
+  }
+
+  get headerText(): string {
+    return this.raw.alertHeaderText;
+  }
+
+  get descriptionText(): string {
+    return this.raw.alertDescriptionText;
   }
 }

@@ -23,8 +23,13 @@ spec:
             - name: OTP_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
-                  name: deployment-config
-                  key: otp-graph-urls.pugetsound
+                  name: otp-pugetsound-config
+                  key: graph-url
+            - name: OTP_ROUTER_CONFIG_JSON
+              valueFrom:
+                configMapKeyRef:
+                  name: otp-pugetsound-config
+                  key: router-config-json
           resources:
             limits:
               memory: 128Mi

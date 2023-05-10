@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otp-losangeles-config
+data:
+  graph-url: https://data.example.com/0.5.0/maps-earth-planet-v1.25/LosAngeles.graph.obj.zst
+  router-config-json: ""
+
