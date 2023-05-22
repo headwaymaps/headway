@@ -31,7 +31,7 @@ def main():
         updater = {
             "feedId": "headway-" + feed["static_reference"],
             "type": "real-time-alerts",
-            "frequencySec": 30,
+            "frequencySec": 300,
             "url": feed["urls.direct_download"],
         }
         updaters.append(updater)
