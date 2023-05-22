@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otp-seattle-config
+data:
+  graph-url: https://data.example.com/dev/seattle-latest/Seattle.graph.obj.zst
+  router-config-json: |
+    {
+      "configVersion": "2023-05-19",
+      "updaters": [
+        {
+          "feedId": "headway-1330",
+          "type": "real-time-alerts",
+          "frequencySec": 300,
+          "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+        }
+      ]
+    }
+

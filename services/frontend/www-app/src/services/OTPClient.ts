@@ -50,6 +50,16 @@ export type OTPItineraryLeg = {
   routeColor?: string;
   from: { name: string; lat: number; lon: number };
   to: { name: string; lat: number; lon: number };
+  alerts: OTPAlert[];
+};
+
+export type OTPAlert = {
+  alertHeaderText: string;
+  alertDescriptionText: string;
+  alertUrl: string;
+  //	null means unknown
+  effectiveStartDate: number | null;
+  effectiveEndDate: number;
 };
 
 // incomplete

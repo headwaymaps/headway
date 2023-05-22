@@ -6,17 +6,17 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 function usage() {
 cat << EOF
-usage: $0 <env-file> <output-dir>
+usage: $0 <config-dir> <output-dir>
 examples:
 
 Use containers and map-data version tags as specified in bin/_headway_version.sh
-    $0 planet.env planet
+    $0 builds/planet planet
 
 Use containers from a tag other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev $0 planet.env planet-dev
+    HEADWAY_DATA_TAG=dev $0 builds/planet planet-dev
 
 Use containers and map-data version tags other than whats specified in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 seattle.env seattle-dev
+    HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 builds/seattle seattle-dev
 EOF
 }
 
@@ -24,8 +24,10 @@ if [ ! $# -eq 2 ]; then
     usage
     exit 1
 fi
-DEPLOYMENT_ENV_FILE="$1"
+BUILD_CONFIG="$1"
 OUTPUT_DIR="$2"
+
+DEPLOYMENT_ENV_FILE="${BUILD_CONFIG}/env.sh"
 
 source "${REPO_ROOT}/.env"
 
@@ -49,9 +51,9 @@ indent4() { while IFS= read -r line; do printf '    %s\n' "$line"; done; }
 export PELIAS_CONFIG_JSON_YAML="|
 $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 
-render_template() {
-    file=$1
-    output="${2:-$(basename $file | sed 's/\.tpl$//')}"
+function render_template() {
+    local file=$1
+    local output="${2:-$(basename $file | sed 's/\.tpl$//')}"
 
     envsubst < "$file" > "${OUTPUT_DIR}/${output}"
 }
@@ -61,33 +63,55 @@ set -o nounset
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*
 
-export OTP_GRAPHS_YAML=""
-export OTP_ENDPOINTS_JSON="["
+function generate_transit() {
+  local otp_endpoints=""
+  local separator=""
+  for headway_transit_area in $HEADWAY_TRANSIT_AREAS; do
+      local otp_endpoint_name=$(generate_otp $headway_transit_area);
 
-separator=""
-for TRANSIT_AREA in $HEADWAY_TRANSIT_AREAS; do
-    TRANSIT_AREA_GRAPH_NAME=$TRANSIT_AREA;
+      otp_endpoints+="${separator}\"http://${otp_endpoint_name}:8000/otp/routers\""
+      separator=", "
+  done
+
+  export OTP_ENDPOINTS_JSON="[${otp_endpoints}]"
+  render_template "_template/transitmux-deployment.yaml.tpl"
+}
+
+function log() {
+    echo $@ 1>&2
+}
+
+function generate_otp() {
+    local headway_transit_area=$1
+    if [ -z "$headway_transit_area" ]; then
+        echo "must specify headway_transit_area to $0"
+        exit 1
+    fi
+
     # Lowercase transit area for idiomatic k8s names
-    TRANSIT_AREA=$(echo $TRANSIT_AREA | tr '[:upper:]' '[:lower:]')
-    export TRANSIT_AREA;
-
-    # intentional newline for YAML formatting
-    OTP_GRAPHS_YAML+="
-  otp-graph-urls.${TRANSIT_AREA}: ${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${TRANSIT_AREA_GRAPH_NAME}.graph.obj.zst"
-
+    export TRANSIT_AREA=$(echo $headway_transit_area | tr '[:upper:]' '[:lower:]')
+    export OTP_GRAPH_URL="${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${headway_transit_area}.graph.obj.zst"
     export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_AREA}"
-    OTP_ENDPOINTS_JSON+="${separator}\"http://${OTP_ENDPOINT_NAME}:8000/otp/routers\""
-    separator=", "
+
+    local router_config_file="${BUILD_CONFIG}/transit/${headway_transit_area}-router-config.json"
+    if [ -f "$router_config_file" ]; then
+        export OTP_ROUTER_CONFIG_JSON_YAML="|
+$(indent4 < "$router_config_file")"
+    else
+        # blank keys or "null" keys don't appear in the config map
+        # which causes an error in pod creation
+        export OTP_ROUTER_CONFIG_JSON_YAML='""'
+    fi
 
     for file in _template/opentripplanner*.tpl; do
         output=$(basename $file | sed 's/\.tpl$//' | sed "s/AREA/${TRANSIT_AREA}/")
         render_template $file $output
     done
-done
-OTP_ENDPOINTS_JSON+="]"
+    echo $OTP_ENDPOINT_NAME
+}
 
 if [[ "$HEADWAY_ENABLE_TRANSIT_ROUTING" != 0 ]]; then
-    render_template "_template/transitmux-deployment.yaml.tpl"
+    generate_transit
 fi
 
 # NOTE: we *do* want to enable the transitmux *service*, regardless

@@ -23,8 +23,13 @@ spec:
             - name: OTP_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
-                  name: deployment-config
-                  key: otp-graph-urls.${TRANSIT_AREA}
+                  name: otp-${TRANSIT_AREA}-config
+                  key: graph-url
+            - name: OTP_ROUTER_CONFIG_JSON
+              valueFrom:
+                configMapKeyRef:
+                  name: otp-${TRANSIT_AREA}-config
+                  key: router-config-json
           resources:
             limits:
               memory: 128Mi
