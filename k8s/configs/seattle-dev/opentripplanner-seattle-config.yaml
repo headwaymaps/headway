@@ -6,8 +6,14 @@ data:
   graph-url: https://data.example.com/dev/seattle-latest/Seattle.graph.obj.zst
   router-config-json: |
     {
-      "configVersion": "2023-05-19",
+      "configVersion": "2023-05-24",
       "updaters": [
+        {
+          "feedId": "headway-1330",
+          "type": "stop-time-updater",
+          "frequencySec": 60,
+          "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
+        },
         {
           "feedId": "headway-1330",
           "type": "real-time-alerts",
