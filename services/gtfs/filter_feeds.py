@@ -7,6 +7,8 @@ import sys
 import fileinput
 
 GTFS_RT_SERVICE_ALERTS = "sa"
+GTFS_RT_VEHICLE_POSITIONS = "vp"
+GTFS_RT_TRIP_UPDATES = "tu"
 
 
 def eprint(*args, **kwargs):

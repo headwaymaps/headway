@@ -1,6 +1,11 @@
 {
-  "configVersion": "2023-05-19",
   "updaters": [
+    {
+      "feedId": "headway-1330",
+      "type": "stop-time-updater",
+      "frequencySec": 60,
+      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
+    },
     {
       "feedId": "headway-1330",
       "type": "real-time-alerts",

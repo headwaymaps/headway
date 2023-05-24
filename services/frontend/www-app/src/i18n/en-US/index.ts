@@ -57,6 +57,9 @@ export default {
   trip_search_depart_at: 'Leave at',
   trip_search_arrive_by: 'Arrive by',
   trip_search_depart_now: 'Leave now',
+  departs_$timeDuration_from_now: 'in {timeDuration}',
+  departs_at_$location: 'from {location}',
+  transit_timeline_wait_for_transit_$timeDuration: 'wait up to {timeDuration}',
   edit_poi_button: 'Edit Details',
   edit_poi_on_osm_button: 'Edit on OpenStreetMap',
   edit_poi_about_osm:

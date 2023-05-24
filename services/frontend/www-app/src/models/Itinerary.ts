@@ -176,6 +176,10 @@ export default class Itinerary implements Trip {
     return this.legs.map((l) => l.alerts).flat();
   }
 
+  public get firstTransitLeg(): ItineraryLeg | undefined {
+    return this.legs.slice(0, 2).find((leg) => leg.transitLeg);
+  }
+
   public get hasAlerts(): boolean {
     for (const leg of this.legs) {
       if (leg.alerts.length > 0) {
@@ -304,6 +308,10 @@ export class ItineraryLeg {
 
   get endTime(): number {
     return this.raw.endTime;
+  }
+
+  get realTime(): boolean {
+    return this.raw.realTime;
   }
 
   get alerts(): LegAlert[] {
