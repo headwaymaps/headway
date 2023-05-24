@@ -12,8 +12,15 @@
         class="col-3 timeline-time-mode"
         :class="step.isDestination ? 'timeline-destination' : ''"
         style="text-align: right; padding-right: 6px"
-        >{{ step.time }}</q-item-section
       >
+        <span v-if="!step.isMovement && step.realTime">
+          <q-icon name="rss_feed" />
+          {{ step.leftColumn }}</span
+        >
+        <span v-else>
+          {{ step.leftColumn }}
+        </span>
+      </q-item-section>
       <q-item-section class="col-1">
         <div
           :class="step.timelineClasses"
@@ -104,7 +111,7 @@
 </style>
 
 <script lang="ts">
-import Itinerary from 'src/models/Itinerary';
+import Itinerary, { ItineraryLeg } from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
 import { formatDuration, formatTime } from 'src/utils/format';
 import { LngLat } from 'maplibre-gl';
@@ -112,7 +119,7 @@ import { getBaseMap } from 'src/components/BaseMap.vue';
 
 export default defineComponent({
   name: 'MultiModalSteps',
-  data: function () {
+  data(): { steps: Step[] } {
     return {
       steps: buildSteps(this.$props.trip),
     };
@@ -133,55 +140,78 @@ export default defineComponent({
 });
 
 type Step = {
-  time: string;
+  leftColumn: string;
   timeline: string;
   timelineClasses: string[];
   description: string;
   isMovement: boolean;
   isDestination: boolean;
+  realTime: boolean;
   position: LngLat;
 };
 
 function buildSteps(itinerary: Itinerary): Step[] {
   const firstLeg = itinerary.legs[0];
 
+  function pairwiseForEach(
+    list: ItineraryLeg[],
+    f: (prev: ItineraryLeg, current: ItineraryLeg | undefined) => void
+  ): void {
+    for (let idx = 0; idx < list.length; idx++) {
+      f(list[idx], list[idx + 1]);
+    }
+  }
+
   const originStep = {
-    time: formatTime(firstLeg.startTime),
+    leftColumn: formatTime(firstLeg.startTime),
     timeline: '',
     timelineClasses: ['timeline-node', 'timeline-origin'],
     description: firstLeg.sourceName,
     isMovement: false,
     isDestination: false,
     position: firstLeg.sourceLngLat,
+    realTime: firstLeg.realTime,
   };
 
-  let middleSteps = itinerary.legs.flatMap((leg) => {
-    return [
-      {
-        time: leg.shortName,
-        timeline: '',
-        timelineClasses: ['timeline-edge', `timeline-edge-${leg.mode}`],
-        description: formatDuration(leg.duration),
-        position: leg.sourceLngLat,
-        isMovement: true,
-        isDestination: false,
-      },
-      {
-        time: formatTime(leg.endTime),
+  let steps = [originStep];
+
+  pairwiseForEach(itinerary.legs, (prevLeg, currentLeg) => {
+    steps.push({
+      leftColumn: prevLeg.shortName,
+      timeline: '',
+      timelineClasses: ['timeline-edge', `timeline-edge-${prevLeg.mode}`],
+      description: formatDuration(prevLeg.duration),
+      position: prevLeg.sourceLngLat,
+      isMovement: true,
+      isDestination: false,
+      realTime: prevLeg.realTime,
+    });
+
+    if (currentLeg) {
+      steps.push({
+        leftColumn: formatTime(currentLeg.startTime),
         timeline: '',
         timelineClasses: ['timeline-node'],
-        description: leg.destinationName,
-        position: leg.destinationLngLat,
+        description: currentLeg.sourceName,
+        position: currentLeg.sourceLngLat,
         isMovement: false,
         isDestination: false,
-      },
-    ];
+        realTime: currentLeg.realTime,
+      });
+    } else {
+      steps.push({
+        leftColumn: formatTime(prevLeg.endTime),
+        timeline: '',
+        timelineClasses: ['timeline-node', 'timeline-destination'],
+        description: prevLeg.destinationName,
+        position: prevLeg.destinationLngLat,
+        isMovement: false,
+        isDestination: true,
+        realTime: prevLeg.realTime,
+      });
+    }
   });
 
-  const destinationStep = middleSteps[middleSteps.length - 1];
-  destinationStep.timelineClasses.push('timeline-destination');
-  destinationStep.isDestination = true;
-
-  return [originStep].concat(middleSteps);
+  return steps;
 }
 </script>
