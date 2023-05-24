@@ -62,8 +62,15 @@
             step.isDestination ? 'timeline-destination' : ''
           )
         "
-        >{{ step.description }}</q-item-section
-      >
+        >{{ step.description }}
+        <div v-if="step.waitTime > 60" class="timeline-wait-time">
+          {{
+            $t('transit_timeline_wait_for_transit_$timeDuration', {
+              timeDuration: formatDuration(step.waitTime / 1000),
+            })
+          }}
+        </div>
+      </q-item-section>
     </q-item>
   </q-list>
 </template>
@@ -108,6 +115,10 @@
 .timeline-description.timeline-destination {
   margin-top: 26px;
 }
+
+.timeline-wait-time {
+  opacity: 0.6;
+}
 </style>
 
 <script lang="ts">
@@ -146,8 +157,9 @@ type Step = {
   description: string;
   isMovement: boolean;
   isDestination: boolean;
-  realTime: boolean;
   position: LngLat;
+  realTime: boolean;
+  waitTime: number;
 };
 
 function buildSteps(itinerary: Itinerary): Step[] {
@@ -171,11 +183,16 @@ function buildSteps(itinerary: Itinerary): Step[] {
     isDestination: false,
     position: firstLeg.sourceLngLat,
     realTime: firstLeg.realTime,
+    waitTime: 0,
   };
 
   let steps = [originStep];
 
   pairwiseForEach(itinerary.legs, (prevLeg, currentLeg) => {
+    let waitTime = 0;
+    if (currentLeg) {
+      waitTime = currentLeg.startTime - prevLeg.endTime;
+    }
     steps.push({
       leftColumn: prevLeg.shortName,
       timeline: '',
@@ -185,6 +202,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
       isMovement: true,
       isDestination: false,
       realTime: prevLeg.realTime,
+      waitTime: waitTime,
     });
 
     if (currentLeg) {
@@ -197,6 +215,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
         isMovement: false,
         isDestination: false,
         realTime: currentLeg.realTime,
+        waitTime: 0,
       });
     } else {
       steps.push({
@@ -208,6 +227,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
         isMovement: false,
         isDestination: true,
         realTime: prevLeg.realTime,
+        waitTime: 0,
       });
     }
   });
