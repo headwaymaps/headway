@@ -657,7 +657,7 @@ transitmux-serve-image:
 valhalla-base-image:
     # The version tag is ignored when sha256 is specified, but I'm leaving it
     # in to document which "release" our sha pins to.
-    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.3.0@sha256:5915ee1d44b6ef17cdd3c9514fd636dcb836a250be83d9893f448bb28d1ccfcf
+    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.4.0@sha256:b6f20757c5a9d8bb432b53cb2923af36eb8908486d97fd1fdd114499a6d2a436
 
     USER root
     WORKDIR /tiles
