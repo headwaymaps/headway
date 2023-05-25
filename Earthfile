@@ -379,30 +379,25 @@ planetiler-download-mirrored-data:
     SAVE ARTIFACT /data/natural_earth_vector.sqlite.zip /natural_earth_vector.sqlite.zip
     SAVE ARTIFACT /data/water-polygons-split-3857.zip /water-polygons-split-3857.zip
 
-planetiler-download:
-    FROM +downloader-base
-    ARG PLANETILER_VERSION=v0.5.0
-    ARG PLANETILER_HASH=5f08d8f351751373084b1c2abd21bb38cbf66357dd2a02d2692d3561f16db70b
+planetiler-base:
+    # The version tag is ignored when sha256 is specified, but I'm leaving it in as documentation
+    FROM ghcr.io/onthegomap/planetiler:0.5.0@sha256:79981c8af5330b384599e34d90b91a2c01b141be2c93a53244d14c49e2758c3c
+    SAVE IMAGE planetiler-base:latest
 
-    RUN wget -nv -O /data/planetiler.jar https://github.com/onthegomap/planetiler/releases/download/${PLANETILER_VERSION}/planetiler.jar
-    RUN ls -l /data
-    RUN echo "${PLANETILER_HASH}  /data/planetiler.jar" | sha256sum --check
+planetiler-build-mbtiles:
+    FROM earthly/dind:alpine
 
-    SAVE ARTIFACT /data/planetiler.jar /planetiler.jar
-
-planetiler-image:
-    FROM +java-base
-    COPY +planetiler-download/planetiler.jar /planetiler/planetiler.jar
     COPY +planetiler-download-mirrored-data/lake_centerline.shp.zip /data/sources/
     COPY +planetiler-download-mirrored-data/natural_earth_vector.sqlite.zip /data/sources/
     COPY +planetiler-download-mirrored-data/water-polygons-split-3857.zip /data/sources/
 
-planetiler-build-mbtiles:
-    FROM +planetiler-image
-    WORKDIR /
     ARG --required area
     COPY (+extract/data.osm.pbf --area=${area}) /data/
-    RUN sha256sum /planetiler/planetiler.jar && java -jar /planetiler/planetiler.jar --force osm_path=/data/data.osm.pbf
+
+    WITH DOCKER --load planetiler-base:latest=+planetiler-base
+        RUN docker run -v=/data:/data planetiler-base:latest --force --osm_path=/data/data.osm.pbf
+    END
+
     SAVE ARTIFACT /data/output.mbtiles /output.mbtiles
 
 ##############################
@@ -870,20 +865,6 @@ downloader-base:
         && apt-get install -y --no-install-recommends wget ca-certificates zstd \
         && rm -rf /var/lib/apt/lists/*
     RUN mkdir /data
-
-java-base:
-    FROM debian:bullseye-slim
-    ENV TZ="America/New_York"
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-17-jre-headless sudo \
-        && rm -rf /var/lib/apt/lists/*
-
-java11-base:
-    FROM debian:bullseye-slim
-    ENV TZ="America/New_York"
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo zstd \
-        && rm -rf /var/lib/apt/lists/*
 
 save-base:
     FROM debian:bullseye-slim
