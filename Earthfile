@@ -684,8 +684,9 @@ valhalla-build-polylines:
 valhalla-init-image:
     FROM +valhalla-base-image
     USER root
+
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget zstd \
+        && apt-get install -y --no-install-recommends wget zstd \
         && rm -rf /var/lib/apt/lists/*
 
     USER valhalla
@@ -759,13 +760,11 @@ tileserver-build:
     SAVE ARTIFACT "$SPRITE_DIR"  /sprites
 
 tileserver-init-image:
-    FROM debian:bullseye-slim
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget \
-        && rm -rf /var/lib/apt/lists/*
+    FROM +downloader-base
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
+
     ARG --required tags
     FOR tag IN ${tags}
         SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:${tag}
