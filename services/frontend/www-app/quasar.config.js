@@ -100,8 +100,10 @@ module.exports = configure(function (/* ctx */) {
       open: true, // opens browser window automatically
       proxy: {
         '/tileserver': {
-          target: HEADWAY_HOST,
           changeOrigin: true,
+          target: HEADWAY_HOST,
+          // target: 'http://localhost:8000',
+          // rewrite: (path) => path.replace(/^\/tileserver/, ''),
         },
         '/pelias': {
           target: HEADWAY_HOST,
