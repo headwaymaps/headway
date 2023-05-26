@@ -577,32 +577,104 @@ export default defineComponent({
     });
 
     map.on('load', () => {
-      const layers = map.getStyle().layers;
-      if (layers) {
-        for (const layer of layers) {
-          if (layer.id.startsWith('place_') || layer.id.startsWith('poi_')) {
-            this.on('mouseover', layer.id, (event) => {
-              if (event.features && event.features[0]) {
-                this.setCursor('pointer');
-              } else {
-                console.warn('hovered place without feature', layer, event);
-              }
-            });
-            this.on('mouseout', layer.id, () => {
-              this.setCursor('');
-            });
-            this.on('click', layer.id, (event) => {
-              if (event.features && event.features[0]) {
-                this.touchHandlers
-                  .get('poi_click')
-                  ?.forEach((value) => value(event));
-              } else {
-                console.warn('clicked place without feature', layer, event);
-              }
-            });
-          }
+      const layers: LayerSpecification[] = map.getStyle().layers;
+      if (!layers) {
+        throw new Error('layers must not be empty');
+      }
+
+      for (const layer of layers) {
+        if (layer.id.startsWith('place_') || layer.id.startsWith('poi_')) {
+          this.on('mouseover', layer.id, (event) => {
+            if (event.features && event.features[0]) {
+              this.setCursor('pointer');
+            } else {
+              console.warn('hovered place without feature', layer, event);
+            }
+          });
+          this.on('mouseout', layer.id, () => {
+            this.setCursor('');
+          });
+          this.on('click', layer.id, (event) => {
+            if (event.features && event.features[0]) {
+              this.touchHandlers
+                .get('poi_click')
+                ?.forEach((value) => value(event));
+            } else {
+              console.warn('clicked place without feature', layer, event);
+            }
+          });
         }
       }
+
+      // Add 3-D buildings
+      const render3DZoomLevel = 15;
+      type LerpableValue =
+        | maplibregl.ExpressionSpecification
+        | maplibregl.ColorSpecification
+        | number;
+      function zoomLerp<T>(
+        unzoomedValue: LerpableValue,
+        zoomedValue: LerpableValue
+      ): maplibregl.DataDrivenPropertyValueSpecification<T> {
+        return [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          render3DZoomLevel,
+          // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
+          // we can delete this lint exception after upgrading
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          unzoomedValue as any,
+          render3DZoomLevel + 0.5,
+          // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
+          // we can delete this lint exception after upgrading
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          zoomedValue as any,
+        ];
+      }
+
+      // Rendering in 3D is cute, but it can also be annoying.
+      // Introducing a toggle button takes up valuable real estate.
+      // So the compromise is to have the 3D effect always on (when zoomed in)
+      // but to dampen in a bit so that the arguably "bad" side effects are minimized.
+      const heightDampeningFactor = 0.333;
+      map.addLayer(
+        {
+          id: 'subtle_3d_buildings',
+          source: 'openmaptiles',
+          'source-layer': 'building',
+          filter: ['!=', 'hide_3d', true],
+          type: 'fill-extrusion',
+          minzoom: render3DZoomLevel,
+          paint: {
+            'fill-extrusion-color': zoomLerp<maplibregl.ColorSpecification>(
+              'hsl(35, 8%, 85%)',
+              'hsl(35, 8%, 75%)'
+            ),
+            'fill-extrusion-height':
+              zoomLerp<maplibregl.ExpressionSpecification>(0, [
+                '*',
+                ['get', 'render_height'],
+                heightDampeningFactor,
+                // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
+                // we can delete this lint exception after upgrading
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ]) as any,
+            'fill-extrusion-base': zoomLerp<maplibregl.ExpressionSpecification>(
+              0,
+              ['*', ['get', 'render_min_height'], heightDampeningFactor]
+              // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
+              // we can delete this lint exception after upgrading
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ) as any,
+          },
+        },
+        // add 3-d building layer behind any symbol layer
+        layers.find(
+          (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
+        )?.id
+      );
+
       if (!baseMapMethods) {
         throw new Error('baseMapMethods must remain set');
       }
