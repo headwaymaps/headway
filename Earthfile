@@ -40,6 +40,7 @@ save:
     BUILD +save-valhalla --area=${area}
     BUILD +save-elasticsearch --area=${area} --countries=${countries}
     BUILD +save-placeholder --area=${area} --countries=${countries}
+    BUILD +save-interpolation --area=${area} --countries=${countries}
     BUILD +save-pelias-config --area=${area} --countries=${countries}
     BUILD +save-tileserver-natural-earth
 
@@ -156,9 +157,17 @@ save-placeholder:
     FROM +save-base
     ARG --required area
     ARG countries
-    COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
-    RUN tar --zstd -cf /placeholder.tar.zst -C /placeholder .
+    COPY (+pelias-prepare-interpolation/data --area=${area} --countries=${countries}) /data
+    RUN tar --zstd -cf /placeholder.tar.zst -C /data/placeholder .
     SAVE ARTIFACT /placeholder.tar.zst AS LOCAL ./data/${area}.placeholder.tar.zst
+
+save-interpolation:
+    FROM +save-base
+    ARG --required area
+    ARG countries
+    COPY (+pelias-prepare-interpolation/data --area=${area} --countries=${countries}) /data
+    RUN tar --zstd -cf /interpolation.tar.zst -C /data/interpolation .
+    SAVE ARTIFACT /interpolation.tar.zst AS LOCAL ./data/${area}.interpolation.tar.zst
 
 save-pelias-config:
     FROM +save-base
@@ -306,39 +315,51 @@ pelias-download-wof:
             --service pelias_whosonfirst
         RUN docker-compose run -T 'pelias_whosonfirst' bash ./bin/download
     END
-    SAVE ARTIFACT /data/whosonfirst /whosonfirst
+    SAVE ARTIFACT /data
 
 pelias-prepare-polylines:
     ARG --required area
     ARG countries
     FROM +pelias-import-base
+    COPY (+pelias-download-wof/data --countries=${countries}) /data
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
     RUN mkdir -p /data/polylines
     COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
-    SAVE ARTIFACT /data/polylines /polylines
+    SAVE ARTIFACT /data
 
 pelias-prepare-placeholder:
     ARG --required area
     ARG countries
     FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
+    COPY (+pelias-prepare-polylines/data --area=${area} --countries=${countries}) /data
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
     WITH DOCKER \
             --compose compose.yaml \
             --service pelias_placeholder
         RUN docker-compose run -T 'pelias_placeholder' bash -c "./cmd/extract.sh && ./cmd/build.sh"
     END
-    SAVE ARTIFACT /data/placeholder /placeholder
+    SAVE ARTIFACT /data
+
+pelias-prepare-interpolation:
+    ARG --required area
+    ARG countries
+    FROM +pelias-import-base
+    COPY (+pelias-prepare-placeholder/data --area=${area} --countries=${countries}) /data
+    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    WITH DOCKER \
+            --compose compose.yaml \
+            --service pelias_interpolation
+        RUN docker-compose run -T 'pelias_interpolation' bash -c "./docker_build.sh"
+    END
+    SAVE ARTIFACT /data
 
 pelias-import:
     ARG --required area
     ARG countries
     FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /data/polylines
+    COPY (+pelias-prepare-interpolation/data --area=${area} --countries=${countries}) /data
     RUN mkdir tools
     COPY services/pelias/wait.sh ./tools/wait.sh
-    RUN mkdir /data/elasticsearch
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
 
     WITH DOCKER --compose compose.yaml --service pelias_schema
@@ -672,8 +693,11 @@ valhalla-build:
 
     ARG --required area
 
+    USER valhalla
     USER root
     RUN mkdir -p /data/osm
+    RUN mkdir -p /data/valhalla
+    RUN chown -R valhalla /data
     COPY (+extract/data.osm.pbf --area=${area}) /data/osm/data.osm.pbf
 
     USER valhalla
@@ -684,6 +708,9 @@ valhalla-build:
 valhalla-build-polylines:
     FROM +valhalla-build
 
+    ARG --required area
+    COPY (+valhalla-build/tiles --area=${area}) /data/tiles
+    RUN tar -cf /data/valhalla/tiles.tar -C /data/tiles .
     RUN valhalla_export_edges valhalla.json > /tiles/polylines.0sv
 
     SAVE ARTIFACT /tiles/polylines.0sv

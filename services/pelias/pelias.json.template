@@ -22,7 +22,8 @@
     "services": {
       "placeholder": { "url": "http://pelias-placeholder:4100" },
       "libpostal": { "url": "http://pelias-libpostal:4400" },
-      "pip": { "url": "http://pelias-pip:4400" }
+      "pip": { "url": "http://pelias-pip:4400" },
+      "interpolation": { "url": "http://pelias-interpolation:3000" }
     }
   },
   "imports": {

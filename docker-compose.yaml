@@ -101,6 +101,15 @@ services:
     volumes:
       - "./data/:/bootstrap/:ro"
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
+  pelias-interpolation-init:
+    image: ghcr.io/headwaymaps/pelias-init:latest
+    env_file: .env
+    environment:
+      INTERPOLATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.interpolation.tar.zst
+    command: [ "/bin/bash", "/app/init_interpolation.sh" ]
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "pelias_interpolation_data:/data/interpolation"
   pelias-placeholder-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: .env
@@ -115,6 +124,19 @@ services:
     restart: always
     networks:
       - pelias_backend
+  pelias-interpolation:
+    image: pelias/interpolation
+    restart: always
+    networks:
+      - pelias_backend
+    volumes:
+      - "pelias_config_data:/config:ro"
+      - "pelias_interpolation_data:/data/interpolation"
+    depends_on:
+      pelias-config-init:
+        condition: service_completed_successfully
+      pelias-interpolation-init:
+        condition: service_completed_successfully
   pelias-api:
     image: pelias/api:master
     restart: always
@@ -177,6 +199,7 @@ networks:
   valhalla_frontend:
 volumes:
   pelias_config_data:
+  pelias_interpolation_data:
   pelias_placeholder_data:
   pelias_elasticsearch_data:
   tileserver_data:
