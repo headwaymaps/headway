@@ -90,8 +90,6 @@ module.exports = configure(function (/* ctx */) {
           .use('i18n')
           .loader('@intlify/vue-i18n-loader');
       },
-
-      vitePlugins: [['vite-plugin-rewrite-all']],
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer

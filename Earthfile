@@ -379,30 +379,39 @@ planetiler-download-mirrored-data:
     SAVE ARTIFACT /data/natural_earth_vector.sqlite.zip /natural_earth_vector.sqlite.zip
     SAVE ARTIFACT /data/water-polygons-split-3857.zip /water-polygons-split-3857.zip
 
-planetiler-download:
-    FROM +downloader-base
-    ARG PLANETILER_VERSION=v0.5.0
-    ARG PLANETILER_HASH=5f08d8f351751373084b1c2abd21bb38cbf66357dd2a02d2692d3561f16db70b
+planetiler-base:
+    # The version tag is ignored when sha256 is specified, but I'm leaving it in as documentation
+    FROM ghcr.io/onthegomap/planetiler:0.5.0@sha256:79981c8af5330b384599e34d90b91a2c01b141be2c93a53244d14c49e2758c3c
+    # FIXME: The 0.6.0 release is failing on planet builds (reproduced on daylight maps v1.26 w/ building and admin)
+    # The 0.5.0 release builds it successfully. The 0.6.0 release can build a smaller map (e.g. Seattle) without error.
+    # Failing with:
+    #     java.util.concurrent.ExecutionException: java.io.UncheckedIOException: com.google.protobuf.InvalidProtocolBufferException: Protocol message contained an invalid tag (zero).
+    # FROM ghcr.io/onthegomap/planetiler:0.6.0@sha256:e937250696efc60f57e7952180645c6e4b1888d70fd61d04f1e182c5489eaa1c
+    SAVE IMAGE planetiler-base:latest
 
-    RUN wget -nv -O /data/planetiler.jar https://github.com/onthegomap/planetiler/releases/download/${PLANETILER_VERSION}/planetiler.jar
-    RUN ls -l /data
-    RUN echo "${PLANETILER_HASH}  /data/planetiler.jar" | sha256sum --check
+planetiler-build-mbtiles:
+    FROM earthly/dind:alpine
 
-    SAVE ARTIFACT /data/planetiler.jar /planetiler.jar
-
-planetiler-image:
-    FROM +java-base
-    COPY +planetiler-download/planetiler.jar /planetiler/planetiler.jar
     COPY +planetiler-download-mirrored-data/lake_centerline.shp.zip /data/sources/
     COPY +planetiler-download-mirrored-data/natural_earth_vector.sqlite.zip /data/sources/
     COPY +planetiler-download-mirrored-data/water-polygons-split-3857.zip /data/sources/
 
-planetiler-build-mbtiles:
-    FROM +planetiler-image
-    WORKDIR /
     ARG --required area
     COPY (+extract/data.osm.pbf --area=${area}) /data/
-    RUN sha256sum /planetiler/planetiler.jar && java -jar /planetiler/planetiler.jar --force osm_path=/data/data.osm.pbf
+
+    # Instead of a docker-in-docker thing here, we could extend from the planetiler base image,
+    # but the Entrypoint feels a little strange to hardcode since it's not a typical binary.
+    # Presumably this is some automated java+docker build thing.
+    # "Entrypoint": [
+    #     "java",
+    #     "-cp",
+    #     "@/app/jib-classpath-file",
+    #     "com.onthegomap.planetiler.Main"
+    # ],
+    WITH DOCKER --load planetiler-base:latest=+planetiler-base
+        RUN docker run -v=/data:/data planetiler-base:latest --force --osm_path=/data/data.osm.pbf
+    END
+
     SAVE ARTIFACT /data/output.mbtiles /output.mbtiles
 
 ##############################
@@ -528,9 +537,7 @@ gtfs-build:
 otp-base:
     # The version tag is ignored when sha256 is specified, but I'm leaving it
     # in to document which "release" our sha pins to.
-    # FROM opentripplanner/opentripplanner:2.2.0@sha256:c908f27d57be586c814c2b9b2356ab8f53da3c6bce3feaa48138cea750a81f0a
-    # FROM opentripplanner/opentripplanner:2.3.0_2023-03-29T12-20@sha256:688ff3116a8e782fcb6ba8fcbbf5f671813dbcd92686078d5b5475d6776b2bb4
-    FROM opentripplanner/opentripplanner:2.3.0_2023-04-20T14-06@sha256:22446af06f1802bf8cb8d28daef234080c76c6b86a1e86e4a69beed5da9ecb7c
+    FROM opentripplanner/opentripplanner:2.3.0@sha256:630779e4b595462502b3813c1d6141da3e180d266d4a26371cc4ab6cb3390db0
 
     RUN mkdir /var/opentripplanner
 
@@ -657,7 +664,7 @@ transitmux-serve-image:
 valhalla-base-image:
     # The version tag is ignored when sha256 is specified, but I'm leaving it
     # in to document which "release" our sha pins to.
-    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.3.0@sha256:5915ee1d44b6ef17cdd3c9514fd636dcb836a250be83d9893f448bb28d1ccfcf
+    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.4.0@sha256:b6f20757c5a9d8bb432b53cb2923af36eb8908486d97fd1fdd114499a6d2a436
 
     USER root
     WORKDIR /tiles
@@ -691,8 +698,9 @@ valhalla-build-polylines:
 valhalla-init-image:
     FROM +valhalla-base-image
     USER root
+
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget zstd \
+        && apt-get install -y --no-install-recommends wget zstd \
         && rm -rf /var/lib/apt/lists/*
 
     USER valhalla
@@ -766,13 +774,11 @@ tileserver-build:
     SAVE ARTIFACT "$SPRITE_DIR"  /sprites
 
 tileserver-init-image:
-    FROM debian:bullseye-slim
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends ca-certificates wget \
-        && rm -rf /var/lib/apt/lists/*
+    FROM +downloader-base
 
     COPY ./services/tileserver/init.sh /app/init.sh
     CMD ["/app/init.sh"]
+
     ARG --required tags
     FOR tag IN ${tags}
         SAVE IMAGE --push ghcr.io/headwaymaps/tileserver-init:${tag}
@@ -872,20 +878,6 @@ downloader-base:
         && apt-get install -y --no-install-recommends wget ca-certificates zstd \
         && rm -rf /var/lib/apt/lists/*
     RUN mkdir /data
-
-java-base:
-    FROM debian:bullseye-slim
-    ENV TZ="America/New_York"
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-17-jre-headless sudo \
-        && rm -rf /var/lib/apt/lists/*
-
-java11-base:
-    FROM debian:bullseye-slim
-    ENV TZ="America/New_York"
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends openjdk-11-jre-headless sudo zstd \
-        && rm -rf /var/lib/apt/lists/*
 
 save-base:
     FROM debian:bullseye-slim
