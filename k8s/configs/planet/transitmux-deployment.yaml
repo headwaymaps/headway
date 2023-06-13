@@ -16,7 +16,7 @@ spec:
         - name: main
           image: ghcr.io/headwaymaps/transitmux:maps-earth-latest
           imagePullPolicy: Always
-          args: ["http://opentripplanner-pugetsound:8000/otp/routers", "http://opentripplanner-losangeles:8000/otp/routers"]
+          args: ["http://opentripplanner-barcelona:8000/otp/routers", "http://opentripplanner-losangeles:8000/otp/routers", "http://opentripplanner-pugetsound:8000/otp/routers"]
           ports:
             - containerPort: 8000
           resources:
