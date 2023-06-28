@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otp-barcelona-config
+data:
+  graph-url: https://data.example.com/0.6.0/maps-earth-planet-v1.26/Barcelona.graph.obj.zst
+  router-config-json: ""
+
