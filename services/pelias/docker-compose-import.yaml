@@ -1,7 +1,7 @@
 version: "3"
 services:
   pelias_schema:
-    image: pelias/schema:master
+    image: pelias/schema:es8
     container_name: pelias_schema
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -9,7 +9,7 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_whosonfirst:
-    image: pelias/whosonfirst:master
+    image: pelias/whosonfirst:es8
     container_name: pelias_whosonfirst
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -18,13 +18,13 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_polylines_prepare:
-    image: pelias/polylines:master
+    image: pelias/polylines:es8
     container_name: pelias_polylines
     volumes:
       - "./pelias.json:/code/pelias.json"
       - "${DATA_DIR}:/data"
   pelias_polylines_import:
-    image: pelias/polylines:master
+    image: pelias/polylines:es8
     container_name: pelias_polylines
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -40,7 +40,7 @@ services:
       - "./pelias.json:/code/pelias.json"
       - "${DATA_DIR}:/data"
   pelias_openstreetmap:
-    image: pelias/openstreetmap:master
+    image: pelias/openstreetmap:es8
     container_name: pelias_openstreetmap
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -49,7 +49,7 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_elasticsearch:
-    image: pelias/elasticsearch:7.16.1
+    image: pelias/elasticsearch:8.8.1
     container_name: pelias_elasticsearch
     volumes:
       - "${DATA_DIR}/elasticsearch:/usr/share/elasticsearch/data"
