@@ -3,7 +3,6 @@
 var spritezero = require('@mapbox/spritezero');
 var fs = require('fs');
 var queue = require('queue-async');
-var multiline = require('multiline');
 var path = require('path');
 var stringify = require('json-stable-stringify');
 var argv = require('minimist')(process.argv.slice(2), {
@@ -23,15 +22,15 @@ function filepaths (dir) {
 }
 
 function showHelp () {
-  console.log(multiline(function () {
-  /*
-  spritezero
-  Generate sprite sheets for maps and the web using SVG files as input
-  Usage
-   <output> <inputdir>
-  Example
-  spritezero maki maki/
-  */ }));
+  const message = `
+spritezero
+Generate sprite sheets for maps and the web using SVG files as input
+Usage
+ <output> <inputdir>
+Example
+spritezero maki maki/
+`;
+  console.log(message);
 }
 
 if (argv.help || argv._.length < 2) {
