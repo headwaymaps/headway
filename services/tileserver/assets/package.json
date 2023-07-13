@@ -5,6 +5,7 @@
   "author": "",
   "dependencies": {
     "@mapbox/spritezero": "^8.0.0",
+    "fontnik": "0.7.2",
     "json-stable-stringify": "^1.0.1",
     "minimist": "^1.2.6",
     "multiline": "^2.0.0",

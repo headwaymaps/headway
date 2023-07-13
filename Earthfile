@@ -728,8 +728,7 @@ valhalla-serve-image:
 ##############################
 
 tileserver-build:
-    FROM node:12-slim
-    RUN npm install fontnik
+    FROM node:20-slim
 
     COPY ./services/tileserver/assets/build_glyphs.js \
         ./services/tileserver/assets/build_sprites.js \
@@ -785,7 +784,7 @@ tileserver-init-image:
     END
 
 tileserver-serve-image:
-    FROM node:16
+    FROM node:20-slim
 
     RUN npm install -g tileserver-gl-light
 
@@ -819,7 +818,7 @@ tileserver-serve-image:
 ##############################
 
 web-build:
-    FROM node:16-slim
+    FROM node:20-slim
     RUN yarn global add @quasar/cli
     COPY ./services/frontend/www-app /www-app
     WORKDIR /www-app
