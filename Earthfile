@@ -640,7 +640,7 @@ build-transitmux:
 transitmux-serve-image:
     FROM debian:bullseye-slim
 
-    RUN adduser --disabled-login transitmux
+    RUN adduser --disabled-login transitmux --gecos ""
     USER transitmux
 
     WORKDIR /home/transitmux
