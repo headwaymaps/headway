@@ -287,16 +287,17 @@ pelias-import-base:
     RUN mkdir -p /data/openstreetmap
     COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap
     WORKDIR /config
-    COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
+    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
     COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
     ENV DATA_DIR="/data"
 
 pelias-download-wof:
     FROM earthly/dind:alpine
+    ARG --required area
     ARG countries
     RUN mkdir -p /data/openstreetmap
     WORKDIR /config
-    COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
+    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
     COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
     ENV DATA_DIR="/data"
 
