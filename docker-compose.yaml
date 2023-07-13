@@ -124,6 +124,8 @@ services:
     networks:
       - pelias_backend
       - pelias_frontend
+    ports:
+      - "4000:4000"
     volumes:
       - "pelias_config_data:/config:ro"
     depends_on:
