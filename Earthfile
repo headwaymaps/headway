@@ -287,16 +287,17 @@ pelias-import-base:
     RUN mkdir -p /data/openstreetmap
     COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap
     WORKDIR /config
-    COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
+    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
     COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
     ENV DATA_DIR="/data"
 
 pelias-download-wof:
     FROM earthly/dind:alpine
+    ARG --required area
     ARG countries
     RUN mkdir -p /data/openstreetmap
     WORKDIR /config
-    COPY (+pelias-config/pelias.json --countries=${countries}) /config/pelias.json
+    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
     COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
     ENV DATA_DIR="/data"
 
@@ -728,8 +729,7 @@ valhalla-serve-image:
 ##############################
 
 tileserver-build:
-    FROM node:12-slim
-    RUN npm install fontnik
+    FROM node:20-slim
 
     COPY ./services/tileserver/assets/build_glyphs.js \
         ./services/tileserver/assets/build_sprites.js \
@@ -785,7 +785,7 @@ tileserver-init-image:
     END
 
 tileserver-serve-image:
-    FROM node:16
+    FROM node:20-slim
 
     RUN npm install -g tileserver-gl-light
 
@@ -819,7 +819,7 @@ tileserver-serve-image:
 ##############################
 
 web-build:
-    FROM node:16-slim
+    FROM node:20-slim
     RUN yarn global add @quasar/cli
     COPY ./services/frontend/www-app /www-app
     WORKDIR /www-app
