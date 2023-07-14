@@ -85,11 +85,6 @@ services:
   frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
-    environment:
-      FONT_ARTIFACT_SOURCE_PATH: /bootstrap/fonts.tar
-      FONT_ARTIFACT_DEST_PATH: /data/fonts/fonts.tar
-      SPRITE_ARTIFACT_SOURCE_PATH: /bootstrap/sprite.tar
-      SPRITE_ARTIFACT_DEST_PATH: /data/sprite/sprite.tar
     volumes:
       - "./data/:/bootstrap/:ro"
       - "frontend_data:/data/:rw"
