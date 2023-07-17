@@ -156,7 +156,7 @@ save-placeholder:
     FROM +save-base
     ARG --required area
     ARG countries
-    COPY (+pelias-prepare-placeholder/placeholder --area=${area} --countries=${countries}) /placeholder
+    COPY (+pelias-prepare-placeholder/placeholder --countries=${countries}) /placeholder
     RUN tar --zstd -cf /placeholder.tar.zst -C /placeholder .
     SAVE ARTIFACT /placeholder.tar.zst AS LOCAL ./data/${area}.placeholder.tar.zst
 
@@ -311,7 +311,6 @@ pelias-download-wof:
 
 pelias-prepare-polylines:
     ARG --required area
-    ARG countries
     FROM +pelias-import-base
     RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
     RUN mkdir -p /data/polylines
@@ -319,7 +318,6 @@ pelias-prepare-polylines:
     SAVE ARTIFACT /data/polylines /polylines
 
 pelias-prepare-placeholder:
-    ARG --required area
     ARG countries
     FROM +pelias-import-base
     COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
@@ -336,7 +334,7 @@ pelias-import:
     ARG countries
     FROM +pelias-import-base
     COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    COPY (+pelias-prepare-polylines/polylines --area=${area} --countries=${countries}) /data/polylines
+    COPY (+pelias-prepare-polylines/polylines --area=${area}) /data/polylines
     RUN mkdir tools
     COPY services/pelias/wait.sh ./tools/wait.sh
     RUN mkdir /data/elasticsearch
@@ -642,7 +640,7 @@ build-transitmux:
 transitmux-serve-image:
     FROM debian:bullseye-slim
 
-    RUN adduser --disabled-login transitmux
+    RUN adduser --disabled-login transitmux --gecos ""
     USER transitmux
 
     WORKDIR /home/transitmux
