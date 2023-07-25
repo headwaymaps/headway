@@ -1,7 +1,7 @@
 version: "3"
 services:
   pelias_schema:
-    image: pelias/schema:es8
+    image: ghcr.io/michaelkirk-pelias/schema:es8
     container_name: pelias_schema
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -9,7 +9,7 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_whosonfirst:
-    image: pelias/whosonfirst:es8
+    image: ghcr.io/michaelkirk-pelias/whosonfirst:es8
     container_name: pelias_whosonfirst
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -18,13 +18,13 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_polylines_prepare:
-    image: pelias/polylines:es8
+    image: ghcr.io/michaelkirk-pelias/polylines:es8
     container_name: pelias_polylines
     volumes:
       - "./pelias.json:/code/pelias.json"
       - "${DATA_DIR}:/data"
   pelias_polylines_import:
-    image: pelias/polylines:es8
+    image: ghcr.io/michaelkirk-pelias/polylines:es8
     container_name: pelias_polylines
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -40,7 +40,7 @@ services:
       - "./pelias.json:/code/pelias.json"
       - "${DATA_DIR}:/data"
   pelias_openstreetmap:
-    image: pelias/openstreetmap:es8
+    image: ghcr.io/michaelkirk-pelias/openstreetmap:es8
     container_name: pelias_openstreetmap
     volumes:
       - "./pelias.json:/code/pelias.json"
@@ -49,12 +49,14 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_elasticsearch:
-    image: pelias/elasticsearch:8.8.1
+    image: ghcr.io/michaelkirk-pelias/elasticsearch:es8
     container_name: pelias_elasticsearch
     volumes:
       - "${DATA_DIR}/elasticsearch:/usr/share/elasticsearch/data"
     environment:
-      ES_JAVA_OPTS: "-Xmx8g"
+      - ES_JAVA_OPTS=-Xmx8g
+      - discovery.type=single-node
+      - xpack.security.enabled=false
     ulimits:
       memlock:
         soft: -1
