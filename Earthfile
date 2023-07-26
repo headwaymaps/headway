@@ -310,14 +310,6 @@ pelias-download-wof:
     END
     SAVE ARTIFACT /data/whosonfirst /whosonfirst
 
-pelias-prepare-polylines:
-    ARG --required area
-    FROM +pelias-import-base
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    RUN mkdir -p /data/polylines
-    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
-    SAVE ARTIFACT /data/polylines /polylines
-
 pelias-prepare-placeholder:
     ARG countries
     FROM +pelias-import-base
@@ -335,7 +327,7 @@ pelias-import:
     ARG countries
     FROM +pelias-import-base
     COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    COPY (+pelias-prepare-polylines/polylines --area=${area}) /data/polylines
+    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
     RUN mkdir tools
     COPY services/pelias/wait.sh ./tools/wait.sh
     RUN mkdir /data/elasticsearch
