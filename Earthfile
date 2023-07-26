@@ -220,7 +220,8 @@ extract:
         # I'm not sure if this is a bug with large files+docker+zfs or what.
         # RUN mv data.osm.pbf unclipped.osm.pbf && \
         RUN cp data.osm.pbf unclipped.osm.pbf && rm data.osm.pbf && \
-            osmium extract --bbox="$comma_separated_bbox" unclipped.osm.pbf --output=data.osm.pbf
+            osmium extract --bbox="$comma_separated_bbox" unclipped.osm.pbf --output=data.osm.pbf && \
+            rm unclipped.osm.pbf
     END
 
     SAVE ARTIFACT /data/data.osm.pbf /data.osm.pbf
