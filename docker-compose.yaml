@@ -116,7 +116,7 @@ services:
     networks:
       - pelias_backend
   pelias-api:
-    image: pelias/api:master
+    image: ghcr.io/michaelkirk-pelias/api:es8
     restart: always
     environment:
       PORT: 4000
@@ -149,7 +149,7 @@ services:
       pelias-placeholder-init:
         condition: service_completed_successfully
   pelias-elasticsearch:
-    image: pelias/elasticsearch:7.16.1
+    image: ghcr.io/michaelkirk-pelias/elasticsearch:es8
     restart: always
     networks:
       - pelias_backend
