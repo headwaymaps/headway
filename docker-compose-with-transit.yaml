@@ -1,7 +1,7 @@
 version: "3"
 services:
   tileserver-init:
-    image: ghcr.io/headwaymaps/tileserver-init:latest
+    image: ghcr.io/headwaymaps/tileserver-init:dev
     env_file: .env
     environment:
       MBTILES_ARTIFACT_DEST_PATH: /data/${HEADWAY_AREA}.mbtiles
@@ -12,7 +12,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "tileserver_data:/data/:rw"
   tileserver:
-    image: ghcr.io/headwaymaps/tileserver:latest
+    image: ghcr.io/headwaymaps/tileserver:dev
     restart: always
     env_file: .env
     environment:
@@ -27,7 +27,7 @@ services:
     networks:
       - tileserver_frontend
   opentripplanner-init:
-    image: ghcr.io/headwaymaps/opentripplanner-init:latest
+    image: ghcr.io/headwaymaps/opentripplanner-init:dev
     env_file: .env
     environment:
       OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.zst
@@ -35,7 +35,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "opentripplanner_data:/data/:rw"
   opentripplanner:
-    image: ghcr.io/headwaymaps/opentripplanner:latest
+    image: ghcr.io/headwaymaps/opentripplanner:dev
     restart: always
     env_file: .env
     volumes:
@@ -46,7 +46,7 @@ services:
     networks:
       - transit_backend
   transitmux:
-    image: ghcr.io/headwaymaps/transitmux:latest
+    image: ghcr.io/headwaymaps/transitmux:dev
     restart: always
     env_file: .env
     depends_on:
@@ -56,7 +56,7 @@ services:
       - transit_backend
       - transit_frontend
   valhalla-init:
-    image: ghcr.io/headwaymaps/valhalla-init:latest
+    image: ghcr.io/headwaymaps/valhalla-init:dev
     env_file: .env
     volumes:
       - "valhalla_data:/data/:rw"
@@ -68,7 +68,7 @@ services:
         soft: 8192
         hard: 8192
   valhalla:
-    image: ghcr.io/headwaymaps/valhalla:latest
+    image: ghcr.io/headwaymaps/valhalla:dev
     restart: always
     env_file: .env
     networks:
@@ -83,13 +83,13 @@ services:
       valhalla-init:
         condition: service_completed_successfully
   frontend-init:
-    image: ghcr.io/headwaymaps/headway-init:latest
+    image: ghcr.io/headwaymaps/headway-init:dev
     env_file: .env
     volumes:
       - "./data/:/bootstrap/:ro"
       - "frontend_data:/data/:rw"
   frontend:
-    image: ghcr.io/headwaymaps/headway:latest
+    image: ghcr.io/headwaymaps/headway:dev
     restart: always
     env_file: .env
     environment:
@@ -113,7 +113,7 @@ services:
       - "transitmux"
       - "valhalla"
   pelias-config-init:
-    image: ghcr.io/headwaymaps/pelias-init:latest
+    image: ghcr.io/headwaymaps/pelias-init:dev
     env_file: .env
     environment:
       PELIAS_CONFIG_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.pelias.json
@@ -122,7 +122,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "pelias_config_data:/config"
   pelias-elasticsearch-init:
-    image: ghcr.io/headwaymaps/pelias-init:latest
+    image: ghcr.io/headwaymaps/pelias-init:dev
     env_file: .env
     environment:
       ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.zst
@@ -131,7 +131,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
   pelias-placeholder-init:
-    image: ghcr.io/headwaymaps/pelias-init:latest
+    image: ghcr.io/headwaymaps/pelias-init:dev
     env_file: .env
     environment:
       PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.zst
