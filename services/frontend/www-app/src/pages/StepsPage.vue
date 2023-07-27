@@ -44,6 +44,8 @@ import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import TripLayerId from 'src/models/TripLayerId';
 import Markers from 'src/utils/Markers';
+import { useRoute } from 'vue-router';
+import TransitQuery from 'src/models/TransitQuery';
 
 export default defineComponent({
   name: 'StepsPage',
@@ -89,7 +91,7 @@ export default defineComponent({
       const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
       const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
       let path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
-      let query = this.dateTimeQuery();
+      let query = this.transitQuery.searchQuery();
       this.$router.push({ path, query });
     },
 
@@ -112,8 +114,10 @@ export default defineComponent({
           this.toPlace.point,
           this.mode,
           this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers,
-          this.searchTime,
-          this.searchDate
+          this.transitQuery.params.searchTime,
+          this.transitQuery.params.searchDate,
+          this.transitQuery.params.arriveBy,
+          this.transitQuery.params.transitWithBicycle
         );
         if (!result.ok) {
           console.error('fetchBestTrips.error', result.error);
@@ -157,16 +161,6 @@ export default defineComponent({
       }
       map.removeLayersExcept(layerIds);
     },
-    dateTimeQuery(): Record<string, string> {
-      let query: Record<string, string> = {};
-      if (this.searchDate) {
-        query['searchDate'] = this.searchDate;
-      }
-      if (this.searchTime) {
-        query['searchTime'] = this.searchTime;
-      }
-      return query;
-    },
   },
   mounted: async function () {
     this.toPlace = await PlaceStorage.fetchFromSerializedId(
@@ -175,13 +169,6 @@ export default defineComponent({
     this.fromPlace = await PlaceStorage.fetchFromSerializedId(
       this.$props.from as string
     );
-    if (typeof this.$route.query.searchTime == 'string') {
-      this.searchTime = this.$route.query.searchTime;
-    }
-    if (typeof this.$route.query.searchDate == 'string') {
-      this.searchDate = this.$route.query.searchDate;
-    }
-
     await this.rewriteUrl();
 
     let map = getBaseMap();
@@ -221,14 +208,16 @@ export default defineComponent({
   setup: function () {
     const toPlace: Ref<Place | undefined> = ref(undefined);
     const fromPlace: Ref<Place | undefined> = ref(undefined);
-    const searchTime: Ref<string | undefined> = ref(undefined);
-    const searchDate: Ref<string | undefined> = ref(undefined);
+
+    const route = useRoute();
+    const transitQuery: Ref<TransitQuery> = ref(
+      TransitQuery.parseFromQuery(route.query)
+    );
 
     return {
       toPlace,
       fromPlace,
-      searchTime,
-      searchDate,
+      transitQuery,
     };
   },
 });

@@ -12,12 +12,8 @@
       /></sup>
     </span>
   </q-item-label>
-  <q-item-label caption :hidden="!active">
-    {{
-      $t('walk_distance', {
-        preformattedDistance: trip.walkingDistanceFormatted(),
-      })
-    }}
+  <q-item-label caption v-if="active">
+    {{ trip.formattedFootDistance() }}
   </q-item-label>
   <div v-if="trip.firstTransitLeg?.realTime">
     <q-icon name="rss_feed" style="margin-right: 4px" />

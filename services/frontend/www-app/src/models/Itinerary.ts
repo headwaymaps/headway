@@ -83,11 +83,17 @@ export default class Itinerary implements Trip {
   private raw: OTPItinerary;
   legs: ItineraryLeg[];
   private distanceUnits: DistanceUnits;
+  withBicycle: boolean;
 
-  constructor(otp: OTPItinerary, distanceUnits: DistanceUnits) {
+  constructor(
+    otp: OTPItinerary,
+    distanceUnits: DistanceUnits,
+    withBicycle: boolean
+  ) {
     this.raw = otp;
     this.legs = otp.legs.map((otpLeg) => new ItineraryLeg(otpLeg));
     this.distanceUnits = distanceUnits;
+    this.withBicycle = withBicycle;
   }
   // We leave this blank for transit itineraries. It's not really relevant to
   // picking a trip, so we don't clutter the screen with it.
@@ -100,27 +106,40 @@ export default class Itinerary implements Trip {
     distanceUnits: DistanceUnits,
     departureTime?: string,
     departureDate?: string,
-    arriveBy?: boolean
+    arriveBy?: boolean,
+    withBicycle?: boolean
   ): Promise<Result<Itinerary[], ItineraryError>> {
+    const otpModes = [OTPMode.Transit];
+    if (withBicycle) {
+      otpModes.push(OTPMode.Bicycle);
+    }
+
     const result = await OTPClient.fetchItineraries(
       from,
       to,
       5,
+      otpModes,
       departureTime,
       departureDate,
       arriveBy
     );
     if (result.ok) {
       return Ok(
-        result.value.map((otp) => Itinerary.fromOtp(otp, distanceUnits))
+        result.value.map((otp) =>
+          Itinerary.fromOtp(otp, distanceUnits, withBicycle ?? false)
+        )
       );
     } else {
       return Err(ItineraryError.fromOtp(result.error));
     }
   }
 
-  static fromOtp(raw: OTPItinerary, distanceUnits: DistanceUnits): Itinerary {
-    return new Itinerary(raw, distanceUnits);
+  static fromOtp(
+    raw: OTPItinerary,
+    distanceUnits: DistanceUnits,
+    withBicycle: boolean
+  ): Itinerary {
+    return new Itinerary(raw, distanceUnits, withBicycle);
   }
 
   public get duration(): number {
@@ -146,17 +165,27 @@ export default class Itinerary implements Trip {
     return this.raw.endTime;
   }
 
-  get walkingDistanceMeters(): number {
+  // Usually walking, but will be biking if mode is transit+bike
+  get footDistanceMeters(): number {
     return this.raw.walkDistance;
   }
 
-  public walkingDistanceFormatted(): string {
-    const km = this.walkingDistanceMeters / 1000;
-    if (this.distanceUnits == DistanceUnits.Kilometers) {
-      return formatDistance(km, DistanceUnits.Kilometers);
+  public formattedFootDistance(): string {
+    const km = this.footDistanceMeters / 1000;
+
+    const preformattedDistance = (() => {
+      if (this.distanceUnits == DistanceUnits.Kilometers) {
+        return formatDistance(km, DistanceUnits.Kilometers);
+      } else {
+        const miles = kilometersToMiles(km);
+        return formatDistance(miles, DistanceUnits.Miles);
+      }
+    })();
+
+    if (this.withBicycle) {
+      return i18n.global.t('bike_distance', { preformattedDistance });
     } else {
-      const miles = kilometersToMiles(km);
-      return formatDistance(miles, DistanceUnits.Miles);
+      return i18n.global.t('walk_distance', { preformattedDistance });
     }
   }
 
@@ -260,7 +289,7 @@ export class ItineraryLeg {
 
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
     if (active) {
-      if (this.mode == OTPMode.Walk) {
+      if (this.mode == OTPMode.Walk || this.mode == OTPMode.Bicycle) {
         return LineStyles.walkingActive;
       } else {
         if (this.raw.routeColor) {
@@ -270,7 +299,7 @@ export class ItineraryLeg {
         }
       }
     } else {
-      if (this.mode == OTPMode.Walk) {
+      if (this.mode == OTPMode.Walk || this.mode == OTPMode.Bicycle) {
         return LineStyles.walkingInactive;
       } else {
         return LineStyles.inactive;

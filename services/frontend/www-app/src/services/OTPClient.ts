@@ -84,6 +84,8 @@ export type OTPPlanRequest = {
   time?: string;
   date?: string;
   arriveBy?: string;
+  // comma separated list of OTPMode(s)
+  mode?: string;
 };
 
 // incomplete
@@ -105,6 +107,7 @@ export class OTPClient {
     from: LngLat,
     to: LngLat,
     count: number,
+    modes: OTPMode[],
     time?: string,
     date?: string,
     arriveBy?: boolean
@@ -113,6 +116,7 @@ export class OTPClient {
       fromPlace: `${from.lat},${from.lng}`,
       toPlace: `${to.lat},${to.lng}`,
       numItineraries: `${count}`,
+      mode: modes.join(','),
     };
 
     // The OTP API assumes current date and time if neither are specified.

@@ -42,7 +42,7 @@
       :to-place="toPlace"
       :from-place="fromPlace"
     />
-    <div :hidden="!isTransit()" style="margin-top: 8px; margin-bottom: -8px">
+    <div v-if="isTransit()" style="margin-top: 8px; margin-bottom: -8px">
       <div v-if="searchTime || searchDate">
         <q-btn
           v-if="!arriveBy"
@@ -77,6 +77,10 @@
         :label="$t('trip_search_depart_now')"
         size="sm"
         @click="didClickDepartNow"
+      />
+      <q-checkbox
+        v-model="transitWithBicycle"
+        :label="$t('trip_search_transit_with_bike')"
       />
     </div>
   </div>
@@ -122,6 +126,7 @@ export default defineComponent({
         searchTime?: string;
         searchDate?: string;
         arriveBy?: boolean;
+        transitWithBicycle?: boolean;
       }>,
       required: true,
     },
@@ -131,13 +136,24 @@ export default defineComponent({
           searchTime?: string;
           searchDate?: string;
           arriveBy?: boolean;
+          transitWithBicycle: boolean;
         }) => void
       >,
       required: true,
     },
   },
-  data(): { searchTime?: string; searchDate?: string; arriveBy?: boolean } {
-    return Object.assign({}, this.initialSearch);
+  data(): {
+    searchTime?: string;
+    searchDate?: string;
+    arriveBy?: boolean;
+    transitWithBicycle: boolean;
+  } {
+    return {
+      searchTime: this.initialSearch.searchTime,
+      searchDate: this.initialSearch.searchDate,
+      arriveBy: this.initialSearch.arriveBy,
+      transitWithBicycle: this.initialSearch.transitWithBicycle ?? false,
+    };
   },
   watch: {
     searchTime: function () {
@@ -147,6 +163,9 @@ export default defineComponent({
       this.searchDidChange(this.$data);
     },
     arriveBy: function () {
+      this.searchDidChange(this.$data);
+    },
+    transitWithBicycle: function () {
       this.searchDidChange(this.$data);
     },
   },
