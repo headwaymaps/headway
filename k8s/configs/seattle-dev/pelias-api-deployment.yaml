@@ -46,7 +46,7 @@ spec:
               memory: 100Mi
       containers:
         - name: main
-          image: pelias/api:latest
+          image: ghcr.io/michaelkirk-pelias/api:es8
           ports:
             - containerPort: 4000
           volumeMounts:

@@ -63,7 +63,7 @@ spec:
               memory: 100Mi
       containers:
         - name: main
-          image: pelias/elasticsearch:7.16.1
+          image: ghcr.io/michaelkirk-pelias/elasticsearch:es8
           volumeMounts:
             - name: elasticsearch-volume
               mountPath: /usr/share/elasticsearch/data

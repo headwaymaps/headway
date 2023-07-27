@@ -19,10 +19,7 @@ data:
         "timestamp": false
       },
       "esclient": {
-        "apiVersion": "7.5",
-        "hosts": [
-          { "host": "pelias-elasticsearch" }
-        ]
+        "nodes": [ "http://pelias-elasticsearch:9200" ]
       },
       "elasticsearch": {
         "settings": {
