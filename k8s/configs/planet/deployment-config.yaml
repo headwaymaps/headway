@@ -3,15 +3,15 @@ kind: ConfigMap
 metadata:
   name: deployment-config
 data:
-  area: maps-earth-planet-v1.26
+  area: maps-earth-planet-v1.28
   public-url: https://maps.earth
   bbox: ""
   enable-transit-routing: "1"
   natural-earth-source-url: https://data.example.com/0.6.0/natural_earth.mbtiles
-  mbtiles-source-url: https://data.example.com/0.6.0/maps-earth-planet-v1.26/maps-earth-planet-v1.26.mbtiles
-  valhalla-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.26/maps-earth-planet-v1.26.valhalla.tar.zst
-  placeholder-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.26/maps-earth-planet-v1.26.placeholder.tar.zst
-  elasticsearch-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.26/maps-earth-planet-v1.26.elasticsearch.tar.zst
+  mbtiles-source-url: https://data.example.com/0.6.0/maps-earth-planet-v1.28/maps-earth-planet-v1.28.mbtiles
+  valhalla-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.28/maps-earth-planet-v1.28.valhalla.tar.zst
+  placeholder-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.28/maps-earth-planet-v1.28.placeholder.tar.zst
+  elasticsearch-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.28/maps-earth-planet-v1.28.elasticsearch.tar.zst
   pelias-config-json: |
     {
       "logger": {
