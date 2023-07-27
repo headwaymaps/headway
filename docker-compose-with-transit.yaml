@@ -180,6 +180,10 @@ services:
     restart: always
     networks:
       - pelias_backend
+    environment:
+      - ES_JAVA_OPTS=-Xmx8g
+      - discovery.type=single-node
+      - xpack.security.enabled=false
     volumes:
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
     ulimits:
