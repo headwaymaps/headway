@@ -46,19 +46,23 @@
       <div v-if="searchTime || searchDate">
         <q-btn
           v-if="!arriveBy"
-          flat
           :label="$t('trip_search_depart_at')"
+          icon="arrow_drop_down"
+          outline
+          style="padding-left: 4px; padding-right: 8px; margin-right: 8px"
+          dense
           size="sm"
           @click="didClickDepartAt"
-          style="margin-right: 8px"
         />
         <q-btn
           v-if="arriveBy"
-          flat
           :label="$t('trip_search_arrive_by')"
+          icon="arrow_drop_down"
+          outline
+          style="padding-left: 4px; padding-right: 8px; margin-right: 8px"
+          dense
           size="sm"
           @click="didClickArriveBy"
-          style="margin-right: 8px"
         />
         <input
           type="time"
@@ -73,8 +77,11 @@
       </div>
       <q-btn
         v-else
-        flat
         :label="$t('trip_search_depart_now')"
+        icon="arrow_drop_down"
+        outline
+        style="padding-left: 4px; padding-right: 8px"
+        dense
         size="sm"
         @click="didClickDepartNow"
       />
