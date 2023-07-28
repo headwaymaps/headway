@@ -371,15 +371,7 @@ pelias-import:
 # Planetiler
 ##############################
 
-planetiler-download-mirrored-data:
-    FROM +downloader-base
-    WORKDIR /data
-    RUN wget -nv https://f000.backblazeb2.com/file/headway/sources.tar && tar xvf sources.tar && rm sources.tar
-    SAVE ARTIFACT /data/lake_centerline.shp.zip /lake_centerline.shp.zip
-    SAVE ARTIFACT /data/natural_earth_vector.sqlite.zip /natural_earth_vector.sqlite.zip
-    SAVE ARTIFACT /data/water-polygons-split-3857.zip /water-polygons-split-3857.zip
-
-planetiler-base:
+planetiler-build-mbtiles:
     # The version tag is ignored when sha256 is specified, but I'm leaving it in as documentation
     FROM ghcr.io/onthegomap/planetiler:0.5.0@sha256:79981c8af5330b384599e34d90b91a2c01b141be2c93a53244d14c49e2758c3c
     # FIXME: The 0.6.0 release is failing on planet builds (reproduced on daylight maps v1.26 w/ building and admin)
@@ -387,14 +379,9 @@ planetiler-base:
     # Failing with:
     #     java.util.concurrent.ExecutionException: java.io.UncheckedIOException: com.google.protobuf.InvalidProtocolBufferException: Protocol message contained an invalid tag (zero).
     # FROM ghcr.io/onthegomap/planetiler:0.6.0@sha256:e937250696efc60f57e7952180645c6e4b1888d70fd61d04f1e182c5489eaa1c
-    SAVE IMAGE planetiler-base:latest
 
-planetiler-build-mbtiles:
-    FROM earthly/dind:alpine
-
-    COPY +planetiler-download-mirrored-data/lake_centerline.shp.zip /data/sources/
-    COPY +planetiler-download-mirrored-data/natural_earth_vector.sqlite.zip /data/sources/
-    COPY +planetiler-download-mirrored-data/water-polygons-split-3857.zip /data/sources/
+    RUN mkdir -p /data/sources
+    RUN curl --no-progress-meter https://f000.backblazeb2.com/file/headway/sources.tar | tar -x --directory /data/sources
 
     ARG --required area
     COPY (+extract/data.osm.pbf --area=${area}) /data/
@@ -408,9 +395,7 @@ planetiler-build-mbtiles:
     #     "@/app/jib-classpath-file",
     #     "com.onthegomap.planetiler.Main"
     # ],
-    WITH DOCKER --load planetiler-base:latest=+planetiler-base
-        RUN docker run -v=/data:/data planetiler-base:latest --force --osm_path=/data/data.osm.pbf
-    END
+    RUN --entrypoint -- --force --osm_path=/data/data.osm.pbf
 
     SAVE ARTIFACT /data/output.mbtiles /output.mbtiles
 
