@@ -706,7 +706,8 @@ valhalla-build:
     SAVE ARTIFACT /tiles /tiles
 
 valhalla-build-polylines:
-    FROM +valhalla-build
+    ARG --required area
+    FROM +valhalla-build --area=${area}
 
     RUN valhalla_export_edges valhalla.json > /tiles/polylines.0sv
 
