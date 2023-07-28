@@ -286,39 +286,29 @@ pelias-import-base:
     FROM earthly/dind:alpine
     ARG --required area
     ARG countries
-    RUN mkdir -p /data/openstreetmap
-    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap
-    WORKDIR /config
-    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
-    COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
-    ENV DATA_DIR="/data"
 
-pelias-download-wof:
-    FROM earthly/dind:alpine
-    ARG --required area
-    ARG countries
-    RUN mkdir -p /data/openstreetmap
-    WORKDIR /config
-    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
-    COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
-    ENV DATA_DIR="/data"
+    WORKDIR /pelias-import
 
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_whosonfirst
-        RUN docker-compose run -T 'pelias_whosonfirst' bash ./bin/download
+    RUN mkdir /data && chmod -R uga=rwX /data
+    ENV DATA_DIR=/data
+
+    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) pelias.json
+    COPY services/pelias/docker-compose-import.yaml compose.yaml
+    COPY services/pelias/wait.sh ./tools/wait.sh
+
+    # Cache needed data in the base image so that multiple subsequent images don't need to
+    # copy them individually.
+    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap/data.osm.pbf
+    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
+        RUN docker-compose run -T 'pelias_whosonfirst' ./bin/download
     END
-    SAVE ARTIFACT /data/whosonfirst /whosonfirst
 
 pelias-prepare-placeholder:
+    ARG --required area
     ARG countries
-    FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_placeholder
+    FROM +pelias-import-base --area=${area} --countries=${countries}
+
+    WITH DOCKER --compose compose.yaml --service pelias_placeholder
         RUN docker-compose run -T 'pelias_placeholder' bash -c "./cmd/extract.sh && ./cmd/build.sh"
     END
     SAVE ARTIFACT /data/placeholder /placeholder
@@ -326,36 +316,22 @@ pelias-prepare-placeholder:
 pelias-import:
     ARG --required area
     ARG countries
-    FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
+    FROM +pelias-import-base --area=${area} --countries=${countries}
+
     COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
-    RUN mkdir tools
-    COPY services/pelias/wait.sh ./tools/wait.sh
-    RUN mkdir /data/elasticsearch
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
 
-    WITH DOCKER --compose compose.yaml --service pelias_schema
-        RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index"
-    END
+    RUN mkdir -p /data/elasticsearch && chmod 777 /data/elasticsearch
 
-    WITH DOCKER --compose compose.yaml --service pelias_openstreetmap
-        RUN docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start"
-    END
+    WITH DOCKER --compose compose.yaml --service pelias_schema \
+                                       --service pelias_openstreetmap \
+                                       --service pelias_whosonfirst \
+                                       --service pelias_polylines_import
 
-    # This usually fails for planet builts due to: https://github.com/pelias/docker/issues/217
-    # Interestingly it usually (always?) succeeds for smaller builds like Seattle.
-    #
-    # For production, I've done a manual import of the planet data including WOF based on
-    # manually running the steps in https://github.com/pelias/docker/tree/master/projects/planet
-    # I was actually seeing the same error initially, and in the process of debugging, but then
-    # it just succeeded on the billionth attempt, so I decided we might as well use the artifact
-    # for now while waiting for a proper fix.
-    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
-        RUN docker-compose run -T 'pelias_whosonfirst' bash -c "/tools/wait.sh && ./bin/start"
-    END
-
-    WITH DOCKER --compose compose.yaml --service pelias_polylines_import
-        RUN docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+        RUN docker-compose run -T 'pelias_schema' /tools/wait.sh && \
+            docker-compose run -T 'pelias_schema' ./bin/create_index && \
+            docker-compose run -T 'pelias_openstreetmap' ./bin/start && \
+            docker-compose run -T 'pelias_whosonfirst' ./bin/start && \
+            docker-compose run -T 'pelias_polylines_import' ./bin/start
     END
 
     SAVE ARTIFACT /data/elasticsearch /elasticsearch
