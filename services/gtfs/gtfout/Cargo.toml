@@ -8,4 +8,6 @@ edition = "2021"
 
 [dependencies]
 csv = "1.2.1"
+log = "0.4.19"
+pretty_env_logger = "0.5.0"
 serde = { version = "1.0.158", features = ["derive"] }

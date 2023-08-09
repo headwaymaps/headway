@@ -1,1 +1,5 @@
-
+agency_id,route_id,route_short_name,route_long_name,route_type,route_desc,route_url,bikes_allowed,eligibility_restricted
+1,100001,1,,3,Kinnear - Downtown Seattle,http://metro.kingcounty.gov/schedules/001/n0.html,0,-999
+1,100002,10,,3,Capitol Hill - Downtown Seattle,http://metro.kingcounty.gov/schedules/010/n0.html,1,-999
+1,100003,101,,3,Renton Transit Center - Downtown Seattle,http://metro.kingcounty.gov/schedules/101/n0.html,2,-999
+1,100004,105,,3,Renton Highlands - Renton Transit Center,http://metro.kingcounty.gov/schedules/105/n0.html,,-999

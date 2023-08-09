@@ -1,9 +1,9 @@
-use gtfout::geom::{Point, Rect};
+use gtfout::{
+    geom::{Point, Rect},
+    Result,
+};
 
 use std::path::PathBuf;
-
-type Error = Box<dyn std::error::Error>;
-type Result<T> = std::result::Result<T, Error>;
 
 use serde::Deserialize;
 #[derive(Debug, Deserialize)]
