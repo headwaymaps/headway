@@ -4,7 +4,7 @@
       :from-place="fromPlace"
       :to-place="toPlace"
       :current-mode="mode"
-      :initial-search="{ searchTime, searchDate, arriveBy }"
+      :initial-search="transitQuery.params"
       :did-select-from-place="searchBoxDidSelectFromPlace"
       :did-select-to-place="searchBoxDidSelectToPlace"
       :did-swap-places="clickedSwap"
@@ -77,6 +77,7 @@ import { RouteErrorCode } from 'src/models/Route';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
+import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -160,7 +161,7 @@ export default defineComponent({
         let path = `/directions/${this.mode}/${encodeURIComponent(
           this.to
         )}/${encodeURIComponent(this.from)}/${index}`;
-        let query = this.searchQuery();
+        let query = this.transitQuery.searchQuery();
         this.$router.push({ path, query });
       }
     },
@@ -169,33 +170,11 @@ export default defineComponent({
       this.toPlace = newToValue;
       this.rewriteUrl();
     },
-    searchDidChange(newValue: {
-      searchTime?: string;
-      searchDate?: string;
-      arriveBy?: boolean;
-    }) {
-      this.searchTime = newValue.searchTime;
-      this.searchDate = newValue.searchDate;
-      this.arriveBy = newValue.arriveBy;
+    searchDidChange(newValue: TransitQueryParams) {
+      this.transitQuery = new TransitQuery(newValue);
       this.rewriteUrl();
     },
-    searchQuery(): Record<string, string> {
-      let query: Record<string, string> = {};
-      if (this.searchDate) {
-        query['searchDate'] = this.searchDate;
-      }
-      if (this.searchTime) {
-        query['searchTime'] = this.searchTime;
-      }
-      if (this.arriveBy) {
-        query['arriveBy'] = this.arriveBy.toString();
-      }
-      return query;
-    },
-    searchQueryString(): string {
-      let query = new URLSearchParams(this.searchQuery());
-      return query.toString();
-    },
+
     rewriteUrl: async function () {
       if (!this.fromPlace && !this.toPlace) {
         this.$router.push('/');
@@ -207,12 +186,8 @@ export default defineComponent({
 
       let path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
 
-      let queryString = this.searchQueryString();
-      if (queryString.length > 0) {
-        path += '?' + queryString;
-      }
-
-      this.$router.push(path);
+      let query = this.transitQuery.searchQuery();
+      this.$router.push({ path, query });
       await this.updateTrips();
     },
     async updateTrips(): Promise<void> {
@@ -236,9 +211,10 @@ export default defineComponent({
           this.toPlace.point,
           this.mode,
           Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
-          this.searchTime,
-          this.searchDate,
-          this.arriveBy
+          this.transitQuery.params.searchTime,
+          this.transitQuery.params.searchDate,
+          this.transitQuery.params.arriveBy,
+          this.transitQuery.params.transitWithBicycle
         ).finally(() => {
           this.isLoading = false;
         });
@@ -374,27 +350,16 @@ export default defineComponent({
   setup: function () {
     const toPlace: Ref<Place | undefined> = ref(undefined);
     const fromPlace: Ref<Place | undefined> = ref(undefined);
-    const searchTime: Ref<string | undefined> = ref(undefined);
-    const searchDate: Ref<string | undefined> = ref(undefined);
-    const arriveBy: Ref<boolean | undefined> = ref(undefined);
 
     const route = useRoute();
-    if (typeof route.query.searchTime == 'string') {
-      searchTime.value = route.query.searchTime;
-    }
-    if (typeof route.query.searchDate == 'string') {
-      searchDate.value = route.query.searchDate;
-    }
-    if (typeof route.query.arriveBy == 'string') {
-      arriveBy.value = route.query.arriveBy === 'true';
-    }
+    const transitQuery: Ref<TransitQuery> = ref(
+      TransitQuery.parseFromQuery(route.query)
+    );
 
     return {
       toPlace,
       fromPlace,
-      searchTime,
-      searchDate,
-      arriveBy,
+      transitQuery,
     };
   },
 });

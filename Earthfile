@@ -84,7 +84,8 @@ save-gtfs:
 
     ARG output_prefix=$(basename $transit_feeds .gtfs_feeds.csv)
 
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs.tar.zst
+    COPY (+gtfs-build/gtfs --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs
+    RUN tar --zstd -cf /gtfs.tar.zst -C /gtfs .
     # This isn't used at runtime, but it might be useful to archive the input
     SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}-${output_prefix}-${cache_key}.gtfs.tar.zst
 
@@ -424,7 +425,7 @@ gtfs-base:
     RUN mkdir /gtfs_feeds
 
 cache-buster:
-    FROM +gtfs-base
+    FROM debian:bullseye-slim
     RUN --no-cache echo $(date +%Y-%m-%d) > todays_date
     SAVE ARTIFACT todays_date
 
@@ -456,27 +457,35 @@ gtfs-enumerate:
 
     SAVE ARTIFACT gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}-${cache_key}.gtfs_feeds.csv
 
-gtfs-compute-bbox:
+gtfout:
     FROM rust
+
+    COPY ./services/gtfs/gtfout /gtfout
+    WORKDIR /gtfout
+    RUN cargo build --release
+
+    SAVE ARTIFACT target/release/gtfs-bbox gtfs-bbox
+    SAVE ARTIFACT target/release/assume-bikes-allowed assume-bikes-allowed
+
+gtfs-compute-bbox:
+    FROM debian:bullseye-slim
+
     ARG --required transit_feeds
     ARG --required cache_key
 
+    COPY +gtfout/gtfs-bbox .
+
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends zstd \
+        && apt-get install -y --no-install-recommends unzip \
         && rm -rf /var/lib/apt/lists/*
 
-    COPY ./services/gtfs/gtfs_bbox .
-    WORKDIR gtfs_bbox
-    RUN cargo build --release
+    COPY (+gtfs-build/gtfs --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs_zips
 
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) gtfs.tar.zst
-
-    RUN mkdir gtfs_zips gtfs && \
+    RUN mkdir gtfs && \
         (cd gtfs_zips && \
-            tar --zstd -xf ../gtfs.tar.zst && \
             ls *.zip | while read zip_file; do unzip -d ../gtfs/$(basename $zip_file .zip) $zip_file; done)
 
-    RUN cargo run --release gtfs/* > bbox.txt
+    RUN ./gtfs-bbox gtfs/* > bbox.txt
 
     SAVE ARTIFACT bbox.txt /bbox.txt
 
@@ -490,7 +499,7 @@ bbox:
     SAVE ARTIFACT bbox.txt /bbox.txt
 
 gtfs-get-mobilitydb:
-    FROM +gtfs-base
+    FROM +debian:bullseye-slim
     ARG --required cache_key
     RUN curl 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media' > mobilitydb.csv
     SAVE ARTIFACT mobilitydb.csv mobilitydb.csv AS LOCAL "./data/mobilitydb-${cache_key}.csv"
@@ -515,8 +524,10 @@ gtfs-build:
     ARG --required cache_key
 
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends zstd \
+        && apt-get install -y --no-install-recommends zip \
         && rm -rf /var/lib/apt/lists/*
+
+    COPY +gtfout/assume-bikes-allowed .
 
     COPY "${transit_feeds}" gtfs_feeds.csv
     COPY ./services/gtfs/download_gtfs_feeds.py ./
@@ -525,8 +536,20 @@ gtfs-build:
     RUN touch "cache-buster-${cache_key}"
 
     RUN ./download_gtfs_feeds.py --output=downloads < gtfs_feeds.csv
-    RUN cd downloads && ls *.zip | tar --zstd -cf /gtfs/gtfs.tar.zst --files-from -
-    SAVE ARTIFACT /gtfs/gtfs.tar.zst /gtfs.tar.zst
+
+    RUN mkdir unzipped && \
+        (cd downloads && \
+            ls *.zip | while read zip_file; do unzip -d ../unzipped/$(basename $zip_file .zip) $zip_file; done)
+
+    RUN mkdir -p /output/gtfs && for gtfs in unzipped/*; do \
+            ./assume-bikes-allowed  \
+                < "${gtfs}/routes.txt" \
+                > tmp-routes.txt \
+            && mv tmp-routes.txt "${gtfs}/routes.txt" \
+            && (cd "$gtfs" && zip -r "/output/gtfs/$(basename ${gtfs}).zip" .); \
+        done
+
+    SAVE ARTIFACT /output/gtfs /gtfs
 
 
 ##############################
@@ -561,10 +584,6 @@ otp-build:
 
     WORKDIR /var/opentripplanner
 
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends zstd \
-        && rm -rf /var/lib/apt/lists/*
-
     IF [ -n "$otp_build_config" ]
         COPY "${otp_build_config}" /var/opentripplanner/build-config.json
     END
@@ -577,8 +596,7 @@ otp-build:
         COPY (+extract/data.osm.pbf --area=${area}) /var/opentripplanner
     END
 
-    COPY (+gtfs-build/gtfs.tar.zst --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /var/opentripplanner
-    RUN tar --zstd -xf gtfs.tar.zst
+    COPY (+gtfs-build/gtfs --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /var/opentripplanner
 
     RUN --entrypoint -- --build --save
 
@@ -880,5 +898,5 @@ downloader-base:
 save-base:
     FROM debian:bullseye-slim
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends zstd \
+        && apt-get install -y --no-install-recommends zip zstd \
         && rm -rf /var/lib/apt/lists/*

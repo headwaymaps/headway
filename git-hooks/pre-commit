@@ -20,7 +20,7 @@ set -e
     cargo clippy --all-features -- -D warnings &&
     cargo test --all-features)
 
-(cd services/gtfs/gtfs_bbox &&
-    cargo fmt &&
-    cargo clippy --all-features -- -D warnings &&
-    cargo test --all-features)
+(cd services/gtfs/gtfout &&
+    cargo fmt --all &&
+    cargo clippy --all-targets --all-features -- -D warnings &&
+    cargo test --all-targets --all-features)
