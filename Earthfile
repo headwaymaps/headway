@@ -243,10 +243,10 @@ pelias-init-image:
 
 pelias-guess-country:
     FROM debian:bullseye-slim
-    COPY services/pelias/cities_to_countries.csv /data/cities_to_countries.csv
+    COPY services/pelias/areas.csv /data/areas.csv
     ARG --required area
     ENV HEADWAY_AREA=${area}
-    RUN grep "^${HEADWAY_AREA}:" /data/cities_to_countries.csv | cut -d':' -f2 > /data/guessed_country
+    RUN tail -n+1 /data/areas.csv | grep "^${HEADWAY_AREA}," | cut -d, -f2 > /data/guessed_country
     SAVE ARTIFACT /data/guessed_country /guessed_country
 
 # We use this both for import and for production pelias instances.
