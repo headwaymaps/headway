@@ -221,7 +221,8 @@ extract:
         # I'm not sure if this is a bug with large files+docker+zfs or what.
         # RUN mv data.osm.pbf unclipped.osm.pbf && \
         RUN cp data.osm.pbf unclipped.osm.pbf && rm data.osm.pbf && \
-            osmium extract --bbox="$comma_separated_bbox" unclipped.osm.pbf --output=data.osm.pbf
+            osmium extract --bbox="$comma_separated_bbox" unclipped.osm.pbf --output=data.osm.pbf && \
+            rm unclipped.osm.pbf
     END
 
     SAVE ARTIFACT /data/data.osm.pbf /data.osm.pbf
@@ -285,47 +286,29 @@ pelias-import-base:
     FROM earthly/dind:alpine
     ARG --required area
     ARG countries
-    RUN mkdir -p /data/openstreetmap
-    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap
-    WORKDIR /config
-    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
-    COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
-    ENV DATA_DIR="/data"
 
-pelias-download-wof:
-    FROM earthly/dind:alpine
-    ARG --required area
-    ARG countries
-    RUN mkdir -p /data/openstreetmap
-    WORKDIR /config
-    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /config/pelias.json
-    COPY services/pelias/docker-compose-import.yaml /config/compose.yaml
-    ENV DATA_DIR="/data"
+    WORKDIR /pelias-import
 
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_whosonfirst
-        RUN docker-compose run -T 'pelias_whosonfirst' bash ./bin/download
+    RUN mkdir /data && chmod -R uga=rwX /data
+    ENV DATA_DIR=/data
+
+    COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) pelias.json
+    COPY services/pelias/docker-compose-import.yaml compose.yaml
+    COPY services/pelias/wait.sh ./tools/wait.sh
+
+    # Cache needed data in the base image so that multiple subsequent images don't need to
+    # copy them individually.
+    COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap/data.osm.pbf
+    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
+        RUN docker-compose run -T 'pelias_whosonfirst' ./bin/download
     END
-    SAVE ARTIFACT /data/whosonfirst /whosonfirst
-
-pelias-prepare-polylines:
-    ARG --required area
-    FROM +pelias-import-base
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    RUN mkdir -p /data/polylines
-    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
-    SAVE ARTIFACT /data/polylines /polylines
 
 pelias-prepare-placeholder:
+    ARG --required area
     ARG countries
-    FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
-    WITH DOCKER \
-            --compose compose.yaml \
-            --service pelias_placeholder
+    FROM +pelias-import-base --area=${area} --countries=${countries}
+
+    WITH DOCKER --compose compose.yaml --service pelias_placeholder
         RUN docker-compose run -T 'pelias_placeholder' bash -c "./cmd/extract.sh && ./cmd/build.sh"
     END
     SAVE ARTIFACT /data/placeholder /placeholder
@@ -333,36 +316,22 @@ pelias-prepare-placeholder:
 pelias-import:
     ARG --required area
     ARG countries
-    FROM +pelias-import-base
-    COPY (+pelias-download-wof/whosonfirst --countries=${countries}) /data/whosonfirst
-    COPY (+pelias-prepare-polylines/polylines --area=${area}) /data/polylines
-    RUN mkdir tools
-    COPY services/pelias/wait.sh ./tools/wait.sh
-    RUN mkdir /data/elasticsearch
-    RUN chmod -R 777 /data # FIXME: not everything should have execute permissions!
+    FROM +pelias-import-base --area=${area} --countries=${countries}
 
-    WITH DOCKER --compose compose.yaml --service pelias_schema
-        RUN docker-compose run -T 'pelias_schema' bash -c "/tools/wait.sh && ./bin/create_index"
-    END
+    COPY (+valhalla-build-polylines/polylines.0sv --area=${area}) /data/polylines/extract.0sv
 
-    WITH DOCKER --compose compose.yaml --service pelias_openstreetmap
-        RUN docker-compose run -T 'pelias_openstreetmap' bash -c "/tools/wait.sh && ./bin/start"
-    END
+    RUN mkdir -p /data/elasticsearch && chmod 777 /data/elasticsearch
 
-    # This usually fails for planet builts due to: https://github.com/pelias/docker/issues/217
-    # Interestingly it usually (always?) succeeds for smaller builds like Seattle.
-    #
-    # For production, I've done a manual import of the planet data including WOF based on
-    # manually running the steps in https://github.com/pelias/docker/tree/master/projects/planet
-    # I was actually seeing the same error initially, and in the process of debugging, but then
-    # it just succeeded on the billionth attempt, so I decided we might as well use the artifact
-    # for now while waiting for a proper fix.
-    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
-        RUN docker-compose run -T 'pelias_whosonfirst' bash -c "/tools/wait.sh && ./bin/start"
-    END
+    WITH DOCKER --compose compose.yaml --service pelias_schema \
+                                       --service pelias_openstreetmap \
+                                       --service pelias_whosonfirst \
+                                       --service pelias_polylines_import
 
-    WITH DOCKER --compose compose.yaml --service pelias_polylines_import
-        RUN docker-compose run -T 'pelias_polylines_import' bash -c "/tools/wait.sh && ./bin/start"
+        RUN docker-compose run -T 'pelias_schema' /tools/wait.sh && \
+            docker-compose run -T 'pelias_schema' ./bin/create_index && \
+            docker-compose run -T 'pelias_openstreetmap' ./bin/start && \
+            docker-compose run -T 'pelias_whosonfirst' ./bin/start && \
+            docker-compose run -T 'pelias_polylines_import' ./bin/start
     END
 
     SAVE ARTIFACT /data/elasticsearch /elasticsearch
@@ -371,15 +340,7 @@ pelias-import:
 # Planetiler
 ##############################
 
-planetiler-download-mirrored-data:
-    FROM +downloader-base
-    WORKDIR /data
-    RUN wget -nv https://f000.backblazeb2.com/file/headway/sources.tar && tar xvf sources.tar && rm sources.tar
-    SAVE ARTIFACT /data/lake_centerline.shp.zip /lake_centerline.shp.zip
-    SAVE ARTIFACT /data/natural_earth_vector.sqlite.zip /natural_earth_vector.sqlite.zip
-    SAVE ARTIFACT /data/water-polygons-split-3857.zip /water-polygons-split-3857.zip
-
-planetiler-base:
+planetiler-build-mbtiles:
     # The version tag is ignored when sha256 is specified, but I'm leaving it in as documentation
     FROM ghcr.io/onthegomap/planetiler:0.5.0@sha256:79981c8af5330b384599e34d90b91a2c01b141be2c93a53244d14c49e2758c3c
     # FIXME: The 0.6.0 release is failing on planet builds (reproduced on daylight maps v1.26 w/ building and admin)
@@ -387,14 +348,9 @@ planetiler-base:
     # Failing with:
     #     java.util.concurrent.ExecutionException: java.io.UncheckedIOException: com.google.protobuf.InvalidProtocolBufferException: Protocol message contained an invalid tag (zero).
     # FROM ghcr.io/onthegomap/planetiler:0.6.0@sha256:e937250696efc60f57e7952180645c6e4b1888d70fd61d04f1e182c5489eaa1c
-    SAVE IMAGE planetiler-base:latest
 
-planetiler-build-mbtiles:
-    FROM earthly/dind:alpine
-
-    COPY +planetiler-download-mirrored-data/lake_centerline.shp.zip /data/sources/
-    COPY +planetiler-download-mirrored-data/natural_earth_vector.sqlite.zip /data/sources/
-    COPY +planetiler-download-mirrored-data/water-polygons-split-3857.zip /data/sources/
+    RUN mkdir -p /data/sources
+    RUN curl --no-progress-meter https://f000.backblazeb2.com/file/headway/sources.tar | tar -x --directory /data/sources
 
     ARG --required area
     COPY (+extract/data.osm.pbf --area=${area}) /data/
@@ -408,9 +364,7 @@ planetiler-build-mbtiles:
     #     "@/app/jib-classpath-file",
     #     "com.onthegomap.planetiler.Main"
     # ],
-    WITH DOCKER --load planetiler-base:latest=+planetiler-base
-        RUN docker run -v=/data:/data planetiler-base:latest --force --osm_path=/data/data.osm.pbf
-    END
+    RUN --entrypoint -- --force --osm_path=/data/data.osm.pbf
 
     SAVE ARTIFACT /data/output.mbtiles /output.mbtiles
 
@@ -706,7 +660,8 @@ valhalla-build:
     SAVE ARTIFACT /tiles /tiles
 
 valhalla-build-polylines:
-    FROM +valhalla-build
+    ARG --required area
+    FROM +valhalla-build --area=${area}
 
     RUN valhalla_export_edges valhalla.json > /tiles/polylines.0sv
 
