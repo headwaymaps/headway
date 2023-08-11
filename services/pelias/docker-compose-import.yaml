@@ -1,4 +1,4 @@
-version: "3"
+version: '3'
 services:
   pelias_schema:
     image: pelias/schema:master
@@ -46,6 +46,15 @@ services:
       - "./pelias.json:/code/pelias.json"
       - "./tools:/tools:ro"
       - "${DATA_DIR}:/data"
+    depends_on:
+      - pelias_elasticsearch
+  pelias_openaddresses:
+    image: pelias/openaddresses:master
+    container_name: pelias_openaddresses
+    volumes:
+      - "./pelias.json:/code/pelias.json"
+      - "${DATA_DIR}:/data"
+      - "./blacklist/:/data/blacklist"
     depends_on:
       - pelias_elasticsearch
   pelias_elasticsearch:

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec node dist/scripts/generatePeliasConfig.js $@
