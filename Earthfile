@@ -251,6 +251,7 @@ pelias-config:
 
     COPY services/pelias/generate_config ./generate_config
     WORKDIR ./generate_config
+    COPY data/areas.csv .
 
     RUN yarn install && yarn build
     RUN bin/generate-pelias-config areas.csv "${area}" "${countries}" > pelias.json
@@ -425,10 +426,11 @@ gtfs-compute-bbox:
 bbox:
     FROM debian:bookworm-slim
     ARG --required area
-    COPY services/gtfs/bboxes.csv /gtfs/bboxes.csv
+    COPY data/areas.csv /gtfs/areas.csv
     # ensure `area` has an entry in bboxes.csv, otherwise you'll need to add one
-    RUN test $(grep "${area}:" /gtfs/bboxes.csv | wc -l) -eq 1
-    RUN grep "${area}:" /gtfs/bboxes.csv | cut -d':' -f2 | tee bbox.txt
+    RUN test $(grep "${area}:" /gtfs/areas.csv | wc -l) -eq 1
+    # REVIEW: test this
+    RUN grep "${area}:" /gtfs/areas.csv | cut -d',' -f3 | tee bbox.txt
     SAVE ARTIFACT bbox.txt /bbox.txt
 
 gtfs-get-mobilitydb:
