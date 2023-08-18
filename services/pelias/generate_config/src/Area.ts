@@ -40,16 +40,16 @@ export default class Area {
   }
 
   static fromRecord(fields: {
-    name: string;
+    area: string;
     countryCodes: string;
-    openaddressesFiles: string;
+    openaddressesFiles?: string;
   }): Area {
     return new Area(
-      fields.name,
+      fields.area,
       fields.countryCodes
         .split(",")
         .filter((countryCode) => countryCode.length > 0),
-      fields.openaddressesFiles.split(",").filter((file) => file.length > 0),
+      (fields.openaddressesFiles || "").split(",").filter((file) => file.length > 0),
     );
   }
 
