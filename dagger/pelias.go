@@ -23,6 +23,7 @@ func (h *Headway) Pelias(ctx context.Context) *Pelias {
 	config := slimNodeContainer().
 		WithDirectory("generate_config", h.ServiceDir("pelias").Directory("generate_config")).
 		WithWorkdir("generate_config").
+		WithFile("areas.csv", h.ServicesDir.File("areas.csv")).
 		WithExec([]string{"yarn", "install"}).
 		WithExec([]string{"yarn", "build"}).
 		WithExec([]string{"sh", "-c", fmt.Sprintf("bin/generate-pelias-config areas.csv '%s' '%s' > pelias.json", h.Area, countriesStr)}).
