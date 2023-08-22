@@ -241,46 +241,20 @@ pelias-init-image:
         SAVE IMAGE --push ghcr.io/headwaymaps/pelias-init:${tag}
     END
 
-pelias-guess-country:
-    FROM debian:bullseye-slim
-    COPY services/pelias/cities_to_countries.csv /data/cities_to_countries.csv
-    ARG --required area
-    ENV HEADWAY_AREA=${area}
-    RUN grep "^${HEADWAY_AREA}:" /data/cities_to_countries.csv | cut -d':' -f2 > /data/guessed_country
-    SAVE ARTIFACT /data/guessed_country /guessed_country
-
 # We use this both for import and for production pelias instances.
 # But we might want to try a longer timeout for the import process?
 pelias-config:
-    FROM debian:bullseye-slim
-    RUN apt-get update \
-        && apt-get install -y --no-install-recommends gettext-base \
-        && rm -rf /var/lib/apt/lists/*
-    WORKDIR /config
-    COPY services/pelias/pelias.json.template pelias.json.template
-    ARG countries
+    FROM node:20-slim
+
     ARG --required area
-    ENV COUNTRIES=${countries}
-    IF [ -z ${COUNTRIES} ]
-        COPY (+pelias-guess-country/guessed_country --area=${area}) guessed_country
-        IF [ -s guessed_country ]
-            RUN echo "Using guessed country $(cat guessed_country)"
-            RUN COUNTRY_CODE_LIST="[\"$(cat guessed_country | sed 's/,/", "/g')\"]" \
-                bash -c "envsubst < pelias.json.template > pelias.json"
-        ELSE
-            RUN echo "Must use --countries flag for custom extracts" && exit 1
-        END
-    ELSE
-        IF [ "$COUNTRIES" = "ALL" ]
-            # Special-case the whole planet.
-            RUN sed '/COUNTRY_CODE_LIST/d' pelias.json.template > pelias.json
-            RUN cat pelias.json
-        ELSE
-            RUN COUNTRY_CODE_LIST="[\"$(echo ${COUNTRIES} | sed 's/,/", "/g')\"]" \
-                bash -c "envsubst < pelias.json.template > pelias.json"
-        END
-    END
-    SAVE ARTIFACT /config/pelias.json /pelias.json
+    ARG countries
+
+    COPY services/pelias/generate_config ./generate_config
+    WORKDIR ./generate_config
+
+    RUN yarn install && yarn build
+    RUN bin/generate-pelias-config "${area}" "${countries}" < areas.csv > pelias.json
+    SAVE ARTIFACT pelias.json /pelias.json
 
 pelias-import-base:
     FROM earthly/dind:alpine
@@ -295,12 +269,15 @@ pelias-import-base:
     COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) pelias.json
     COPY services/pelias/docker-compose-import.yaml compose.yaml
     COPY services/pelias/wait.sh ./tools/wait.sh
+    COPY services/pelias/do-if-openaddresses-supported ./
 
     # Cache needed data in the base image so that multiple subsequent images don't need to
     # copy them individually.
     COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap/data.osm.pbf
-    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
-        RUN docker-compose run -T 'pelias_whosonfirst' ./bin/download
+    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst \
+                                       --service pelias_openaddresses
+        RUN docker-compose run -T 'pelias_whosonfirst' ./bin/download && \
+            ./do-if-openaddresses-supported docker-compose run -T 'pelias_openaddresses' ./bin/download
     END
 
 pelias-prepare-placeholder:
@@ -324,13 +301,15 @@ pelias-import:
 
     WITH DOCKER --compose compose.yaml --service pelias_schema \
                                        --service pelias_openstreetmap \
+                                       --service pelias_openaddresses \
                                        --service pelias_whosonfirst \
                                        --service pelias_polylines_import
 
         RUN docker-compose run -T 'pelias_schema' /tools/wait.sh && \
             docker-compose run -T 'pelias_schema' ./bin/create_index && \
-            docker-compose run -T 'pelias_openstreetmap' ./bin/start && \
             docker-compose run -T 'pelias_whosonfirst' ./bin/start && \
+            ./do-if-openaddresses-supported docker-compose run -T 'pelias_openaddresses' ./bin/start && \
+            docker-compose run -T 'pelias_openstreetmap' ./bin/start && \
             docker-compose run -T 'pelias_polylines_import' ./bin/start
     END
 

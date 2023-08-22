@@ -5,9 +5,7 @@
   },
   "esclient": {
     "apiVersion": "7.5",
-    "hosts": [
-      { "host": "pelias-elasticsearch" }
-    ]
+    "hosts": [{ "host": "pelias-elasticsearch" }]
   },
   "elasticsearch": {
     "settings": {
@@ -32,18 +30,19 @@
     "openstreetmap": {
       "leveldbpath": "/tmp",
       "datapath": "/data/openstreetmap",
-      "import": [{
-        "filename": "data.osm.pbf"
-      }]
+      "import": [
+        {
+          "filename": "data.osm.pbf"
+        }
+      ]
     },
     "whosonfirst": {
       "datapath": "/data/whosonfirst",
-      "countryCode": ${COUNTRY_CODE_LIST},
       "importPostalcodes": true
     },
     "polyline": {
       "datapath": "/data/polylines",
-      "files": [ "extract.0sv" ]
+      "files": ["extract.0sv"]
     }
   }
 }

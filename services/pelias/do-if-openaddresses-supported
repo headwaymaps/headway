@@ -1,0 +1,18 @@
+#!/bin/sh
+
+PELIAS_CONFIG=./pelias.json
+
+if [[ ! -f "$PELIAS_CONFIG" ]]; then
+    echo "Missing pelias config"
+    exit 2
+fi
+
+# This is a crude check... we could do something fancier with jq if it proves to be too crude.
+SHOULD_DO=$(grep -q openaddresses "$PELIAS_CONFIG"; echo $?)
+
+if [[ "$SHOULD_DO" -eq 0 ]]; then
+    $@
+fi
+
+
+

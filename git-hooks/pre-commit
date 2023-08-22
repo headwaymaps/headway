@@ -11,9 +11,9 @@
 set -e
 
 (cd services/frontend/www-app &&
-  yarn format &&
+  yarn fmt &&
   yarn lint &&
-  yarn tsc)
+  yarn build)
 
 (cd services/transitmux &&
     cargo fmt &&
@@ -24,3 +24,9 @@ set -e
     cargo fmt --all &&
     cargo clippy --all-targets --all-features -- -D warnings &&
     cargo test --all-targets --all-features)
+
+(cd services/pelias/generate_config &&
+  yarn fmt &&
+  yarn lint &&
+  yarn build)
+

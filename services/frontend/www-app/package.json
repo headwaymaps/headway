@@ -8,8 +8,10 @@
   "scripts": {
     "lint": "eslint --ext .js,.ts,.vue ./",
     "format-check": "prettier --check \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
+    "fmt": "yarn format",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "jest",
+    "build": "yarn tsc",
     "tsc": "vue-tsc --noEmit --skipLibCheck",
     "dev": "quasar dev"
   },
