@@ -269,15 +269,15 @@ pelias-import-base:
     COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) pelias.json
     COPY services/pelias/docker-compose-import.yaml compose.yaml
     COPY services/pelias/wait.sh ./tools/wait.sh
+    COPY services/pelias/do-if-openaddresses-supported ./
 
     # Cache needed data in the base image so that multiple subsequent images don't need to
     # copy them individually.
     COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap/data.osm.pbf
     WITH DOCKER --compose compose.yaml --service pelias_whosonfirst \
                                        --service pelias_openaddresses
-
         RUN docker-compose run -T 'pelias_whosonfirst' ./bin/download && \
-            docker-compose run -T 'pelias_openaddresses' ./bin/download
+            ./do-if-openaddresses-supported docker-compose run -T 'pelias_openaddresses' ./bin/download
     END
 
 pelias-prepare-placeholder:
@@ -308,7 +308,7 @@ pelias-import:
         RUN docker-compose run -T 'pelias_schema' /tools/wait.sh && \
             docker-compose run -T 'pelias_schema' ./bin/create_index && \
             docker-compose run -T 'pelias_whosonfirst' ./bin/start && \
-            docker-compose run -T 'pelias_openaddresses' ./bin/start && \
+            ./do-if-openaddresses-supported docker-compose run -T 'pelias_openaddresses' ./bin/start && \
             docker-compose run -T 'pelias_openstreetmap' ./bin/start && \
             docker-compose run -T 'pelias_polylines_import' ./bin/start
     END
