@@ -1,0 +1,27 @@
+[package]
+name = "openaddresses"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.4.4", features = ["derive"] }
+flatgeobuf = "3.26.1"
+geozero = { version = "0.11.0", features = ["with-csv"] }
+glob = "0.3.1"
+log = "0.4.20"
+pretty_env_logger = "0.5.0"
+tokio = { version = "1.32.0", features = ["full"] }
+
+[patch.crates-io]
+# PR merged by not yet released https://github.com/flatgeobuf/flatgeobuf/pull/298
+flatgeobuf = { git ="https://github.com/flatgeobuf/flatgeobuf", rev = "350d580d655ca0738bb084adaafe512f51143f91"}
+
+[[bin]]
+name = "openaddresses-generate"
+path = "src/bin/generate/main.rs"
+
+[[bin]]
+name = "openaddresses-download"
+path = "src/bin/download.rs"

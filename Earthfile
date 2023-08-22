@@ -270,16 +270,34 @@ pelias-import-base:
     COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) pelias.json
     COPY services/pelias/docker-compose-import.yaml compose.yaml
     COPY services/pelias/wait.sh ./tools/wait.sh
-    COPY services/pelias/do-if-openaddresses-supported ./
 
-    # Cache needed data in the base image so that multiple subsequent images don't need to
-    # copy them individually.
+    # Cache the data we need in the base image so that multiple subsequent
+    # images don't need to copy them individually.
     COPY (+extract/data.osm.pbf --area=${area}) /data/openstreetmap/data.osm.pbf
-    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst \
-                                       --service pelias_openaddresses
-        RUN docker-compose run -T 'pelias_whosonfirst' ./bin/download && \
-            ./do-if-openaddresses-supported docker-compose run -T 'pelias_openaddresses' ./bin/download
+    WITH DOCKER --compose compose.yaml --service pelias_whosonfirst
+        RUN docker-compose run -T 'pelias_whosonfirst' ./bin/download
     END
+
+    IF [ "$countries" = "ALL" ]
+        # Download the planet-wide addresses CSV rather than downloading the
+        # entire FGB only to ultimately convert it back to CSV.
+        WITH DOCKER --compose compose.yaml --service pelias_openaddresses
+            RUN docker-compose run -T 'pelias_openaddresses' ./bin/download
+        END
+    ELSE
+      COPY (+bbox/bbox.txt --area=${area}) bbox.txt
+      ARG bbox=$(cat bbox.txt)
+      COPY (+download-filtered-openaddresses/openaddresses --bbox=${bbox}) /data/openaddresses
+    END
+
+download-filtered-openaddresses:
+    FROM rust
+    ARG --required bbox
+    COPY (+build-openaddresses-downloader/openaddresses-download) ./
+    RUN mkdir -p /data/openaddresses
+    ENV RUST_LOG=debug
+    RUN ./openaddresses-download https://data.maps.earth/openaddresses/planet-addresses-2023-08-16.fgb --bbox="${bbox}" /data/openaddresses/bbox_addresses.csv
+    SAVE ARTIFACT /data/openaddresses /openaddresses
 
 pelias-prepare-placeholder:
     ARG --required area
@@ -309,7 +327,7 @@ pelias-import:
         RUN docker-compose run -T 'pelias_schema' /tools/wait.sh && \
             docker-compose run -T 'pelias_schema' ./bin/create_index && \
             docker-compose run -T 'pelias_whosonfirst' ./bin/start && \
-            ./do-if-openaddresses-supported docker-compose run -T 'pelias_openaddresses' ./bin/start && \
+            docker-compose run -T 'pelias_openaddresses' ./bin/start && \
             docker-compose run -T 'pelias_openstreetmap' ./bin/start && \
             docker-compose run -T 'pelias_polylines_import' ./bin/start
     END
@@ -401,6 +419,23 @@ gtfout:
     SAVE ARTIFACT target/release/gtfs-bbox gtfs-bbox
     SAVE ARTIFACT target/release/assume-bikes-allowed assume-bikes-allowed
 
+build-openaddresses-downloader:
+    FROM rust
+
+    WORKDIR /build
+
+    COPY ./services/pelias/openaddresses/Cargo.toml .
+    COPY ./services/pelias/openaddresses/Cargo.lock .
+    RUN mkdir src
+    RUN echo 'fn main() { /* dummy main to get cargo to build deps */ }' > src/main.rs
+    RUN cargo build --release --bin openaddresses
+    RUN rm src/main.rs
+
+    COPY ./services/pelias/openaddresses ./
+    RUN cargo build --release
+
+    SAVE ARTIFACT target/release/openaddresses-download openaddresses-download
+
 gtfs-compute-bbox:
     FROM debian:bookworm-slim
 
@@ -428,9 +463,8 @@ bbox:
     ARG --required area
     COPY data/areas.csv /gtfs/areas.csv
     # ensure `area` has an entry in bboxes.csv, otherwise you'll need to add one
-    RUN test $(grep "${area}:" /gtfs/areas.csv | wc -l) -eq 1
-    # REVIEW: test this
-    RUN grep "${area}:" /gtfs/areas.csv | cut -d',' -f3 | tee bbox.txt
+    RUN test $(grep "^${area}," /gtfs/areas.csv | wc -l) -eq 1
+    RUN grep "^${area}," /gtfs/areas.csv | cut -d',' -f3 | tee bbox.txt
     SAVE ARTIFACT bbox.txt /bbox.txt
 
 gtfs-get-mobilitydb:

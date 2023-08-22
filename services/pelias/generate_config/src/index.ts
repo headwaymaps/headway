@@ -21,7 +21,7 @@ export function generate(
       }
       return area;
     }
-    return new Area(areaName, countries, []);
+    return new Area(areaName, countries);
   })();
 
   return area.peliasConfig();

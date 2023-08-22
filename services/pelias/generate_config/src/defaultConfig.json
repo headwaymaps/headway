@@ -36,6 +36,9 @@
         }
       ]
     },
+    "openaddresses": {
+      "datapath": "/data/openaddresses"
+    },
     "whosonfirst": {
       "datapath": "/data/whosonfirst",
       "importPostalcodes": true

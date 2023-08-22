@@ -2,8 +2,12 @@ import { readFileSync } from "fs";
 import { generate } from "./index";
 import * as path from "path";
 
+const inputPath = path.join(
+  path.resolve(__dirname),
+  "../../../../data/areas.csv",
+);
+
 test("guesses country when missing", () => {
-  const inputPath = path.join(path.resolve(__dirname), "../areas.csv");
   const input = readFileSync(inputPath, "utf-8");
   const config = generate(input, "Seattle", []);
   expect(config["imports"]["whosonfirst"]).toEqual({
@@ -14,7 +18,6 @@ test("guesses country when missing", () => {
 });
 
 test("use country when specified", () => {
-  const inputPath = path.join(path.resolve(__dirname), "../areas.csv");
   const input = readFileSync(inputPath, "utf-8");
   const config = generate(input, "Seattle", ["CA"]);
   expect(config["imports"]["whosonfirst"]).toEqual({
@@ -25,7 +28,6 @@ test("use country when specified", () => {
 });
 
 test("unknown area", () => {
-  const inputPath = path.join(path.resolve(__dirname), "../areas.csv");
   const input = readFileSync(inputPath, "utf-8");
   const config = generate(input, "planet-v1.26", ["ALL"]);
   expect(config["imports"]["whosonfirst"]).toEqual({

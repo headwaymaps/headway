@@ -22,34 +22,21 @@ type OpenAddressesConfig = {
 export default class Area {
   name: string;
   countryCodes: string[];
-  openaddressesFiles: string[];
-  constructor(
-    name: string,
-    countryCodes: string[],
-    openaddressesFiles: string[],
-  ) {
+  constructor(name: string, countryCodes: string[]) {
     this.name = name;
 
     countryCodes.forEach((countryCode) =>
       console.assert(countryCode.length > 0),
     );
     this.countryCodes = countryCodes;
-
-    openaddressesFiles.forEach((file) => console.assert(file.length > 0));
-    this.openaddressesFiles = openaddressesFiles;
   }
 
-  static fromRecord(fields: {
-    name: string;
-    countryCodes: string;
-    openaddressesFiles: string;
-  }): Area {
+  static fromRecord(fields: { area: string; countryCodes: string }): Area {
     return new Area(
-      fields.name,
+      fields.area,
       fields.countryCodes
         .split(",")
         .filter((countryCode) => countryCode.length > 0),
-      fields.openaddressesFiles.split(",").filter((file) => file.length > 0),
     );
   }
 
@@ -75,10 +62,10 @@ export default class Area {
         datapath: "/data/openaddresses",
       };
       importsConfig["openaddresses"] = openaddresses;
-    } else if (this.openaddressesFiles.length > 0) {
+    } else {
       const openaddresses = {
         datapath: "/data/openaddresses",
-        files: this.openaddressesFiles,
+        files: ["bbox_addresses.csv"],
       };
       importsConfig["openaddresses"] = openaddresses;
     }
