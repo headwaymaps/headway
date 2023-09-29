@@ -9,7 +9,9 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_whosonfirst:
-    image: pelias/whosonfirst:master
+    # Occasionally the containers need to be updated to fit the ever-growing dataset
+    # See https://github.com/pelias/whosonfirst/pull/540
+    image: ghcr.io/michaelkirk-pelias/whosonfirst:bump-importer-mem
     container_name: pelias_whosonfirst
     volumes:
       - "./pelias.json:/code/pelias.json"
