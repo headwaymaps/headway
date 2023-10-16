@@ -174,7 +174,7 @@ save-tileserver-natural-earth:
     SAVE ARTIFACT natural_earth_2_shaded_relief.raster.mbtiles AS LOCAL ./data/natural_earth.mbtiles
 
 images:
-    FROM debian:bullseye-slim
+    FROM debian:bookworm-slim
     ARG tags="dev"
     ARG branding
     BUILD +transitmux-serve-image --tags=${tags}
@@ -358,7 +358,7 @@ gtfs-base:
     RUN mkdir /gtfs_feeds
 
 cache-buster:
-    FROM debian:bullseye-slim
+    FROM debian:bookworm-slim
     RUN --no-cache echo $(date +%Y-%m-%d) > todays_date
     SAVE ARTIFACT todays_date
 
@@ -401,7 +401,7 @@ gtfout:
     SAVE ARTIFACT target/release/assume-bikes-allowed assume-bikes-allowed
 
 gtfs-compute-bbox:
-    FROM debian:bullseye-slim
+    FROM debian:bookworm-slim
 
     ARG --required transit_feeds
     ARG --required cache_key
@@ -423,7 +423,7 @@ gtfs-compute-bbox:
     SAVE ARTIFACT bbox.txt /bbox.txt
 
 bbox:
-    FROM debian:bullseye-slim
+    FROM debian:bookworm-slim
     ARG --required area
     COPY services/gtfs/bboxes.csv /gtfs/bboxes.csv
     # ensure `area` has an entry in bboxes.csv, otherwise you'll need to add one
@@ -432,7 +432,7 @@ bbox:
     SAVE ARTIFACT bbox.txt /bbox.txt
 
 gtfs-get-mobilitydb:
-    FROM +debian:bullseye-slim
+    FROM +debian:bookworm-slim
     ARG --required cache_key
     RUN curl 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media' > mobilitydb.csv
     SAVE ARTIFACT mobilitydb.csv mobilitydb.csv AS LOCAL "./data/mobilitydb-${cache_key}.csv"
@@ -589,7 +589,7 @@ build-transitmux:
     SAVE ARTIFACT target/release/transitmux-server /transitmux-server
 
 transitmux-serve-image:
-    FROM debian:bullseye-slim
+    FROM debian:bookworm-slim
 
     RUN adduser --disabled-login transitmux --gecos ""
     USER transitmux
@@ -822,7 +822,7 @@ web-serve-image:
 ##############################
 
 downloader-base:
-    FROM debian:bullseye-slim
+    FROM debian:bookworm-slim
     ENV TZ="America/New_York"
     RUN apt-get update \
         && apt-get install -y --no-install-recommends wget ca-certificates zstd \
@@ -830,7 +830,7 @@ downloader-base:
     RUN mkdir /data
 
 save-base:
-    FROM debian:bullseye-slim
+    FROM debian:bookworm-slim
     RUN apt-get update \
         && apt-get install -y --no-install-recommends zip zstd \
         && rm -rf /var/lib/apt/lists/*

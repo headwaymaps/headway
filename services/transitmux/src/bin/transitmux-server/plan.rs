@@ -22,7 +22,10 @@ pub async fn get_plan(
     req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> impl Responder {
-    let Some(mut router_url) = app_state.cluster().find_router_url(query.from_place, query.to_place) else {
+    let Some(mut router_url) = app_state
+        .cluster()
+        .find_router_url(query.from_place, query.to_place)
+    else {
         return Err(Error::user("no matching router found"));
     };
 
