@@ -391,7 +391,7 @@ gtfs-enumerate:
     SAVE ARTIFACT gtfs_feeds.csv /gtfs_feeds.csv AS LOCAL ./data/${area}-${cache_key}.gtfs_feeds.csv
 
 gtfout:
-    FROM rust
+    FROM rust:bookworm
 
     COPY ./services/gtfs/gtfout /gtfout
     WORKDIR /gtfout
@@ -569,7 +569,7 @@ otp-serve-image:
     END
 
 build-transitmux:
-    FROM rust
+    FROM rust:bookworm
 
     WORKDIR transitmux
 
