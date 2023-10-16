@@ -591,6 +591,10 @@ build-transitmux:
 transitmux-serve-image:
     FROM debian:bookworm-slim
 
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends libssl3 \
+        && rm -rf /var/lib/apt/lists/*
+
     RUN adduser --disabled-login transitmux --gecos ""
     USER transitmux
 
