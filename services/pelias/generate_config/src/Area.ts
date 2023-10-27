@@ -1,4 +1,4 @@
-import * as defaultConfig from "./defaultConfig.json";
+import { default as defaultConfig } from "./defaultConfig.json";
 import { PeliasConfig } from "./index";
 
 type ImportsConfig = {

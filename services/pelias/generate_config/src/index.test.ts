@@ -5,7 +5,7 @@ import * as path from "path";
 test("guesses country when missing", () => {
   const inputPath = path.join(path.resolve(__dirname), "../areas.csv");
   const input = readFileSync(inputPath, "utf-8");
-  const config = generate(input, { area: "Seattle", countries: [] });
+  const config = generate(input, "Seattle", []);
   expect(config["imports"]["whosonfirst"]).toEqual({
     countryCode: ["US"],
     datapath: "/data/whosonfirst",
@@ -16,7 +16,7 @@ test("guesses country when missing", () => {
 test("use country when specified", () => {
   const inputPath = path.join(path.resolve(__dirname), "../areas.csv");
   const input = readFileSync(inputPath, "utf-8");
-  const config = generate(input, { area: "Seattle", countries: ["CA"] });
+  const config = generate(input, "Seattle", ["CA"]);
   expect(config["imports"]["whosonfirst"]).toEqual({
     countryCode: ["CA"],
     datapath: "/data/whosonfirst",
@@ -27,7 +27,7 @@ test("use country when specified", () => {
 test("unknown area", () => {
   const inputPath = path.join(path.resolve(__dirname), "../areas.csv");
   const input = readFileSync(inputPath, "utf-8");
-  const config = generate(input, { area: "planet-v1.26", countries: ["ALL"] });
+  const config = generate(input, "planet-v1.26", ["ALL"]);
   expect(config["imports"]["whosonfirst"]).toEqual({
     datapath: "/data/whosonfirst",
     importPostalcodes: true,

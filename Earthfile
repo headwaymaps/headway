@@ -253,7 +253,7 @@ pelias-config:
     WORKDIR ./generate_config
 
     RUN yarn install && yarn build
-    RUN bin/generate-pelias-config "${area}" "${countries}" < areas.csv > pelias.json
+    RUN bin/generate-pelias-config areas.csv "${area}" "${countries}" > pelias.json
     SAVE ARTIFACT pelias.json /pelias.json
 
 pelias-import-base:
