@@ -29,18 +29,19 @@ async fn main() -> Result<()> {
     pretty_env_logger::init_timed();
     let args = Args::parse();
     let input_url = args.input_url;
-    let bbox = args.bbox.map(|s|BBox::from_str(&s).unwrap());
+    let bbox = args.bbox.map(|s| BBox::from_str(&s).unwrap());
     let output_path = args.output_path;
 
     download(&input_url, bbox, &output_path).await
 }
 
 async fn download(input_url: &str, bbox: Option<BBox>, output_path: &str) -> Result<()> {
-    let reader = HttpFgbReader::open(input_url)
-        .await?;
+    let reader = HttpFgbReader::open(input_url).await?;
 
     let mut reader = if let Some(bbox) = bbox {
-        reader.select_bbox(bbox.left, bbox.bottom, bbox.right, bbox.top).await?
+        reader
+            .select_bbox(bbox.left, bbox.bottom, bbox.right, bbox.top)
+            .await?
     } else {
         reader.select_all().await?
     };
@@ -78,9 +79,7 @@ impl FromStr for BBox {
         let right = floats
             .next()
             .unwrap_or_else(|| Err("bbox missing right")?)?;
-        let top = floats
-            .next()
-            .unwrap_or_else(|| Err("bbox missing top")?)?;
+        let top = floats.next().unwrap_or_else(|| Err("bbox missing top")?)?;
         if floats.next().is_some() {
             Err("Too many numbers in BBox")?;
         }
