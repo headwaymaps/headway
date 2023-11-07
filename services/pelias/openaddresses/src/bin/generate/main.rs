@@ -45,18 +45,36 @@ fn main() -> Result<()> {
         input_paths.reverse();
         Box::new(ChainedReader::new(input_paths))
     };
+    let mut reader = GeoJsonLineReader::new(&mut input);
 
     let output_file = File::create(output_path)?;
     let mut output = BufWriter::new(output_file);
-
-    let mut reader = GeoJsonLineReader::new(&mut input);
-    let mut writer = FgbWriter::create("fgb", GeometryType::Point)?;
-
-    info!("start processing");
-    reader.process(&mut writer)?;
-    info!("done processing");
-    info!("start writing");
-    writer.write(&mut output)?;
-    info!("done writing");
+    if output_path.ends_with(".fgb") {
+        info!("outputting FGB");
+        let mut writer = FgbWriter::create("fgb", GeometryType::Point)?;
+        info!("start processing");
+        reader.process(&mut writer)?;
+        info!("done processing");
+        info!("start writing");
+        writer.write(&mut output)?;
+        info!("done writing");
+    } else if output_path.ends_with(".geomedea") {
+        let is_compressed = true;
+        if is_compressed {
+            info!("outputting compressed geomedea");
+        } else {
+            info!("outputting uncompressed geomedea");
+        }
+        use geomedea::GeozeroWriter as GeomedeaWriter;
+        let mut writer = GeomedeaWriter::new(output, is_compressed)?;
+        info!("start processing");
+        reader.process(&mut writer)?;
+        info!("done processing");
+        info!("start writing");
+        writer.finish()?;
+        info!("done writing");
+    } else {
+        panic!("unknown file extension for output: {output_path}");
+    }
     Ok(())
 }

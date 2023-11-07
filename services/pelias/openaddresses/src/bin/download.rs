@@ -36,20 +36,32 @@ async fn main() -> Result<()> {
 }
 
 async fn download(input_url: &str, bbox: Option<BBox>, output_path: &str) -> Result<()> {
-    let reader = HttpFgbReader::open(input_url).await?;
-
-    let mut reader = if let Some(bbox) = bbox {
-        reader
-            .select_bbox(bbox.left, bbox.bottom, bbox.right, bbox.top)
-            .await?
-    } else {
-        reader.select_all().await?
-    };
-
     let output = File::create(output_path)?;
     let mut writer = BufWriter::new(output);
     let mut csv_writer = geozero::csv::CsvWriter::new(&mut writer);
-    reader.process_features(&mut csv_writer).await?;
+
+    if input_url.ends_with(".fgb") {
+        let reader = HttpFgbReader::open(input_url).await?;
+        let mut reader = if let Some(bbox) = bbox {
+            reader
+                .select_bbox(bbox.left, bbox.bottom, bbox.right, bbox.top)
+                .await?
+        } else {
+            reader.select_all().await?
+        };
+        reader.process_features(&mut csv_writer).await?;
+    } else if input_url.ends_with(".geomedea") {
+        let mut reader = geomedea::HttpReader::open(input_url).await?;
+        let reader = if let Some(bbox) = bbox {
+            let bounds = geomedea::Bounds::from(bbox);
+            reader.select_bbox(&bounds).await?
+        } else {
+            reader.select_all().await?
+        };
+        todo!("reader.process_features(&mut csv_writer).await?");
+    } else {
+        panic!("unsupported input format: {input_url}");
+    };
 
     Ok(())
 }
@@ -62,6 +74,14 @@ struct BBox {
     bottom: f64,
     right: f64,
     top: f64,
+}
+
+impl From<BBox> for geomedea::Bounds {
+    fn from(value: BBox) -> Self {
+        let a = geomedea::LngLat::degrees(value.left, value.bottom);
+        let b = geomedea::LngLat::degrees(value.right, value.top);
+        Self::from_corners(&a, &b)
+    }
 }
 
 use std::str::FromStr;
