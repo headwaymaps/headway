@@ -32,17 +32,43 @@ impl std::io::Read for ChainedZipReader {
         let mut current_file = match self.current_file.take() {
             Some(current_file) => current_file,
             None => {
-                let Some(next) = self.files.next() else {
-                    return Ok(0);
-                };
-                // yikes. I'm not sure how to own the archive while cursing through it's files
-                // so lets just read the entire file into memory (only one at a time though, which
-                // should be fine for our use case)
-                let mut file = self.archive.by_index(next)?;
-                debug!("reading {file_name}", file_name = file.name());
-                let mut file_contents = vec![];
-                file.read_to_end(&mut file_contents)?;
-                Cursor::new(file_contents)
+                loop {
+
+                    let Some(next) = self.files.next() else {
+                        return Ok(0);
+                    };
+                    // yikes. I'm not sure how to own the archive while cursing through it's files
+                    // so lets just read the entire file into memory (only one at a time though, which
+                    // should be fine for our use case)
+                    let mut file = self.archive.by_index(next)?;
+
+                    let file_name = file.name();
+                    if file_name.ends_with(".meta") {
+                        debug!("skipping .meta: {file_name}");
+                        continue;
+                    }
+
+                    if file_name.contains("parcels") {
+                        debug!("skipping parcels: {file_name}");
+                        continue;
+                    }
+
+                    if file_name.contains("buildings") {
+                        debug!("skipping buildings: {file_name}");
+                        continue;
+                    }
+
+                    if file.is_dir() {
+                        debug!("skipping directory: {file_name}");
+                        continue;
+                    }
+
+                    debug!("reading {file_name}");
+                    assert!(file_name.contains("address"));
+                    let mut file_contents = vec![];
+                    file.read_to_end(&mut file_contents)?;
+                    break Cursor::new(file_contents)
+                }
             }
         };
 

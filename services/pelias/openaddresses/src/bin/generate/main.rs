@@ -65,7 +65,7 @@ fn main() -> Result<()> {
         } else {
             info!("outputting uncompressed geomedea");
         }
-        use geomedea::GeozeroWriter as GeomedeaWriter;
+        use geomedea_geozero::GeomedeaWriter;
         let mut writer = GeomedeaWriter::new(output, is_compressed)?;
         info!("start processing");
         reader.process(&mut writer)?;

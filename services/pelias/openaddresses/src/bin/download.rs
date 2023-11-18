@@ -52,13 +52,13 @@ async fn download(input_url: &str, bbox: Option<BBox>, output_path: &str) -> Res
         reader.process_features(&mut csv_writer).await?;
     } else if input_url.ends_with(".geomedea") {
         let mut reader = geomedea::HttpReader::open(input_url).await?;
-        let reader = if let Some(bbox) = bbox {
+        let mut reader = if let Some(bbox) = bbox {
             let bounds = geomedea::Bounds::from(bbox);
             reader.select_bbox(&bounds).await?
         } else {
             reader.select_all().await?
         };
-        todo!("reader.process_features(&mut csv_writer).await?");
+        geomedea_geozero::process_geomedea(&mut reader, &mut csv_writer).await?;
     } else {
         panic!("unsupported input format: {input_url}");
     };

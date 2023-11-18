@@ -7,17 +7,19 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.4.4", features = ["derive"] }
-flatgeobuf = "3.26.1"
-geozero = { version = "0.11.0", features = ["with-csv"] }
+flatgeobuf = "4.0.0"
+# Waiting for release...
+geozero = { version="0.11.0", features = ["with-csv"] }
 glob = "0.3.1"
 log = "0.4.20"
 pretty_env_logger = "0.5.0"
 tokio = { version = "1.32.0", features = ["full"] }
 zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
-geomedea = { path = "../../../../../georust/geomedea" }
+geomedea = { git = "https://github.com/michaelkirk/geomedea" }
+geomedea_geozero = { git = "https://github.com/michaelkirk/geomedea" }
 
 [patch.crates-io]
-flatgeobuf = { path = "../../../../../georust/flatgeobuf/src/rust" }
+geozero = { git = "https://github.com/georust/geozero", rev = "8501fedf288adc851d08a367f8f651ee643d4bed" }
 
 [[bin]]
 name = "openaddresses-generate"
