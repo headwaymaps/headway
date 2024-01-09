@@ -3,15 +3,15 @@ kind: ConfigMap
 metadata:
   name: deployment-config
 data:
-  area: maps-earth-planet-v1.30
+  area: maps-earth-planet-v1.36
   public-url: https://maps.earth
   bbox: ""
   enable-transit-routing: "1"
   natural-earth-source-url: https://data.example.com/0.6.0/natural_earth.mbtiles
-  mbtiles-source-url: https://data.example.com/0.6.0/maps-earth-planet-v1.30/maps-earth-planet-v1.30.mbtiles
-  valhalla-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.30/maps-earth-planet-v1.30.valhalla.tar.zst
-  placeholder-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.30/maps-earth-planet-v1.30.placeholder.tar.zst
-  elasticsearch-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.30/maps-earth-planet-v1.30.elasticsearch.tar.zst
+  mbtiles-source-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.mbtiles
+  valhalla-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.valhalla.tar.zst
+  placeholder-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.placeholder.tar.zst
+  elasticsearch-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.elasticsearch.tar.zst
   pelias-config-json: |
     {
       "logger": {
@@ -61,9 +61,6 @@ data:
             }
           ]
         },
-        "openaddresses": {
-          "datapath": "/data/openaddresses"
-        },
         "whosonfirst": {
           "datapath": "/data/whosonfirst",
           "importPostalcodes": true
@@ -73,6 +70,9 @@ data:
           "files": [
             "extract.0sv"
           ]
+        },
+        "openaddresses": {
+          "datapath": "/data/openaddresses"
         }
       }
     }
