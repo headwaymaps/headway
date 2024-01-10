@@ -21,9 +21,7 @@ data:
       "esclient": {
         "apiVersion": "7.5",
         "hosts": [
-          {
-            "host": "pelias-elasticsearch"
-          }
+          { "host": "pelias-elasticsearch" }
         ]
       },
       "elasticsearch": {
@@ -37,15 +35,9 @@ data:
       },
       "api": {
         "services": {
-          "placeholder": {
-            "url": "http://pelias-placeholder:4100"
-          },
-          "libpostal": {
-            "url": "http://pelias-libpostal:4400"
-          },
-          "pip": {
-            "url": "http://pelias-pip:4400"
-          }
+          "placeholder": { "url": "http://pelias-placeholder:4100" },
+          "libpostal": { "url": "http://pelias-libpostal:4400" },
+          "pip": { "url": "http://pelias-pip:4400" }
         }
       },
       "imports": {
@@ -55,30 +47,18 @@ data:
         "openstreetmap": {
           "leveldbpath": "/tmp",
           "datapath": "/data/openstreetmap",
-          "import": [
-            {
-              "filename": "data.osm.pbf"
-            }
-          ]
+          "import": [{
+            "filename": "data.osm.pbf"
+          }]
         },
         "whosonfirst": {
           "datapath": "/data/whosonfirst",
-          "importPostalcodes": true,
-          "countryCode": [
-            "US"
-          ]
+          "countryCode": ["US"],
+          "importPostalcodes": true
         },
         "polyline": {
           "datapath": "/data/polylines",
-          "files": [
-            "extract.0sv"
-          ]
-        },
-        "openaddresses": {
-          "datapath": "/data/openaddresses",
-          "files": [
-            "us/wa/king.csv"
-          ]
+          "files": [ "extract.0sv" ]
         }
       }
     }
