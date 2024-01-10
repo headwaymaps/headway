@@ -607,7 +607,7 @@ export default defineComponent({
       }
 
       // Add 3-D buildings
-      const render3DZoomLevel = 15;
+      const render3DZoomLevel = 17;
       type LerpableValue =
         | maplibregl.ExpressionSpecification
         | maplibregl.ColorSpecification
@@ -647,10 +647,11 @@ export default defineComponent({
           type: 'fill-extrusion',
           minzoom: render3DZoomLevel,
           paint: {
-            'fill-extrusion-color': zoomLerp<maplibregl.ColorSpecification>(
-              'hsl(35, 8%, 85%)',
-              'hsl(35, 8%, 75%)'
-            ),
+            // This value is based on the background-fill of the "buildings" layer in tileserver/styles/basic/style.json
+            // But the extruded rendering appears "brighter", presumably due rendering lighting effects, so I've
+            // reduced the brightness here to compensate. What we want is an imperceptible transition between 2d and 3d
+            // as the user zooms in.
+            'fill-extrusion-color': 'hsl(40, 5.5%, 87%)',
             'fill-extrusion-height':
               zoomLerp<maplibregl.ExpressionSpecification>(0, [
                 '*',
