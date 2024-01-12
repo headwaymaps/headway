@@ -607,7 +607,7 @@ export default defineComponent({
       }
 
       // Add 3-D buildings
-      const render3DZoomLevel = 17;
+      const render3DZoomLevel = 16;
       type LerpableValue =
         | maplibregl.ExpressionSpecification
         | maplibregl.ColorSpecification
