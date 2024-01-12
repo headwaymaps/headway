@@ -146,7 +146,7 @@
       "source-layer": "waterway",
       "filter": ["all", ["==", "brunnel", "tunnel"]],
       "paint": {
-        "line-color": "#a0c8f0",
+        "line-color": "rgb(141,220,248)",
         "line-dasharray": [3, 3],
         "line-gap-width": {
           "stops": [
@@ -188,7 +188,7 @@
       "filter": ["all", ["==", "class", "river"], ["!=", "brunnel", "tunnel"]],
       "layout": { "line-cap": "round" },
       "paint": {
-        "line-color": "#a0c8f0",
+        "line-color": "rgb(141,220,248)",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -206,7 +206,7 @@
       "filter": ["all", ["!=", "class", "river"], ["!=", "brunnel", "tunnel"]],
       "layout": { "line-cap": "round" },
       "paint": {
-        "line-color": "#a0c8f0",
+        "line-color": "rgb(141,220,248)",
         "line-width": {
           "base": 1.3,
           "stops": [
@@ -1761,10 +1761,7 @@
         ["==", "$type", "LineString"],
         ["in", "class", "ferry"]
       ],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
+      "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
         "line-color": "#99d",
         "line-width": 2,
