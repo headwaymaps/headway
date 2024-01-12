@@ -47,7 +47,7 @@
       "source": "openmaptiles",
       "source-layer": "park",
       "paint": {
-        "fill-color": "#d8e8c8",
+        "fill-color": "hsl(101,62.6%,63.3%)",
         "fill-opacity": 0.7,
         "fill-outline-color": "rgba(95, 208, 100, 1)"
       }
@@ -59,7 +59,7 @@
       "source-layer": "park",
       "paint": {
         "line-dasharray": [1, 1.5],
-        "line-color": "rgba(228, 241, 215, 1)"
+        "line-color": "rgb(228, 241, 215)"
       }
     },
     {
@@ -87,8 +87,8 @@
       "filter": ["all", ["==", "class", "wood"]],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "hsla(98, 61%, 72%, 0.7)",
-        "fill-opacity": 0.4
+        "fill-color": "hsl(101,62.6%,43.3%)",
+        "fill-opacity": 0.3
       }
     },
     {
@@ -99,8 +99,8 @@
       "filter": ["all", ["==", "class", "grass"]],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "rgba(176, 213, 154, 1)",
-        "fill-opacity": 0.3
+        "fill-color": "hsl(101,62.6%,63.3%)",
+        "fill-opacity": 0.5
       }
     },
     {
