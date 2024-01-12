@@ -32,6 +32,25 @@
         v-on:mouseleave="didHoverSearchListItem(undefined)"
         v-on:click="didClickSearchListItem(place)"
       />
+      <q-item
+        class="list-item"
+        v-if="searchResults?.places.length === 0 && !isLoading"
+      >
+        <q-item-section>
+          <q-item-label>
+            {{ $t('search_results_not_found_header') }}
+          </q-item-label>
+          <q-item-label
+            class="text-weight-light"
+            v-html="
+              $t('search_results_not_found_subheader', {
+                osmLink:
+                  '<a href=https://www.openstreetmap.org>OpenStreetMap</a>',
+              })
+            "
+          />
+        </q-item-section>
+      </q-item>
     </q-list>
   </div>
 </template>
@@ -197,7 +216,9 @@ export default defineComponent({
           this.isLoading = false;
         });
 
-        if (!results.bbox) {
+        if (results.features.length == 0) {
+          // no results
+        } else if (!results.bbox) {
           console.error('search results missing bounding box');
         } else if (results.bbox.length != 4) {
           console.error('unexpected bbox dimensions');
