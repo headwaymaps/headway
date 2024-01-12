@@ -76,4 +76,7 @@ export default {
   opening_hours_is_closed_until_tomorrow_$time: 'Closed until {time} tomorrow',
   opening_hours_show_more_times: 'Show hours',
   opening_hours_hide_more_times: 'Hide hours',
+  search_results_not_found_header: 'No results found. 😢',
+  search_results_not_found_subheader:
+    'Something missing? Consider adding it to {osmLink} so it can eventually appear here.',
 };
