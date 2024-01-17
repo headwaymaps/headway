@@ -22,20 +22,27 @@ spec:
           env:
             - name: HEADWAY_AREA
               value: area
-            - name: NATURAL_EARTH_ARTIFACT_DEST_PATH
-              value: /data/natural_earth.mbtiles
-            - name: NATURAL_EARTH_ARTIFACT_URL
+            - name: TERRAIN_ARTIFACT_DEST
+              value: /data/terrain.mbtiles
+            - name: TERRAIN_ARTIFACT_SOURCE
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
-                  key: natural-earth-source-url
-            - name: MBTILES_ARTIFACT_DEST_PATH
+                  key: terrain-source-url
+            - name: LANDCOVER_ARTIFACT_DEST
+              value: /data/landcover.mbtiles
+            - name: LANDCOVER_ARTIFACT_SOURCE
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: landcover-source-url
+            - name: AREAMAP_ARTIFACT_DEST
               value: /data/area.mbtiles
-            - name: MBTILES_ARTIFACT_URL
+            - name: AREAMAP_ARTIFACT_SOURCE
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
-                  key: mbtiles-source-url
+                  key: areamap-source-url
           resources:
             limits:
               memory: 200Mi

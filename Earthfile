@@ -41,7 +41,7 @@ save:
     BUILD +save-elasticsearch --area=${area} --countries=${countries}
     BUILD +save-placeholder --area=${area} --countries=${countries}
     BUILD +save-pelias-config --area=${area} --countries=${countries}
-    BUILD +save-tileserver-natural-earth
+    BUILD +save-tileserver-terrain
 
 save-polylines:
     FROM +save-base
@@ -168,10 +168,12 @@ save-pelias-config:
     COPY (+pelias-config/pelias.json --area=${area} --countries=${countries}) /pelias.json
     SAVE ARTIFACT /pelias.json AS LOCAL ./data/${area}.pelias.json
 
-save-tileserver-natural-earth:
+save-tileserver-terrain:
     FROM +downloader-base
-    RUN wget -nv https://publicdata.ellenhp.workers.dev/natural_earth_2_shaded_relief.raster.mbtiles
-    SAVE ARTIFACT natural_earth_2_shaded_relief.raster.mbtiles AS LOCAL ./data/natural_earth.mbtiles
+    RUN wget -nv https://data.maps.earth/terrain.mbtiles
+    SAVE ARTIFACT terrain.mbtiles AS LOCAL ./data/terrain.mbtiles
+    RUN wget -nv https://data.maps.earth/landcover.mbtiles
+    SAVE ARTIFACT landcover.mbtiles AS LOCAL ./data/landcover.mbtiles
 
 images:
     FROM debian:bookworm-slim
