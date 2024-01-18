@@ -49,7 +49,7 @@
       "id": "landcover",
       "type": "fill",
       "source": "landcover",
-      "source-layer": "low",
+      "source-layer": "landcover",
       "maxzoom": 9,
       "paint": {
         "fill-opacity": {
