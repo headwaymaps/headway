@@ -7,8 +7,9 @@ data:
   public-url: https://maps.earth
   bbox: ""
   enable-transit-routing: "1"
-  natural-earth-source-url: https://data.example.com/0.6.0/natural_earth.mbtiles
-  mbtiles-source-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.mbtiles
+  terrain-source-url: https://data.example.com/0.6.0/terrain.mbtiles
+  landcover-source-url: https://data.example.com/0.6.0/landcover.mbtiles
+  areamap-source-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.mbtiles
   valhalla-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.valhalla.tar.zst
   placeholder-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.placeholder.tar.zst
   elasticsearch-artifact-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.elasticsearch.tar.zst

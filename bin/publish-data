@@ -86,7 +86,8 @@ upload "${HEADWAY_AREA}*.graph.obj.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}
 upload "${HEADWAY_AREA}*.gtfs.tar.zst"  "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 
 # These files are generic across all areas
-upload natural_earth.mbtiles "${HEADWAY_DATA_TAG}"
+upload terrain.mbtiles "${HEADWAY_DATA_TAG}"
+upload landcover.mbtiles "${HEADWAY_DATA_TAG}"
 
 rets=()
 for pid in ${upload_pids[*]}; do

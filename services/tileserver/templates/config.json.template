@@ -16,8 +16,11 @@
     "default": {
       "mbtiles": "${HEADWAY_AREA}.mbtiles"
     },
-    "natural_earth": {
-      "mbtiles": "natural_earth.mbtiles"
+    "landcover": {
+      "mbtiles": "landcover.mbtiles"
+    },
+    "terrain": {
+      "mbtiles": "terrain.mbtiles"
     }
   }
 }
