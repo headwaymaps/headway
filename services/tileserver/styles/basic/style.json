@@ -50,7 +50,7 @@
       "type": "fill",
       "source": "landcover",
       "source-layer": "landcover",
-      "maxzoom": 9,
+      "maxzoom": 8,
       "paint": {
         "fill-opacity": {
           "stops": [
