@@ -23,12 +23,7 @@
   border-top: none;
 }
 
-.desktop .headway-ctrl-wrapper {
-  background: #fffa;
-  gap: 8px;
-}
-
-.mobile .headway-ctrl-wrapper {
+.headway-ctrl-wrapper {
   float: right;
   gap: 16px;
   margin: 8px;
@@ -44,11 +39,24 @@
   .maplibregl-ctrl {
     margin: 0;
   }
+}
 
-  .maplibregl-ctrl-attrib {
-    background: none;
-    color: black;
+@keyframes hideElement {
+  0% {
+    opacity: 1;
   }
+  100% {
+    opacity: 0;
+    display: none;
+    margin-top: -20px;
+  }
+}
+
+.maplibregl-ctrl-attrib {
+  // The attribution becomes a click-hazard next to the geolocation button and takes up a lot of vertical space on mobile.
+  // so we hide it after a delay (this is in line with OSM's attribution guidelines)
+  animation: hideElement 0.2s forwards;
+  animation-delay: 5s;
 }
 </style>
 
@@ -79,7 +87,6 @@ import { debounce } from 'lodash';
 import Place, { PlaceId } from 'src/models/Place';
 import TripLayerId from 'src/models/TripLayerId';
 import env from 'src/utils/env';
-import { Platform } from 'quasar';
 import WrapperControl from 'src/ui/WrapperControl';
 
 export var map: maplibregl.Map | null = null;
@@ -469,20 +476,12 @@ export default defineComponent({
     });
     map.addControl(nav, 'top-right');
 
-    if (Platform.is.desktop) {
-      let wrapperControl = new WrapperControl();
-      wrapperControl.pushChild(scaleControl);
-      wrapperControl.pushChild(attributionControl);
-      map.addControl(wrapperControl, 'bottom-right');
-      map.addControl(geolocate, 'bottom-right');
-    } else {
-      map.addControl(attributionControl, 'bottom-right');
+    map.addControl(attributionControl, 'bottom-right');
 
-      let wrapperControl = new WrapperControl();
-      wrapperControl.pushChild(scaleControl);
-      wrapperControl.pushChild(geolocate);
-      map.addControl(wrapperControl, 'bottom-right');
-    }
+    let wrapperControl = new WrapperControl();
+    wrapperControl.pushChild(scaleControl);
+    wrapperControl.pushChild(geolocate);
+    map.addControl(wrapperControl, 'bottom-right');
 
     map.on('load', () => {
       this.loaded = true;
