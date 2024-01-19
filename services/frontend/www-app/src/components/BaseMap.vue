@@ -43,12 +43,13 @@
 
 @keyframes hideElement {
   0% {
-    opacity: 1;
+    visibility: visible;
   }
   100% {
-    opacity: 0;
-    display: none;
+    visibility: hidden;
     margin-top: -20px;
+    position: relative;
+    top: 20px;
   }
 }
 
