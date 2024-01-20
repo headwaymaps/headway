@@ -195,12 +195,22 @@ export const baseMapPromise = new Promise<BaseMapInterface>((resolver) => {
   baseMapPromiseResolver = resolver;
 });
 
+// tsc was failing with:
+//     TS2589: Type instantiation is excessively deep and possibly infinite
+// So I added a simpler type here.
+// If we need, we can expose more of the maplibre-gl.Marker methods or
+// maybe a future version of TSC will be smart enough to deal with reverting
+// this.
+interface SimpleMarker {
+  remove: () => void;
+}
+
 export default defineComponent({
   name: 'BaseMap',
   data: function (): {
     flyToOptions?: FlyToOptions;
     boundsToFit?: LngLatBoundsLike;
-    markers: Map<string, Marker>;
+    markers: Map<string, SimpleMarker>;
     layers: string[];
     loaded: boolean;
     touchHandlers: Map<BaseMapEventType, Array<BaseMapEventHandler>>;
