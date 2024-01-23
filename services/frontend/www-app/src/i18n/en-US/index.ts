@@ -60,6 +60,7 @@ export default {
   trip_search_depart_now: 'Leave now',
   trip_search_transit_with_bike: '🚲 Transit with a bike',
   departs_$timeDuration_from_now: 'in {timeDuration}',
+  departs_$timeDuration_since_now: '{timeDuration} ago',
   departs_at_$location: 'from {location}',
   transit_timeline_wait_for_transit_$timeDuration: 'wait up to {timeDuration}',
   edit_poi_button: 'Edit Details',

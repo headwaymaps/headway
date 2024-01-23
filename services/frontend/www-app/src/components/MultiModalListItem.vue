@@ -15,17 +15,10 @@
   <q-item-label caption v-if="active">
     {{ trip.formattedFootDistance() }}
   </q-item-label>
-  <div v-if="trip.firstTransitLeg?.realTime">
+  <div v-if="formattedRealTimeUntilStart() !== undefined">
     <q-icon name="rss_feed" style="margin-right: 4px" />
     <span class="real-time-departure-time">
-      {{
-        $t('departs_$timeDuration_from_now', {
-          timeDuration: formatDuration(
-            (trip.firstTransitLeg!.startTime - nowTime) / 1000,
-            'shortform'
-          ),
-        })
-      }}&nbsp;
+      {{ formattedRealTimeUntilStart() }}&nbsp;
     </span>
     <span class="real-time-departure-location">
       {{
@@ -58,6 +51,7 @@
 import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
 import { formatDuration } from 'src/utils/format';
+import { i18n } from 'src/i18n/lang';
 
 export default defineComponent({
   name: 'MultiModalListItem',
@@ -83,7 +77,22 @@ export default defineComponent({
     return { nowTime: Date.now() };
   },
   methods: {
-    formatDuration,
+    formattedRealTimeUntilStart(): string | undefined {
+      let startTime = this.trip.firstTransitLeg?.startTime;
+      if (!startTime) {
+        return undefined;
+      }
+      let timeUntilStart = startTime - this.nowTime;
+      if (timeUntilStart < 0) {
+        return i18n.global.t('departs_$timeDuration_since_now', {
+          timeDuration: formatDuration(-timeUntilStart / 1000),
+        });
+      } else {
+        return i18n.global.t('departs_$timeDuration_from_now', {
+          timeDuration: formatDuration(timeUntilStart / 1000),
+        });
+      }
+    },
   },
 });
 </script>
