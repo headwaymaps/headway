@@ -157,6 +157,7 @@ export interface BaseMapInterface {
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   setCursor: (key: string) => void;
   pushMarker: (key: string, marker: Marker) => void;
+  hasMarker(key: string): boolean;
   removeMarker: (key: string) => void;
   removeAllMarkers: () => void;
   removeMarkersExcept: (keys: string[]) => void;
@@ -242,6 +243,9 @@ export default defineComponent({
       }
       this.markers.set(key, marker);
       this.ensureMapLoaded((map) => marker.addTo(map));
+    },
+    hasMarker(key: string): boolean {
+      return this.markers.has(key);
     },
     removeMarker(key: string): boolean {
       let marker = this.markers.get(key);
@@ -456,6 +460,7 @@ export default defineComponent({
       flyTo: this.flyTo,
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
+      hasMarker: this.hasMarker,
       removeMarker: this.removeMarker,
       removeAllMarkers: this.removeAllMarkers,
       removeMarkersExcept: this.removeMarkersExcept,

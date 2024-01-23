@@ -287,6 +287,11 @@ export class ItineraryLeg {
     };
   }
 
+  start(): LngLat {
+    const coordinates = this.geometry().coordinates;
+    return new LngLat(coordinates[0][0], coordinates[0][1]);
+  }
+
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
     if (active) {
       if (this.mode == OTPMode.Walk || this.mode == OTPMode.Bicycle) {

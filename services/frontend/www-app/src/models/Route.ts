@@ -87,6 +87,10 @@ export default class Route implements Trip {
             coordinates: points,
           };
         },
+        start(): LngLat {
+          const coordinates = this.geometry().coordinates;
+          return new LngLat(coordinates[0][0], coordinates[0][1]);
+        },
         paintStyle(active: boolean): LineLayerSpecification['paint'] {
           if (active) {
             const firstManeuver = vLeg.maneuvers[0];
