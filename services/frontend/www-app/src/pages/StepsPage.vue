@@ -70,9 +70,11 @@ export default defineComponent({
   components: { SearchBox },
   data: function (): {
     trip?: Trip;
+    tripMarkers: string[];
   } {
     return {
       trip: undefined,
+      tripMarkers: [],
     };
   },
   methods: {
@@ -152,11 +154,25 @@ export default defineComponent({
       for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
         const leg = trip.legs[legIdx];
 
-        const layerId = TripLayerId.selected(tripIdx, legIdx);
+        const layerId = TripLayerId.selectedLeg(tripIdx, legIdx);
         layerIds.push(layerId);
 
         if (!map.hasLayer(layerId)) {
           map.pushTripLayer(layerId, leg.geometry(), leg.paintStyle(true));
+        }
+
+        let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
+        if (
+          legIdx > 0 &&
+          !this.tripMarkers.includes(transferLayerId.toString())
+        ) {
+          this.tripMarkers.push(transferLayerId.toString());
+          if (!map.hasMarker(transferLayerId.toString())) {
+            map.pushMarker(
+              transferLayerId.toString(),
+              Markers.transfer().setLngLat(leg.start())
+            );
+          }
         }
       }
       map.removeLayersExcept(layerIds);
@@ -190,7 +206,7 @@ export default defineComponent({
       map.fitBounds(this.trip.bounds);
     });
 
-    map.removeAllMarkers();
+    map.removeMarkersExcept(this.tripMarkers);
     if (this.fromPlace) {
       map.pushMarker(
         'source_marker',

@@ -11,6 +11,12 @@ export default {
     marker.getElement().classList.add('cursor-pointer');
     return marker;
   },
+  transfer: (): Marker => {
+    const element = document.createElement('div');
+    element.innerHTML =
+      '<svg display="block" height="15" width="15"><circle cx="8" cy="8" r="5" stroke="#888" stroke-width="2" fill="white" /></svg>';
+    return new Marker({ element });
+  },
   tripStart: (): Marker => {
     const element = document.createElement('div');
     element.innerHTML =

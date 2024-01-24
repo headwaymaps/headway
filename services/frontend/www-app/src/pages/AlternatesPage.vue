@@ -91,6 +91,7 @@ export default defineComponent({
   },
   data(): {
     trips: Trip[];
+    tripMarkers: string[];
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
@@ -100,6 +101,7 @@ export default defineComponent({
   } {
     return {
       trips: [],
+      tripMarkers: [],
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
@@ -265,22 +267,29 @@ export default defineComponent({
         for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
           const leg = trip.legs[legIdx];
           if (tripIdx == selectedIdx) {
-            if (map.hasLayer(TripLayerId.unselected(tripIdx, legIdx))) {
-              map.removeLayer(TripLayerId.unselected(tripIdx, legIdx));
+            if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
+              map.removeLayer(TripLayerId.unselectedLeg(tripIdx, legIdx));
             }
             continue;
           }
 
-          if (map.hasLayer(TripLayerId.selected(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.selected(tripIdx, legIdx));
+          if (map.hasLayer(TripLayerId.selectedLeg(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.selectedLeg(tripIdx, legIdx));
           }
 
-          if (map.hasLayer(TripLayerId.unselected(tripIdx, legIdx))) {
+          if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
             continue;
           }
 
-          let layerId = TripLayerId.unselected(tripIdx, legIdx);
+          let layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
           map.pushTripLayer(layerId, leg.geometry(), leg.paintStyle(false));
+          if (legIdx > 0) {
+            let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
+            map.pushMarker(
+              transferLayerId.toString(),
+              Markers.transfer().setLngLat(leg.start())
+            );
+          }
           map.on('mouseover', layerId.toString(), () => {
             map.setCursor('pointer');
           });
@@ -297,9 +306,9 @@ export default defineComponent({
       const selectedTrip = trips[selectedIdx];
       for (let legIdx = 0; legIdx < selectedTrip.legs.length; legIdx++) {
         const leg = selectedTrip.legs[legIdx];
-        if (!map.hasLayer(TripLayerId.selected(selectedIdx, legIdx))) {
+        if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
           map.pushTripLayer(
-            TripLayerId.selected(selectedIdx, legIdx),
+            TripLayerId.selectedLeg(selectedIdx, legIdx),
             leg.geometry(),
             leg.paintStyle(true)
           );
