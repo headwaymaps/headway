@@ -1695,18 +1695,18 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "boundary",
-      "minzoom": 8,
-      "filter": ["all", ["in", "admin_level", 3, 4]],
+      "minzoom": 3,
+      "filter": ["in", "admin_level", 3, 4],
       "layout": { "line-join": "round" },
       "paint": {
-        "line-color": "#9e9cab",
-        "line-dasharray": [5, 1],
+        "line-color": "#747980",
+        "line-dasharray": [1.5, 1.5],
         "line-width": {
           "base": 1,
           "stops": [
-            [4, 0.4],
-            [5, 1],
-            [12, 1.8]
+            [3, 0.6],
+            [6, 1],
+            [10, 2]
           ]
         }
       }
