@@ -39,7 +39,7 @@
         "raster-opacity": {
           "stops": [
             [5, 0.8],
-            [6, 0.0]
+            [6, 0]
           ]
         }
       }
@@ -54,7 +54,7 @@
         "fill-opacity": {
           "stops": [
             [7, 0.4],
-            [8, 0.0]
+            [8, 0]
           ]
         },
         "fill-color": [
@@ -121,7 +121,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "filter": ["all", ["==", "class", "wood"]],
+      "filter": ["==", "class", "wood"],
       "paint": {
         "fill-antialias": false,
         "fill-color": "hsl(101,62.6%,43.3%)",
@@ -133,7 +133,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "filter": ["all", ["==", "class", "grass"]],
+      "filter": ["==", "class", "grass"],
       "paint": {
         "fill-antialias": false,
         "fill-color": "hsl(101,62.6%,63.3%)",
@@ -145,7 +145,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "filter": ["all", ["==", "class", "ice"]],
+      "filter": ["==", "class", "ice"],
       "paint": {
         "fill-antialias": false,
         "fill-color": "rgba(224, 236, 236, 1)",
@@ -181,7 +181,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "waterway",
-      "filter": ["all", ["==", "brunnel", "tunnel"]],
+      "filter": ["==", "brunnel", "tunnel"],
       "paint": {
         "line-color": "rgb(141,220,248)",
         "line-dasharray": [3, 3],
@@ -206,7 +206,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
-      "filter": ["all", ["==", "class", "sand"]],
+      "filter": ["==", "class", "sand"],
       "paint": { "fill-color": "rgba(247, 239, 195, 1)" }
     },
     {
@@ -214,7 +214,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "water",
-      "filter": ["all", ["!=", "brunnel", "tunnel"]],
+      "filter": ["!=", "brunnel", "tunnel"],
       "paint": { "fill-color": "rgb(141,220,248)" }
     },
     {
@@ -745,7 +745,7 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "filter": ["all", ["==", "$type", "Polygon"]],
+      "filter": ["==", "$type", "Polygon"],
       "paint": { "fill-pattern": "pedestrian_polygon" }
     },
     {
@@ -1744,7 +1744,7 @@
       "source": "openmaptiles",
       "source-layer": "boundary",
       "minzoom": 5,
-      "filter": ["all", ["==", "admin_level", 2]],
+      "filter": ["==", "admin_level", 2],
       "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
         "line-color": "hsl(248, 1%, 41%)",
@@ -1810,7 +1810,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "waterway",
-      "filter": ["all", ["==", "$type", "LineString"]],
+      "filter": ["==", "$type", "LineString"],
       "layout": {
         "text-field": "{name}",
         "text-font": ["Roboto Regular"],
@@ -1926,7 +1926,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "poi",
-      "filter": ["all", ["in", "class", "bus", "rail", "airport"]],
+      "filter": ["in", "class", "bus", "rail", "airport"],
       "layout": {
         "icon-image": "{class}_11",
         "text-anchor": "left",
@@ -1948,7 +1948,6 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation_name",
-      "filter": ["all"],
       "layout": {
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -1976,7 +1975,7 @@
       "source": "openmaptiles",
       "source-layer": "transportation_name",
       "minzoom": 7,
-      "filter": ["all", ["<=", "ref_length", 6]],
+      "filter": ["<=", "ref_length", 6],
       "layout": {
         "icon-image": "default_{ref_length}",
         "icon-rotation-alignment": "viewport",
@@ -2002,17 +2001,14 @@
       "source": "openmaptiles",
       "source-layer": "place",
       "filter": [
-        "all",
-        [
-          "in",
-          "class",
-          "hamlet",
-          "island",
-          "islet",
-          "neighbourhood",
-          "suburb",
-          "quarter"
-        ]
+        "in",
+        "class",
+        "hamlet",
+        "island",
+        "islet",
+        "neighbourhood",
+        "suburb",
+        "quarter"
       ],
       "layout": {
         "text-field": "{name_en}",
@@ -2039,7 +2035,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "filter": ["all", ["==", "class", "village"]],
+      "filter": ["==", "class", "village"],
       "layout": {
         "text-field": "{name_en}",
         "text-font": ["Roboto Regular"],
@@ -2063,7 +2059,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "filter": ["all", ["==", "class", "town"]],
+      "filter": ["==", "class", "town"],
       "layout": {
         "icon-image": {
           "base": 1,
@@ -2097,7 +2093,7 @@
       "source": "openmaptiles",
       "source-layer": "place",
       "minzoom": 5,
-      "filter": ["all", ["==", "class", "city"]],
+      "filter": ["==", "class", "city"],
       "layout": {
         "icon-image": {
           "base": 1,
@@ -2133,7 +2129,7 @@
       "source": "openmaptiles",
       "source-layer": "place",
       "maxzoom": 6,
-      "filter": ["all", ["==", "class", "state"]],
+      "filter": ["==", "class", "state"],
       "layout": {
         "text-field": "{name_en}",
         "text-font": ["Roboto Condensed Italic"],
@@ -2232,7 +2228,7 @@
       "source": "openmaptiles",
       "source-layer": "place",
       "maxzoom": 1,
-      "filter": ["all", ["==", "class", "continent"]],
+      "filter": ["==", "class", "continent"],
       "layout": {
         "text-field": "{name_en}",
         "text-font": ["Roboto Condensed Italic"],
