@@ -61,7 +61,7 @@
           $t('edit_poi_button')
         }}</q-btn>
       </div>
-      <div v-if="showEditPanel" style="margin-top: 8px">
+      <div v-if="showEditPanel" style="margin-top: 8px; padding: 16px">
         <p>{{ $t('edit_poi_about_osm') }}</p>
         <div style="text-align: center">
           <q-btn
