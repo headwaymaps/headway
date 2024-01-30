@@ -6,18 +6,27 @@
 </template>
 
 <style lang="scss">
-.platform-ios {
+body.mobile {
   .app-container {
     @media screen and (max-width: 799px) {
+      // -webkit-fill-available is a well supported way to fill the viewport
+      // while avoiding the address bar on iOS.
+      //
+      // The rule exists on chrome on android but, it doesn't behave the same.
+      //
+      // 100dvh is a cross platform alternative to -webkit-fill-available that
+      // seems to behave equally on Safari on iOS and Chrome on Android,
+      // but it's still pretty new, and not yet supported at all on Firefox.
+      height: calc(100vh - 55px);
       height: -webkit-fill-available;
+      height: -moz-fill-available;
+      height: 100dvh;
     }
   }
 }
 
 .app-container {
   width: 100%;
-  // iPhoneX content is beyond screen boundary
-  //height: calc(100vh - 50px);
   height: 100vh;
   display: flex;
   flex-direction: column;
