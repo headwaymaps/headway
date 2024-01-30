@@ -49,9 +49,12 @@ http {
 
     location / {
       try_files ${ESC}uri /index.html;
-      # Short lived cache for non-asset pages
-      expires 5m;
-      add_header Cache-Control "public";
+      # From https://quasar.dev/quasar-cli-vite/developing-spa/deploying/
+      #
+      # > It’s important that you do not allow browsers to cache the index.html file.
+      # > Because otherwise updates to this file or to your app might slip through the cracks
+      # > for browsers that load the index.html from cache.
+      add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
     location ~* \.(?:css|js|jpg|svg)$ {

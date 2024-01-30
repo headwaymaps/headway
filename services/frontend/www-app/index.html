@@ -1,6 +1,69 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script type="text/javascript">
+      // The assets produced by our build process have content specific URLs like index.123456.js
+      // which gets baked into index.html.
+      //
+      // However, it's possible that the user's browser will cache this index.html, referencing old assets
+      // that are no longer deployed.
+      // This script will detect if the index.CACHE_BUSTER.js referenced by this file is stale and reload
+      // the page if so.
+      //
+      // Our build process inserts the index.CACHE_BUSTER.js script tag at the end of the head tag, so
+      // this script needs to execute before that.
+      const headNode = document.querySelector('head');
+
+      // listen for the index.js script tag to be added to the head
+      const observer = new MutationObserver((_mutations) => {
+        const indexJsEl = document.querySelector('head script[src*=index]');
+        if (!indexJsEl) {
+          const otherScripts = document.querySelectorAll('head script');
+
+          // The index.js script tag won't exist when using the development server.
+          const isDev = Array.from(otherScripts.values()).some((el) =>
+            el.src.includes('/@vite/client')
+          );
+
+          if (isDev) {
+            console.log('in dev mode, so not reloading');
+            observer.disconnect();
+            return;
+          }
+
+          console.error('no index script tags found in head', otherScripts);
+          return;
+        }
+
+        // stop observing once we've found our element
+        observer.disconnect();
+
+        indexJsEl.addEventListener('error', (e) => {
+          console.log('script errored. Stale asset URL?', e, e.srcElement.src);
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const lastReload = urlParams.get('staleReloaded');
+          if (lastReload && lastReload > Date.now() - 1000 * 60) {
+            // avoid infinite reload loop
+            console.log('already reloaded page too recently');
+          } else {
+            if (lastReload) {
+              // in case someone has the cache-buster url saved from the *previous* deploy
+              console.log(
+                'reloading again, since last time was a while ago',
+                lastReload
+              );
+            } else {
+              console.log('reloading page');
+            }
+            urlParams.set('staleReloaded', Date.now());
+            window.location.search = urlParams.toString();
+          }
+        });
+      });
+      observer.observe(headNode, { childList: true });
+    </script>
+
     <title><%= productName %></title>
 
     <meta charset="utf-8" />
