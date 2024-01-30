@@ -38,6 +38,7 @@ http {
     }
 
     location /tileserver/  {
+      expires 1h;
       proxy_pass       ${HEADWAY_TILESERVER_URL}/;
     }
 
