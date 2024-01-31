@@ -21,11 +21,11 @@ http {
     resolver ${HEADWAY_RESOLVER};
     listen ${HEADWAY_HTTP_PORT} default_server;
 
-    location /pelias/  {
+    location ^~ /pelias/  {
       proxy_pass      ${HEADWAY_PELIAS_URL}/;
     }
 
-    location /transitmux/ {
+    location ^~ /transitmux/ {
       set $enable_transit_routing ${HEADWAY_ENABLE_TRANSIT_ROUTING};
       if ($enable_transit_routing != 1) {
         return 404;
@@ -33,22 +33,22 @@ http {
       proxy_pass      ${HEADWAY_TRANSITMUX_URL}/;
     }
 
-    location /valhalla/  {
+    location ^~ /valhalla/  {
       proxy_pass      ${HEADWAY_VALHALLA_URL}/;
     }
 
-    location /tileserver/  {
+    location ^~ /tileserver/  {
       expires 1h;
       proxy_pass       ${HEADWAY_TILESERVER_URL}/;
     }
 
-    location /static/  {
+    location ^~ /static/  {
       alias ${HEADWAY_SHARED_VOL}/;
       expires 5m;
       add_header Cache-Control "public";
     }
 
-    location / {
+    location ^~ / {
       try_files ${ESC}uri /index.html;
       # From https://quasar.dev/quasar-cli-vite/developing-spa/deploying/
       #
