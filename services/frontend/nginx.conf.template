@@ -58,7 +58,7 @@ http {
       add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
-    location ~* \.(?:css|js|jpg|svg|woff|woff2)$ {
+    location ~* \.(?:css|js|jpg|png|svg|woff|woff2)$ {
       expires 30d;
       # We aggressively cache assets, since our asset URLs contain a
       # cache-buster
