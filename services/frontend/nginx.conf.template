@@ -48,7 +48,7 @@ http {
       add_header Cache-Control "public";
     }
 
-    location ^~ / {
+    location / {
       try_files ${ESC}uri /index.html;
       # From https://quasar.dev/quasar-cli-vite/developing-spa/deploying/
       #
