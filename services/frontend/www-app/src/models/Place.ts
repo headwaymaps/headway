@@ -97,7 +97,7 @@ export class PlaceStorage {
   static cache = new Map<string, Place>();
 
   public static async fetchFromSerializedId(
-    serializedId: string
+    serializedId: string,
   ): Promise<Place> {
     const id = PlaceId.deserialize(serializedId);
     return PlaceStorage.fetchFromId(id);
@@ -169,7 +169,7 @@ export default class Place {
     id: PlaceId,
     point: LngLat,
     bbox?: LngLatBounds,
-    props: PlaceProperties = {}
+    props: PlaceProperties = {},
   ) {
     this.id = id;
     this.point = point;
@@ -188,7 +188,7 @@ export default class Place {
     console.assert(
       geometry.type == 'Point',
       'unexpected geometry found for feature',
-      geometry
+      geometry,
     );
     const [lng, lat] = geometry.coordinates;
     console.assert(lng, 'missing lng');
@@ -198,13 +198,13 @@ export default class Place {
     let bbox;
     if (feature.bbox?.length == 4) {
       bbox = LngLatBounds.convert(
-        feature.bbox as [number, number, number, number]
+        feature.bbox as [number, number, number, number],
       );
     } else {
       console.assert(
         !feature.bbox,
         'bbox was present, but had unexpected length',
-        feature.bbox
+        feature.bbox,
       );
     }
 
@@ -219,12 +219,12 @@ export default class Place {
       console.assert(
         !countryCode,
         'expecting continent to have no countryCode',
-        feature
+        feature,
       );
       console.assert(
         !address,
         'expecting continent to have no address',
-        feature
+        feature,
       );
     } else {
       console.assert(countryCode, 'no country code found for feature', feature);

@@ -40,6 +40,7 @@
           <q-item-label>
             {{ $t('search_results_not_found_header') }}
           </q-item-label>
+          <!-- eslint-disable vue/no-v-text-v-html-on-component -->
           <q-item-label
             class="text-weight-light"
             v-html="
@@ -49,6 +50,7 @@
               })
             "
           />
+          <!-- eslint-enable vue/no-v-text-v-html-on-component -->
         </q-item-section>
       </q-item>
     </q-list>
@@ -169,7 +171,7 @@ export default defineComponent({
       this.selectedPlace = place;
       this.renderPlacesOnMap();
       const searchListItem = document.getElementById(
-        `search-list-item-${place.id.serialized()}`
+        `search-list-item-${place.id.serialized()}`,
       );
       if (searchListItem) {
         // This is async because we want to scroll after re-rendering the
@@ -180,7 +182,7 @@ export default defineComponent({
           searchListItem.scrollIntoView({
             behavior: 'smooth',
             block: 'nearest',
-          })
+          }),
         );
       }
     },
@@ -211,7 +213,7 @@ export default defineComponent({
         this.searchResults = undefined;
         const results = await PeliasClient.autocomplete(
           searchText,
-          focus
+          focus,
         ).finally(() => {
           this.isLoading = false;
         });

@@ -59,7 +59,7 @@
         :top="step.isMovement"
         :class="
           ['col-8', 'timeline-description'].concat(
-            step.isDestination ? 'timeline-destination' : ''
+            step.isDestination ? 'timeline-destination' : '',
           )
         "
         >{{ step.description }}
@@ -167,7 +167,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
 
   function pairwiseForEach(
     list: ItineraryLeg[],
-    f: (prev: ItineraryLeg, current: ItineraryLeg | undefined) => void
+    f: (prev: ItineraryLeg, current: ItineraryLeg | undefined) => void,
   ): void {
     for (let idx = 0; idx < list.length; idx++) {
       f(list[idx], list[idx + 1]);

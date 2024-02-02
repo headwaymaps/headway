@@ -110,7 +110,7 @@ export class OTPClient {
     modes: OTPMode[],
     time?: string,
     date?: string,
-    arriveBy?: boolean
+    arriveBy?: boolean,
   ): Promise<Result<OTPItinerary[], OTPError>> {
     const params: OTPPlanRequest = {
       fromPlace: `${from.lat},${from.lng}`,
@@ -125,7 +125,7 @@ export class OTPClient {
     if (time) {
       console.assert(
         date,
-        'The OTP API requires that if time is specified, date must also be specified'
+        'The OTP API requires that if time is specified, date must also be specified',
       );
       params['time'] = time;
     }
@@ -143,7 +143,7 @@ export class OTPClient {
       const responseJson: OTPPlanResponse = await response.json();
       if (responseJson.plan.itineraries.length > 0) {
         const itineraries = responseJson.plan.itineraries.sort(
-          (a, b) => a.endTime - b.endTime
+          (a, b) => a.endTime - b.endTime,
         );
         return Ok(itineraries);
       } else {

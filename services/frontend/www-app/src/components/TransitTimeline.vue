@@ -18,7 +18,7 @@
           }%`,
           right: `${Math.round(
             100 *
-              ((latestArrival - leg.endTime) / (latestArrival - earliestStart))
+              ((latestArrival - leg.endTime) / (latestArrival - earliestStart)),
           )}%`,
           height: '3em',
           top: '-2em',

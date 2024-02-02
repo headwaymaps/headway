@@ -168,13 +168,13 @@ export default defineComponent({
         try {
           return OpeningHours.fromOsmString(
             this.place.openingHours,
-            this.rightNow
+            this.rightNow,
           );
         } catch (error) {
           console.warn(
             'Error parsing opening hours',
             this.place.openingHours,
-            error
+            error,
           );
         }
       }

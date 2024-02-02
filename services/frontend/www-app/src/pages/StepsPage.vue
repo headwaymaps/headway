@@ -107,7 +107,7 @@ export default defineComponent({
       const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
       const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
       this.$router.push(
-        `/directions/${this.mode}/${toEncoded}/${fromEncoded}/${this.tripIdx}`
+        `/directions/${this.mode}/${toEncoded}/${fromEncoded}/${this.tripIdx}`,
       );
 
       if (this.fromPlace && this.toPlace) {
@@ -119,7 +119,7 @@ export default defineComponent({
           this.transitQuery.params.searchTime,
           this.transitQuery.params.searchDate,
           this.transitQuery.params.arriveBy,
-          this.transitQuery.params.transitWithBicycle
+          this.transitQuery.params.transitWithBicycle,
         );
         if (!result.ok) {
           console.error('fetchBestTrips.error', result.error);
@@ -170,7 +170,7 @@ export default defineComponent({
           if (!map.hasMarker(transferLayerId.toString())) {
             map.pushMarker(
               transferLayerId.toString(),
-              Markers.transfer().setLngLat(leg.start())
+              Markers.transfer().setLngLat(leg.start()),
             );
           }
         }
@@ -180,10 +180,10 @@ export default defineComponent({
   },
   mounted: async function () {
     this.toPlace = await PlaceStorage.fetchFromSerializedId(
-      this.$props.to as string
+      this.$props.to as string,
     );
     this.fromPlace = await PlaceStorage.fetchFromSerializedId(
-      this.$props.from as string
+      this.$props.from as string,
     );
     await this.rewriteUrl();
 
@@ -210,14 +210,14 @@ export default defineComponent({
     if (this.fromPlace) {
       map.pushMarker(
         'source_marker',
-        Markers.tripStart().setLngLat(this.fromPlace.point)
+        Markers.tripStart().setLngLat(this.fromPlace.point),
       );
     }
 
     if (this.toPlace) {
       map.pushMarker(
         'destination_marker',
-        Markers.tripEnd().setLngLat(this.toPlace.point)
+        Markers.tripEnd().setLngLat(this.toPlace.point),
       );
     }
   },
@@ -227,7 +227,7 @@ export default defineComponent({
 
     const route = useRoute();
     const transitQuery: Ref<TransitQuery> = ref(
-      TransitQuery.parseFromQuery(route.query)
+      TransitQuery.parseFromQuery(route.query),
     );
 
     return {

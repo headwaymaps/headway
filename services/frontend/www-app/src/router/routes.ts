@@ -78,7 +78,7 @@ const routes: RouteRecordRaw[] = [
     redirect: (route) => {
       return {
         path: `/directions/transit/${encodeURIComponent(
-          route.params.to.toString()
+          route.params.to.toString(),
         )}/${encodeURIComponent(route.params.from.toString())}`,
       };
     },

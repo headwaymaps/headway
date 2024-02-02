@@ -136,7 +136,7 @@ export async function getRoutes(
   from: LngLat,
   to: LngLat,
   mode: CacheableMode,
-  units?: DistanceUnits
+  units?: DistanceUnits,
 ): Promise<Result<ValhallaRoute[], ValhallaError>> {
   type RouteRequest = {
     locations: Array<{ lat: number; lon: number }>;
@@ -162,7 +162,7 @@ export async function getRoutes(
     requestObject.units = units;
   }
   const response = await fetch(
-    `/valhalla/route?json=${JSON.stringify(requestObject)}`
+    `/valhalla/route?json=${JSON.stringify(requestObject)}`,
   );
 
   if (response.status !== 200) {

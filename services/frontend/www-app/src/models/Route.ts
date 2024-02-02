@@ -70,7 +70,7 @@ export default class Route implements Trip {
     const summary = this.valhallaRoute.summary;
     return new LngLatBounds(
       new LngLat(summary.min_lon, summary.min_lat),
-      new LngLat(summary.max_lon, summary.max_lat)
+      new LngLat(summary.max_lon, summary.max_lat),
     );
   }
 
@@ -96,7 +96,7 @@ export default class Route implements Trip {
             const firstManeuver = vLeg.maneuvers[0];
             console.assert(
               firstManeuver,
-              'expected at least one maneuver to be set'
+              'expected at least one maneuver to be set',
             );
             const isWalking =
               firstManeuver?.travel_mode == ValhallaTravelMode.Walk;
@@ -121,7 +121,7 @@ export default class Route implements Trip {
     from: LngLat,
     to: LngLat,
     mode: CacheableMode,
-    units?: DistanceUnits
+    units?: DistanceUnits,
   ): Promise<Result<Route[], RouteError>> {
     const result = await getValhallaRoutes(from, to, mode, units);
     if (result.ok) {
@@ -143,7 +143,7 @@ function fromValhalla(route: ValhallaRoute, mode: TravelMode): Route {
     durationSeconds: route.summary.time,
     durationFormatted: formatDuration(route.summary.time, 'shortform'),
     viaRoadsFormatted: viaRoads.join(
-      i18n.global.t('punctuation_list_seperator')
+      i18n.global.t('punctuation_list_seperator'),
     ),
     lengthFormatted:
       route.summary.length.toFixed(1) +
@@ -156,7 +156,7 @@ function fromValhalla(route: ValhallaRoute, mode: TravelMode): Route {
 
 function substantialRoadNames(
   maneuvers: ValhallaRouteLegManeuver[],
-  limit: number
+  limit: number,
 ): string[] {
   const roadLengths = [];
   let cumulativeRoadLength = 0.0;
@@ -173,7 +173,7 @@ function substantialRoadNames(
   // Don't include tiny segments in the description of the route
   const inclusionThreshold = cumulativeRoadLength / (limit + 1);
   let substantialRoads = roadLengths.filter(
-    (r) => r.length > inclusionThreshold
+    (r) => r.length > inclusionThreshold,
   );
 
   if (substantialRoads.length == 0) {

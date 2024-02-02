@@ -14,7 +14,10 @@
 
 .headway-ctrl-scale-text {
   color: black;
-  text-shadow: 0px 0px 2px white, 0px 0px 2px white, 0px 0px 2px white;
+  text-shadow:
+    0px 0px 2px white,
+    0px 0px 2px white,
+    0px 0px 2px white;
 }
 
 .headway-ctrl-scale-ruler {
@@ -140,7 +143,7 @@ type BaseMapEventType = 'click' | 'longpress' | 'poi_click';
 type BaseMapEventHandler = (
   event: MapMouseEvent & {
     features?: GeoJSON.Feature[] | undefined;
-  }
+  },
 ) => void;
 
 function clearAllTimeouts() {
@@ -165,12 +168,12 @@ export interface BaseMapInterface {
     key: TripLayerId,
     source: SourceSpecification,
     layer: LayerSpecification,
-    beforeLayerType: string
+    beforeLayerType: string,
   ) => void;
   pushTripLayer: (
     layerId: TripLayerId,
     geometry: GeoJSON.Geometry,
-    paint: LineLayerSpecification['paint']
+    paint: LineLayerSpecification['paint'],
   ) => void;
   hasLayer: (layerId: TripLayerId) => boolean;
   removeLayersExcept: (layerIds: TripLayerId[]) => void;
@@ -180,7 +183,7 @@ export interface BaseMapInterface {
   on: (
     type: keyof MapLayerEventType,
     layerId: string,
-    listener: (ev: unknown) => void
+    listener: (ev: unknown) => void,
   ) => void;
 }
 
@@ -291,7 +294,7 @@ export default defineComponent({
     pushTripLayer(
       layerId: TripLayerId,
       geometry: GeoJSON.Geometry,
-      paint: LineLayerSpecification['paint']
+      paint: LineLayerSpecification['paint'],
     ): void {
       this.pushLayer(
         layerId,
@@ -313,14 +316,14 @@ export default defineComponent({
           },
           paint,
         },
-        'symbol'
+        'symbol',
       );
     },
     pushLayer(
       layerId: TripLayerId,
       source: SourceSpecification,
       layer: LayerSpecification,
-      beforeLayerType: string
+      beforeLayerType: string,
     ) {
       let sourceKey = layerId.toString();
       let actualLayer = layer;
@@ -408,7 +411,7 @@ export default defineComponent({
     },
     fitBounds: function (
       bounds: LngLatBoundsLike,
-      options: FitBoundsOptions = {}
+      options: FitBoundsOptions = {},
     ): void {
       const defaultOptions = {
         padding: Math.min(window.innerWidth, window.innerHeight) / 8,
@@ -430,7 +433,7 @@ export default defineComponent({
       type: keyof MapLayerEventType,
       layerId: string,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      listener: (ev: any) => void
+      listener: (ev: any) => void,
     ) {
       this.ensureMapLoaded((map: maplibregl.Map) => {
         map.on(type, layerId.toString(), listener);
@@ -438,7 +441,7 @@ export default defineComponent({
     },
     pushTouchHandler: function (
       event: BaseMapEventType,
-      handler: BaseMapEventHandler
+      handler: BaseMapEventHandler,
     ): void {
       let eventList = this.touchHandlers.get(event);
       if (!eventList) {
@@ -519,7 +522,7 @@ export default defineComponent({
       mapTouchTimeouts.push(
         setTimeout(() => {
           this.touchHandlers.get('longpress')?.forEach((value) => value(event));
-        }, 700)
+        }, 700),
       );
     });
     map.on('touchstart', (event: MapMouseEvent) => {
@@ -527,7 +530,7 @@ export default defineComponent({
       mapTouchTimeouts.push(
         setTimeout(() => {
           this.touchHandlers.get('longpress')?.forEach((value) => value(event));
-        }, 700)
+        }, 700),
       );
     });
     map.on('mouseup', () => clearAllTimeouts());
@@ -540,7 +543,7 @@ export default defineComponent({
       debounce(() => {
         Prefs.stored.setMostRecentMapCenter(map.getCenter());
         Prefs.stored.setMostRecentMapZoom(map.getZoom());
-      }, 2000)
+      }, 2000),
     );
 
     const mapElement = document.getElementById(mapContainerId);
@@ -582,7 +585,7 @@ export default defineComponent({
         // entities which aren't in pelias? In that case, we just use the lng/lat
         // so the person can still get routing directions to it.
         console.warn(
-          'Could not canonicalize map feature, falling back to lon/lat'
+          'Could not canonicalize map feature, falling back to lon/lat',
         );
         let id = PlaceId.location(event.lngLat);
         this.$router.push({
@@ -630,7 +633,7 @@ export default defineComponent({
         | number;
       function zoomLerp<T>(
         unzoomedValue: LerpableValue,
-        zoomedValue: LerpableValue
+        zoomedValue: LerpableValue,
       ): maplibregl.DataDrivenPropertyValueSpecification<T> {
         return [
           'interpolate',
@@ -679,7 +682,7 @@ export default defineComponent({
               ]) as any,
             'fill-extrusion-base': zoomLerp<maplibregl.ExpressionSpecification>(
               0,
-              ['*', ['get', 'render_min_height'], heightDampeningFactor]
+              ['*', ['get', 'render_min_height'], heightDampeningFactor],
               // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
               // we can delete this lint exception after upgrading
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -688,8 +691,8 @@ export default defineComponent({
         },
         // add 3-d building layer behind any symbol layer
         layers.find(
-          (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
-        )?.id
+          (layer) => layer.type === 'symbol' && layer.layout?.['text-field'],
+        )?.id,
       );
 
       if (!baseMapMethods) {

@@ -7,13 +7,13 @@
               time: formattedTime,
             })
           : openingHours.nextChangeIsTomorrow
-          ? $t('opening_hours_is_open_until_tomorrow_$time', {
-              time: formattedTime,
-            })
-          : $t('opening_hours_is_open_until_later_$day_$time', {
-              time: formattedTime,
-              day: dayOfWeek(openingHours.nextChange),
-            })
+            ? $t('opening_hours_is_open_until_tomorrow_$time', {
+                time: formattedTime,
+              })
+            : $t('opening_hours_is_open_until_later_$day_$time', {
+                time: formattedTime,
+                day: dayOfWeek(openingHours.nextChange),
+              })
       }}
     </span>
     <span v-else>
@@ -29,13 +29,13 @@
               time: formattedTime,
             })
           : openingHours.nextChangeIsTomorrow
-          ? $t('opening_hours_is_closed_until_tomorrow_$time', {
-              time: formattedTime,
-            })
-          : $t('opening_hours_is_closed_until_later_$day_$time', {
-              time: formattedTime,
-              day: dayOfWeek(openingHours.nextChange),
-            })
+            ? $t('opening_hours_is_closed_until_tomorrow_$time', {
+                time: formattedTime,
+              })
+            : $t('opening_hours_is_closed_until_later_$day_$time', {
+                time: formattedTime,
+                day: dayOfWeek(openingHours.nextChange),
+              })
       }}
     </span>
     <span v-else>

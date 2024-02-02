@@ -66,12 +66,12 @@ const addressKeys = [
 ];
 
 export async function mapFeatureToPlace(
-  feature: GeoJSON.Feature
+  feature: GeoJSON.Feature,
 ): Promise<Place | undefined> {
   const pointGeometry = feature.geometry as GeoJSON.Point;
   if (!pointGeometry) {
     console.error(
-      "Geometry is not a point and Headway doesn't handle that yet"
+      "Geometry is not a point and Headway doesn't handle that yet",
     );
     return;
   }
@@ -80,16 +80,16 @@ export async function mapFeatureToPlace(
   if (!lat || !lng) {
     console.error(
       `Could not reverse geocode ${JSON.stringify(
-        feature
-      )}. Unsupported geometry.`
+        feature,
+      )}. Unsupported geometry.`,
     );
   }
   const response = await fetch(
-    `/pelias/v1/reverse?point.lat=${lat}&point.lon=${lng}&boundary.circle.radius=0.1&sources=osm`
+    `/pelias/v1/reverse?point.lat=${lat}&point.lon=${lng}&boundary.circle.radius=0.1&sources=osm`,
   );
   if (response.status != 200) {
     console.error(
-      `Could not reverse ${JSON.stringify(feature)}. Is pelias down?`
+      `Could not reverse ${JSON.stringify(feature)}. Is pelias down?`,
     );
     return;
   }

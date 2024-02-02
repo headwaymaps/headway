@@ -13,7 +13,7 @@ export default class TripLayerId {
     tripIdx: number,
     legIdx: number,
     selected: boolean,
-    legPart: LegPart
+    legPart: LegPart,
   ) {
     this.tripIdx = tripIdx;
     this.legIdx = legIdx;

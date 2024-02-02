@@ -88,7 +88,7 @@ export default class Itinerary implements Trip {
   constructor(
     otp: OTPItinerary,
     distanceUnits: DistanceUnits,
-    withBicycle: boolean
+    withBicycle: boolean,
   ) {
     this.raw = otp;
     this.legs = otp.legs.map((otpLeg) => new ItineraryLeg(otpLeg));
@@ -107,7 +107,7 @@ export default class Itinerary implements Trip {
     departureTime?: string,
     departureDate?: string,
     arriveBy?: boolean,
-    withBicycle?: boolean
+    withBicycle?: boolean,
   ): Promise<Result<Itinerary[], ItineraryError>> {
     const otpModes = [OTPMode.Transit];
     if (withBicycle) {
@@ -121,13 +121,13 @@ export default class Itinerary implements Trip {
       otpModes,
       departureTime,
       departureDate,
-      arriveBy
+      arriveBy,
     );
     if (result.ok) {
       return Ok(
         result.value.map((otp) =>
-          Itinerary.fromOtp(otp, distanceUnits, withBicycle ?? false)
-        )
+          Itinerary.fromOtp(otp, distanceUnits, withBicycle ?? false),
+        ),
       );
     } else {
       return Err(ItineraryError.fromOtp(result.error));
@@ -137,7 +137,7 @@ export default class Itinerary implements Trip {
   static fromOtp(
     raw: OTPItinerary,
     distanceUnits: DistanceUnits,
-    withBicycle: boolean
+    withBicycle: boolean,
   ): Itinerary {
     return new Itinerary(raw, distanceUnits, withBicycle);
   }
@@ -279,7 +279,7 @@ export class ItineraryLeg {
 
   geometry(): GeoJSON.LineString {
     const points: [number, number][] = decodeOtpPath(
-      this.raw.legGeometry.points
+      this.raw.legGeometry.points,
     );
     return {
       type: 'LineString',
