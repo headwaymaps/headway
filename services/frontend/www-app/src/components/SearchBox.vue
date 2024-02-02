@@ -274,7 +274,7 @@ export default defineComponent({
   setup: function (props, ctx) {
     const inputText: Ref<string | undefined> = ref(
       props.initialInputText ||
-        (props.initialPlace ? placeDisplayName(props.initialPlace) : undefined)
+        (props.initialPlace ? placeDisplayName(props.initialPlace) : undefined),
     );
     const placeHovered: Ref<Place | undefined> = ref(undefined);
     const highlightedIndex: Ref<number | undefined> = ref(undefined);

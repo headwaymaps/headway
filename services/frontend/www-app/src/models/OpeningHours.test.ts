@@ -10,7 +10,7 @@ test('is open', () => {
   const osmText = 'Su-Th 08:00-21:00; Fr-Sa 08:00-22:00';
   let hours = OpeningHours.fromOsmString(
     osmText,
-    new Date('2012/11/11 7:59 AM')
+    new Date('2012/11/11 7:59 AM'),
   );
   expect(hours.isOpen).toBe(false);
 
@@ -27,7 +27,7 @@ test('is open', () => {
 test('weeklyRanges', () => {
   const hours = OpeningHours.fromOsmString(
     'Su-Th 08:00-21:00; Fr-Sa 08:00-22:00',
-    sundayMorning
+    sundayMorning,
   );
   expect(hours.nextChange!.getHours()).toBe(21);
 

@@ -161,7 +161,7 @@ export default defineComponent({
       let index = this.$data.trips.indexOf(trip);
       if (index !== -1 && this.to && this.from) {
         let path = `/directions/${this.mode}/${encodeURIComponent(
-          this.to
+          this.to,
         )}/${encodeURIComponent(this.from)}/${index}`;
         let query = this.transitQuery.searchQuery();
         this.$router.push({ path, query });
@@ -216,7 +216,7 @@ export default defineComponent({
           this.transitQuery.params.searchTime,
           this.transitQuery.params.searchDate,
           this.transitQuery.params.arriveBy,
-          this.transitQuery.params.transitWithBicycle
+          this.transitQuery.params.transitWithBicycle,
         ).finally(() => {
           this.isLoading = false;
         });
@@ -240,14 +240,14 @@ export default defineComponent({
       if (this.fromPlace) {
         map.pushMarker(
           'source_marker',
-          Markers.tripStart().setLngLat(this.fromPlace.point)
+          Markers.tripStart().setLngLat(this.fromPlace.point),
         );
       }
 
       if (this.toPlace) {
         map.pushMarker(
           'destination_marker',
-          Markers.tripEnd().setLngLat(this.toPlace.point)
+          Markers.tripEnd().setLngLat(this.toPlace.point),
         );
       }
     },
@@ -287,7 +287,7 @@ export default defineComponent({
             let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
             map.pushMarker(
               transferLayerId.toString(),
-              Markers.transfer().setLngLat(leg.start())
+              Markers.transfer().setLngLat(leg.start()),
             );
           }
           map.on('mouseover', layerId.toString(), () => {
@@ -310,7 +310,7 @@ export default defineComponent({
           map.pushTripLayer(
             TripLayerId.selectedLeg(selectedIdx, legIdx),
             leg.geometry(),
-            leg.paintStyle(true)
+            leg.paintStyle(true),
           );
         }
       }
@@ -329,11 +329,11 @@ export default defineComponent({
       for (var index = 0; index < itineraries.length; index++) {
         this.$data.earliestStart = Math.min(
           this.$data.earliestStart,
-          itineraries[index].startTime
+          itineraries[index].startTime,
         );
         this.$data.latestArrival = Math.max(
           this.$data.latestArrival,
-          itineraries[index].endTime
+          itineraries[index].endTime,
         );
       }
     },
@@ -346,12 +346,12 @@ export default defineComponent({
   mounted: async function () {
     if (this.to != '_') {
       this.toPlace = await PlaceStorage.fetchFromSerializedId(
-        this.to as string
+        this.to as string,
       );
     }
     if (this.from != '_') {
       this.fromPlace = await PlaceStorage.fetchFromSerializedId(
-        this.from as string
+        this.from as string,
       );
     }
     await this.rewriteUrl();
@@ -362,7 +362,7 @@ export default defineComponent({
 
     const route = useRoute();
     const transitQuery: Ref<TransitQuery> = ref(
-      TransitQuery.parseFromQuery(route.query)
+      TransitQuery.parseFromQuery(route.query),
     );
 
     return {

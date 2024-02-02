@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <script type="text/javascript">
@@ -22,7 +22,7 @@
 
           // The index.js script tag won't exist when using the development server.
           const isDev = Array.from(otherScripts.values()).some((el) =>
-            el.src.includes('/@vite/client')
+            el.src.includes('/@vite/client'),
           );
 
           if (isDev) {
@@ -51,7 +51,7 @@
               // in case someone has the cache-buster url saved from the *previous* deploy
               console.log(
                 'reloading again, since last time was a while ago',
-                lastReload
+                lastReload,
               );
             } else {
               console.log('reloading page');

@@ -13,11 +13,11 @@ export default class GeolocationPolyfill {
   getCurrentPosition(
     successCallback: PositionCallback,
     errorCallback?: PositionErrorCallback | null,
-    options?: PositionOptions
+    options?: PositionOptions,
   ): void {
     console.assert(
       this.isRegistered,
-      'GeolocationPolyfill must be registered before calling getCurrentPosition'
+      'GeolocationPolyfill must be registered before calling getCurrentPosition',
     );
 
     // On macos Safari Version 16.2 (18614.3.7.1.5), after calling watchPosition, getCurrentPosition hangs indefinitely.
@@ -40,7 +40,7 @@ export default class GeolocationPolyfill {
         // TODO: Tie into geolocationControl.on('geolocate') and wait for timeout?
         if (errorCallback) {
           console.error(
-            'synthesizing GeolocationPositionError since no mostRecentLocation exists for polyfill'
+            'synthesizing GeolocationPositionError since no mostRecentLocation exists for polyfill',
           );
           const error = new GeolocationPositionError();
           errorCallback(error);
@@ -50,7 +50,7 @@ export default class GeolocationPolyfill {
       return navigator.geolocation.getCurrentPosition(
         successCallback,
         errorCallback,
-        options
+        options,
       );
     }
   }
@@ -58,7 +58,7 @@ export default class GeolocationPolyfill {
   register(geolocationControl: maplibregl.GeolocateControl): void {
     console.assert(
       !this.isRegistered,
-      'GeolocationPolyfill has already been registered.'
+      'GeolocationPolyfill has already been registered.',
     );
 
     geolocationControl.on('geolocate', (position) => {
@@ -84,7 +84,7 @@ export default class GeolocationPolyfill {
           console.assert(
             false,
             `unexpected watch state: ${e.target._watchState}`,
-            e.target
+            e.target,
           );
         }
       }

@@ -44,7 +44,7 @@ export default class OpeningHours {
       const dayName = startOfDay.toLocaleString([], { weekday: 'short' });
       const intervals: Interval[] = this.parsed.getOpenIntervals(
         startOfDay,
-        endOfDay
+        endOfDay,
       );
 
       days.push({ day: dayName, intervals });

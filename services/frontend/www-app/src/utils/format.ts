@@ -4,7 +4,7 @@ import { DistanceUnits } from './models';
 
 export function formatDuration(
   durationSeconds: number,
-  format: undefined | 'shortform' = undefined
+  format: undefined | 'shortform' = undefined,
 ): string {
   let formatModifier = '';
   if (format) {
@@ -27,36 +27,36 @@ export function formatDuration(
     const timeStringComponents = [];
     if (days == 1) {
       timeStringComponents.push(
-        i18n.global.t(`times${formatModifier}.$n_day`, { n: days })
+        i18n.global.t(`times${formatModifier}.$n_day`, { n: days }),
       );
     } else if (days > 1) {
       timeStringComponents.push(
-        i18n.global.t(`times${formatModifier}.$n_days`, { n: days })
+        i18n.global.t(`times${formatModifier}.$n_days`, { n: days }),
       );
     }
     if (hours == 1) {
       timeStringComponents.push(
-        i18n.global.t(`times${formatModifier}.$n_hour`, { n: hours })
+        i18n.global.t(`times${formatModifier}.$n_hour`, { n: hours }),
       );
     } else if (hours > 1) {
       timeStringComponents.push(
-        i18n.global.t(`times${formatModifier}.$n_hours`, { n: hours })
+        i18n.global.t(`times${formatModifier}.$n_hours`, { n: hours }),
       );
     }
     if (minutes == 1) {
       timeStringComponents.push(
-        i18n.global.t(`times${formatModifier}.$n_minute`, { n: minutes })
+        i18n.global.t(`times${formatModifier}.$n_minute`, { n: minutes }),
       );
     } else if (minutes > 1) {
       timeStringComponents.push(
-        i18n.global.t(`times${formatModifier}.$n_minutes`, { n: minutes })
+        i18n.global.t(`times${formatModifier}.$n_minutes`, { n: minutes }),
       );
     }
     if (format == 'shortform') {
       timeString = timeStringComponents.join(' ');
     } else {
       timeString = timeStringComponents.join(
-        i18n.global.t('punctuation_list_seperator')
+        i18n.global.t('punctuation_list_seperator'),
       );
     }
   }
@@ -84,7 +84,7 @@ export function formatTime(dateArgs: number | string | Date): string {
  * 10:01 AM -> 10:01 AM (unchanged when minutes are non-zero)
  */
 export function formatTimeTruncatingEmptyMinutes(
-  dateArgs: number | string | Date
+  dateArgs: number | string | Date,
 ): string {
   // This is admittedly a hack, and probably doesn't won't improve some
   // localizations, but I don't know of a better way that doesn't break other
@@ -103,7 +103,7 @@ export function kilometersToMiles(kilometers: number): number {
 export function formatDistance(
   distance: number,
   units: DistanceUnits,
-  precision = 1
+  precision = 1,
 ): string {
   const rounded = distance.toFixed(precision);
   if (units == DistanceUnits.Kilometers) {

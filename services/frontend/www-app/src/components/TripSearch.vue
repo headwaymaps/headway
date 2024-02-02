@@ -67,12 +67,16 @@
         <input
           type="time"
           :value="initialSearch.searchTime"
-          @change="(event) => searchTime = (event.target as HTMLInputElement).value"
+          @change="
+            (event) => (searchTime = (event.target as HTMLInputElement).value)
+          "
         />
         <input
           type="date"
           :value="initialSearch.searchDate"
-          @change="(event) => searchDate = (event.target as HTMLInputElement).value"
+          @change="
+            (event) => (searchDate = (event.target as HTMLInputElement).value)
+          "
         />
       </div>
       <q-btn
@@ -209,14 +213,14 @@ export default defineComponent({
         (position: GeolocationPosition) => {
           let lngLat = new LngLat(
             position.coords.longitude,
-            position.coords.latitude
+            position.coords.latitude,
           );
           let place = Place.bareLocation(lngLat);
           place.name = this.$t('my_location');
           this.didSelectFromPlace(place);
         },
         console.error,
-        options
+        options,
       );
     },
     placeDisplayName,

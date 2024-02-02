@@ -97,7 +97,7 @@ export default class ScaleControl implements IControl {
     if (!map) {
       console.assert(
         false,
-        'tried updating scale without adding control to map'
+        'tried updating scale without adding control to map',
       );
       return;
     }
@@ -134,7 +134,7 @@ export default class ScaleControl implements IControl {
         this.setScale(
           maxWidth,
           maxMiles,
-          map._getUIString('ScaleControl.Miles')
+          map._getUIString('ScaleControl.Miles'),
         );
       } else {
         this.setScale(maxWidth, maxFeet, map._getUIString('ScaleControl.Feet'));
@@ -143,13 +143,13 @@ export default class ScaleControl implements IControl {
       this.setScale(
         maxWidth,
         maxMeters / 1000,
-        map._getUIString('ScaleControl.Kilometers')
+        map._getUIString('ScaleControl.Kilometers'),
       );
     } else {
       this.setScale(
         maxWidth,
         maxMeters,
-        map._getUIString('ScaleControl.Meters')
+        map._getUIString('ScaleControl.Meters'),
       );
     }
   }
@@ -175,14 +175,14 @@ function getRoundNum(num: number) {
     d >= 10
       ? 10
       : d >= 5
-      ? 5
-      : d >= 3
-      ? 3
-      : d >= 2
-      ? 2
-      : d >= 1
-      ? 1
-      : getDecimalRoundNum(d);
+        ? 5
+        : d >= 3
+          ? 3
+          : d >= 2
+            ? 2
+            : d >= 1
+              ? 1
+              : getDecimalRoundNum(d);
 
   return pow10 * d;
 }

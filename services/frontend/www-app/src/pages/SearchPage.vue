@@ -169,7 +169,7 @@ export default defineComponent({
       this.selectedPlace = place;
       this.renderPlacesOnMap();
       const searchListItem = document.getElementById(
-        `search-list-item-${place.id.serialized()}`
+        `search-list-item-${place.id.serialized()}`,
       );
       if (searchListItem) {
         // This is async because we want to scroll after re-rendering the
@@ -180,7 +180,7 @@ export default defineComponent({
           searchListItem.scrollIntoView({
             behavior: 'smooth',
             block: 'nearest',
-          })
+          }),
         );
       }
     },
@@ -211,7 +211,7 @@ export default defineComponent({
         this.searchResults = undefined;
         const results = await PeliasClient.autocomplete(
           searchText,
-          focus
+          focus,
         ).finally(() => {
           this.isLoading = false;
         });
