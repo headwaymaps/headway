@@ -40,6 +40,7 @@
           <q-item-label>
             {{ $t('search_results_not_found_header') }}
           </q-item-label>
+          <!-- eslint-disable vue/no-v-text-v-html-on-component -->
           <q-item-label
             class="text-weight-light"
             v-html="
@@ -49,6 +50,7 @@
               })
             "
           />
+          <!-- eslint-enable vue/no-v-text-v-html-on-component -->
         </q-item-section>
       </q-item>
     </q-list>
