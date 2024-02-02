@@ -3,6 +3,19 @@
 </template>
 
 <style lang="scss">
+.headway-device-orientation-indicator {
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.headway-device-orientation-indicator svg {
+  position: relative;
+  top: 3px;
+  left: -33px;
+  transition: transform 0.2s ease;
+}
+
 .headway-ctrl-scale {
   display: flex;
   flex-direction: row;
@@ -92,6 +105,7 @@ import Place, { PlaceId } from 'src/models/Place';
 import TripLayerId from 'src/models/TripLayerId';
 import env from 'src/utils/env';
 import WrapperControl from 'src/ui/WrapperControl';
+import LocationControl from 'src/ui/LocationControl';
 
 export var map: maplibregl.Map | null = null;
 const mapContainerId = 'map';
@@ -480,7 +494,7 @@ export default defineComponent({
     // controls in the bottom right, this the compact version is taking up a more contentious resource.
     const attributionControl = new AttributionControl({ compact: false });
     const scaleControl = new ScaleControl({ maxWidth: 120 });
-    const geolocate = new maplibregl.GeolocateControl({
+    const geolocate = new LocationControl({
       positionOptions: { enableHighAccuracy: true },
       showAccuracyCircle: true,
       showUserLocation: true,
@@ -497,7 +511,7 @@ export default defineComponent({
 
     map.addControl(attributionControl, 'bottom-right');
 
-    let wrapperControl = new WrapperControl();
+    const wrapperControl = new WrapperControl();
     wrapperControl.pushChild(scaleControl);
     wrapperControl.pushChild(geolocate);
     map.addControl(wrapperControl, 'bottom-right');
