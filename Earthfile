@@ -170,9 +170,10 @@ save-pelias-config:
 
 save-tileserver-terrain:
     FROM +downloader-base
-    RUN wget -nv https://data.maps.earth/terrain.mbtiles
+    ARG asset_root=https://github.com/headwaymaps/headway-data/raw/main/tiles/
+    RUN wget -nv ${asset_root}/terrain.mbtiles
     SAVE ARTIFACT terrain.mbtiles AS LOCAL ./data/terrain.mbtiles
-    RUN wget -nv https://data.maps.earth/landcover.mbtiles
+    RUN wget -nv ${asset_root}/landcover.mbtiles
     SAVE ARTIFACT landcover.mbtiles AS LOCAL ./data/landcover.mbtiles
 
 images:
