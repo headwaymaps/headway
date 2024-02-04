@@ -1,4 +1,5 @@
 import { Platform } from 'quasar';
+import LocationControl from 'src/ui/LocationControl';
 
 export default class GeolocationPolyfill {
   mostRecentPosition: GeolocationPosition | undefined;
@@ -55,21 +56,22 @@ export default class GeolocationPolyfill {
     }
   }
 
-  register(geolocationControl: maplibregl.GeolocateControl): void {
+  register(geolocationControl: LocationControl): void {
     console.assert(
       !this.isRegistered,
       'GeolocationPolyfill has already been registered.',
     );
 
-    geolocationControl.on('geolocate', (position) => {
+    geolocationControl.on('geolocate', (position: GeolocationPosition) => {
       console.debug('updating mostRecentPosition', position);
       this.mostRecentPosition = position;
     });
-    geolocationControl.on('trackuserlocationstart', (e) => {
+    geolocationControl.on('trackuserlocationstart', (e: unknown) => {
       console.debug('starting user location watch', e);
       this.isWatching = true;
     });
-    geolocationControl.on('trackuserlocationend', (e) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    geolocationControl.on('trackuserlocationend', (e: any) => {
       console.debug('ending user location watch', e);
       switch (e.target._watchState) {
         case 'BACKGROUND': {
