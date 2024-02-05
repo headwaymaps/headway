@@ -3,16 +3,9 @@
 </template>
 
 <style lang="scss">
-.headway-device-orientation-indicator {
-  position: relative;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
 .headway-device-orientation-indicator svg {
   position: relative;
   top: 3px;
-  left: -33px;
   transition: transform 0.2s ease;
 }
 
