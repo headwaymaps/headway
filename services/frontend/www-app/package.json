@@ -6,7 +6,7 @@
   "author": "Ellen Poe <ellen@ellenhp.me>",
   "private": true,
   "scripts": {
-    "lint": "eslint --ext .js,.ts,.vue ./",
+    "lint": "NODE_ENV=production eslint --ext .js,.ts,.vue ./",
     "format-check": "prettier --check \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "fmt": "yarn format",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
