@@ -49,18 +49,25 @@ export default class DeviceOrientationPolyfill {
         this.state = 'watching';
 
         // it's useful to be able to test this on desktop
-        const testing = false;
-        if (testing && Platform.is.desktop) {
+        const fakeOnDesktop = false;
+        if (fakeOnDesktop && Platform.is.desktop) {
           // console.log('fake device orientation for testing on desktop');
-          setInterval(() => {
+          // setInterval(() => {
+          setTimeout(() => {
             // start north and turn clockwise
-            const orientation =
-              ((this.mostRecentHeading ?? -45.0) + 45.0) % 360.0;
+            let alpha;
+            if (this.mostRecentHeading === null) {
+              alpha = 0;
+            } else {
+              alpha = (360 - this.mostRecentHeading - 45) % 360;
+            }
+
+            // console.log(`mostRecentHeading: ${this.mostRecentHeading}, alpha: ${alpha}`);
             this.onDeviceOrientation({
-              alpha: orientation,
+              alpha,
               absolute: true,
             } as DeviceOrientationEvent);
-          }, 200);
+          }, 1000);
         } else {
           // On iOS, listening to 'deviceorientation' produces angles with the webkitCompassHeading.
           // On Android it only produces angles with the non-absolute alphas, which are worthless to us,
@@ -151,6 +158,8 @@ export default class DeviceOrientationPolyfill {
         return;
       }
 
+      // console.log(`setting heading to: ${newHeading}`);
+      console.assert(newHeading >= 0);
       this.mostRecentHeading = newHeading;
       for (const subscriber of this.subscribers) {
         subscriber(this.mostRecentHeading);
