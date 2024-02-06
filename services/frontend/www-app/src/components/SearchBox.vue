@@ -16,12 +16,14 @@
         dense
         unelevated
         padding="0"
+        style="margin-right: 8px"
         class="clear-button"
         icon="cancel"
         color="transparent"
         text-color="grey"
         @click="clear()"
       />
+      <slot></slot>
     </div>
     <div
       ref="autoCompleteMenu"
@@ -113,7 +115,6 @@
   }
   .input-field {
     font-size: 16px;
-    padding: 4px 8px;
     display: flex;
     height: 100%;
     flex-direction: row;
@@ -128,10 +129,22 @@
       outline: none;
     }
 
+    input,
+    .clear-button {
+      padding: 4px 8px;
+    }
+
     // only show clear-button when input has content
     // and is editable
     &:has(input:placeholder-shown) .clear-button,
     &:has(input[readonly]) .clear-button {
+      display: none;
+    }
+
+    // We don't want the settings link to interfere with the search field contents
+    // So hide the settings button when the user has, or is about to, give input
+    &:has(input:focus) .settings-button,
+    &:not(:has(input:placeholder-shown)) .settings-button {
       display: none;
     }
   }
