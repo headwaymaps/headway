@@ -7,7 +7,40 @@
         (searchText) =>
           $router.push(`/search/${encodeURIComponent(searchText)}`)
       "
-    />
+    >
+      <q-btn-dropdown
+        class="settings-button"
+        flat
+        no-ripple
+        no-icon-animation
+        dense
+        text-color="primary"
+        dropdown-icon="menu"
+      >
+        <q-list>
+          <q-item v-if="aboutUrl && aboutLinkText">
+            <q-btn
+              dense
+              icon="info"
+              no-caps
+              flat
+              :href="aboutUrl"
+              :label="aboutLinkText"
+            />
+          </q-item>
+          <q-item v-if="contactUrl && contactLinkText">
+            <q-btn
+              dense
+              icon="mail"
+              no-caps
+              flat
+              :href="contactUrl"
+              :label="contactLinkText"
+            />
+          </q-item>
+        </q-list>
+      </q-btn-dropdown>
+    </search-box>
   </div>
 </template>
 
@@ -38,6 +71,15 @@
     }
   }
 
+  .settings-button {
+    padding-left: 12px;
+    padding-right: 12px;
+    // Only round the outer corners to make this button
+    // feel like it's part of the text-input component
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+  }
+
   @media screen and (min-width: 800px) {
     #map {
       width: 100%;
@@ -55,6 +97,7 @@
 import { getBaseMap } from 'src/components/BaseMap.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import Place from 'src/models/Place';
+import Config from 'src/utils/Config';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
@@ -66,6 +109,14 @@ export default defineComponent({
         this.$router.push(`/place/${place.urlEncodedId()}`);
       }
     },
+  },
+  data: function (): {
+    aboutUrl?: string;
+    aboutLinkText?: string;
+    contactUrl?: string;
+    contactLinkText?: string;
+  } {
+    return Config.shared;
   },
   mounted: function () {
     getBaseMap()?.removeAllMarkers();
