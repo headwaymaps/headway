@@ -7,6 +7,10 @@ data:
   public-url: ${HEADWAY_PUBLIC_URL}
   bbox: "${HEADWAY_BBOX}"
   enable-transit-routing: "${HEADWAY_ENABLE_TRANSIT_ROUTING}"
+  www-about-url: "${HEADWAY_ABOUT_URL}"
+  www-about-link-text: "${HEADWAY_ABOUT_LINK_TEXT}"
+  www-contact-url: "${HEADWAY_CONTACT_URL}"
+  www-contact-link-text: "${HEADWAY_CONTACT_LINK_TEXT}"
   terrain-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/terrain.mbtiles
   landcover-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/landcover.mbtiles
   areamap-source-url: ${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.mbtiles
