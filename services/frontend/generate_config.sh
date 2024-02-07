@@ -20,9 +20,9 @@ Examples:
 EOS
 }
 
-if [ ! -z "$HEADWAY_BBOX" ]; then
+if [ -n "$HEADWAY_BBOX" ]; then
     # remove leading and trailing space, then comma separate
-    comma_seperated_bounds=$(echo $HEADWAY_BBOX | sed 's/^ *//' | sed 's/ *$//' | sed 's/  */,/g')
+    comma_seperated_bounds=$(echo "$HEADWAY_BBOX" | sed 's/^ *//' | sed 's/ *$//' | sed 's/  */,/g')
     bbox_json="[${comma_seperated_bounds}]"
 else
     bbox_json="null"
@@ -39,10 +39,38 @@ else
     transit_routing_enabled_json="true"
 fi
 
+if [[ -z "$HEADWAY_ABOUT_URL" ]]; then
+    about_url_json="null"
+else
+    about_url_json="\"$HEADWAY_ABOUT_URL\""
+fi
+
+if [[ -z "$HEADWAY_ABOUT_LINK_TEXT" ]]; then
+    about_link_text_json="null"
+else
+    about_link_text_json="\"$HEADWAY_ABOUT_LINK_TEXT\""
+fi
+
+if [[ -z "$HEADWAY_CONTACT_URL" ]]; then
+    contact_url_json="null"
+else
+    contact_url_json="\"$HEADWAY_CONTACT_URL\""
+fi
+
+if [[ -z "$HEADWAY_CONTACT_LINK_TEXT" ]]; then
+    contact_link_text_json="null"
+else
+    contact_link_text_json="\"$HEADWAY_CONTACT_LINK_TEXT\""
+fi
+
 cat << EOS
 {
     "maxBounds": $bbox_json,
-    "transitRoutingEnabled": $transit_routing_enabled_json
+    "transitRoutingEnabled": $transit_routing_enabled_json,
+    "aboutUrl": $about_url_json,
+    "aboutLinkText": $about_link_text_json,
+    "contactUrl": $contact_url_json,
+    "contactLinkText": $contact_link_text_json
 }
 EOS
 
