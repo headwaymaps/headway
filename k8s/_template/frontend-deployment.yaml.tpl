@@ -39,6 +39,26 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: enable-transit-routing
+            - name: HEADWAY_ABOUT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: www-about-url
+            - name: HEADWAY_ABOUT_LINK_TEXT
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: www-about-link-text
+            - name: HEADWAY_CONTACT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: www-contact-url
+            - name: HEADWAY_CONTACT_LINK_TEXT
+              valueFrom:
+                configMapKeyRef:
+                  name: deployment-config
+                  key: www-contact-link-text
           resources:
             limits:
               memory: 100Mi

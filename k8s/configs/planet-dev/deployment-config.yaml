@@ -7,6 +7,10 @@ data:
   public-url: https://maps.earth
   bbox: ""
   enable-transit-routing: "1"
+  www-about-url: "https://about.maps.earth"
+  www-about-link-text: "About maps.earth"
+  www-contact-url: "mailto:info@maps.earth?subject=Hello,%20Earth"
+  www-contact-link-text: "Contact Us"
   terrain-source-url: https://data.example.com/0.6.0/terrain.mbtiles
   landcover-source-url: https://data.example.com/0.6.0/landcover.mbtiles
   areamap-source-url: https://data.example.com/0.6.0/maps-earth-planet-v1.36/maps-earth-planet-v1.36.mbtiles
