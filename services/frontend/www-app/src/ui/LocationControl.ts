@@ -55,6 +55,12 @@ export default class LocationControl extends Evented implements IControl {
       this._updateMarkerPosition.bind(this),
     );
 
+    // make sure the compass is hidden when the user stops tracking their location
+    this.geolocateControl.on(
+      'trackuserlocationend',
+      this._updateMarker.bind(this),
+    );
+
     geolocateControlEl.addEventListener('click', () => {
       env.deviceOrientation.startWatching();
     });
@@ -92,7 +98,8 @@ export default class LocationControl extends Evented implements IControl {
     if (
       this.mostRecentPosition === undefined ||
       this.mostRecentCompassHeading == undefined ||
-      this.map === undefined
+      this.map === undefined ||
+      this.geolocateControl._watchState == 'OFF'
     ) {
       this.compassMarker.remove();
       return;
