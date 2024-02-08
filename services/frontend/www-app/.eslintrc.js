@@ -82,8 +82,10 @@ module.exports = {
     // does not work with type definitions
     'no-unused-vars': 'off',
 
-    // Any is "bad", and you should feel bad if you use it, but it sure is convenient sometimes
+    // Make development less painful
     '@typescript-eslint/no-explicit-any':
+      process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+    '@typescript-eslint/no-unused-vars':
       process.env.NODE_ENV === 'production' ? 'error' : 'warn',
 
     // allow debugger during development only

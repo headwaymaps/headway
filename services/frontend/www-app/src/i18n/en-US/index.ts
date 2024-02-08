@@ -12,7 +12,8 @@ export default {
   try_driving_directions: 'Try driving directions instead?',
   where_to_question: 'Where to?',
   my_location: 'My Location',
-  could_not_get_gps_location: 'Could not get GPS location',
+  location_permission_denied_banner:
+    'Location permission was denied. Check your privacy settings.',
   dropped_pin: 'Dropped Pin',
   via_$place: 'via {place}',
   via$transit_route: 'via route {transitRoute}',

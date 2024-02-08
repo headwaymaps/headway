@@ -68,6 +68,37 @@
   animation: hideElement 0.2s forwards;
   animation-delay: 5s;
 }
+
+.headway-location-control-container {
+  position: relative;
+
+  .headway-location-disabled-banner {
+    position: absolute;
+    right: 0;
+    bottom: 24px;
+    width: 200px;
+    padding: 8px;
+    text-align: center;
+    background: rgba(255, 185, 185, 0.96);
+    // add shadow
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .headway-location-control-click-interceptor {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: all;
+    cursor: pointer;
+  }
+
+  &:has(button[disabled]) {
+    .headway-location-control-click-interceptor {
+      cursor: not-allowed;
+    }
+  }
+}
 </style>
 
 <script lang="ts">
