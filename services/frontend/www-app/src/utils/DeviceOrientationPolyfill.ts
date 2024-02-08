@@ -12,6 +12,8 @@ type State =
   | 'unsupported'
   | 'watching';
 
+let alreadySubscribedToFakeDeviceOrientation = false;
+
 export default class DeviceOrientationPolyfill {
   private mostRecentHeading: number | null = null;
   private state: State = 'init';
@@ -51,9 +53,13 @@ export default class DeviceOrientationPolyfill {
         // it's useful to be able to test this on desktop
         const fakeOnDesktop = false;
         if (fakeOnDesktop && Platform.is.desktop) {
+          if (alreadySubscribedToFakeDeviceOrientation) {
+            return;
+          }
+          alreadySubscribedToFakeDeviceOrientation = true;
+
           // console.log('fake device orientation for testing on desktop');
-          // setInterval(() => {
-          setTimeout(() => {
+          setInterval(() => {
             // start north and turn clockwise
             let alpha;
             if (this.mostRecentHeading === null) {
