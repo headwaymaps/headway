@@ -8,6 +8,7 @@ import {
   LngLat,
 } from 'maplibre-gl';
 import env from 'src/utils/env';
+import { i18n } from 'src/i18n/lang';
 
 /**
  * A wrapper for maplibre-gl's GeolocateControl that adds a compass to the user's location dot,
@@ -19,6 +20,7 @@ export default class LocationControl extends Evented implements IControl {
   geolocateControl: GeolocateControl;
   compassEl: HTMLElement;
   svgEl: HTMLElement;
+  controlContainer: HTMLElement;
   currentRotation = 0;
   compassMarker: Marker;
 
@@ -36,6 +38,21 @@ export default class LocationControl extends Evented implements IControl {
     this.svgEl = svgEl;
     compassEl.append(svgEl);
     this.compassEl = compassEl;
+    this.controlContainer = document.createElement('div');
+    this.controlContainer.className = 'headway-location-control-container';
+
+    // create click interceptor div inside controlContainer. When it's clicked pass the clicks through
+    // to the geolocate control button
+    const clickInterceptor = document.createElement('div');
+    clickInterceptor.className = 'headway-location-control-click-interceptor';
+    clickInterceptor.addEventListener('click', () => {
+      if (this.geolocateControl._container.querySelector('button[disabled]')) {
+        this.onLocationServiceIsDisabled();
+      } else {
+        this.geolocateControl._container.querySelector('button')?.click();
+      }
+    });
+    this.controlContainer.append(clickInterceptor);
 
     this.compassMarker = new Marker({
       element: compassEl,
@@ -65,7 +82,10 @@ export default class LocationControl extends Evented implements IControl {
       env.deviceOrientation.startWatching();
     });
 
-    return geolocateControlEl;
+    this._setupDisabledObserver(geolocateControlEl);
+
+    this.controlContainer.append(geolocateControlEl);
+    return this.controlContainer;
   }
 
   /** {@inheritDoc IControl.onRemove} */
@@ -92,6 +112,52 @@ export default class LocationControl extends Evented implements IControl {
   _updateMarkerRotation(compassHeading: number): void {
     this.mostRecentCompassHeading = compassHeading;
     this._updateMarker();
+  }
+
+  _setupDisabledObserver(geolocateControlEl: HTMLElement): void {
+    const observer = new MutationObserver((mutations) => {
+      const button = geolocateControlEl.querySelector('button');
+      if (!button) {
+        // button not inserted yet
+        return;
+      }
+
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === 'attributes' &&
+          mutation.attributeName === 'disabled'
+        ) {
+          const isDisabled = button.getAttribute('disabled') !== null;
+          if (isDisabled) {
+            this.onLocationServiceIsDisabled();
+          }
+        }
+      });
+    });
+
+    // Specify what to observe (attribute changes in this case)
+    const config = { attributes: true, childList: true, subtree: true };
+    observer.observe(geolocateControlEl, config);
+  }
+
+  onLocationServiceIsDisabled() {
+    // abort if banner already exists
+    if (
+      this.controlContainer.querySelector('.headway-location-disabled-banner')
+    ) {
+      return;
+    }
+    const banner = document.createElement('p');
+    banner.className = 'headway-location-disabled-banner';
+    banner.textContent = i18n.global.t('location_permission_denied_banner');
+    this.controlContainer.append(banner);
+
+    this.map?.once('click', () => {
+      banner.remove();
+    });
+    banner.addEventListener('click', () => {
+      banner.remove();
+    });
   }
 
   _updateMarker() {
