@@ -323,13 +323,7 @@ pelias-import:
 ##############################
 
 planetiler-build-mbtiles:
-    # The version tag is ignored when sha256 is specified, but I'm leaving it in as documentation
-    FROM ghcr.io/onthegomap/planetiler:0.5.0@sha256:79981c8af5330b384599e34d90b91a2c01b141be2c93a53244d14c49e2758c3c
-    # FIXME: The 0.6.0 release is failing on planet builds (reproduced on daylight maps v1.26 w/ building and admin)
-    # The 0.5.0 release builds it successfully. The 0.6.0 release can build a smaller map (e.g. Seattle) without error.
-    # Failing with:
-    #     java.util.concurrent.ExecutionException: java.io.UncheckedIOException: com.google.protobuf.InvalidProtocolBufferException: Protocol message contained an invalid tag (zero).
-    # FROM ghcr.io/onthegomap/planetiler:0.6.0@sha256:e937250696efc60f57e7952180645c6e4b1888d70fd61d04f1e182c5489eaa1c
+    FROM ghcr.io/onthegomap/planetiler:0.7.0
 
     RUN mkdir -p /data/sources
     RUN curl --no-progress-meter https://f000.backblazeb2.com/file/headway/sources.tar | tar -x --directory /data/sources
@@ -346,7 +340,18 @@ planetiler-build-mbtiles:
     #     "@/app/jib-classpath-file",
     #     "com.onthegomap.planetiler.Main"
     # ],
-    RUN --entrypoint -- --force --osm_path=/data/data.osm.pbf
+
+    COPY ./services/tilebuilder/percent-of-available-memory .
+
+    RUN --entrypoint -- \
+        -Xmx$(./percent-of-available-memory 75) \
+        `# return unused heap memory to the OS` \
+        -XX:MaxHeapFreeRatio=40 \
+        --osm_path=/data/data.osm.pbf \
+        # --bounds=planet \
+        `# Store temporary node locations at fixed positions in a memory-mapped file` \
+        --nodemap-type=array --storage=mmap \
+        --force
 
     SAVE ARTIFACT /data/output.mbtiles /output.mbtiles
 

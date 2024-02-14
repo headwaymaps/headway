@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+# Calculate 75% of total available memory
+if [ -z "$1" ]; then
+
+    cat << EOS >&2
+Missing arg. Should be like:
+    # 75 percent of memory
+    # example output
+    $0 75
+    1234M
+EOS
+
+    exit 1
+fi
+
+MEM_PERCENT=$1
+
+AVAILABLE_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+OUTPUT="$(( $AVAILABLE_KB * $MEM_PERCENT / 100 / 1024 ))M"
+echo "${MEM_PERCENT}% of available memory is $OUTPUT" >&2
+echo $OUTPUT
+
