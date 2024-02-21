@@ -47,6 +47,8 @@ services:
         condition: service_completed_successfully
     networks:
       - transit_backend
+    ports:
+      - "9001:8000"
   transitmux:
     image: ghcr.io/headwaymaps/transitmux:latest
     restart: always
@@ -84,6 +86,8 @@ services:
     depends_on:
       valhalla-init:
         condition: service_completed_successfully
+    ports:
+      - "9002:8002"
   frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
