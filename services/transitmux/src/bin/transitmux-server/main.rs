@@ -6,7 +6,10 @@ use transitmux::Result;
 
 mod app_state;
 mod health;
-mod plan;
+mod util;
+mod v1;
+mod v2;
+
 use app_state::AppState;
 
 #[actix_web::main]
@@ -47,7 +50,8 @@ async fn main() -> Result<()> {
         App::new()
             .wrap(Logger::default())
             .app_data(web::Data::new(app_state.clone()))
-            .service(plan::get_plan)
+            .service(v1::plan::get_plan)
+            .service(v2::plan::get_plan)
             .service(health::get_ready)
             .service(health::get_alive)
     })

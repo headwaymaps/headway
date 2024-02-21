@@ -1,10 +1,10 @@
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
 use geo::geometry::Point;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use transitmux::Error;
 
-use crate::AppState;
+use crate::{util::deserialize_point_from_lat_lon, AppState};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -51,33 +51,4 @@ pub async fn get_plan(
     }
 
     Ok(response.streaming(otp_response.bytes_stream()))
-}
-
-fn deserialize_point_from_lat_lon<'de, D>(deserializer: D) -> std::result::Result<Point, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-
-    let s: String = Deserialize::deserialize(deserializer)?;
-    use std::str::FromStr;
-    let mut iter = s.split(',').map(f64::from_str);
-
-    let Some(lat_res) = iter.next() else {
-        return Err(D::Error::custom("missing lat"));
-    };
-    let lat = lat_res.map_err(|e| D::Error::custom(format!("invalid lat: {e}")))?;
-
-    let Some(lon_res) = iter.next() else {
-        return Err(D::Error::custom("missing lon"));
-    };
-    let lon = lon_res.map_err(|e| D::Error::custom(format!("invalid lon: {e}")))?;
-
-    if let Some(next) = iter.next() {
-        return Err(D::Error::custom(format!(
-            "found an extra param in lat,lon,???: {next:?}"
-        )));
-    }
-
-    Ok(Point::new(lon, lat))
 }
