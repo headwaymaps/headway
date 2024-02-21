@@ -1,4 +1,5 @@
 use actix_web::{middleware::Logger, web, App, HttpServer};
+use url::Url;
 
 use std::env;
 
@@ -6,7 +7,6 @@ use transitmux::Result;
 
 mod app_state;
 mod health;
-mod util;
 mod v1;
 mod v2;
 
@@ -16,27 +16,31 @@ use app_state::AppState;
 async fn main() -> Result<()> {
     env_logger::init();
 
-    let mut app_state = AppState::default();
-
     // eventually we might want something more sophisticated, like CRUD'ing endpoints,
     // but for now we require a restart.
-    let endpoints = env::args().skip(1);
-    if endpoints.len() == 0 {
+    let mut endpoints = env::args().skip(1);
+
+    let Some(valhalla_endpoint) = endpoints.next() else {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} https://endpoint1.example.com/otp/routers https://endpoint2.example.com/otp/routers")
-    }
+        panic!("No endpoints specified. Usage: {bin_name} https://valhalla.example.com https://endpoint1.example.com/otp/routers https://endpoint2.example.com/otp/routers")
+    };
+
+    let Ok(valhalla_endpoint) = Url::parse(&valhalla_endpoint) else {
+        panic!("Invalid valhalla endpoint: {valhalla_endpoint}")
+    };
+    let mut app_state = AppState::new(valhalla_endpoint);
 
     for endpoint in endpoints {
         // If we change this to be non-blocking, we'll
         // want to update our readiness probe in health.rs
-        app_state.add_endpoint(&endpoint).await?;
+        app_state.add_otp_endpoint(&endpoint).await?;
     }
 
     log::info!(
         "setup completed - there are {} routers.",
-        app_state.cluster().router_len()
+        app_state.otp_cluster().router_len()
     );
 
     let port: u16 = std::env::var("PORT")

@@ -1,33 +1,33 @@
-use crate::router::{Router, RouterClient};
+use crate::otp::otp_router::{OTPRouter, OTPRouterClient};
 use crate::Result;
 use geo::geometry::Point;
 use url::Url;
 use wkt::ToWkt;
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Cluster {
-    routers: Vec<Router>,
+pub struct OtpCluster {
+    routers: Vec<OTPRouter>,
 }
 
-impl Cluster {
+impl OtpCluster {
     pub async fn insert_endpoint(&mut self, url: Url) -> Result<()> {
-        for router in RouterClient::new(url).fetch_all().await? {
+        for router in OTPRouterClient::new(url).fetch_all().await? {
             self.push_router(router);
         }
         Ok(())
     }
 
-    pub fn push_router(&mut self, router: Router) {
+    pub fn push_router(&mut self, router: OTPRouter) {
         self.routers.push(router)
     }
 
     pub fn find_router_url(&self, source: Point, destination: Point) -> Option<Url> {
         let router = self.find_router(source, destination)?;
-        let router_url = RouterClient::router_url(router);
+        let router_url = OTPRouterClient::router_url(router);
         Some(router_url)
     }
 
-    fn find_router(&self, source: Point, destination: Point) -> Option<&Router> {
+    fn find_router(&self, source: Point, destination: Point) -> Option<&OTPRouter> {
         for router in &self.routers {
             use geo::algorithm::Contains;
             if !router.polygon().contains(&source) {
@@ -63,7 +63,7 @@ mod test {
 
     #[test]
     fn no_router() {
-        let cluster = Cluster::default();
+        let cluster = OtpCluster::default();
         let from = Point::new(0.0, 0.0);
         let to = Point::new(0.0, 0.0);
         let result = cluster.find_router_url(from, to);
@@ -74,13 +74,13 @@ mod test {
     fn found_router() {
         use wkt::TryFromWkt;
 
-        let mut cluster = Cluster::default();
+        let mut cluster = OtpCluster::default();
 
         {
             let endpoint_1 = Url::parse("http://host_1.example.com/foo").unwrap();
             let polygon_1 =
                 Polygon::try_from_wkt_str("POLYGON ((0 0, 40 0, 40 40, 0 40, 0 0))").unwrap();
-            let router_1 = Router::new(endpoint_1, "router_1".to_string(), polygon_1);
+            let router_1 = OTPRouter::new(endpoint_1, "router_1".to_string(), polygon_1);
             cluster.push_router(router_1);
         }
         // points in polygon_1
@@ -93,7 +93,7 @@ mod test {
                 "POLYGON ((100 100, 140 100, 140 140, 100 140, 100 100))",
             )
             .unwrap();
-            let router_2 = Router::new(endpoint_2, "router_2".to_string(), polygon_2);
+            let router_2 = OTPRouter::new(endpoint_2, "router_2".to_string(), polygon_2);
             cluster.push_router(router_2);
         }
         // points in polygon_2

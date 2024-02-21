@@ -1,10 +1,14 @@
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
 use geo::geometry::Point;
-use serde::{Deserialize, Serialize};
+use reqwest::header::{HeaderName, HeaderValue};
+use serde::de::IntoDeserializer;
+use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize};
+use std::fmt;
 
-use transitmux::Error;
+use transitmux::valhalla::valhalla_api::ModeCosting;
+use transitmux::{util::deserialize_point_from_lat_lon, Error, TravelMode};
 
-use crate::{util::deserialize_point_from_lat_lon, AppState};
+use crate::AppState;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +18,19 @@ pub struct PlanQuery {
 
     #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
     from_place: Point,
+
+    num_itineraries: u32,
+
+    mode: TravelModes,
+}
+
+type OTPPlanResponse = serde_json::Value;
+type ValhallaPlanResponse = serde_json::Value;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct PlanResponse {
+    otp: Option<OTPPlanResponse>,
+    valhalla: Option<ValhallaPlanResponse>,
 }
 
 #[get("/v2/plan")]
@@ -22,33 +39,121 @@ pub async fn get_plan(
     req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> impl Responder {
-    let Some(mut router_url) = app_state
-        .cluster()
-        .find_router_url(query.from_place, query.to_place)
-    else {
-        return Err(Error::user("no matching router found"));
+    let Some(primary_mode) = query.mode.0.first() else {
+        return Err(Error::user("mode is required"));
     };
 
-    router_url.set_query(Some(req.query_string()));
-    log::debug!(
-        "found matching router. Forwarding request to: {}",
-        router_url
-    );
+    // FIXME: Handle bus+bike if bike is first
+    match primary_mode {
+        TravelMode::Transit => {
+            let Some(mut router_url) = app_state
+                .otp_cluster()
+                .find_router_url(query.from_place, query.to_place)
+            else {
+                return Err(Error::user("no matching router found"));
+            };
 
-    let otp_response: reqwest::Response = reqwest::get(router_url).await?;
-    if !otp_response.status().is_success() {
-        log::warn!(
-            "upstream HTTP Error from otp service: {}",
-            otp_response.status()
-        )
+            // if we end up building this manually rather than passing it through, we'll need to be sure
+            // to handle the bike+bus case
+            router_url.set_query(Some(req.query_string()));
+            log::debug!(
+                "found matching router. Forwarding request to: {}",
+                router_url
+            );
+
+            let otp_response: reqwest::Response = reqwest::get(router_url).await?;
+            if !otp_response.status().is_success() {
+                log::warn!(
+                    "upstream HTTP Error from otp service: {}",
+                    otp_response.status()
+                )
+            }
+
+            let mut response = HttpResponseBuilder::new(otp_response.status());
+            debug_assert_eq!(
+                otp_response
+                    .headers()
+                    .get(HeaderName::from_static("content-type")),
+                Some(&HeaderValue::from_str("application/json").unwrap())
+            );
+            response.content_type("application/json");
+
+            Ok(response.json(PlanResponse {
+                otp: Some(otp_response.json().await?),
+                valhalla: None,
+            }))
+        }
+        other => {
+            debug_assert!(query.mode.0.len() == 1, "valhalla only supports one mode");
+
+            let mode = match other {
+                TravelMode::Transit => unreachable!("handled above"),
+                TravelMode::Bicycle => ModeCosting::Bicycle,
+                TravelMode::Car => ModeCosting::Auto,
+                TravelMode::Walk => ModeCosting::Pedestrian,
+            };
+
+            // route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}
+            let router_url = app_state.valhalla_router().plan_url(
+                query.from_place,
+                query.to_place,
+                mode,
+                query.num_itineraries,
+            )?;
+            let valhalla_response: reqwest::Response = reqwest::get(router_url).await?;
+            if !valhalla_response.status().is_success() {
+                log::warn!(
+                    "upstream HTTP Error from valhalla service: {}",
+                    valhalla_response.status()
+                )
+            }
+
+            let mut response = HttpResponseBuilder::new(valhalla_response.status());
+            debug_assert_eq!(
+                valhalla_response
+                    .headers()
+                    .get(HeaderName::from_static("content-type")),
+                Some(&HeaderValue::from_str("application/json;charset=utf-8").unwrap())
+            );
+            response.content_type("application/json;charset=utf-8");
+
+            Ok(response.json(PlanResponse {
+                otp: None,
+                valhalla: Some(valhalla_response.json().await?),
+            }))
+        }
     }
+}
 
-    let mut response = HttpResponseBuilder::new(otp_response.status());
-    if let Some(content_type) = otp_response.headers().get("content-type") {
-        response.content_type(content_type);
-    } else {
-        log::warn!("upstream didn't specify content-type");
+// Comma separated list of travel modes
+#[derive(Debug, Serialize, PartialEq, Eq)]
+struct TravelModes(Vec<TravelMode>);
+impl<'de> Deserialize<'de> for TravelModes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ColorVecVisitor;
+
+        impl<'de> Visitor<'de> for ColorVecVisitor {
+            type Value = TravelModes;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a comma-separated string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let modes = value
+                    .split(',')
+                    .map(|s| TravelMode::deserialize(s.into_deserializer()))
+                    .collect::<Result<_, _>>()?;
+                Ok(TravelModes(modes))
+            }
+        }
+
+        deserializer.deserialize_str(ColorVecVisitor)
     }
-
-    Ok(response.streaming(otp_response.bytes_stream()))
 }

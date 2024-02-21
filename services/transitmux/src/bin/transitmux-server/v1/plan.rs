@@ -2,9 +2,9 @@ use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
 use geo::geometry::Point;
 use serde::{Deserialize, Serialize};
 
-use transitmux::Error;
+use transitmux::{util::deserialize_point_from_lat_lon, Error};
 
-use crate::{util::deserialize_point_from_lat_lon, AppState};
+use crate::AppState;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +23,7 @@ pub async fn get_plan(
     app_state: web::Data<AppState>,
 ) -> impl Responder {
     let Some(mut router_url) = app_state
-        .cluster()
+        .otp_cluster()
         .find_router_url(query.from_place, query.to_place)
     else {
         return Err(Error::user("no matching router found"));

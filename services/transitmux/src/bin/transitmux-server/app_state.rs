@@ -1,13 +1,22 @@
-use transitmux::{Cluster, Error, Result};
+use transitmux::{otp::OtpCluster, valhalla::ValhallaRouter, Error, Result};
 use url::Url;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct AppState {
-    cluster: Cluster,
+    otp_cluster: OtpCluster,
+    valhalla_router: ValhallaRouter,
 }
 
 impl AppState {
-    pub async fn add_endpoint(&mut self, endpoint: &str) -> Result<()> {
+    pub fn new(valhalla_endpoint: Url) -> Self {
+        let valhalla_router = ValhallaRouter::new(valhalla_endpoint);
+        Self {
+            valhalla_router,
+            otp_cluster: OtpCluster::default(),
+        }
+    }
+
+    pub async fn add_otp_endpoint(&mut self, endpoint: &str) -> Result<()> {
         log::info!("adding endpoint: {endpoint}");
         let url = Url::parse(endpoint).map_err(|err| {
             log::error!("error while parsing endpoint url {endpoint:?}");
@@ -15,14 +24,18 @@ impl AppState {
         })?;
 
         // TODO: Separate inserting an endpoint from (periodically) fetching its routers
-        self.cluster.insert_endpoint(url).await.map_err(|err| {
+        self.otp_cluster.insert_endpoint(url).await.map_err(|err| {
             log::error!("error while inserting endpoint {endpoint:?}");
             err
         })?;
         log::info!("added endpoint: {endpoint}");
         Ok(())
     }
-    pub fn cluster(&self) -> &Cluster {
-        &self.cluster
+    pub fn otp_cluster(&self) -> &OtpCluster {
+        &self.otp_cluster
+    }
+
+    pub fn valhalla_router(&self) -> &ValhallaRouter {
+        &self.valhalla_router
     }
 }

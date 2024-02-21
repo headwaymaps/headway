@@ -1,6 +1,16 @@
-mod cluster;
-pub use cluster::Cluster;
 mod error;
+pub mod otp;
+pub mod util;
+pub mod valhalla;
+
 pub use error::{Error, Result};
-pub(crate) mod otp_api;
-mod router;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum TravelMode {
+    Transit,
+    Bicycle,
+    Car,
+    Walk,
+}
