@@ -7,6 +7,7 @@ use std::fmt;
 
 use transitmux::valhalla::valhalla_api::ModeCosting;
 use transitmux::{util::deserialize_point_from_lat_lon, Error, TravelMode};
+use transitmux::otp::otp_api;
 
 use crate::AppState;
 
@@ -24,21 +25,40 @@ pub struct PlanQuery {
     mode: TravelModes,
 }
 
-type OTPPlanResponse = serde_json::Value;
 type ValhallaPlanResponse = serde_json::Value;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PlanResponse {
     // The raw response from the upstream OTP service
-    _otp: Option<OTPPlanResponse>,
+    _otp: Option<otp_api::PlanResponse>,
 
     // The raw response from the upstream Valhalla service
     _valhalla: Option<ValhallaPlanResponse>,
+
+    plan: Plan
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 struct Plan {
-
+    itineraries: Vec<Itinerary>,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Itinerary {
+    duration: f64,
+    // legs: Vec<Leg>,
+}
+
+// #[derive(Debug, Deserialize, Serialize)]
+// struct Leg {
+//     mode: String,
+//     from: Point,
+//     to: Point,
+//     distance: f64,
+//     duration: f64,
+// }
+
+
 
 #[get("/v2/plan")]
 pub async fn get_plan(
@@ -85,8 +105,16 @@ pub async fn get_plan(
             );
             response.content_type("application/json");
 
+            let otp_plan: otp_api::PlanResponse = otp_response.json().await?;
             Ok(response.json(PlanResponse {
-                _otp: Some(otp_response.json().await?),
+                plan: Plan {
+                    itineraries: otp_plan.plan.itineraries.iter().map( |itinerary| {
+                        Itinerary {
+                            duration: itinerary.duration,
+                        }
+                    }).collect()
+                },
+                _otp: Some(otp_plan),
                 _valhalla: None,
             }))
         }
@@ -125,6 +153,9 @@ pub async fn get_plan(
             response.content_type("application/json;charset=utf-8");
 
             Ok(response.json(PlanResponse {
+                plan: Plan {
+                    itineraries: vec![], // TODO: parse valhalla response
+                },
                 _otp: None,
                 _valhalla: Some(valhalla_response.json().await?),
             }))

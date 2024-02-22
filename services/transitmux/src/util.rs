@@ -1,3 +1,4 @@
+use std::time::Duration;
 use geo::Point;
 use serde::{Deserialize, Deserializer};
 
@@ -28,4 +29,20 @@ where
     }
 
     Ok(Point::new(lon, lat))
+}
+
+
+pub fn deserialize_duration_from_seconds<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+{
+    let seconds = u64::deserialize(deserializer)?;
+    Ok(Duration::from_secs(seconds))
+}
+
+pub fn serialize_duration_as_seconds<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+{
+    serializer.serialize_u64(duration.as_secs())
 }

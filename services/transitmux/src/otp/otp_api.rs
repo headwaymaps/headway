@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use geo::geometry::Polygon;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -13,4 +14,52 @@ pub struct Router {
 #[serde(rename_all = "camelCase")]
 pub struct Routers {
     pub router_info: Vec<Router>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanResponse {
+    pub plan: Plan,
+
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Plan {
+    pub itineraries: Vec<Itinerary>,
+
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Itinerary {
+    pub duration: f64,
+    pub legs: Vec<Leg>,
+
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Leg {
+    pub mode: String,
+    pub from: Location,
+    pub to: Location,
+    pub distance: f64,
+    pub duration: f64,
+
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Location {
+    pub lat: f64,
+    pub lon: f64,
 }
