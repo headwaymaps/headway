@@ -1,5 +1,6 @@
 import { LngLat } from 'maplibre-gl';
 import { Err, Ok, Result } from 'src/utils/Result';
+import { ValhallaRouteResponse } from 'src/services/ValhallaClient';
 
 // incomplete
 export type OTPLegGeometry = {
@@ -88,6 +89,11 @@ export type OTPPlanRequest = {
   mode?: string;
 };
 
+export interface TransitmuxResponse {
+  otp: OTPPlanResponse;
+  valhalla: ValhallaRouteResponse;
+}
+
 // incomplete
 export type OTPPlanResponse = {
   plan: {
@@ -138,9 +144,17 @@ export class OTPClient {
 
     const query = new URLSearchParams(params).toString();
 
-    const response = await fetch('/transitmux/plan?' + query);
+    const response = await fetch('/transitmux/v2/plan?' + query);
     if (response.ok) {
-      const responseJson: OTPPlanResponse = await response.json();
+      const transitmuxResponseJson: TransitmuxResponse = await response.json();
+      if (!transitmuxResponseJson.otp) {
+        console.error(
+          'No OTP response in transitmux response',
+          transitmuxResponseJson,
+        );
+        throw new Error('No OTP response in transitmux response');
+      }
+      const responseJson = transitmuxResponseJson.otp;
       if (responseJson.plan.itineraries.length > 0) {
         const itineraries = responseJson.plan.itineraries.sort(
           (a, b) => a.endTime - b.endTime,
