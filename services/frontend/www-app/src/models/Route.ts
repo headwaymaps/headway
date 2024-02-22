@@ -11,7 +11,7 @@ import {
 } from 'src/services/ValhallaClient';
 import { formatDuration } from 'src/utils/format';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import { decodeValhallaPath } from 'src/third_party/decodePath';
+import { decodePolyline } from 'src/third_party/decodePath';
 import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
 import Trip, { LineStyles, TripLeg } from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
@@ -79,7 +79,7 @@ export default class Route implements Trip {
       return {
         geometry(): GeoJSON.LineString {
           const points: [number, number][] = [];
-          decodeValhallaPath(vLeg.shape, 6).forEach((point) => {
+          decodePolyline(vLeg.shape, 6, true).forEach((point) => {
             points.push([point[1], point[0]]);
           });
           return {

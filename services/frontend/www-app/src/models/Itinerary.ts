@@ -16,7 +16,7 @@ import {
   formatTime,
   kilometersToMiles,
 } from 'src/utils/format';
-import { decodeOtpPath } from 'src/third_party/decodePath';
+import { decodePolyline } from 'src/third_party/decodePath';
 import Trip, { LineStyles } from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
 
@@ -278,8 +278,10 @@ export class ItineraryLeg {
   }
 
   geometry(): GeoJSON.LineString {
-    const points: [number, number][] = decodeOtpPath(
+    const points: [number, number][] = decodePolyline(
       this.raw.legGeometry.points,
+      5,
+      false,
     );
     return {
       type: 'LineString',
