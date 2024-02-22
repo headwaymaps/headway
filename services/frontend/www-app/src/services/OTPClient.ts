@@ -90,8 +90,8 @@ export type OTPPlanRequest = {
 };
 
 export interface TransitmuxResponse {
-  otp: OTPPlanResponse;
-  valhalla: ValhallaRouteResponse;
+  _otp: OTPPlanResponse;
+  _valhalla: ValhallaRouteResponse;
 }
 
 // incomplete
@@ -147,14 +147,14 @@ export class OTPClient {
     const response = await fetch('/transitmux/v2/plan?' + query);
     if (response.ok) {
       const transitmuxResponseJson: TransitmuxResponse = await response.json();
-      if (!transitmuxResponseJson.otp) {
+      if (!transitmuxResponseJson._otp) {
         console.error(
           'No OTP response in transitmux response',
           transitmuxResponseJson,
         );
         throw new Error('No OTP response in transitmux response');
       }
-      const responseJson = transitmuxResponseJson.otp;
+      const responseJson = transitmuxResponseJson._otp;
       if (responseJson.plan.itineraries.length > 0) {
         const itineraries = responseJson.plan.itineraries.sort(
           (a, b) => a.endTime - b.endTime,

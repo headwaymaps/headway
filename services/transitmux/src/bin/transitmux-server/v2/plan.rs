@@ -29,8 +29,15 @@ type ValhallaPlanResponse = serde_json::Value;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PlanResponse {
-    otp: Option<OTPPlanResponse>,
-    valhalla: Option<ValhallaPlanResponse>,
+    // The raw response from the upstream OTP service
+    _otp: Option<OTPPlanResponse>,
+
+    // The raw response from the upstream Valhalla service
+    _valhalla: Option<ValhallaPlanResponse>,
+}
+
+struct Plan {
+
 }
 
 #[get("/v2/plan")]
@@ -79,8 +86,8 @@ pub async fn get_plan(
             response.content_type("application/json");
 
             Ok(response.json(PlanResponse {
-                otp: Some(otp_response.json().await?),
-                valhalla: None,
+                _otp: Some(otp_response.json().await?),
+                _valhalla: None,
             }))
         }
         other => {
@@ -118,8 +125,8 @@ pub async fn get_plan(
             response.content_type("application/json;charset=utf-8");
 
             Ok(response.json(PlanResponse {
-                otp: None,
-                valhalla: Some(valhalla_response.json().await?),
+                _otp: None,
+                _valhalla: Some(valhalla_response.json().await?),
             }))
         }
     }

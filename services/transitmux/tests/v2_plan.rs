@@ -20,10 +20,10 @@ fn get_transit_plan() {
     // print!("{}", serde_json::to_string_pretty(&body).unwrap());
     // FRAGILE: the number of itineraries might change
     assert_eq!(
-        body["otp"]["plan"]["itineraries"].as_array().unwrap().len(),
+        body["_otp"]["plan"]["itineraries"].as_array().unwrap().len(),
         3
     );
-    assert!(body["valhalla"].is_null());
+    assert!(body["_valhalla"].is_null());
 }
 
 #[test]
@@ -50,6 +50,6 @@ fn get_walk_plan() {
     let body = response.json::<serde_json::Value>().unwrap();
     // print!("{}", serde_json::to_string_pretty(&body).unwrap());
     // FRAGILE: the number of itineraries might change
-    assert_eq!(body["valhalla"]["alternates"].as_array().unwrap().len(), 2);
-    assert!(body["otp"].is_null());
+    assert_eq!(body["_valhalla"]["alternates"].as_array().unwrap().len(), 2);
+    assert!(body["_otp"].is_null());
 }
