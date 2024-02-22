@@ -53,6 +53,11 @@ export interface ValhallaRouteLeg {
   shape: string;
 }
 
+export interface ValhallaRouteResponse {
+  trip: ValhallaRoute;
+  alternates?: { trip: ValhallaRoute }[];
+}
+
 // incomplete
 export interface ValhallaRoute {
   legs: ValhallaRouteLeg[];
@@ -170,16 +175,14 @@ export async function getRoutes(
     return Err(error);
   }
 
-  const responseJson = await response.json();
+  const routeResponse = (await response.json()) as ValhallaRouteResponse;
   const routes: ValhallaRoute[] = [];
-  const route = responseJson.trip as ValhallaRoute;
-  if (route) {
-    routes.push(route);
+  if (routeResponse.trip) {
+    routes.push(routeResponse.trip);
   }
-  for (const altIdx in responseJson.alternates) {
-    const route = responseJson.alternates[altIdx].trip as ValhallaRoute;
-    if (route) {
-      routes.push(route);
+  for (const route of routeResponse.alternates || []) {
+    if (route.trip) {
+      routes.push(route.trip);
     }
   }
   return Ok(routes);
