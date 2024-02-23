@@ -1,4 +1,4 @@
-import { LngLat, LngLatBounds } from 'maplibre-gl';
+import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Result } from 'src/utils/Result';
 import Trip, { TripFetchError, TripLeg } from 'src/models/Trip';
@@ -8,6 +8,7 @@ import Itinerary from 'src/models/Itinerary';
 import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
 import { formatMeters, formatDuration } from 'src/utils/format';
+import { LineString } from 'geojson';
 
 export interface TravelmuxPlanResponse {
   _otp: OTPPlanResponse;
@@ -18,11 +19,19 @@ export interface TravelmuxPlanResponse {
 export interface TravelmuxPlan {
   itineraries: TravelmuxItinerary[];
 }
+
+export interface TravelmuxLeg {
+  mode: TravelmuxMode;
+  distanceMeters: number;
+  duration: number;
+  geometry: LineString;
+}
+
 export interface TravelmuxItinerary {
   duration: number;
   mode: TravelmuxMode;
   distanceMeters: number;
-  // legs: TravelmuxLeg[];
+  legs: TravelmuxLeg[];
   // startTime: number;
   // endTime: number;
   // walkDistance: number;
@@ -56,6 +65,25 @@ export enum TravelmuxMode {
   Walk = 'WALK',
   Drive = 'CAR',
   Transit = 'TRANSIT',
+}
+
+export class TravelmuxTripLeg implements TripLeg {
+  inner: TripLeg;
+  constructor(inner: TripLeg) {
+    this.inner = inner;
+  }
+  geometry(): LineString {
+    // TODO: drive on my own data
+    return this.inner.geometry();
+  }
+  start(): LngLat {
+    // TODO: drive on my own data
+    return this.inner.start();
+  }
+  paintStyle(active: boolean): LineLayerSpecification['paint'] {
+    // TODO: drive on my own data, or maybe extract to some presentation thing?
+    return this.inner.paintStyle(active);
+  }
 }
 
 export class TravelmuxTrip implements Trip {

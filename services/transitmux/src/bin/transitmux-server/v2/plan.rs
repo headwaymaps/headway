@@ -11,7 +11,7 @@ use transitmux::{util::deserialize_point_from_lat_lon, Error, TravelMode};
 
 use crate::AppState;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanQuery {
     #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
@@ -25,7 +25,7 @@ pub struct PlanQuery {
     mode: TravelModes,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct PlanResponse {
     // The raw response from the upstream OTP /plan service
@@ -40,7 +40,7 @@ struct PlanResponse {
 }
 
 impl PlanResponse {
-    fn from_otp_plan(mode: TravelMode, otp: otp_api::PlanResponse) -> Self {
+    fn from_otp(mode: TravelMode, otp: otp_api::PlanResponse) -> Self {
         let itineraries = otp
             .plan
             .itineraries
@@ -49,6 +49,7 @@ impl PlanResponse {
                 duration: itinerary.duration,
                 mode,
                 distance_meters: itinerary.legs.iter().map(|l| l.distance).sum(),
+                legs: itinerary.legs.iter().map(Leg::from_otp).collect(),
             })
             .collect();
 
@@ -59,10 +60,7 @@ impl PlanResponse {
         }
     }
 
-    fn from_valhalla_route_response(
-        mode: TravelMode,
-        valhalla: valhalla_api::RouteResponse,
-    ) -> Self {
+    fn from_valhalla(mode: TravelMode, valhalla: valhalla_api::RouteResponse) -> Self {
         let mut itineraries = vec![Itinerary::from_valhalla_trip(&valhalla.trip, mode)];
         if let Some(alternates) = &valhalla.alternates {
             for alternate in alternates {
@@ -78,29 +76,48 @@ impl PlanResponse {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct Plan {
     itineraries: Vec<Itinerary>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct Itinerary {
     mode: TravelMode,
     duration: f64,
     distance_meters: f64,
-    // legs: Vec<Leg>,
+    legs: Vec<Leg>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct Leg {
+    // mode: String,
+    // from: Point,
+    // to: Point,
+    // distance: f64,
+    // duration: f64,
+}
+impl Leg {
+    fn from_otp(_otp: &otp_api::Leg) -> Self {
+        Self {}
+    }
+    fn from_valhalla(_otp: &valhalla_api::Leg) -> Self {
+        Self {}
+    }
 }
 
 impl Itinerary {
-    fn from_valhalla_trip(valhalla_trip: &valhalla_api::Trip, mode: TravelMode) -> Self {
-        debug_assert_eq!(valhalla_trip.units, valhalla_api::DistanceUnit::Kilometers);
-        let distance_meters = valhalla_trip.summary.length * 1000.0;
+    fn from_valhalla_trip(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
+        debug_assert_eq!(valhalla.units, valhalla_api::DistanceUnit::Kilometers);
+        let distance_meters = valhalla.summary.length * 1000.0;
         Self {
             mode,
-            duration: valhalla_trip.summary.time,
+            duration: valhalla.summary.time,
             distance_meters,
+            legs: valhalla.legs.iter().map(Leg::from_valhalla).collect(),
         }
     }
 }
@@ -160,7 +177,7 @@ pub async fn get_plan(
             response.content_type("application/json");
 
             let otp_plan_response: otp_api::PlanResponse = otp_response.json().await?;
-            let plan_response = PlanResponse::from_otp_plan(*primary_mode, otp_plan_response);
+            let plan_response = PlanResponse::from_otp(*primary_mode, otp_plan_response);
             Ok(response.json(plan_response))
         }
         other => {
@@ -199,16 +216,16 @@ pub async fn get_plan(
 
             let valhalla_route_response: valhalla_api::RouteResponse =
                 valhalla_response.json().await?;
-            let plan_response =
-                PlanResponse::from_valhalla_route_response(*primary_mode, valhalla_route_response);
+            let plan_response = PlanResponse::from_valhalla(*primary_mode, valhalla_route_response);
             Ok(response.json(plan_response))
         }
     }
 }
 
 // Comma separated list of travel modes
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
 struct TravelModes(Vec<TravelMode>);
+
 impl<'de> Deserialize<'de> for TravelModes {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -251,12 +268,13 @@ mod tests {
             File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
-        let plan_response = PlanResponse::from_valhalla_route_response(TravelMode::Walk, valhalla);
+        let plan_response = PlanResponse::from_valhalla(TravelMode::Walk, valhalla);
         assert_eq!(plan_response.plan.itineraries.len(), 3);
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Walk);
         assert_eq!(first_itinerary.distance_meters, 9148.0);
         assert_eq!(first_itinerary.duration, 6488.443);
+        assert_eq!(first_itinerary.legs.len(), 1);
     }
 
     #[test]
@@ -265,11 +283,12 @@ mod tests {
             File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
-        let plan_response = PlanResponse::from_otp_plan(TravelMode::Transit, otp);
+        let plan_response = PlanResponse::from_otp(TravelMode::Transit, otp);
         assert_eq!(plan_response.plan.itineraries.len(), 5);
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
         assert_eq!(first_itinerary.distance_meters, 10699.44);
         assert_eq!(first_itinerary.duration, 3273.0);
+        assert_eq!(first_itinerary.legs.len(), 7);
     }
 }

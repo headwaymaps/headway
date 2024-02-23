@@ -38,6 +38,7 @@ pub struct Trip {
     pub locations: Vec<LngLat>,
     pub summary: Summary,
     pub units: DistanceUnit, // legs: Vec<Leg>
+    pub legs: Vec<Leg>,
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
@@ -61,6 +62,18 @@ pub struct Summary {
 pub struct LngLat {
     pub lat: f64,
     pub lon: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Leg {
+    pub summary: Summary,
+    // pub maneuvers: Vec<Maneuver>,
+    // pub shape: String,
+    // pub duration: f64,
+    // pub length: f64,
+    // pub steps: Vec<Step>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 impl From<Point> for LngLat {
