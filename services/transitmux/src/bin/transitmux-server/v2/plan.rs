@@ -5,9 +5,9 @@ use serde::de::IntoDeserializer;
 use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-use transitmux::valhalla::valhalla_api::ModeCosting;
-use transitmux::{util::deserialize_point_from_lat_lon, Error, TravelMode};
 use transitmux::otp::otp_api;
+use transitmux::valhalla::valhalla_api;
+use transitmux::{util::deserialize_point_from_lat_lon, Error, TravelMode};
 
 use crate::AppState;
 
@@ -25,17 +25,15 @@ pub struct PlanQuery {
     mode: TravelModes,
 }
 
-type ValhallaPlanResponse = serde_json::Value;
-
 #[derive(Debug, Deserialize, Serialize)]
 struct PlanResponse {
-    // The raw response from the upstream OTP service
+    // The raw response from the upstream OTP /plan service
     _otp: Option<otp_api::PlanResponse>,
 
-    // The raw response from the upstream Valhalla service
-    _valhalla: Option<ValhallaPlanResponse>,
+    // The raw response from the upstream Valhalla /route service
+    _valhalla: Option<valhalla_api::RouteResponse>,
 
-    plan: Plan
+    plan: Plan,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -57,8 +55,6 @@ struct Itinerary {
 //     distance: f64,
 //     duration: f64,
 // }
-
-
 
 #[get("/v2/plan")]
 pub async fn get_plan(
@@ -106,14 +102,17 @@ pub async fn get_plan(
             response.content_type("application/json");
 
             let otp_plan: otp_api::PlanResponse = otp_response.json().await?;
+            let itineraries = otp_plan
+                .plan
+                .itineraries
+                .iter()
+                .map(|itinerary| Itinerary {
+                    duration: itinerary.duration,
+                })
+                .collect();
+
             Ok(response.json(PlanResponse {
-                plan: Plan {
-                    itineraries: otp_plan.plan.itineraries.iter().map( |itinerary| {
-                        Itinerary {
-                            duration: itinerary.duration,
-                        }
-                    }).collect()
-                },
+                plan: Plan { itineraries },
                 _otp: Some(otp_plan),
                 _valhalla: None,
             }))
@@ -123,9 +122,9 @@ pub async fn get_plan(
 
             let mode = match other {
                 TravelMode::Transit => unreachable!("handled above"),
-                TravelMode::Bicycle => ModeCosting::Bicycle,
-                TravelMode::Car => ModeCosting::Auto,
-                TravelMode::Walk => ModeCosting::Pedestrian,
+                TravelMode::Bicycle => valhalla_api::ModeCosting::Bicycle,
+                TravelMode::Car => valhalla_api::ModeCosting::Auto,
+                TravelMode::Walk => valhalla_api::ModeCosting::Pedestrian,
             };
 
             // route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}
@@ -152,12 +151,24 @@ pub async fn get_plan(
             );
             response.content_type("application/json;charset=utf-8");
 
+            let valhalla_route_response: valhalla_api::RouteResponse =
+                valhalla_response.json().await?;
+
+            let mut itineraries = vec![Itinerary {
+                duration: valhalla_route_response.trip.summary.time,
+            }];
+            if let Some(alternates) = &valhalla_route_response.alternates {
+                for alternate in alternates {
+                    itineraries.push(Itinerary {
+                        duration: alternate.trip.summary.time,
+                    });
+                }
+            }
+
             Ok(response.json(PlanResponse {
-                plan: Plan {
-                    itineraries: vec![], // TODO: parse valhalla response
-                },
+                plan: Plan { itineraries },
                 _otp: None,
-                _valhalla: Some(valhalla_response.json().await?),
+                _valhalla: Some(valhalla_route_response),
             }))
         }
     }

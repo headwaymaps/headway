@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use geo::geometry::Polygon;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

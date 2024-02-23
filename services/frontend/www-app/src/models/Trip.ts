@@ -1,8 +1,9 @@
 import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import { Err, Ok, Result } from 'src/utils/Result';
-import Itinerary, { ItineraryError } from './Itinerary';
-import Route, { RouteError } from './Route';
+import { Result } from 'src/utils/Result';
+import { ItineraryError } from './Itinerary';
+import { RouteError } from './Route';
+import { TravelmuxMode, TravelmuxClient } from 'src/services/TravelmuxClient';
 
 export default interface Trip {
   durationFormatted: string;
@@ -10,6 +11,14 @@ export default interface Trip {
   bounds: LngLatBounds;
   legs: TripLeg[];
   mode: TravelMode;
+  startStopTimesFormatted?: string;
+  formattedFootDistance?: string;
+  // TODO: only valhalla has this, but OTP mught have a corallary
+  viaRoadsFormatted?: string;
+  // TODO: only OTP uses this
+  // alerts: LegAlert[];
+  // hasAlerts: boolean;
+  // FIXME: valhalla turn-by-turn is broken
 }
 
 export interface TripLeg {
@@ -32,36 +41,32 @@ export async function fetchBestTrips(
   arriveBy?: boolean,
   transitWithBicycle?: boolean,
 ): Promise<Result<Trip[], TripFetchError>> {
-  switch (mode) {
-    case TravelMode.Walk:
-    case TravelMode.Bike:
-    case TravelMode.Drive: {
-      const result = await Route.getRoutes(from, to, mode, distanceUnits);
-      if (result.ok) {
-        return Ok(result.value);
-      } else {
-        const routeError = result.error;
-        return Err({ transit: false, routeError });
-      }
-    }
-    case TravelMode.Transit: {
-      const result = await Itinerary.fetchBest(
-        from,
-        to,
-        distanceUnits,
-        departureTime,
-        departureDate,
-        arriveBy,
-        transitWithBicycle,
-      );
-      if (result.ok) {
-        return Ok(result.value);
-      } else {
-        const itineraryError = result.error;
-        return Err({ transit: true, itineraryError });
-      }
-    }
+  const modes = [mode];
+  if (mode == TravelMode.Transit && transitWithBicycle) {
+    modes.push(TravelMode.Bike);
   }
+  const travelmuxModes = modes.map((m) => {
+    switch (m) {
+      case TravelMode.Walk:
+        return TravelmuxMode.Walk;
+      case TravelMode.Bike:
+        return TravelmuxMode.Bike;
+      case TravelMode.Drive:
+        return TravelmuxMode.Drive;
+      case TravelMode.Transit:
+        return TravelmuxMode.Transit;
+    }
+  });
+
+  return await TravelmuxClient.fetchPlans(
+    from,
+    to,
+    travelmuxModes,
+    5,
+    departureTime,
+    departureDate,
+    arriveBy,
+  );
 }
 
 export const LineStyles = {

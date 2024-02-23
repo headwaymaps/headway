@@ -127,31 +127,36 @@ export default class Route implements Trip {
     if (result.ok) {
       const valhallaRoutes = result.value;
       // This is only safe as long as CacheableMode is a subset of TravelMode
-      return Ok(valhallaRoutes.map((r) => fromValhalla(r, mode as TravelMode)));
+      return Ok(
+        valhallaRoutes.map((r) => Route.fromValhalla(r, mode as TravelMode)),
+      );
     } else {
       const valhallaError = result.error;
       return Err(RouteError.fromValhalla(valhallaError));
     }
   }
-}
 
-function fromValhalla(route: ValhallaRoute, mode: TravelMode): Route {
-  const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
-  return new Route({
-    mode,
-    valhallaRoute: route,
-    durationSeconds: route.summary.time,
-    durationFormatted: formatDuration(route.summary.time, 'shortform'),
-    viaRoadsFormatted: viaRoads.join(
-      i18n.global.t('punctuation_list_seperator'),
-    ),
-    lengthFormatted:
-      route.summary.length.toFixed(1) +
-      ' ' +
-      route.units
-        .replace('kilometers', i18n.global.t('shortened_distances.kilometers'))
-        .replace('miles', i18n.global.t('shortened_distances.miles')),
-  });
+  public static fromValhalla(route: ValhallaRoute, mode: TravelMode): Route {
+    const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
+    return new Route({
+      mode,
+      valhallaRoute: route,
+      durationSeconds: route.summary.time,
+      durationFormatted: formatDuration(route.summary.time, 'shortform'),
+      viaRoadsFormatted: viaRoads.join(
+        i18n.global.t('punctuation_list_seperator'),
+      ),
+      lengthFormatted:
+        route.summary.length.toFixed(1) +
+        ' ' +
+        route.units
+          .replace(
+            'kilometers',
+            i18n.global.t('shortened_distances.kilometers'),
+          )
+          .replace('miles', i18n.global.t('shortened_distances.miles')),
+    });
+  }
 }
 
 function substantialRoadNames(

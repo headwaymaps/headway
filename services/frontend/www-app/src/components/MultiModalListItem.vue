@@ -1,6 +1,7 @@
 <template>
   <q-item-label>
-    {{ trip.startStopTimesFormatted() }}
+    <!-- TODO: might not be defined for valhalla -->
+    {{ trip.startStopTimesFormatted }}
   </q-item-label>
   <q-item-label>
     <span v-for="(leg, idx) in trip.legs" v-bind:key="JSON.stringify(leg)">
@@ -13,7 +14,7 @@
     </span>
   </q-item-label>
   <q-item-label caption v-if="active">
-    {{ trip.formattedFootDistance() }}
+    {{ trip.formattedFootDistance }}
   </q-item-label>
   <div v-if="formattedRealTimeUntilStart() !== undefined">
     <q-icon name="rss_feed" style="margin-right: 4px" />

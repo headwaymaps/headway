@@ -154,7 +154,7 @@ export default class Itinerary implements Trip {
     return this.raw.startTime;
   }
 
-  public startStopTimesFormatted(): string {
+  public get startStopTimesFormatted(): string {
     return i18n.global.t('time_range$startTime$endTime', {
       startTime: formatTime(this.startTime),
       endTime: formatTime(this.endTime),
@@ -170,7 +170,7 @@ export default class Itinerary implements Trip {
     return this.raw.walkDistance;
   }
 
-  public formattedFootDistance(): string {
+  public get formattedFootDistance(): string {
     const km = this.footDistanceMeters / 1000;
 
     const preformattedDistance = (() => {
