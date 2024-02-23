@@ -66,16 +66,19 @@ export class TravelmuxTrip implements Trip {
     this.inner = inner;
   }
 
-  // write a getter for durationFormatted that delgates to inner.durationFormatted
   get durationFormatted(): string {
     return formatDuration(this.raw.duration, 'shortform');
   }
 
+  // REVIEW: this is valhalla specific not sure if we want it, but we already were including it in the Trip interface
+  // it was simply undefined for the OTP case
   get lengthFormatted(): string | undefined {
+    // needs to know about units
     return this.inner.lengthFormatted;
   }
 
   get bounds(): LngLatBounds {
+    // This current relies on legs.geomtry. We should do it serverside for OTP (already done by valhalla).
     return this.inner.bounds;
   }
 
@@ -87,15 +90,17 @@ export class TravelmuxTrip implements Trip {
     return travelModeFromTravelmuxMode(this.raw.mode);
   }
 
+  // REVIEW: this is OTP specific. Not sure if we want it.
   get startStopTimesFormatted(): string | undefined {
     return this.inner.startStopTimesFormatted;
   }
 
-  get formattedFootDistance(): string | undefined {
-    return this.inner.formattedFootDistance;
+  // REVIEW: this is OTP specific. Not sure if we want it.
+  get walkingDistanceFormatted(): string | undefined {
+    return this.inner.walkingDistanceFormatted;
   }
 
-  // TODO: this is valhalla specific
+  // REVIEW: this is valhalla specific not sure if we want it.
   get viaRoadsFormatted(): string | undefined {
     return this.inner.viaRoadsFormatted;
   }
@@ -107,6 +112,7 @@ export class TravelmuxClient {
     to: LngLat,
     modes: TravelmuxMode[],
     numItineraries: number,
+    distanceUnits: DistanceUnits,
     time?: string,
     date?: string,
     arriveBy?: boolean,
@@ -154,7 +160,7 @@ export class TravelmuxClient {
           (tmxItinerary: TravelmuxItinerary, otpRawItinerary: OTPItinerary) => {
             const otpItinerary = Itinerary.fromOtp(
               otpRawItinerary,
-              DistanceUnits.Kilometers, // FIXME: always km
+              distanceUnits,
               modes.includes(TravelmuxMode.Bike),
             );
             return new TravelmuxTrip(tmxItinerary, otpItinerary);

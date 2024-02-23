@@ -13,7 +13,7 @@ export default interface Trip {
   legs: TripLeg[];
   mode: TravelMode;
   startStopTimesFormatted?: string;
-  formattedFootDistance?: string;
+  walkingDistanceFormatted?: string;
   // TODO: only valhalla has this, but OTP mught have a corallary
   viaRoadsFormatted?: string;
   // TODO: only OTP uses this
@@ -64,6 +64,7 @@ export async function fetchBestTrips(
     to,
     travelmuxModes,
     5,
+    distanceUnits,
     departureTime,
     departureDate,
     arriveBy,

@@ -170,7 +170,7 @@ export default class Itinerary implements Trip {
     return this.raw.walkDistance;
   }
 
-  public get formattedFootDistance(): string {
+  public get walkingDistanceFormatted(): string {
     const km = this.footDistanceMeters / 1000;
 
     const preformattedDistance = (() => {

@@ -14,7 +14,7 @@
     </span>
   </q-item-label>
   <q-item-label caption v-if="active">
-    {{ trip.formattedFootDistance }}
+    {{ trip.walkingDistanceFormatted }}
   </q-item-label>
   <div v-if="formattedRealTimeUntilStart() !== undefined">
     <q-icon name="rss_feed" style="margin-right: 4px" />
