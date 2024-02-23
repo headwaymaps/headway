@@ -44,7 +44,7 @@ struct Plan {
 #[derive(Debug, Deserialize, Serialize)]
 struct Itinerary {
     duration: f64,
-    // legs: Vec<Leg>,
+    mode: TravelMode, // legs: Vec<Leg>,
 }
 
 // #[derive(Debug, Deserialize, Serialize)]
@@ -108,6 +108,7 @@ pub async fn get_plan(
                 .iter()
                 .map(|itinerary| Itinerary {
                     duration: itinerary.duration,
+                    mode: *primary_mode,
                 })
                 .collect();
 
@@ -156,11 +157,13 @@ pub async fn get_plan(
 
             let mut itineraries = vec![Itinerary {
                 duration: valhalla_route_response.trip.summary.time,
+                mode: *primary_mode,
             }];
             if let Some(alternates) = &valhalla_route_response.alternates {
                 for alternate in alternates {
                     itineraries.push(Itinerary {
                         duration: alternate.trip.summary.time,
+                        mode: *primary_mode,
                     });
                 }
             }

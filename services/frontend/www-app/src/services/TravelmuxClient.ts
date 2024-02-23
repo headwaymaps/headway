@@ -20,6 +20,7 @@ export interface TravelmuxPlan {
 }
 export interface TravelmuxItinerary {
   duration: number;
+  mode: TravelmuxMode;
   // legs: TravelmuxLeg[];
   // startTime: number;
   // endTime: number;
@@ -83,7 +84,7 @@ export class TravelmuxTrip implements Trip {
   }
 
   get mode(): TravelMode {
-    return this.inner.mode;
+    return travelModeFromTravelmuxMode(this.raw.mode);
   }
 
   get startStopTimesFormatted(): string | undefined {

@@ -140,6 +140,8 @@ export default defineComponent({
           return SingleModeListItem;
         case TravelMode.Transit:
           return MultiModalListItem;
+        default:
+          throw new Error(`unexpected mode: ${mode ?? 'none'}`);
       }
     },
     clickTrip(trip: Trip) {

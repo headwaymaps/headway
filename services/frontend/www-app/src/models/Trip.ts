@@ -8,6 +8,7 @@ import { TravelmuxMode, TravelmuxClient } from 'src/services/TravelmuxClient';
 export default interface Trip {
   durationFormatted: string;
   lengthFormatted?: string;
+  // requires leg geometry
   bounds: LngLatBounds;
   legs: TripLeg[];
   mode: TravelMode;

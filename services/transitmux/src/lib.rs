@@ -6,7 +6,7 @@ pub mod valhalla;
 pub use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Copy)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum TravelMode {
     Transit,
