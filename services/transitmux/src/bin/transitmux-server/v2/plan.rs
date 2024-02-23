@@ -39,6 +39,45 @@ struct PlanResponse {
     plan: Plan,
 }
 
+impl PlanResponse {
+    fn from_otp_plan(mode: TravelMode, otp: otp_api::PlanResponse) -> Self {
+        let itineraries = otp
+            .plan
+            .itineraries
+            .iter()
+            .map(|itinerary| Itinerary {
+                duration: itinerary.duration,
+                mode,
+                distance_meters: itinerary.legs.iter().map(|l| l.distance).sum(),
+            })
+            .collect();
+
+        PlanResponse {
+            plan: Plan { itineraries },
+            _otp: Some(otp),
+            _valhalla: None,
+        }
+    }
+
+    fn from_valhalla_route_response(
+        mode: TravelMode,
+        valhalla: valhalla_api::RouteResponse,
+    ) -> Self {
+        let mut itineraries = vec![Itinerary::from_valhalla_trip(&valhalla.trip, mode)];
+        if let Some(alternates) = &valhalla.alternates {
+            for alternate in alternates {
+                itineraries.push(Itinerary::from_valhalla_trip(&alternate.trip, mode));
+            }
+        }
+
+        PlanResponse {
+            plan: Plan { itineraries },
+            _otp: None,
+            _valhalla: Some(valhalla),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Plan {
@@ -55,13 +94,13 @@ struct Itinerary {
 }
 
 impl Itinerary {
-    fn from_valhalla_trip(valhalla_trip: valhalla_api::Trip, mode: TravelMode) -> Self {
+    fn from_valhalla_trip(valhalla_trip: &valhalla_api::Trip, mode: TravelMode) -> Self {
         debug_assert_eq!(valhalla_trip.units, valhalla_api::DistanceUnit::Kilometers);
         let distance_meters = valhalla_trip.summary.length * 1000.0;
         Self {
             mode,
             duration: valhalla_trip.summary.time,
-            distance_meters
+            distance_meters,
         }
     }
 }
@@ -120,23 +159,9 @@ pub async fn get_plan(
             );
             response.content_type("application/json");
 
-            let otp_plan: otp_api::PlanResponse = otp_response.json().await?;
-            let itineraries = otp_plan
-                .plan
-                .itineraries
-                .iter()
-                .map(|itinerary| Itinerary {
-                    duration: itinerary.duration,
-                    mode: *primary_mode,
-                    distance_meters: itinerary.legs.iter().map(|l| l.distance).sum(),
-                })
-                .collect();
-
-            Ok(response.json(PlanResponse {
-                plan: Plan { itineraries },
-                _otp: Some(otp_plan),
-                _valhalla: None,
-            }))
+            let otp_plan_response: otp_api::PlanResponse = otp_response.json().await?;
+            let plan_response = PlanResponse::from_otp_plan(*primary_mode, otp_plan_response);
+            Ok(response.json(plan_response))
         }
         other => {
             debug_assert!(query.mode.0.len() == 1, "valhalla only supports one mode");
@@ -174,21 +199,9 @@ pub async fn get_plan(
 
             let valhalla_route_response: valhalla_api::RouteResponse =
                 valhalla_response.json().await?;
-
-            let mut itineraries = vec![Itinerary::from_valhalla_trip(valhalla_route_response.trip.clone(), *primary_mode)];
-            if let Some(alternates) = &valhalla_route_response.alternates {
-                for alternate in alternates {
-                    itineraries.push(
-                        Itinerary::from_valhalla_trip(alternate.trip.clone(), *primary_mode)
-                    );
-                }
-            }
-
-            Ok(response.json(PlanResponse {
-                plan: Plan { itineraries },
-                _otp: None,
-                _valhalla: Some(valhalla_route_response),
-            }))
+            let plan_response =
+                PlanResponse::from_valhalla_route_response(*primary_mode, valhalla_route_response);
+            Ok(response.json(plan_response))
         }
     }
 }
@@ -223,5 +236,40 @@ impl<'de> Deserialize<'de> for TravelModes {
         }
 
         deserializer.deserialize_str(ColorVecVisitor)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::BufReader;
+
+    #[test]
+    fn from_valhalla() {
+        let stubbed_response =
+            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
+        let valhalla: valhalla_api::RouteResponse =
+            serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
+        let plan_response = PlanResponse::from_valhalla_route_response(TravelMode::Walk, valhalla);
+        assert_eq!(plan_response.plan.itineraries.len(), 3);
+        let first_itinerary = &plan_response.plan.itineraries[0];
+        assert_eq!(first_itinerary.mode, TravelMode::Walk);
+        assert_eq!(first_itinerary.distance_meters, 9148.0);
+        assert_eq!(first_itinerary.duration, 6488.443);
+    }
+
+    #[test]
+    fn from_otp() {
+        let stubbed_response =
+            File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
+        let otp: otp_api::PlanResponse =
+            serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
+        let plan_response = PlanResponse::from_otp_plan(TravelMode::Transit, otp);
+        assert_eq!(plan_response.plan.itineraries.len(), 5);
+        let first_itinerary = &plan_response.plan.itineraries[0];
+        assert_eq!(first_itinerary.mode, TravelMode::Transit);
+        assert_eq!(first_itinerary.distance_meters, 10699.44);
+        assert_eq!(first_itinerary.duration, 3273.0);
     }
 }

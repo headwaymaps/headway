@@ -10,11 +10,7 @@ import {
   OTPMode,
 } from 'src/services/OTPClient';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import {
-  formatMeters,
-  formatDuration,
-  formatTime,
-} from 'src/utils/format';
+import { formatMeters, formatDuration, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/third_party/decodePath';
 import Trip, { LineStyles } from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
@@ -170,7 +166,10 @@ export default class Itinerary implements Trip {
   }
 
   public get walkingDistanceFormatted(): string {
-    const preformattedDistance = formatMeters(this.walkDistanceMeters, this.distanceUnits);
+    const preformattedDistance = formatMeters(
+      this.walkDistanceMeters,
+      this.distanceUnits,
+    );
 
     if (this.withBicycle) {
       return i18n.global.t('bike_distance', { preformattedDistance });

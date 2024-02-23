@@ -31,6 +31,7 @@ impl AppState {
         log::info!("added endpoint: {endpoint}");
         Ok(())
     }
+
     pub fn otp_cluster(&self) -> &OtpCluster {
         &self.otp_cluster
     }
