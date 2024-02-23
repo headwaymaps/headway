@@ -11,10 +11,9 @@ import {
 } from 'src/services/OTPClient';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import {
-  formatDistance,
+  formatMeters,
   formatDuration,
   formatTime,
-  kilometersToMiles,
 } from 'src/utils/format';
 import { decodePolyline } from 'src/third_party/decodePath';
 import Trip, { LineStyles } from './Trip';
@@ -166,21 +165,12 @@ export default class Itinerary implements Trip {
   }
 
   // Usually walking, but will be biking if mode is transit+bike
-  get footDistanceMeters(): number {
+  get walkDistanceMeters(): number {
     return this.raw.walkDistance;
   }
 
   public get walkingDistanceFormatted(): string {
-    const km = this.footDistanceMeters / 1000;
-
-    const preformattedDistance = (() => {
-      if (this.distanceUnits == DistanceUnits.Kilometers) {
-        return formatDistance(km, DistanceUnits.Kilometers);
-      } else {
-        const miles = kilometersToMiles(km);
-        return formatDistance(miles, DistanceUnits.Miles);
-      }
-    })();
+    const preformattedDistance = formatMeters(this.walkDistanceMeters, this.distanceUnits);
 
     if (this.withBicycle) {
       return i18n.global.t('bike_distance', { preformattedDistance });

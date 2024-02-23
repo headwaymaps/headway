@@ -7,7 +7,7 @@ import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaClient';
 import Itinerary from 'src/models/Itinerary';
 import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
-import { formatDuration } from 'src/utils/format';
+import { formatMeters, formatDuration } from 'src/utils/format';
 
 export interface TravelmuxPlanResponse {
   _otp: OTPPlanResponse;
@@ -21,6 +21,7 @@ export interface TravelmuxPlan {
 export interface TravelmuxItinerary {
   duration: number;
   mode: TravelmuxMode;
+  distanceMeters: number;
   // legs: TravelmuxLeg[];
   // startTime: number;
   // endTime: number;
@@ -76,11 +77,8 @@ export class TravelmuxTrip implements Trip {
     return formatDuration(this.raw.duration, 'shortform');
   }
 
-  // REVIEW: this is valhalla specific not sure if we want it, but we already were including it in the Trip interface
-  // it was simply undefined for the OTP case
   get distanceFormatted(): string | undefined {
-    // needs to know about units
-    return this.inner.distanceFormatted;
+    return formatMeters(this.raw.distanceMeters, this.distanceUnits);
   }
 
   get bounds(): LngLatBounds {

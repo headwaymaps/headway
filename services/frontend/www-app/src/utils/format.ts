@@ -96,17 +96,27 @@ export function dayOfWeek(dateArgs: number | string | Date): string {
   return new Date(dateArgs).toLocaleString([], { weekday: 'short' });
 }
 
-export function kilometersToMiles(kilometers: number): number {
-  return kilometers * 0.62137119;
+export function metersToMiles(meters: number): number {
+  return meters / 621.37119;
 }
 
-export function formatDistance(
-  distance: number,
-  units: DistanceUnits,
+export function formatMeters(
+  meters: number,
+  outputUnits: DistanceUnits,
   precision = 1,
 ): string {
+  let distance;
+  switch (outputUnits) {
+    case DistanceUnits.Kilometers:
+      distance = meters / 1000;
+      break;
+    case DistanceUnits.Miles:
+      distance = metersToMiles(meters);
+      break;
+  }
+
   const rounded = distance.toFixed(precision);
-  if (units == DistanceUnits.Kilometers) {
+  if (outputUnits == DistanceUnits.Kilometers) {
     return `${rounded} ${i18n.global.t('shortened_distances.kilometers')}`;
   } else {
     return `${rounded} ${i18n.global.t('shortened_distances.miles')}`;

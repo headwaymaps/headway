@@ -7,7 +7,7 @@ import {
   ValhallaRouteLeg,
   ValhallaTravelMode,
 } from 'src/services/ValhallaClient';
-import { formatDistance, formatDuration } from 'src/utils/format';
+import { formatDuration } from 'src/utils/format';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { decodePolyline } from 'src/third_party/decodePath';
 import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
@@ -132,7 +132,7 @@ export default class Route implements Trip {
       viaRoadsFormatted: viaRoads.join(
         i18n.global.t('punctuation_list_seperator'),
       ),
-      distanceFormatted: formatDistance(route.summary.length, distanceUnits),
+      distanceFormatted: 'TODO: is valhalla distance used?',
       distanceUnits,
     });
   }

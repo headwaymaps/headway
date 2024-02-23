@@ -26,25 +26,44 @@ pub struct PlanQuery {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PlanResponse {
     // The raw response from the upstream OTP /plan service
+    #[serde(rename = "_otp")]
     _otp: Option<otp_api::PlanResponse>,
 
     // The raw response from the upstream Valhalla /route service
+    #[serde(rename = "_valhalla")]
     _valhalla: Option<valhalla_api::RouteResponse>,
 
     plan: Plan,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Plan {
     itineraries: Vec<Itinerary>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Itinerary {
+    mode: TravelMode,
     duration: f64,
-    mode: TravelMode, // legs: Vec<Leg>,
+    distance_meters: f64,
+    // legs: Vec<Leg>,
+}
+
+impl Itinerary {
+    fn from_valhalla_trip(valhalla_trip: valhalla_api::Trip, mode: TravelMode) -> Self {
+        debug_assert_eq!(valhalla_trip.units, valhalla_api::DistanceUnit::Kilometers);
+        let distance_meters = valhalla_trip.summary.length * 1000.0;
+        Self {
+            mode,
+            duration: valhalla_trip.summary.time,
+            distance_meters
+        }
+    }
 }
 
 // #[derive(Debug, Deserialize, Serialize)]
@@ -109,6 +128,7 @@ pub async fn get_plan(
                 .map(|itinerary| Itinerary {
                     duration: itinerary.duration,
                     mode: *primary_mode,
+                    distance_meters: itinerary.legs.iter().map(|l| l.distance).sum(),
                 })
                 .collect();
 
@@ -155,16 +175,12 @@ pub async fn get_plan(
             let valhalla_route_response: valhalla_api::RouteResponse =
                 valhalla_response.json().await?;
 
-            let mut itineraries = vec![Itinerary {
-                duration: valhalla_route_response.trip.summary.time,
-                mode: *primary_mode,
-            }];
+            let mut itineraries = vec![Itinerary::from_valhalla_trip(valhalla_route_response.trip.clone(), *primary_mode)];
             if let Some(alternates) = &valhalla_route_response.alternates {
                 for alternate in alternates {
-                    itineraries.push(Itinerary {
-                        duration: alternate.trip.summary.time,
-                        mode: *primary_mode,
-                    });
+                    itineraries.push(
+                        Itinerary::from_valhalla_trip(alternate.trip.clone(), *primary_mode)
+                    );
                 }
             }
 
