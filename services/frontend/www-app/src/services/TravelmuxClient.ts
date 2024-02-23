@@ -60,10 +60,16 @@ export enum TravelmuxMode {
 export class TravelmuxTrip implements Trip {
   raw: TravelmuxItinerary;
   inner: Trip;
+  distanceUnits: DistanceUnits;
 
-  constructor(raw: TravelmuxItinerary, inner: Trip) {
+  constructor(
+    raw: TravelmuxItinerary,
+    inner: Trip,
+    distanceUnits: DistanceUnits,
+  ) {
     this.raw = raw;
     this.inner = inner;
+    this.distanceUnits = distanceUnits;
   }
 
   get durationFormatted(): string {
@@ -72,9 +78,9 @@ export class TravelmuxTrip implements Trip {
 
   // REVIEW: this is valhalla specific not sure if we want it, but we already were including it in the Trip interface
   // it was simply undefined for the OTP case
-  get lengthFormatted(): string | undefined {
+  get distanceFormatted(): string | undefined {
     // needs to know about units
-    return this.inner.lengthFormatted;
+    return this.inner.distanceFormatted;
   }
 
   get bounds(): LngLatBounds {
@@ -163,7 +169,7 @@ export class TravelmuxClient {
               distanceUnits,
               modes.includes(TravelmuxMode.Bike),
             );
-            return new TravelmuxTrip(tmxItinerary, otpItinerary);
+            return new TravelmuxTrip(tmxItinerary, otpItinerary, distanceUnits);
           },
         );
         return Ok(trips);
@@ -186,8 +192,9 @@ export class TravelmuxClient {
             const route = Route.fromValhalla(
               valhallaRoute,
               travelModeFromTravelmuxMode(modes[0]),
+              distanceUnits,
             );
-            return new TravelmuxTrip(tmxItinerary, route);
+            return new TravelmuxTrip(tmxItinerary, route, distanceUnits);
           },
         );
         return Ok(trips);

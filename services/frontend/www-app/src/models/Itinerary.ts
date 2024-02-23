@@ -82,7 +82,7 @@ export class ItineraryError {
 export default class Itinerary implements Trip {
   private raw: OTPItinerary;
   legs: ItineraryLeg[];
-  private distanceUnits: DistanceUnits;
+  distanceUnits: DistanceUnits;
   withBicycle: boolean;
 
   constructor(
@@ -97,7 +97,7 @@ export default class Itinerary implements Trip {
   }
   // We leave this blank for transit itineraries. It's not really relevant to
   // picking a trip, so we don't clutter the screen with it.
-  lengthFormatted?: string | undefined;
+  distanceFormatted?: string | undefined;
   mode: TravelMode = TravelMode.Transit;
 
   public static async fetchBest(

@@ -30,7 +30,7 @@
         :click-handler="() => clickTrip(trip)"
         :active="$data.activeTrip === trip"
         :duration-formatted="trip.durationFormatted"
-        :distance-formatted="trip.lengthFormatted"
+        :distance-formatted="trip.distanceFormatted"
         v-bind:key="JSON.stringify(trip)"
       >
         <component

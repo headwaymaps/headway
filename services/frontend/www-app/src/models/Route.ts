@@ -1,20 +1,17 @@
 import { i18n } from 'src/i18n/lang';
 import {
   ValhallaRoute,
-  getRoutes as getValhallaRoutes,
-  CacheableMode,
   ValhallaRouteLegManeuver,
   ValhallaError,
   ValhallaErrorCode,
   ValhallaRouteLeg,
   ValhallaTravelMode,
 } from 'src/services/ValhallaClient';
-import { formatDuration } from 'src/utils/format';
+import { formatDistance, formatDuration } from 'src/utils/format';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { decodePolyline } from 'src/third_party/decodePath';
 import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
 import Trip, { LineStyles, TripLeg } from './Trip';
-import { Err, Ok, Result } from 'src/utils/Result';
 
 export enum RouteErrorCode {
   Other,
@@ -46,7 +43,8 @@ export default class Route implements Trip {
   durationSeconds: number;
   durationFormatted: string;
   viaRoadsFormatted: string;
-  lengthFormatted: string;
+  distanceUnits: DistanceUnits;
+  distanceFormatted: string;
   mode: TravelMode;
   valhallaRoute: ValhallaRoute;
 
@@ -54,14 +52,16 @@ export default class Route implements Trip {
     durationSeconds: number;
     durationFormatted: string;
     viaRoadsFormatted: string;
-    lengthFormatted: string;
+    distanceFormatted: string;
+    distanceUnits: DistanceUnits;
     mode: TravelMode;
     valhallaRoute: ValhallaRoute;
   }) {
     this.durationSeconds = args.durationSeconds;
     this.durationFormatted = args.durationFormatted;
     this.viaRoadsFormatted = args.viaRoadsFormatted;
-    this.lengthFormatted = args.lengthFormatted;
+    this.distanceFormatted = args.distanceFormatted;
+    this.distanceUnits = args.distanceUnits;
     this.mode = args.mode;
     this.valhallaRoute = args.valhallaRoute;
   }
@@ -117,27 +117,13 @@ export default class Route implements Trip {
     });
   }
 
-  public static async getRoutes(
-    from: LngLat,
-    to: LngLat,
-    mode: CacheableMode,
-    units?: DistanceUnits,
-  ): Promise<Result<Route[], RouteError>> {
-    const result = await getValhallaRoutes(from, to, mode, units);
-    if (result.ok) {
-      const valhallaRoutes = result.value;
-      // This is only safe as long as CacheableMode is a subset of TravelMode
-      return Ok(
-        valhallaRoutes.map((r) => Route.fromValhalla(r, mode as TravelMode)),
-      );
-    } else {
-      const valhallaError = result.error;
-      return Err(RouteError.fromValhalla(valhallaError));
-    }
-  }
-
-  public static fromValhalla(route: ValhallaRoute, mode: TravelMode): Route {
+  public static fromValhalla(
+    route: ValhallaRoute,
+    mode: TravelMode,
+    distanceUnits: DistanceUnits,
+  ): Route {
     const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
+    console.assert(route.units == 'kilometers');
     return new Route({
       mode,
       valhallaRoute: route,
@@ -146,15 +132,8 @@ export default class Route implements Trip {
       viaRoadsFormatted: viaRoads.join(
         i18n.global.t('punctuation_list_seperator'),
       ),
-      lengthFormatted:
-        route.summary.length.toFixed(1) +
-        ' ' +
-        route.units
-          .replace(
-            'kilometers',
-            i18n.global.t('shortened_distances.kilometers'),
-          )
-          .replace('miles', i18n.global.t('shortened_distances.miles')),
+      distanceFormatted: formatDistance(route.summary.length, distanceUnits),
+      distanceUnits,
     });
   }
 }
