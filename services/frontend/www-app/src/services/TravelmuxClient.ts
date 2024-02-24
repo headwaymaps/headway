@@ -9,6 +9,7 @@ import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
 import { formatMeters, formatDuration } from 'src/utils/format';
 import { LineString } from 'geojson';
+import { decodePolyline } from 'src/third_party/decodePath';
 
 export interface TravelmuxPlanResponse {
   _otp: OTPPlanResponse;
@@ -24,7 +25,7 @@ export interface TravelmuxLeg {
   mode: TravelmuxMode;
   distanceMeters: number;
   duration: number;
-  geometry: LineString;
+  geometry: string;
 }
 
 export interface TravelmuxItinerary {
@@ -68,21 +69,33 @@ export enum TravelmuxMode {
 }
 
 export class TravelmuxTripLeg implements TripLeg {
+  raw: TravelmuxLeg;
   inner: TripLeg;
-  constructor(inner: TripLeg) {
+  constructor(raw: TravelmuxLeg, inner: TripLeg) {
+    this.raw = raw;
     this.inner = inner;
   }
   geometry(): LineString {
-    // TODO: drive on my own data
-    return this.inner.geometry();
+    const points = decodePolyline(this.raw.geometry, 6, false);
+    console.log('points', points);
+    return {
+      type: 'LineString',
+      coordinates: points,
+    };
   }
   start(): LngLat {
-    // TODO: drive on my own data
+    // TODO: drive on my own data.
+    // I think it can be local. Mabye based off `geometry` or maybe there is some shared third state that drives them both.
     return this.inner.start();
   }
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
     // TODO: drive on my own data, or maybe extract to some presentation thing?
     return this.inner.paintStyle(active);
+  }
+
+  alerts(): string[] {
+    console.log('TODO: alerts');
+    return [];
   }
 }
 
@@ -115,7 +128,13 @@ export class TravelmuxTrip implements Trip {
   }
 
   get legs(): TripLeg[] {
-    return this.inner.legs;
+    return zipWith(
+      this.raw.legs,
+      this.inner.legs,
+      (raw: TravelmuxLeg, inner: TripLeg) => {
+        return new TravelmuxTripLeg(raw, inner);
+      },
+    );
   }
 
   get mode(): TravelMode {

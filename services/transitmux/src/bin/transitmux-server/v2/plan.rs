@@ -94,18 +94,23 @@ struct Itinerary {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct Leg {
-    // mode: String,
-    // from: Point,
-    // to: Point,
-    // distance: f64,
-    // duration: f64,
+    /// encoded polyline. 1e-6 scale, (lat, lon)
+    geometry: String, // mode: String,
+                      // from: Point,
+                      // to: Point,
+                      // distance: f64,
+                      // duration: f64,
 }
 impl Leg {
-    fn from_otp(_otp: &otp_api::Leg) -> Self {
-        Self {}
+    fn from_otp(otp: &otp_api::Leg) -> Self {
+        let line = polyline::decode_polyline(&otp.leg_geometry.points, 5).expect("TODO");
+        let geometry = polyline::encode_coordinates(line, 6).expect("TODO");
+        Self { geometry }
     }
-    fn from_valhalla(_otp: &valhalla_api::Leg) -> Self {
-        Self {}
+    fn from_valhalla(valhalla: &valhalla_api::Leg) -> Self {
+        Self {
+            geometry: valhalla.shape.clone(),
+        }
     }
 }
 
@@ -259,6 +264,7 @@ impl<'de> Deserialize<'de> for TravelModes {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_relative_eq;
     use std::fs::File;
     use std::io::BufReader;
 
@@ -270,11 +276,22 @@ mod tests {
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
         let plan_response = PlanResponse::from_valhalla(TravelMode::Walk, valhalla);
         assert_eq!(plan_response.plan.itineraries.len(), 3);
+
+        // itineraries
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Walk);
         assert_eq!(first_itinerary.distance_meters, 9148.0);
         assert_eq!(first_itinerary.duration, 6488.443);
+
+        // legs
         assert_eq!(first_itinerary.legs.len(), 1);
+        let first_leg = &first_itinerary.legs[0];
+        let geometry = polyline::decode_polyline(&first_leg.geometry, 6).unwrap();
+        assert_relative_eq!(
+            geometry.0[0],
+            geo::coord!(x: -122.33922, y: 47.57583),
+            epsilon = 1e-4
+        )
     }
 
     #[test]
@@ -284,11 +301,23 @@ mod tests {
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
         let plan_response = PlanResponse::from_otp(TravelMode::Transit, otp);
+
         assert_eq!(plan_response.plan.itineraries.len(), 5);
+
+        // itineraries
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
         assert_eq!(first_itinerary.distance_meters, 10699.44);
         assert_eq!(first_itinerary.duration, 3273.0);
+
+        // legs
         assert_eq!(first_itinerary.legs.len(), 7);
+        let first_leg = &first_itinerary.legs[0];
+        let geometry = polyline::decode_polyline(&first_leg.geometry, 6).unwrap();
+        assert_relative_eq!(
+            geometry.0[0],
+            geo::coord!(x: -122.33922, y: 47.57583),
+            epsilon = 1e-4
+        )
     }
 }

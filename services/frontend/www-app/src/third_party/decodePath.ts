@@ -22,6 +22,7 @@
 export function decodePolyline(
   str: string,
   precision: number,
+  // REVIEW: get rid of this bool now that we've normalized the API
   latBeforelng: boolean,
 ): [number, number][] {
   let index = 0,

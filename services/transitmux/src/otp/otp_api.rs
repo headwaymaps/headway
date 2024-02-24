@@ -47,14 +47,22 @@ pub struct Itinerary {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Leg {
-    pub mode: String,
-    pub from: Location,
-    pub to: Location,
+    // pub mode: String,
+    // pub from: Location,
+    // pub to: Location,
     pub distance: f64,
-    pub duration: f64,
+    // pub duration: f64,
+    pub leg_geometry: LegGeometry,
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LegGeometry {
+    pub length: f64,
+    pub points: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]

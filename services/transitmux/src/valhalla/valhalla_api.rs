@@ -68,7 +68,7 @@ pub struct LngLat {
 pub struct Leg {
     pub summary: Summary,
     // pub maneuvers: Vec<Maneuver>,
-    // pub shape: String,
+    pub shape: String,
     // pub duration: f64,
     // pub length: f64,
     // pub steps: Vec<Step>,
