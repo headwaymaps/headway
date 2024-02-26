@@ -53,6 +53,7 @@ pub struct Leg {
     pub distance: f64,
     // pub duration: f64,
     pub leg_geometry: LegGeometry,
+    pub route_color: Option<String>,
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,

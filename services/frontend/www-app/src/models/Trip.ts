@@ -26,6 +26,7 @@ export default interface Trip {
 export interface TripLeg {
   geometry: GeoJSON.LineString;
   start: LngLat;
+  mode: TravelMode;
   paintStyle(active: boolean): LineLayerSpecification['paint'];
 }
 

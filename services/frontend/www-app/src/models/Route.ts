@@ -91,6 +91,7 @@ export default class Route implements Trip {
           const coordinates = this.geometry.coordinates;
           return new LngLat(coordinates[0][0], coordinates[0][1]);
         },
+        mode: this.mode,
         paintStyle(active: boolean): LineLayerSpecification['paint'] {
           if (active) {
             const firstManeuver = vLeg.maneuvers[0];

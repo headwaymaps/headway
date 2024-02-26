@@ -1,7 +1,7 @@
 import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Result } from 'src/utils/Result';
-import Trip, { TripFetchError, TripLeg } from 'src/models/Trip';
+import Trip, { LineStyles, TripFetchError, TripLeg } from 'src/models/Trip';
 import { OTPPlanResponse, OTPItinerary } from './OTPClient';
 import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaClient';
 import Itinerary from 'src/models/Itinerary';
@@ -26,6 +26,7 @@ export interface TravelmuxLeg {
   distanceMeters: number;
   duration: number;
   geometry: string;
+  routeColor?: string;
 }
 
 export interface TravelmuxItinerary {
@@ -88,9 +89,28 @@ export class TravelmuxTripLeg implements TripLeg {
     return new LngLat(lngLat[0], lngLat[1]);
   }
 
+  get mode(): TravelMode {
+    return travelModeFromTravelmuxMode(this.raw.mode);
+  }
+
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
-    // TODO: drive on my own data, or maybe extract to some presentation thing?
-    return this.inner.paintStyle(active);
+    if (active) {
+      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
+        return LineStyles.walkingActive;
+      } else {
+        if (this.raw.routeColor) {
+          return LineStyles.activeColored(`#${this.raw.routeColor}`);
+        } else {
+          return LineStyles.active;
+        }
+      }
+    } else {
+      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
+        return LineStyles.walkingInactive;
+      } else {
+        return LineStyles.inactive;
+      }
+    }
   }
 
   alerts(): string[] {

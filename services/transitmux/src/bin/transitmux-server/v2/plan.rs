@@ -95,21 +95,30 @@ struct Itinerary {
 #[serde(rename_all = "camelCase")]
 struct Leg {
     /// encoded polyline. 1e-6 scale, (lat, lon)
-    geometry: String, // mode: String,
-                      // from: Point,
-                      // to: Point,
-                      // distance: f64,
-                      // duration: f64,
+    geometry: String,
+
+    /// Some transit agencies have a color associated with their routes
+    route_color: Option<String>,
+    // mode: String,
+    // from: Point,
+    // to: Point,
+    // distance: f64,
+    // duration: f64,
 }
+
 impl Leg {
     fn from_otp(otp: &otp_api::Leg) -> Self {
         let line = polyline::decode_polyline(&otp.leg_geometry.points, 5).expect("TODO");
         let geometry = polyline::encode_coordinates(line, 6).expect("TODO");
-        Self { geometry }
+        Self {
+            geometry,
+            route_color: otp.route_color.clone(),
+        }
     }
     fn from_valhalla(valhalla: &valhalla_api::Leg) -> Self {
         Self {
             geometry: valhalla.shape.clone(),
+            route_color: None,
         }
     }
 }
@@ -291,7 +300,8 @@ mod tests {
             geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
-        )
+        );
+        assert_eq!(first_leg.route_color, None);
     }
 
     #[test]
@@ -318,6 +328,11 @@ mod tests {
             geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
-        )
+        );
+
+        assert_eq!(first_leg.route_color, None);
+
+        let fourth_leg = &first_itinerary.legs[3];
+        assert_eq!(fourth_leg.route_color, Some("28813F".to_string()));
     }
 }

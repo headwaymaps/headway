@@ -226,7 +226,7 @@ export class ItineraryLeg {
   }
 
   get emoji(): string {
-    switch (this.mode) {
+    switch (this.raw.mode) {
       case OTPMode.Walk:
         return '🚶‍♀️';
       case OTPMode.Bus:
@@ -262,8 +262,8 @@ export class ItineraryLeg {
     return `${emoji} ${shortName}`.trim();
   }
 
-  get mode(): OTPMode {
-    return this.raw.mode;
+  get mode(): TravelMode {
+    return travelModeFromOtpMode(this.raw.mode);
   }
 
   get geometry(): GeoJSON.LineString {
@@ -285,7 +285,7 @@ export class ItineraryLeg {
 
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
     if (active) {
-      if (this.mode == OTPMode.Walk || this.mode == OTPMode.Bicycle) {
+      if (this.raw.mode == OTPMode.Walk || this.raw.mode == OTPMode.Bicycle) {
         return LineStyles.walkingActive;
       } else {
         if (this.raw.routeColor) {
@@ -295,7 +295,7 @@ export class ItineraryLeg {
         }
       }
     } else {
-      if (this.mode == OTPMode.Walk || this.mode == OTPMode.Bicycle) {
+      if (this.raw.mode == OTPMode.Walk || this.raw.mode == OTPMode.Bicycle) {
         return LineStyles.walkingInactive;
       } else {
         return LineStyles.inactive;
@@ -357,5 +357,21 @@ class LegAlert {
 
   get descriptionText(): string {
     return this.raw.alertDescriptionText;
+  }
+}
+
+function travelModeFromOtpMode(mode: OTPMode): TravelMode {
+  switch (mode) {
+    case OTPMode.Walk:
+      return TravelMode.Walk;
+    case OTPMode.Bicycle:
+      return TravelMode.Bike;
+    case OTPMode.Transit:
+      return TravelMode.Transit;
+    case OTPMode.Car:
+      return TravelMode.Drive;
+    default:
+      console.assert(false, `assuming transit for unhandled otp mode: ${mode}`);
+      return TravelMode.Transit;
   }
 }
