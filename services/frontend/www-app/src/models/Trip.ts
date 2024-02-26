@@ -20,7 +20,9 @@ export default interface Trip {
   // TODO: only OTP uses this
   // alerts: LegAlert[];
   // hasAlerts: boolean;
-  // FIXME: valhalla turn-by-turn is broken
+
+  // TravelMux trip just wraps an OTP or Valhalla trip
+  inner?: Trip;
 }
 
 export interface TripLeg {

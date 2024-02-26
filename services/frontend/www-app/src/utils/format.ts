@@ -74,6 +74,7 @@ export function formatLngLatAsLatLng(point: LngLatLike): string {
 }
 
 export function formatTime(dateArgs: number | string | Date): string {
+  console.assert(dateArgs !== undefined);
   return new Date(dateArgs).toLocaleTimeString([], { timeStyle: 'short' });
 }
 

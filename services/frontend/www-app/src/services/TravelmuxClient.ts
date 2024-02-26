@@ -161,6 +161,22 @@ export class TravelmuxTrip implements Trip {
     return travelModeFromTravelmuxMode(this.raw.mode);
   }
 
+  transitItinerary(): Itinerary | undefined {
+    if (this.mode == TravelMode.Transit) {
+      return this.inner as Itinerary;
+    } else {
+      return undefined;
+    }
+  }
+
+  nonTransitRoute(): Route | undefined {
+    if (this.mode != TravelMode.Transit) {
+      return this.inner as Route;
+    } else {
+      return undefined;
+    }
+  }
+
   // REVIEW: this is OTP specific. Not sure if we want it.
   get startStopTimesFormatted(): string | undefined {
     return this.inner.startStopTimesFormatted;

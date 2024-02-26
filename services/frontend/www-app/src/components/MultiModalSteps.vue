@@ -127,17 +127,21 @@ import { defineComponent, PropType } from 'vue';
 import { formatDuration, formatTime } from 'src/utils/format';
 import { LngLat } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
+import { TravelmuxTrip } from 'src/services/TravelmuxClient';
 
 export default defineComponent({
   name: 'MultiModalSteps',
-  data(): { steps: Step[] } {
+  data(): { steps: Step[]; itinerary: Itinerary } {
+    // this cast is safe because we know that the trip is a transit trip
+    const itinerary = this.trip.transitItinerary() as Itinerary;
     return {
-      steps: buildSteps(this.$props.trip),
+      steps: buildSteps(itinerary),
+      itinerary,
     };
   },
   props: {
     trip: {
-      type: Object as PropType<Itinerary>,
+      type: Object as PropType<TravelmuxTrip>,
       required: true,
     },
   },

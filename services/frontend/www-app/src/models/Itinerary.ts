@@ -178,18 +178,6 @@ export default class Itinerary implements Trip {
     }
   }
 
-  public get viaRouteFormatted(): string | undefined {
-    return this.legs
-      .map((leg) => {
-        if (leg.alerts.length > 0) {
-          return leg.shortName + '⚠️';
-        } else {
-          return leg.shortName;
-        }
-      })
-      .join(' → ');
-  }
-
   public get alerts(): LegAlert[] {
     return this.legs.map((l) => l.alerts).flat();
   }
@@ -328,10 +316,12 @@ export class ItineraryLeg {
   }
 
   get startTime(): number {
+    console.assert(this.raw.startTime !== undefined, 'start time is undefined');
     return this.raw.startTime;
   }
 
   get endTime(): number {
+    console.assert(this.raw.endTime !== undefined, 'end time is undefined');
     return this.raw.endTime;
   }
 
