@@ -284,12 +284,12 @@ export default defineComponent({
           }
 
           let layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
-          map.pushTripLayer(layerId, leg.geometry(), leg.paintStyle(false));
+          map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(false));
           if (legIdx > 0) {
             let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
             map.pushMarker(
               transferLayerId.toString(),
-              Markers.transfer().setLngLat(leg.start()),
+              Markers.transfer().setLngLat(leg.start),
             );
           }
           map.on('mouseover', layerId.toString(), () => {
@@ -311,7 +311,7 @@ export default defineComponent({
         if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
           map.pushTripLayer(
             TripLayerId.selectedLeg(selectedIdx, legIdx),
-            leg.geometry(),
+            leg.geometry,
             leg.paintStyle(true),
           );
         }

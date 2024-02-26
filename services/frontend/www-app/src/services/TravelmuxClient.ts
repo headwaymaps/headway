@@ -71,23 +71,23 @@ export enum TravelmuxMode {
 export class TravelmuxTripLeg implements TripLeg {
   raw: TravelmuxLeg;
   inner: TripLeg;
+  geometry: LineString;
+
   constructor(raw: TravelmuxLeg, inner: TripLeg) {
     this.raw = raw;
     this.inner = inner;
-  }
-  geometry(): LineString {
     const points = decodePolyline(this.raw.geometry, 6, false);
-    console.log('points', points);
-    return {
+    this.geometry = {
       type: 'LineString',
       coordinates: points,
     };
   }
-  start(): LngLat {
-    // TODO: drive on my own data.
-    // I think it can be local. Mabye based off `geometry` or maybe there is some shared third state that drives them both.
-    return this.inner.start();
+
+  get start(): LngLat {
+    const lngLat = this.geometry.coordinates[0];
+    return new LngLat(lngLat[0], lngLat[1]);
   }
+
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
     // TODO: drive on my own data, or maybe extract to some presentation thing?
     return this.inner.paintStyle(active);

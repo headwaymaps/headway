@@ -158,7 +158,7 @@ export default defineComponent({
         layerIds.push(layerId);
 
         if (!map.hasLayer(layerId)) {
-          map.pushTripLayer(layerId, leg.geometry(), leg.paintStyle(true));
+          map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(true));
         }
 
         let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
@@ -170,7 +170,7 @@ export default defineComponent({
           if (!map.hasMarker(transferLayerId.toString())) {
             map.pushMarker(
               transferLayerId.toString(),
-              Markers.transfer().setLngLat(leg.start()),
+              Markers.transfer().setLngLat(leg.start),
             );
           }
         }

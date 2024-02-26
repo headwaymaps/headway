@@ -52,7 +52,7 @@ export default defineComponent({
     geometry: GeoJSON.LineString;
   } {
     return {
-      geometry: this.trip.legs[0].geometry(),
+      geometry: this.trip.legs[0].geometry,
     };
   },
   methods: {

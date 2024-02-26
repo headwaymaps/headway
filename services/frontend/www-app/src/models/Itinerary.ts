@@ -210,7 +210,7 @@ export default class Itinerary implements Trip {
   public get bounds(): LngLatBounds {
     const bounds = new LngLatBounds();
     for (const leg of this.legs) {
-      const lineString = leg.geometry();
+      const lineString = leg.geometry;
       for (const coord of lineString.coordinates) {
         bounds.extend([coord[0], coord[1]]);
       }
@@ -266,7 +266,7 @@ export class ItineraryLeg {
     return this.raw.mode;
   }
 
-  geometry(): GeoJSON.LineString {
+  get geometry(): GeoJSON.LineString {
     const points: [number, number][] = decodePolyline(
       this.raw.legGeometry.points,
       5,
@@ -278,8 +278,8 @@ export class ItineraryLeg {
     };
   }
 
-  start(): LngLat {
-    const coordinates = this.geometry().coordinates;
+  get start(): LngLat {
+    const coordinates = this.geometry.coordinates;
     return new LngLat(coordinates[0][0], coordinates[0][1]);
   }
 

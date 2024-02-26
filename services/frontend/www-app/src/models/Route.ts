@@ -77,7 +77,7 @@ export default class Route implements Trip {
   public get legs(): TripLeg[] {
     return this.valhallaRoute.legs.map((vLeg: ValhallaRouteLeg): TripLeg => {
       return {
-        geometry(): GeoJSON.LineString {
+        get geometry(): GeoJSON.LineString {
           const points: [number, number][] = [];
           decodePolyline(vLeg.shape, 6, true).forEach((point) => {
             points.push([point[1], point[0]]);
@@ -87,8 +87,8 @@ export default class Route implements Trip {
             coordinates: points,
           };
         },
-        start(): LngLat {
-          const coordinates = this.geometry().coordinates;
+        get start(): LngLat {
+          const coordinates = this.geometry.coordinates;
           return new LngLat(coordinates[0][0], coordinates[0][1]);
         },
         paintStyle(active: boolean): LineLayerSpecification['paint'] {
