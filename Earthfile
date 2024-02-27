@@ -1,9 +1,9 @@
-VERSION --use-copy-link 0.6
-
+VERSION 0.8
 
 ##############################
 # OSM extract
 ##############################
+ARG --global is_planet_build = false
 
 build:
     # The name of <area>.osm.pbf if you've downloaded a custom extract, or the
@@ -343,15 +343,24 @@ planetiler-build-mbtiles:
 
     COPY ./services/tilebuilder/percent-of-available-memory .
 
-    RUN --entrypoint -- \
-        -Xmx$(./percent-of-available-memory 75) \
-        `# return unused heap memory to the OS` \
-        -XX:MaxHeapFreeRatio=40 \
-        --osm_path=/data/data.osm.pbf \
-        # --bounds=planet \
-        `# Store temporary node locations at fixed positions in a memory-mapped file` \
-        --nodemap-type=array --storage=mmap \
-        --force
+    IF [ "$is_planet_build" = "false" ]
+      RUN --entrypoint -- \
+          --osm_path=/data/data.osm.pbf \
+          --force
+    ELSE
+      RUN --entrypoint -- \
+          -Xmx$(./percent-of-available-memory 75) \
+          `# return unused heap memory to the OS` \
+          -XX:MaxHeapFreeRatio=40 \
+          --osm_path=/data/data.osm.pbf \
+
+          --bounds=planet \
+          `# Store temporary node locations at fixed positions in a memory-mapped file` \
+          --nodemap-type=array \
+          --storage=mmap \
+          --force
+    END
+
 
     SAVE ARTIFACT /data/output.mbtiles /output.mbtiles
 
