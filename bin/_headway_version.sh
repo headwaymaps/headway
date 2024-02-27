@@ -21,9 +21,13 @@
 # A bump in the DATA tag pretty much always implies a bump in the CONTAINER
 # tag, but not necessarily vice-versa.
 
-export HEADWAY_DATA_TAG=0.6.0
+export HEADWAY_DATA_TAG=0.7.0
 
 # # Schema change Log
+#
+# ## DATA v0.7.0, CONTAINER v0.8.0
+#
+# BREAKING DATA: Updated Planetiler
 #
 # ## DATA v0.6.0, CONTAINER v0.7.0
 #
