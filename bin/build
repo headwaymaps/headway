@@ -41,7 +41,10 @@ else
     HEADWAY_IS_PLANET_BUILD=false
 fi
 
-with_log earthly $EARTHLY_ARGS -P +build --area="$HEADWAY_AREA" --countries="$HEADWAY_COUNTRIES" --is_planet_build="$HEADWAY_IS_PLANET_BUILD"
+if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
+    "${CONFIG_DIR}/prebuild.sh"
+fi
 
+with_log earthly $EARTHLY_ARGS -P +build --area="$HEADWAY_AREA" --countries="$HEADWAY_COUNTRIES" --is_planet_build="$HEADWAY_IS_PLANET_BUILD"
 bin/build-transit "$CONFIG_DIR" $EARTHLY_ARGS
 
