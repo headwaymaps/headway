@@ -12,7 +12,7 @@ jobs:
       - uses: earthly/actions-setup@v1
         with:
           # pinning to `latest` requires using the GH API, which causes spurious rate limiting errors
-          version: "0.7.4"
+          version: "0.8.4"
       - uses: actions/checkout@v2
       - name: Docker login
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u headwaymaps --password-stdin
