@@ -35,7 +35,13 @@ EARTHLY_ARGS=${@:1}
 
 source "${CONFIG_DIR}/env.sh"
 
-with_log earthly $EARTHLY_ARGS -P +build --area="$HEADWAY_AREA" --countries="$HEADWAY_COUNTRIES"
+if [ "$HEADWAY_COUNTRIES" = "ALL" ]; then
+    HEADWAY_IS_PLANET_BUILD=true
+else
+    HEADWAY_IS_PLANET_BUILD=false
+fi
+
+with_log earthly $EARTHLY_ARGS -P +build --area="$HEADWAY_AREA" --countries="$HEADWAY_COUNTRIES" --is_planet_build="$HEADWAY_IS_PLANET_BUILD"
 
 bin/build-transit "$CONFIG_DIR" $EARTHLY_ARGS
 
