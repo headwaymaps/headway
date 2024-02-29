@@ -144,7 +144,7 @@ export class OTPClient {
 
     const query = new URLSearchParams(params).toString();
 
-    const response = await fetch('/transitmux/v2/plan?' + query);
+    const response = await fetch('/travelmux/v2/plan?' + query);
     if (response.ok) {
       const travelmuxResponseJson: TravelmuxResponse = await response.json();
       if (!travelmuxResponseJson._otp) {

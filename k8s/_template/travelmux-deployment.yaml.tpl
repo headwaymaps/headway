@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: transitmux
+  name: travelmux
 spec:
   selector:
     matchLabels:
-      app: transitmux
+      app: travelmux
   replicas: 1
   template:
     metadata:
       labels:
-        app: transitmux
+        app: travelmux
     spec:
       containers:
         - name: main
-          image: ghcr.io/headwaymaps/transitmux:${HEADWAY_CONTAINER_TAG}
+          image: ghcr.io/headwaymaps/travelmux:${HEADWAY_CONTAINER_TAG}
           imagePullPolicy: Always
           args: ${OTP_ENDPOINTS_JSON}
           ports:

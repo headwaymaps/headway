@@ -230,7 +230,7 @@ export class TravelmuxClient {
 
     const query = new URLSearchParams(params).toString();
 
-    const response = await fetch('/transitmux/v2/plan?' + query);
+    const response = await fetch('/travelmux/v2/plan?' + query);
 
     if (response.ok) {
       // TODO: sort responses by arrival time like we did w/ OTPClient

@@ -115,11 +115,11 @@ module.exports = configure(function (/* ctx */) {
           target: HEADWAY_HOST,
           changeOrigin: true,
         },
-        '/transitmux': {
+        '/travelmux': {
           changeOrigin: true,
           // target: HEADWAY_HOST,
           target: 'http://0.0.0.0:8000',
-          rewrite: (path) => path.replace(/^\/transitmux/, ''),
+          rewrite: (path) => path.replace(/^\/travelmux/, ''),
         },
       },
     },

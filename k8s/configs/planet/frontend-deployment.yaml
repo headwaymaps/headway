@@ -83,8 +83,6 @@ spec:
               value: http://tileserver:8000
             - name: HEADWAY_PELIAS_URL
               value: http://pelias-api:4000
-            - name: HEADWAY_VALHALLA_URL
-              value: http://valhalla:8002
             - name: HEADWAY_PUBLIC_URL
               valueFrom:
                 configMapKeyRef:

@@ -826,7 +826,6 @@ web-serve-image:
     ENV HEADWAY_HTTP_PORT=8080
     ENV HEADWAY_RESOLVER=127.0.0.11
     ENV HEADWAY_TRAVELMUX_URL=http://travelmux:8000
-    ENV HEADWAY_VALHALLA_URL=http://valhalla:8002
     ENV HEADWAY_TILESERVER_URL=http://tileserver:8000
     ENV HEADWAY_PELIAS_URL=http://pelias-api:8080
     # for escaping $ in nginx template
