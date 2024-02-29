@@ -22,7 +22,7 @@ NEW_TAG="$2"
 
 registry_root=ghcr.io/headwaymaps
 
-images=( headway headway-init opentripplanner opentripplanner-init pelias-init tileserver tileserver-init transitmux valhalla valhalla-init )
+images=( headway headway-init opentripplanner opentripplanner-init pelias-init tileserver tileserver-init travelmux valhalla valhalla-init )
 
 for image in "${images[@]}"; do
   docker pull "${registry_root}/${image}:${SRC_TAG}"

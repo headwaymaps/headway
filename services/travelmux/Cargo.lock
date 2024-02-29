@@ -1749,7 +1749,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "transitmux"
+name = "travelmux"
 version = "0.1.0"
 dependencies = [
  "actix-web",

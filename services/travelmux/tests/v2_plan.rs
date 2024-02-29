@@ -1,7 +1,7 @@
 // These tests assume the server is running (and an OTP server to back it)
 // eventually it'd be nice to manage the setup as well...
 // Startup OTP on (e.g.) port 9001
-// Then startup transitmux `cargo watch -- cargo run -- "http://localhost:9001/otp/routers"`
+// Then startup travelmux `cargo watch -- cargo run -- "http://localhost:9001/otp/routers"`
 // then run these tests
 
 static SERVER_ROOT: &str = "http://localhost:8000/v2";

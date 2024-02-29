@@ -74,7 +74,7 @@ function generate_transit() {
   done
 
   export OTP_ENDPOINTS_JSON="[${otp_endpoints}]"
-  render_template "_template/transitmux-deployment.yaml.tpl"
+  render_template "_template/travelmux-deployment.yaml.tpl"
 }
 
 function log() {
@@ -114,16 +114,16 @@ if [[ "$HEADWAY_ENABLE_TRANSIT_ROUTING" != 0 ]]; then
     generate_transit
 fi
 
-# NOTE: we *do* want to enable the transitmux *service*, regardless
+# NOTE: we *do* want to enable the travelmux *service*, regardless
 # of if transit routing is enabled - otherwise our nginx frontend will fail
 # to start up due to the inability to resolve DNS. A better solution might
-# be to remove the transitmux section from nginx altogether when transit
+# be to remove the travelmux section from nginx altogether when transit
 # routing is disabled, but that's beyond the capabilities of the simple
 # envsubst we're using. For now then, we copy in the service defintion.
-render_template "_template/transitmux-service.yaml.tpl"
+render_template "_template/travelmux-service.yaml.tpl"
 
 shopt -s extglob
-for file in _template/!(opentripplanner*|transitmux*).tpl
+for file in _template/!(opentripplanner*|travelmux*).tpl
 do
     render_template $file
 done

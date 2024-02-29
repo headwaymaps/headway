@@ -3,8 +3,8 @@ use url::Url;
 
 use std::env;
 
-use transitmux::api::{health, v1, v2, AppState};
-use transitmux::Result;
+use travelmux::api::{health, v1, v2, AppState};
+use travelmux::Result;
 
 #[actix_web::main]
 async fn main() -> Result<()> {

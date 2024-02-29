@@ -25,6 +25,10 @@ export HEADWAY_DATA_TAG=0.7.0
 
 # # Schema change Log
 #
+# ## DATA v0.7.0, CONTAINER v0.9.0
+#
+# BREAKING CONTAINER: transitmux is now travelmux, and additionally fronts Valhalla, not just OTP
+#
 # ## DATA v0.7.0, CONTAINER v0.8.0
 #
 # BREAKING DATA: Updated Planetiler

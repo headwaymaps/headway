@@ -89,7 +89,7 @@ export type OTPPlanRequest = {
   mode?: string;
 };
 
-export interface TransitmuxResponse {
+export interface TravelmuxResponse {
   _otp: OTPPlanResponse;
   _valhalla: ValhallaRouteResponse;
 }
@@ -146,15 +146,15 @@ export class OTPClient {
 
     const response = await fetch('/transitmux/v2/plan?' + query);
     if (response.ok) {
-      const transitmuxResponseJson: TransitmuxResponse = await response.json();
-      if (!transitmuxResponseJson._otp) {
+      const travelmuxResponseJson: TravelmuxResponse = await response.json();
+      if (!travelmuxResponseJson._otp) {
         console.error(
-          'No OTP response in transitmux response',
-          transitmuxResponseJson,
+          'No OTP response in travelmux response',
+          travelmuxResponseJson,
         );
-        throw new Error('No OTP response in transitmux response');
+        throw new Error('No OTP response in travelmux response');
       }
-      const responseJson = transitmuxResponseJson._otp;
+      const responseJson = travelmuxResponseJson._otp;
       if (responseJson.plan.itineraries.length > 0) {
         const itineraries = responseJson.plan.itineraries.sort(
           (a, b) => a.endTime - b.endTime,

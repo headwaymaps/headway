@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: transitmux
+  name: travelmux
 spec:
   selector:
-    app: transitmux
+    app: travelmux
   ports:
     - protocol: TCP
       name: service

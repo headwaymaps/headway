@@ -35,7 +35,7 @@ images=(
   pelias-init
   tileserver
   tileserver-init
-  transitmux
+  travelmux
   valhalla
   valhalla-init
 )

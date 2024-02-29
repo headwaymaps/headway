@@ -69,7 +69,7 @@ services:
       HEADWAY_RESOLVER: 127.0.0.11
       HEADWAY_PELIAS_URL: http://pelias-api:4000
       HEADWAY_TILESERVER_URL: http://tileserver:8000
-      HEADWAY_TRANSITMUX_URL: http://transitmux:8000
+      HEADWAY_TRANSITMUX_URL: http://travelmux:8000
       HEADWAY_VALHALLA_URL: http://valhalla:8002
     ports:
       - "8080:8080"
@@ -80,7 +80,7 @@ services:
     volumes:
       - "frontend_data:/data/:ro"
     extra_hosts:
-      - "transitmux:0.0.0.0"
+      - "travelmux:0.0.0.0"
     depends_on:
       - "tileserver"
       - "pelias-api"

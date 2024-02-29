@@ -49,8 +49,8 @@ services:
       - transit_backend
     ports:
       - "9001:8000"
-  transitmux:
-    image: ghcr.io/headwaymaps/transitmux:latest
+  travelmux:
+    image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
     env_file: .env
     depends_on:
@@ -102,7 +102,7 @@ services:
       HEADWAY_RESOLVER: 127.0.0.11
       HEADWAY_PELIAS_URL: http://pelias-api:4000
       HEADWAY_TILESERVER_URL: http://tileserver:8000
-      HEADWAY_TRANSITMUX_URL: http://transitmux:8000
+      HEADWAY_TRANSITMUX_URL: http://travelmux:8000
       HEADWAY_VALHALLA_URL: http://valhalla:8002
     ports:
       - "8080:8080"
@@ -116,7 +116,7 @@ services:
     depends_on:
       - "pelias-api"
       - "tileserver"
-      - "transitmux"
+      - "travelmux"
       - "valhalla"
   pelias-config-init:
     image: ghcr.io/headwaymaps/pelias-init:latest

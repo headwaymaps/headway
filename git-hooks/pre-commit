@@ -15,7 +15,7 @@ set -e
   yarn lint &&
   yarn build)
 
-(cd services/transitmux &&
+(cd services/travelmux &&
     cargo fmt &&
     cargo clippy --all-features -- -D warnings &&
     cargo test --all-features)
