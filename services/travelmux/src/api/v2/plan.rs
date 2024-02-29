@@ -43,7 +43,11 @@ struct PlanResponse {
 }
 
 impl PlanResponse {
-    fn from_otp(mode: TravelMode, otp: otp_api::PlanResponse) -> Self {
+    fn from_otp(mode: TravelMode, mut otp: otp_api::PlanResponse) -> Self {
+        otp.plan
+            .itineraries
+            .sort_by(|a, b| a.end_time.cmp(&b.end_time));
+
         let itineraries = otp
             .plan
             .itineraries
@@ -52,7 +56,7 @@ impl PlanResponse {
                 // OTP responses are always in meters
                 let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
                 Itinerary {
-                    duration: itinerary.duration,
+                    duration: itinerary.duration as f64,
                     mode,
                     distance: distance_meters / 1000.0,
                     distance_units: DistanceUnit::Kilometers,

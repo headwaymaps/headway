@@ -37,8 +37,9 @@ pub struct Plan {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Itinerary {
-    pub duration: f64,
+    pub duration: u64,
     pub legs: Vec<Leg>,
+    pub end_time: u64,
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
