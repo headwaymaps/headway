@@ -55,6 +55,7 @@ export default defineComponent({
   } {
     // this cast is safe because we know that the trip is a non-transit trip
     const route = this.trip.nonTransitRoute() as Route;
+    console.assert(route);
     return {
       route,
       geometry: this.trip.legs[0].geometry,

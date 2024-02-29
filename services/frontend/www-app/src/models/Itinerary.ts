@@ -77,7 +77,7 @@ export class ItineraryError {
 export default class Itinerary implements Trip {
   private raw: OTPItinerary;
   legs: ItineraryLeg[];
-  preferredDistanceUnits: DistanceUnits;
+  private preferredDistanceUnits: DistanceUnits;
   withBicycle: boolean;
 
   constructor(

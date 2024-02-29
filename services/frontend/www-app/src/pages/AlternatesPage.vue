@@ -37,8 +37,6 @@
           :is="componentForMode(trip.mode)"
           :trip="trip"
           :active="trip === activeTrip"
-          :earliest-start="earliestStart"
-          :latest-arrival="latestArrival"
         />
         <q-item-label>
           <q-btn
@@ -72,7 +70,7 @@ import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
 import TripLayerId from 'src/models/TripLayerId';
-import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
+import { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
@@ -95,9 +93,6 @@ export default defineComponent({
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
-    // only used by transit
-    earliestStart: number;
-    latestArrival: number;
   } {
     return {
       trips: [],
@@ -105,8 +100,6 @@ export default defineComponent({
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
-      earliestStart: 0,
-      latestArrival: 0,
     };
   },
   components: { TripListItem, TripSearch },
@@ -225,7 +218,6 @@ export default defineComponent({
 
         if (result.ok) {
           const trips = result.value;
-          this.calculateTransitStats(trips);
           this.trips = trips;
           this.renderTrips(0);
           this.error = undefined;
@@ -317,27 +309,6 @@ export default defineComponent({
         }
       }
       getBaseMap()?.fitBounds(selectedTrip.bounds);
-    },
-    calculateTransitStats(trips: Trip[]) {
-      this.$data.earliestStart = Number.MAX_SAFE_INTEGER;
-      this.$data.latestArrival = 0;
-      // terrible hack.
-      if (this.mode != TravelMode.Transit) {
-        return;
-      }
-
-      let itineraries: Itinerary[] = trips as Itinerary[];
-
-      for (var index = 0; index < itineraries.length; index++) {
-        this.$data.earliestStart = Math.min(
-          this.$data.earliestStart,
-          itineraries[index].startTime,
-        );
-        this.$data.latestArrival = Math.max(
-          this.$data.latestArrival,
-          itineraries[index].endTime,
-        );
-      }
     },
   },
   watch: {

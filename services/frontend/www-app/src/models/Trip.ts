@@ -8,20 +8,11 @@ import { TravelmuxMode, TravelmuxClient } from 'src/services/TravelmuxClient';
 export default interface Trip {
   durationFormatted: string;
   distanceFormatted?: string;
-  preferredDistanceUnits: DistanceUnits;
-  // requires leg geometry
   bounds: LngLatBounds;
   legs: TripLeg[];
   mode: TravelMode;
-  startStopTimesFormatted?: string;
-  walkingDistanceFormatted?: string;
-  // TODO: only valhalla has this, but OTP mught have a corallary
-  viaRoadsFormatted?: string;
-  // TODO: only OTP uses this
-  // alerts: LegAlert[];
-  // hasAlerts: boolean;
-
-  // TravelMux trip just wraps an OTP or Valhalla trip
+  // TravelMux trip wraps an OTP or Valhalla trip which it passes through
+  // to some mode-specific views
   inner?: Trip;
 }
 

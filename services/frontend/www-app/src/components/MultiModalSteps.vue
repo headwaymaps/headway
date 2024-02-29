@@ -134,6 +134,7 @@ export default defineComponent({
   data(): { steps: Step[]; itinerary: Itinerary } {
     // this cast is safe because we know that the trip is a transit trip
     const itinerary = this.trip.transitItinerary() as Itinerary;
+    console.assert(itinerary);
     return {
       steps: buildSteps(itinerary),
       itinerary,

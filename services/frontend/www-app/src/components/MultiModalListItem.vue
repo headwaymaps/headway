@@ -1,7 +1,6 @@
 <template>
   <q-item-label>
-    <!-- TODO: might not be defined for valhalla -->
-    {{ trip.startStopTimesFormatted }}
+    {{ itinerary.startStopTimesFormatted }}
   </q-item-label>
   <q-item-label>
     <span v-for="(leg, idx) in itinerary.legs" v-bind:key="JSON.stringify(leg)">
@@ -14,7 +13,7 @@
     </span>
   </q-item-label>
   <q-item-label caption v-if="active">
-    {{ trip.walkingDistanceFormatted }}
+    {{ itinerary.walkingDistanceFormatted }}
   </q-item-label>
   <div v-if="formattedRealTimeUntilStart() !== undefined">
     <!-- FIXME: this isn't *always* realtime, we shouldn't imply that it is -->
@@ -67,19 +66,11 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
-    earliestStart: {
-      type: Number,
-      required: true,
-    },
-    latestArrival: {
-      type: Number,
-      required: true,
-    },
   },
   data(): { nowTime: number; itinerary: Itinerary } {
     // this cast is safe because we know that the trip is a transit trip
     const itinerary = this.trip.transitItinerary() as Itinerary;
-    console.log('hasAlerts', itinerary.hasAlerts);
+    console.assert(itinerary);
     return {
       nowTime: Date.now(),
       itinerary,

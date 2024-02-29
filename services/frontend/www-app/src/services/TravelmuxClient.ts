@@ -190,21 +190,6 @@ export class TravelmuxTrip implements Trip {
       return undefined;
     }
   }
-
-  // REVIEW: this is OTP specific. Not sure if we want it.
-  get startStopTimesFormatted(): string | undefined {
-    return this.inner.startStopTimesFormatted;
-  }
-
-  // REVIEW: this is OTP specific. Not sure if we want it.
-  get walkingDistanceFormatted(): string | undefined {
-    return this.inner.walkingDistanceFormatted;
-  }
-
-  // REVIEW: this is valhalla specific not sure if we want it.
-  get viaRoadsFormatted(): string | undefined {
-    return this.inner.viaRoadsFormatted;
-  }
 }
 
 export class TravelmuxClient {
