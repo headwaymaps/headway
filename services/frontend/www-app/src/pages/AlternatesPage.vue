@@ -76,6 +76,7 @@ import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
+import { TravelmuxTrip } from 'src/services/TravelmuxClient';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -88,7 +89,7 @@ export default defineComponent({
     from: String,
   },
   data(): {
-    trips: Trip[];
+    trips: TravelmuxTrip[];
     tripMarkers: string[];
     error?: TripFetchError;
     activeTrip?: Trip;
@@ -137,7 +138,7 @@ export default defineComponent({
           throw new Error(`unexpected mode: ${mode ?? 'none'}`);
       }
     },
-    clickTrip(trip: Trip) {
+    clickTrip(trip: TravelmuxTrip) {
       this.$data.activeTrip = trip;
       let index = this.$data.trips.indexOf(trip);
       if (index !== -1) {
@@ -152,7 +153,7 @@ export default defineComponent({
       this.toPlace = place;
       this.rewriteUrl();
     },
-    showTripSteps(trip: Trip) {
+    showTripSteps(trip: TravelmuxTrip) {
       let index = this.$data.trips.indexOf(trip);
       if (index !== -1 && this.to && this.from) {
         let path = `/directions/${this.mode}/${encodeURIComponent(
@@ -247,7 +248,7 @@ export default defineComponent({
     },
     renderTrips(selectedIdx: number) {
       console.assert(this.trips.length > 0);
-      const trips: Trip[] = this.trips;
+      const trips: TravelmuxTrip[] = this.trips;
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');

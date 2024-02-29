@@ -3,7 +3,11 @@ import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
 import { ItineraryError } from './Itinerary';
 import { RouteError } from './Route';
-import { TravelmuxMode, TravelmuxClient } from 'src/services/TravelmuxClient';
+import {
+  TravelmuxMode,
+  TravelmuxClient,
+  TravelmuxTrip,
+} from 'src/services/TravelmuxClient';
 
 export default interface Trip {
   durationFormatted: string;
@@ -20,7 +24,6 @@ export interface TripLeg {
   geometry: GeoJSON.LineString;
   start: LngLat;
   mode: TravelMode;
-  paintStyle(active: boolean): LineLayerSpecification['paint'];
 }
 
 export type TripFetchError =
@@ -36,7 +39,7 @@ export async function fetchBestTrips(
   departureDate?: string,
   arriveBy?: boolean,
   transitWithBicycle?: boolean,
-): Promise<Result<Trip[], TripFetchError>> {
+): Promise<Result<TravelmuxTrip[], TripFetchError>> {
   const modes = [mode];
   if (mode == TravelMode.Transit && transitWithBicycle) {
     modes.push(TravelMode.Bike);

@@ -5,13 +5,12 @@ import {
   ValhallaError,
   ValhallaErrorCode,
   ValhallaRouteLeg,
-  ValhallaTravelMode,
 } from 'src/services/ValhallaClient';
 import { formatDuration } from 'src/utils/format';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { decodePolyline } from 'src/third_party/decodePath';
-import { LngLatBounds, LngLat, LineLayerSpecification } from 'maplibre-gl';
-import Trip, { LineStyles, TripLeg } from './Trip';
+import { LngLatBounds, LngLat } from 'maplibre-gl';
+import Trip, { TripLeg } from './Trip';
 
 export enum RouteErrorCode {
   Other,
@@ -92,28 +91,6 @@ export default class Route implements Trip {
           return new LngLat(coordinates[0][0], coordinates[0][1]);
         },
         mode: this.mode,
-        paintStyle(active: boolean): LineLayerSpecification['paint'] {
-          if (active) {
-            const firstManeuver = vLeg.maneuvers[0];
-            console.assert(
-              firstManeuver,
-              'expected at least one maneuver to be set',
-            );
-            const isWalking =
-              firstManeuver?.travel_mode == ValhallaTravelMode.Walk;
-
-            // Currently anyway valhalla legs are single-mode. If we change that
-            // we'll have to revisit this logic which assumes that the first
-            // maneuver sets the mode for the entire leg.
-            if (isWalking) {
-              return LineStyles.walkingActive;
-            } else {
-              return LineStyles.active;
-            }
-          } else {
-            return LineStyles.inactive;
-          }
-        },
       };
     });
   }

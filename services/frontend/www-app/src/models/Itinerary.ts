@@ -1,4 +1,4 @@
-import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
+import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import {
   OTPAlert,
@@ -12,7 +12,7 @@ import {
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/third_party/decodePath';
-import Trip, { LineStyles } from './Trip';
+import Trip from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
 
 export enum ItineraryErrorCode {
@@ -270,26 +270,6 @@ export class ItineraryLeg {
   get start(): LngLat {
     const coordinates = this.geometry.coordinates;
     return new LngLat(coordinates[0][0], coordinates[0][1]);
-  }
-
-  paintStyle(active: boolean): LineLayerSpecification['paint'] {
-    if (active) {
-      if (this.raw.mode == OTPMode.Walk || this.raw.mode == OTPMode.Bicycle) {
-        return LineStyles.walkingActive;
-      } else {
-        if (this.raw.routeColor) {
-          return LineStyles.activeColored(`#${this.raw.routeColor}`);
-        } else {
-          return LineStyles.active;
-        }
-      }
-    } else {
-      if (this.raw.mode == OTPMode.Walk || this.raw.mode == OTPMode.Bicycle) {
-        return LineStyles.walkingInactive;
-      } else {
-        return LineStyles.inactive;
-      }
-    }
   }
 
   get sourceName(): string {

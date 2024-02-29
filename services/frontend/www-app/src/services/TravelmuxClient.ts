@@ -161,7 +161,7 @@ export class TravelmuxTrip implements Trip {
     return this.inner.bounds;
   }
 
-  get legs(): TripLeg[] {
+  get legs(): TravelmuxTripLeg[] {
     return zipWith(
       this.raw.legs,
       this.inner.legs,
