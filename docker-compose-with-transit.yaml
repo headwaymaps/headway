@@ -6,8 +6,8 @@ services:
     environment:
       AREAMAP_ARTIFACT_DEST: /data/${HEADWAY_AREA}.mbtiles
       AREAMAP_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_AREA}.mbtiles
-      TERRAIN_ARTIFACT_DEST_PATH: /data/terrain.mbtiles
-      TERRAIN_ARTIFACT_SOURCE_PATH: /bootstrap/terrain.mbtiles
+      TERRAIN_ARTIFACT_DEST: /data/terrain.mbtiles
+      TERRAIN_ARTIFACT_SOURCE: /bootstrap/terrain.mbtiles
       LANDCOVER_ARTIFACT_DEST: /data/landcover.mbtiles
       LANDCOVER_ARTIFACT_SOURCE: /bootstrap/landcover.mbtiles
     volumes:
