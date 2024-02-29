@@ -9,6 +9,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(valhalla_endpoint: Url) -> Self {
+        log::info!("new AppState with valhalla_endpoint: {valhalla_endpoint:?}");
         let valhalla_router = ValhallaRouter::new(valhalla_endpoint);
         Self {
             valhalla_router,

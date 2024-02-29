@@ -46,7 +46,7 @@ services:
       opentripplanner-init:
         condition: service_completed_successfully
     networks:
-      - transit_backend
+      - otp_backend
     ports:
       - "9001:8000"
   travelmux:
@@ -57,8 +57,10 @@ services:
       opentripplanner:
         condition: service_healthy
     networks:
-      - transit_backend
-      - transit_frontend
+      - travel_frontend
+      - otp_backend
+      - valhalla_backend
+    command: ["http://valhalla:8002", "http://opentripplanner:8000/otp/routers"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
@@ -76,6 +78,8 @@ services:
     restart: always
     env_file: .env
     networks:
+      - valhalla_backend
+      # deprecated - can delete this eventually since valhalla is only accessed via travelmux
       - valhalla_frontend
     volumes:
       - "valhalla_data:/data/:ro"
@@ -109,7 +113,8 @@ services:
     networks:
       - pelias_frontend
       - tileserver_frontend
-      - transit_frontend
+      - travel_frontend
+      # deprecated - can delete this eventually since valhalla is only accessed via travelmux
       - valhalla_frontend
     volumes:
       - "frontend_data:/data/:ro"
@@ -209,9 +214,11 @@ networks:
   tileserver_frontend:
   pelias_frontend:
   pelias_backend:
+  travel_frontend:
+  valhalla_backend:
+  # deprecated - can delete this eventually since valhalla is only accessed via travelmux
   valhalla_frontend:
-  transit_frontend:
-  transit_backend:
+  otp_backend:
 volumes:
   pelias_config_data:
   pelias_placeholder_data:

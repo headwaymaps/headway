@@ -28,6 +28,14 @@ services:
       - "8000"
     networks:
       - tileserver_frontend
+  travelmux:
+    image: ghcr.io/headwaymaps/travelmux:latest
+    restart: always
+    env_file: .env
+    networks:
+      - travel_frontend
+      - valhalla_backend
+    command: ["http://valhalla:8002"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
@@ -45,6 +53,8 @@ services:
     restart: always
     env_file: .env
     networks:
+      - valhalla_backend
+      # deprecated - can delete this eventually since valhalla is only accessed via travelmux
       - valhalla_frontend
     volumes:
       - "valhalla_data:/data/:ro"
@@ -76,14 +86,15 @@ services:
     networks:
       - pelias_frontend
       - tileserver_frontend
+      - travel_frontend
+      # deprecated - can delete this eventually since valhalla is only accessed via travelmux
       - valhalla_frontend
     volumes:
       - "frontend_data:/data/:ro"
-    extra_hosts:
-      - "travelmux:0.0.0.0"
     depends_on:
-      - "tileserver"
       - "pelias-api"
+      - "tileserver"
+      - "travelmux"
       - "valhalla"
   pelias-config-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
@@ -176,6 +187,9 @@ networks:
   tileserver_frontend:
   pelias_frontend:
   pelias_backend:
+  travel_frontend:
+  valhalla_backend:
+  # deprecated - can delete this eventually since valhalla is only accessed via travelmux
   valhalla_frontend:
 volumes:
   pelias_config_data:

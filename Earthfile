@@ -621,7 +621,7 @@ travelmux-serve-image:
     EXPOSE 8000
     ENV RUST_LOG=info
     ENTRYPOINT ["/home/travelmux/travelmux-server"]
-    CMD ["http://opentripplanner:8000/otp/routers"]
+    CMD ["http://valhalla:8002", "http://opentripplanner:8000/otp/routers"]
 
     ARG --required tags
     FOR tag IN ${tags}

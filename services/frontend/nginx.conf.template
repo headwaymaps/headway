@@ -40,10 +40,6 @@ http {
     }
 
     location ^~ /travelmux/ {
-      set $enable_transit_routing ${HEADWAY_ENABLE_TRANSIT_ROUTING};
-      if ($enable_transit_routing != 1) {
-        return 404;
-      }
       proxy_pass      ${HEADWAY_TRAVELMUX_URL}/;
     }
 
