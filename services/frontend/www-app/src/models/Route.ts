@@ -4,13 +4,8 @@ import {
   ValhallaRouteLegManeuver,
   ValhallaError,
   ValhallaErrorCode,
-  ValhallaRouteLeg,
 } from 'src/services/ValhallaClient';
-import { formatDuration } from 'src/utils/format';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import { decodePolyline } from 'src/third_party/decodePath';
-import { LngLatBounds, LngLat } from 'maplibre-gl';
-import Trip, { TripLeg } from './Trip';
 
 export enum RouteErrorCode {
   Other,
@@ -38,61 +33,25 @@ export class RouteError {
   }
 }
 
-export default class Route implements Trip {
+export default class Route {
   durationSeconds: number;
-  durationFormatted: string;
   viaRoadsFormatted: string;
   preferredDistanceUnits: DistanceUnits;
-  distanceFormatted: string;
   mode: TravelMode;
   valhallaRoute: ValhallaRoute;
 
   constructor(args: {
     durationSeconds: number;
-    durationFormatted: string;
     viaRoadsFormatted: string;
-    distanceFormatted: string;
     distanceUnits: DistanceUnits;
     mode: TravelMode;
     valhallaRoute: ValhallaRoute;
   }) {
     this.durationSeconds = args.durationSeconds;
-    this.durationFormatted = args.durationFormatted;
     this.viaRoadsFormatted = args.viaRoadsFormatted;
-    this.distanceFormatted = args.distanceFormatted;
     this.preferredDistanceUnits = args.distanceUnits;
     this.mode = args.mode;
     this.valhallaRoute = args.valhallaRoute;
-  }
-
-  public get bounds(): LngLatBounds {
-    const summary = this.valhallaRoute.summary;
-    return new LngLatBounds(
-      new LngLat(summary.min_lon, summary.min_lat),
-      new LngLat(summary.max_lon, summary.max_lat),
-    );
-  }
-
-  public get legs(): TripLeg[] {
-    return this.valhallaRoute.legs.map((vLeg: ValhallaRouteLeg): TripLeg => {
-      return {
-        get geometry(): GeoJSON.LineString {
-          const points: [number, number][] = [];
-          decodePolyline(vLeg.shape, 6, true).forEach((point) => {
-            points.push([point[1], point[0]]);
-          });
-          return {
-            type: 'LineString',
-            coordinates: points,
-          };
-        },
-        get start(): LngLat {
-          const coordinates = this.geometry.coordinates;
-          return new LngLat(coordinates[0][0], coordinates[0][1]);
-        },
-        mode: this.mode,
-      };
-    });
   }
 
   public static fromValhalla(
@@ -105,11 +64,9 @@ export default class Route implements Trip {
       mode,
       valhallaRoute: route,
       durationSeconds: route.summary.time,
-      durationFormatted: formatDuration(route.summary.time, 'shortform'),
       viaRoadsFormatted: viaRoads.join(
         i18n.global.t('punctuation_list_seperator'),
       ),
-      distanceFormatted: 'TODO: is valhalla distance used?',
       distanceUnits,
     });
   }

@@ -1,4 +1,4 @@
-import { LngLat, LngLatBounds } from 'maplibre-gl';
+import { LngLat } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import {
   OTPAlert,
@@ -10,9 +10,8 @@ import {
   OTPMode,
 } from 'src/services/OTPClient';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
+import { formatDistance, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/third_party/decodePath';
-import Trip from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
 
 export enum ItineraryErrorCode {
@@ -74,7 +73,7 @@ export class ItineraryError {
   }
 }
 
-export default class Itinerary implements Trip {
+export default class Itinerary {
   private raw: OTPItinerary;
   legs: ItineraryLeg[];
   private preferredDistanceUnits: DistanceUnits;
@@ -90,9 +89,6 @@ export default class Itinerary implements Trip {
     this.preferredDistanceUnits = distanceUnits;
     this.withBicycle = withBicycle;
   }
-  // We leave this blank for transit itineraries. It's not really relevant to
-  // picking a trip, so we don't clutter the screen with it.
-  distanceFormatted?: string | undefined;
   mode: TravelMode = TravelMode.Transit;
 
   public static async fetchBest(
@@ -139,10 +135,6 @@ export default class Itinerary implements Trip {
 
   public get duration(): number {
     return this.raw.duration;
-  }
-
-  public get durationFormatted(): string {
-    return formatDuration(this.raw.duration, 'shortform');
   }
 
   public get startTime(): number {
@@ -194,17 +186,6 @@ export default class Itinerary implements Trip {
       }
     }
     return false;
-  }
-
-  public get bounds(): LngLatBounds {
-    const bounds = new LngLatBounds();
-    for (const leg of this.legs) {
-      const lineString = leg.geometry;
-      for (const coord of lineString.coordinates) {
-        bounds.extend([coord[0], coord[1]]);
-      }
-    }
-    return bounds;
   }
 }
 

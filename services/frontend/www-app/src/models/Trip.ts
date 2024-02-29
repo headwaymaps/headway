@@ -1,4 +1,4 @@
-import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
+import { LineLayerSpecification, LngLat } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
 import { ItineraryError } from './Itinerary';
@@ -8,23 +8,6 @@ import {
   TravelmuxClient,
   TravelmuxTrip,
 } from 'src/services/TravelmuxClient';
-
-export default interface Trip {
-  durationFormatted: string;
-  distanceFormatted?: string;
-  bounds: LngLatBounds;
-  legs: TripLeg[];
-  mode: TravelMode;
-  // TravelMux trip wraps an OTP or Valhalla trip which it passes through
-  // to some mode-specific views
-  inner?: Trip;
-}
-
-export interface TripLeg {
-  geometry: GeoJSON.LineString;
-  start: LngLat;
-  mode: TravelMode;
-}
 
 export type TripFetchError =
   | { transit: true; itineraryError: ItineraryError }

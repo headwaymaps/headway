@@ -1,7 +1,7 @@
 import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Result } from 'src/utils/Result';
-import Trip, { LineStyles, TripFetchError, TripLeg } from 'src/models/Trip';
+import { LineStyles, TripFetchError } from 'src/models/Trip';
 import { OTPPlanResponse, OTPItinerary } from './OTPClient';
 import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaClient';
 import Itinerary from 'src/models/Itinerary';
@@ -35,17 +35,6 @@ export interface TravelmuxItinerary {
   distance: number;
   distanceUnits: DistanceUnits;
   legs: TravelmuxLeg[];
-  // startTime: number;
-  // endTime: number;
-  // walkDistance: number;
-  // transitTime: number;
-  // waitingTime: number;
-  // walkTime: number;
-  // transitTransfers: number;
-  // elevationGained: number;
-  // elevationLost: number;
-  // fare: number;
-  // legs: TravelmuxLeg[];
 }
 
 // incomplete
@@ -71,14 +60,12 @@ export enum TravelmuxMode {
   Transit = 'TRANSIT',
 }
 
-export class TravelmuxTripLeg implements TripLeg {
+export class TravelmuxTripLeg {
   raw: TravelmuxLeg;
-  inner: TripLeg;
   geometry: LineString;
 
-  constructor(raw: TravelmuxLeg, inner: TripLeg) {
+  constructor(raw: TravelmuxLeg) {
     this.raw = raw;
-    this.inner = inner;
     const points = decodePolyline(this.raw.geometry, 6, false);
     this.geometry = {
       type: 'LineString',
@@ -114,23 +101,18 @@ export class TravelmuxTripLeg implements TripLeg {
       }
     }
   }
-
-  alerts(): string[] {
-    console.log('TODO: alerts');
-    return [];
-  }
 }
 
-export class TravelmuxTrip implements Trip {
+export class TravelmuxTrip {
   raw: TravelmuxItinerary;
-  inner: Trip;
+  inner: Route | Itinerary;
   preferredDistanceUnits: DistanceUnits;
   innerDistanceUnits: DistanceUnits;
 
   constructor(
     raw: TravelmuxItinerary,
     preferredDistanceUnits: DistanceUnits,
-    inner: Trip,
+    inner: Route | Itinerary,
     innerDistanceUnits: DistanceUnits,
   ) {
     this.raw = raw;
@@ -144,11 +126,6 @@ export class TravelmuxTrip implements Trip {
   }
 
   get distanceFormatted(): string | undefined {
-    console.log(
-      this.raw.distance,
-      this.innerDistanceUnits,
-      this.preferredDistanceUnits,
-    );
     return formatDistance(
       this.raw.distance,
       this.innerDistanceUnits,
@@ -157,18 +134,19 @@ export class TravelmuxTrip implements Trip {
   }
 
   get bounds(): LngLatBounds {
-    // This current relies on legs.geomtry. We should do it serverside for OTP (already done by valhalla).
-    return this.inner.bounds;
+    // PERF: do this server side. Valhalla provides it but OTP does not.
+    const bounds = new LngLatBounds();
+    for (const leg of this.legs) {
+      const lineString = leg.geometry;
+      for (const coord of lineString.coordinates) {
+        bounds.extend([coord[0], coord[1]]);
+      }
+    }
+    return bounds;
   }
 
   get legs(): TravelmuxTripLeg[] {
-    return zipWith(
-      this.raw.legs,
-      this.inner.legs,
-      (raw: TravelmuxLeg, inner: TripLeg) => {
-        return new TravelmuxTripLeg(raw, inner);
-      },
-    );
+    return this.raw.legs.map((raw: TravelmuxLeg) => new TravelmuxTripLeg(raw));
   }
 
   get mode(): TravelMode {
