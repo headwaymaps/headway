@@ -1,7 +1,3 @@
-import { LngLat } from 'maplibre-gl';
-import { Err, Ok, Result } from 'src/utils/Result';
-import { ValhallaRouteResponse } from 'src/services/ValhallaClient';
-
 // incomplete
 export type OTPLegGeometry = {
   points: string;
@@ -89,11 +85,6 @@ export type OTPPlanRequest = {
   mode?: string;
 };
 
-export interface TravelmuxResponse {
-  _otp: OTPPlanResponse;
-  _valhalla: ValhallaRouteResponse;
-}
-
 // incomplete
 export type OTPPlanResponse = {
   plan: {
@@ -107,71 +98,3 @@ export type OTPError =
   | { responseError: OTPResponseError };
 
 type OTPResponseError = { status: number };
-
-export class OTPClient {
-  public static async fetchItineraries(
-    from: LngLat,
-    to: LngLat,
-    count: number,
-    modes: OTPMode[],
-    time?: string,
-    date?: string,
-    arriveBy?: boolean,
-  ): Promise<Result<OTPItinerary[], OTPError>> {
-    const params: OTPPlanRequest = {
-      fromPlace: `${from.lat},${from.lng}`,
-      toPlace: `${to.lat},${to.lng}`,
-      numItineraries: `${count}`,
-      mode: modes.join(','),
-    };
-
-    // The OTP API assumes current date and time if neither are specified.
-    // If only date is specified, the current time at that date is assumed.
-    // If only time is specified, it's an error.
-    if (time) {
-      console.assert(
-        date,
-        'The OTP API requires that if time is specified, date must also be specified',
-      );
-      params['time'] = time;
-    }
-    if (date) {
-      params['date'] = date;
-    }
-    if (arriveBy) {
-      params['arriveBy'] = true.toString();
-    }
-
-    const query = new URLSearchParams(params).toString();
-
-    const response = await fetch('/travelmux/v2/plan?' + query);
-    if (response.ok) {
-      const travelmuxResponseJson: TravelmuxResponse = await response.json();
-      if (!travelmuxResponseJson._otp) {
-        console.error(
-          'No OTP response in travelmux response',
-          travelmuxResponseJson,
-        );
-        throw new Error('No OTP response in travelmux response');
-      }
-      const responseJson = travelmuxResponseJson._otp;
-      if (responseJson.plan.itineraries.length > 0) {
-        const itineraries = responseJson.plan.itineraries.sort(
-          (a, b) => a.endTime - b.endTime,
-        );
-        return Ok(itineraries);
-      } else {
-        if (responseJson.error) {
-          return Err({ planError: responseJson.error });
-        } else {
-          console.error('Uknown error in OK OTP response', responseJson);
-          throw new Error('Uknown error in OK OTP response');
-        }
-      }
-    } else {
-      console.warn('Error in OTP response', response);
-      const responseError = { status: response.status };
-      return Err({ responseError });
-    }
-  }
-}

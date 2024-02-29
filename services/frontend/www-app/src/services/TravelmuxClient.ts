@@ -259,11 +259,6 @@ export class TravelmuxClient {
               travelModeFromTravelmuxMode(modes[0]),
               preferredDistanceUnits,
             );
-            console.log('preferredDistanceUnits', preferredDistanceUnits);
-            console.log(
-              'tmxItinerary.distanceUnits',
-              tmxItinerary.distanceUnits,
-            );
             console.assert(
               preferredDistanceUnits == tmxItinerary.distanceUnits,
               'expected preferredDistanceUnits to match tmxItinerary.distanceUnits for valhalla requests',

@@ -1,7 +1,3 @@
-import { LngLat } from 'maplibre-gl';
-import { DistanceUnits } from 'src/utils/models';
-import { Err, Ok, Result } from 'src/utils/Result';
-
 // incomplete
 export interface ValhallaRouteLegManeuver {
   begin_shape_index: number;
@@ -125,65 +121,3 @@ export function valhallaTypeToIcon(type: number) {
 }
 
 export type CacheableMode = 'walk' | 'bicycle' | 'car';
-
-function modeToCostingModel(mode: CacheableMode): string {
-  switch (mode) {
-    case 'walk':
-      return 'pedestrian';
-    case 'bicycle':
-      return 'bicycle';
-    case 'car':
-      return 'auto';
-  }
-}
-
-export async function getRoutes(
-  from: LngLat,
-  to: LngLat,
-  mode: CacheableMode,
-  units?: DistanceUnits,
-): Promise<Result<ValhallaRoute[], ValhallaError>> {
-  type RouteRequest = {
-    locations: Array<{ lat: number; lon: number }>;
-    costing: string;
-    alternates: number;
-    units?: DistanceUnits;
-  };
-  const requestObject: RouteRequest = {
-    locations: [
-      {
-        lat: from.lat,
-        lon: from.lng,
-      },
-      {
-        lat: to.lat,
-        lon: to.lng,
-      },
-    ],
-    costing: modeToCostingModel(mode),
-    alternates: 3,
-  };
-  if (units) {
-    requestObject.units = units;
-  }
-  const response = await fetch(
-    `/valhalla/route?json=${JSON.stringify(requestObject)}`,
-  );
-
-  if (response.status !== 200) {
-    const error = (await response.json()) as ValhallaError;
-    return Err(error);
-  }
-
-  const routeResponse = (await response.json()) as ValhallaRouteResponse;
-  const routes: ValhallaRoute[] = [];
-  if (routeResponse.trip) {
-    routes.push(routeResponse.trip);
-  }
-  for (const route of routeResponse.alternates || []) {
-    if (route.trip) {
-      routes.push(route.trip);
-    }
-  }
-  return Ok(routes);
-}

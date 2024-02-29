@@ -2,7 +2,6 @@ import { LngLat } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
 import {
   OTPAlert,
-  OTPClient,
   OTPError,
   OTPErrorId,
   OTPItinerary,
@@ -12,7 +11,6 @@ import {
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { formatDistance, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/third_party/decodePath';
-import { Err, Ok, Result } from 'src/utils/Result';
 
 export enum ItineraryErrorCode {
   Other,
@@ -90,40 +88,6 @@ export default class Itinerary {
     this.withBicycle = withBicycle;
   }
   mode: TravelMode = TravelMode.Transit;
-
-  public static async fetchBest(
-    from: LngLat,
-    to: LngLat,
-    preferredDistanceUnits: DistanceUnits,
-    departureTime?: string,
-    departureDate?: string,
-    arriveBy?: boolean,
-    withBicycle?: boolean,
-  ): Promise<Result<Itinerary[], ItineraryError>> {
-    const otpModes = [OTPMode.Transit];
-    if (withBicycle) {
-      otpModes.push(OTPMode.Bicycle);
-    }
-
-    const result = await OTPClient.fetchItineraries(
-      from,
-      to,
-      5,
-      otpModes,
-      departureTime,
-      departureDate,
-      arriveBy,
-    );
-    if (result.ok) {
-      return Ok(
-        result.value.map((otp) =>
-          Itinerary.fromOtp(otp, preferredDistanceUnits, withBicycle ?? false),
-        ),
-      );
-    } else {
-      return Err(ItineraryError.fromOtp(result.error));
-    }
-  }
 
   static fromOtp(
     raw: OTPItinerary,
