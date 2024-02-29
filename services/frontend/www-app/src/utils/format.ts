@@ -97,23 +97,56 @@ export function dayOfWeek(dateArgs: number | string | Date): string {
   return new Date(dateArgs).toLocaleString([], { weekday: 'short' });
 }
 
-export function metersToMiles(meters: number): number {
-  return meters / 621.37119;
-}
-
-export function formatMeters(
-  meters: number,
+export function formatDistance(
+  inputDistance: number,
+  inputUnits: DistanceUnits,
   outputUnits: DistanceUnits,
   precision = 1,
 ): string {
+  console.assert(inputUnits, 'missing input distance units');
+  console.assert(outputUnits, 'missing output distance units');
+
   let distance;
-  switch (outputUnits) {
-    case DistanceUnits.Kilometers:
-      distance = meters / 1000;
-      break;
-    case DistanceUnits.Miles:
-      distance = metersToMiles(meters);
-      break;
+
+  if (inputUnits == outputUnits) {
+    distance = inputDistance;
+  } else if (
+    inputUnits == DistanceUnits.Miles &&
+    outputUnits == DistanceUnits.Kilometers
+  ) {
+    distance = inputDistance * 1.60934;
+  } else if (
+    inputUnits == DistanceUnits.Miles &&
+    outputUnits == DistanceUnits.Meters
+  ) {
+    distance = inputDistance * 1609.34;
+  } else if (
+    inputUnits == DistanceUnits.Kilometers &&
+    outputUnits == DistanceUnits.Miles
+  ) {
+    distance = inputDistance * 0.6213727366;
+  } else if (
+    inputUnits == DistanceUnits.Kilometers &&
+    outputUnits == DistanceUnits.Meters
+  ) {
+    distance = inputDistance * 1000;
+  } else if (
+    inputUnits == DistanceUnits.Meters &&
+    outputUnits == DistanceUnits.Kilometers
+  ) {
+    distance = inputDistance * 0.001;
+  } else if (
+    inputUnits == DistanceUnits.Meters &&
+    outputUnits == DistanceUnits.Miles
+  ) {
+    distance = inputDistance * 0.0006213727366;
+  } else {
+    // km -> miles
+    console.assert(
+      false,
+      'unhandled case: ' + inputUnits + ' -> ' + outputUnits,
+    );
+    distance = inputDistance;
   }
 
   const rounded = distance.toFixed(precision);

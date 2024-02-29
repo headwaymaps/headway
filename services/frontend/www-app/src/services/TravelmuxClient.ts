@@ -7,7 +7,7 @@ import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaClient';
 import Itinerary from 'src/models/Itinerary';
 import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
-import { formatMeters, formatDuration } from 'src/utils/format';
+import { formatDistance, formatDuration } from 'src/utils/format';
 import { LineString } from 'geojson';
 import { decodePolyline } from 'src/third_party/decodePath';
 
@@ -32,7 +32,8 @@ export interface TravelmuxLeg {
 export interface TravelmuxItinerary {
   duration: number;
   mode: TravelmuxMode;
-  distanceMeters: number;
+  distance: number;
+  distanceUnits: DistanceUnits;
   legs: TravelmuxLeg[];
   // startTime: number;
   // endTime: number;
@@ -58,8 +59,9 @@ export type TravelmuxPlanRequest = {
   time?: string;
   date?: string;
   arriveBy?: string;
-  // comma separated list of OTPMode(s)
+  // comma separated list Mode(s)
   mode?: string;
+  preferredDistanceUnits: string;
 };
 
 export enum TravelmuxMode {
@@ -122,16 +124,19 @@ export class TravelmuxTripLeg implements TripLeg {
 export class TravelmuxTrip implements Trip {
   raw: TravelmuxItinerary;
   inner: Trip;
-  distanceUnits: DistanceUnits;
+  preferredDistanceUnits: DistanceUnits;
+  innerDistanceUnits: DistanceUnits;
 
   constructor(
     raw: TravelmuxItinerary,
+    preferredDistanceUnits: DistanceUnits,
     inner: Trip,
-    distanceUnits: DistanceUnits,
+    innerDistanceUnits: DistanceUnits,
   ) {
     this.raw = raw;
+    this.preferredDistanceUnits = preferredDistanceUnits;
     this.inner = inner;
-    this.distanceUnits = distanceUnits;
+    this.innerDistanceUnits = innerDistanceUnits;
   }
 
   get durationFormatted(): string {
@@ -139,7 +144,16 @@ export class TravelmuxTrip implements Trip {
   }
 
   get distanceFormatted(): string | undefined {
-    return formatMeters(this.raw.distanceMeters, this.distanceUnits);
+    console.log(
+      this.raw.distance,
+      this.innerDistanceUnits,
+      this.preferredDistanceUnits,
+    );
+    return formatDistance(
+      this.raw.distance,
+      this.innerDistanceUnits,
+      this.preferredDistanceUnits,
+    );
   }
 
   get bounds(): LngLatBounds {
@@ -199,7 +213,7 @@ export class TravelmuxClient {
     to: LngLat,
     modes: TravelmuxMode[],
     numItineraries: number,
-    distanceUnits: DistanceUnits,
+    preferredDistanceUnits: DistanceUnits,
     time?: string,
     date?: string,
     arriveBy?: boolean,
@@ -209,6 +223,7 @@ export class TravelmuxClient {
       toPlace: `${to.lat},${to.lng}`,
       numItineraries: `${numItineraries}`,
       mode: modes.join(','),
+      preferredDistanceUnits,
     };
 
     // The OTP API assumes current date and time if neither are specified.
@@ -247,10 +262,16 @@ export class TravelmuxClient {
           (tmxItinerary: TravelmuxItinerary, otpRawItinerary: OTPItinerary) => {
             const otpItinerary = Itinerary.fromOtp(
               otpRawItinerary,
-              distanceUnits,
+              preferredDistanceUnits,
               modes.includes(TravelmuxMode.Bike),
             );
-            return new TravelmuxTrip(tmxItinerary, otpItinerary, distanceUnits);
+            // OTP always returns metric units
+            return new TravelmuxTrip(
+              tmxItinerary,
+              preferredDistanceUnits,
+              otpItinerary,
+              DistanceUnits.Kilometers,
+            );
           },
         );
         return Ok(trips);
@@ -273,9 +294,23 @@ export class TravelmuxClient {
             const route = Route.fromValhalla(
               valhallaRoute,
               travelModeFromTravelmuxMode(modes[0]),
-              distanceUnits,
+              preferredDistanceUnits,
             );
-            return new TravelmuxTrip(tmxItinerary, route, distanceUnits);
+            console.log('preferredDistanceUnits', preferredDistanceUnits);
+            console.log(
+              'tmxItinerary.distanceUnits',
+              tmxItinerary.distanceUnits,
+            );
+            console.assert(
+              preferredDistanceUnits == tmxItinerary.distanceUnits,
+              'expected preferredDistanceUnits to match tmxItinerary.distanceUnits for valhalla requests',
+            );
+            return new TravelmuxTrip(
+              tmxItinerary,
+              preferredDistanceUnits,
+              route,
+              tmxItinerary.distanceUnits,
+            );
           },
         );
         return Ok(trips);

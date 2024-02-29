@@ -14,3 +14,10 @@ pub enum TravelMode {
     Car,
     Walk,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum DistanceUnit {
+    Kilometers,
+    Miles,
+}

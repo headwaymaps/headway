@@ -7,7 +7,7 @@ use std::fmt;
 
 use transitmux::otp::otp_api;
 use transitmux::valhalla::valhalla_api;
-use transitmux::{util::deserialize_point_from_lat_lon, Error, TravelMode};
+use transitmux::{util::deserialize_point_from_lat_lon, DistanceUnit, Error, TravelMode};
 
 use crate::AppState;
 
@@ -23,6 +23,10 @@ pub struct PlanQuery {
     num_itineraries: u32,
 
     mode: TravelModes,
+
+    /// Ignored by OTP - transit trips will always be metric.
+    /// Examine the `distance_units` in the response `Itinerary` to correctly interpret the response.
+    preferred_distance_units: Option<DistanceUnit>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -45,11 +49,16 @@ impl PlanResponse {
             .plan
             .itineraries
             .iter()
-            .map(|itinerary| Itinerary {
-                duration: itinerary.duration,
-                mode,
-                distance_meters: itinerary.legs.iter().map(|l| l.distance).sum(),
-                legs: itinerary.legs.iter().map(Leg::from_otp).collect(),
+            .map(|itinerary: &otp_api::Itinerary| {
+                // OTP responses are always in meters
+                let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
+                Itinerary {
+                    duration: itinerary.duration,
+                    mode,
+                    distance: distance_meters / 1000.0,
+                    distance_units: DistanceUnit::Kilometers,
+                    legs: itinerary.legs.iter().map(Leg::from_otp).collect(),
+                }
             })
             .collect();
 
@@ -87,7 +96,8 @@ struct Plan {
 struct Itinerary {
     mode: TravelMode,
     duration: f64,
-    distance_meters: f64,
+    distance: f64,
+    distance_units: DistanceUnit,
     legs: Vec<Leg>,
 }
 
@@ -125,25 +135,15 @@ impl Leg {
 
 impl Itinerary {
     fn from_valhalla_trip(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
-        debug_assert_eq!(valhalla.units, valhalla_api::DistanceUnit::Kilometers);
-        let distance_meters = valhalla.summary.length * 1000.0;
         Self {
             mode,
             duration: valhalla.summary.time,
-            distance_meters,
+            distance: valhalla.summary.length,
+            distance_units: valhalla.units,
             legs: valhalla.legs.iter().map(Leg::from_valhalla).collect(),
         }
     }
 }
-
-// #[derive(Debug, Deserialize, Serialize)]
-// struct Leg {
-//     mode: String,
-//     from: Point,
-//     to: Point,
-//     distance: f64,
-//     duration: f64,
-// }
 
 #[get("/v2/plan")]
 pub async fn get_plan(
@@ -154,6 +154,10 @@ pub async fn get_plan(
     let Some(primary_mode) = query.mode.0.first() else {
         return Err(Error::user("mode is required"));
     };
+
+    let distance_units = query
+        .preferred_distance_units
+        .unwrap_or(DistanceUnit::Kilometers);
 
     // FIXME: Handle bus+bike if bike is first
     match primary_mode {
@@ -210,6 +214,7 @@ pub async fn get_plan(
                 query.to_place,
                 mode,
                 query.num_itineraries,
+                distance_units,
             )?;
             let valhalla_response: reqwest::Response = reqwest::get(router_url).await?;
             if !valhalla_response.status().is_success() {
@@ -289,8 +294,8 @@ mod tests {
         // itineraries
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Walk);
-        assert_eq!(first_itinerary.distance_meters, 9148.0);
-        assert_eq!(first_itinerary.duration, 6488.443);
+        assert_relative_eq!(first_itinerary.distance, 9.148);
+        assert_relative_eq!(first_itinerary.duration, 6488.443);
 
         // legs
         assert_eq!(first_itinerary.legs.len(), 1);
@@ -317,8 +322,8 @@ mod tests {
         // itineraries
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
-        assert_eq!(first_itinerary.distance_meters, 10699.44);
-        assert_eq!(first_itinerary.duration, 3273.0);
+        assert_relative_eq!(first_itinerary.distance, 10.69944);
+        assert_relative_eq!(first_itinerary.duration, 3273.0);
 
         // legs
         assert_eq!(first_itinerary.legs.len(), 7);

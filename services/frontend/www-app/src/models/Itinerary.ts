@@ -10,7 +10,7 @@ import {
   OTPMode,
 } from 'src/services/OTPClient';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import { formatMeters, formatDuration, formatTime } from 'src/utils/format';
+import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/third_party/decodePath';
 import Trip, { LineStyles } from './Trip';
 import { Err, Ok, Result } from 'src/utils/Result';
@@ -77,7 +77,7 @@ export class ItineraryError {
 export default class Itinerary implements Trip {
   private raw: OTPItinerary;
   legs: ItineraryLeg[];
-  distanceUnits: DistanceUnits;
+  preferredDistanceUnits: DistanceUnits;
   withBicycle: boolean;
 
   constructor(
@@ -87,7 +87,7 @@ export default class Itinerary implements Trip {
   ) {
     this.raw = otp;
     this.legs = otp.legs.map((otpLeg) => new ItineraryLeg(otpLeg));
-    this.distanceUnits = distanceUnits;
+    this.preferredDistanceUnits = distanceUnits;
     this.withBicycle = withBicycle;
   }
   // We leave this blank for transit itineraries. It's not really relevant to
@@ -98,7 +98,7 @@ export default class Itinerary implements Trip {
   public static async fetchBest(
     from: LngLat,
     to: LngLat,
-    distanceUnits: DistanceUnits,
+    preferredDistanceUnits: DistanceUnits,
     departureTime?: string,
     departureDate?: string,
     arriveBy?: boolean,
@@ -121,7 +121,7 @@ export default class Itinerary implements Trip {
     if (result.ok) {
       return Ok(
         result.value.map((otp) =>
-          Itinerary.fromOtp(otp, distanceUnits, withBicycle ?? false),
+          Itinerary.fromOtp(otp, preferredDistanceUnits, withBicycle ?? false),
         ),
       );
     } else {
@@ -131,10 +131,10 @@ export default class Itinerary implements Trip {
 
   static fromOtp(
     raw: OTPItinerary,
-    distanceUnits: DistanceUnits,
+    preferredDistanceUnits: DistanceUnits,
     withBicycle: boolean,
   ): Itinerary {
-    return new Itinerary(raw, distanceUnits, withBicycle);
+    return new Itinerary(raw, preferredDistanceUnits, withBicycle);
   }
 
   public get duration(): number {
@@ -161,14 +161,15 @@ export default class Itinerary implements Trip {
   }
 
   // Usually walking, but will be biking if mode is transit+bike
-  get walkDistanceMeters(): number {
+  get walkDistance(): number {
     return this.raw.walkDistance;
   }
 
   public get walkingDistanceFormatted(): string {
-    const preformattedDistance = formatMeters(
-      this.walkDistanceMeters,
-      this.distanceUnits,
+    const preformattedDistance = formatDistance(
+      this.walkDistance,
+      DistanceUnits.Meters, // OTP is always metric
+      this.preferredDistanceUnits,
     );
 
     if (this.withBicycle) {

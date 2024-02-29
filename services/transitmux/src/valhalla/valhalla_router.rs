@@ -1,8 +1,8 @@
 use geo::Point;
 use url::Url;
 
-use super::valhalla_api::{DistanceUnit, ModeCosting, ValhallaRouteQuery};
-use crate::Result;
+use super::valhalla_api::{ModeCosting, ValhallaRouteQuery};
+use crate::{DistanceUnit, Result};
 
 #[derive(Debug, Clone)]
 pub struct ValhallaRouter {
@@ -20,6 +20,7 @@ impl ValhallaRouter {
         destination: Point,
         mode: ModeCosting,
         num_itineraries: u32,
+        distance_units: DistanceUnit,
     ) -> Result<Url> {
         let mut url = self.endpoint.clone();
 
@@ -27,9 +28,8 @@ impl ValhallaRouter {
             locations: vec![source.into(), destination.into()],
             costing: mode,
             alternates: num_itineraries,
-            // Since OTP only supports KM, let's always get KM from valhalla to
-            // so we can uniformly handle units on the frontend
-            units: DistanceUnit::Kilometers,
+            // NOTE: these units get embedded in the localized turn-by-turn direction strings
+            units: distance_units,
         };
 
         url.set_path("/route");

@@ -43,7 +43,7 @@ export default class Route implements Trip {
   durationSeconds: number;
   durationFormatted: string;
   viaRoadsFormatted: string;
-  distanceUnits: DistanceUnits;
+  preferredDistanceUnits: DistanceUnits;
   distanceFormatted: string;
   mode: TravelMode;
   valhallaRoute: ValhallaRoute;
@@ -61,7 +61,7 @@ export default class Route implements Trip {
     this.durationFormatted = args.durationFormatted;
     this.viaRoadsFormatted = args.viaRoadsFormatted;
     this.distanceFormatted = args.distanceFormatted;
-    this.distanceUnits = args.distanceUnits;
+    this.preferredDistanceUnits = args.distanceUnits;
     this.mode = args.mode;
     this.valhallaRoute = args.valhallaRoute;
   }
@@ -124,7 +124,6 @@ export default class Route implements Trip {
     distanceUnits: DistanceUnits,
   ): Route {
     const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
-    console.assert(route.units == 'kilometers');
     return new Route({
       mode,
       valhallaRoute: route,
