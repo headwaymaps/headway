@@ -3,14 +3,8 @@ use url::Url;
 
 use std::env;
 
+use transitmux::api::{health, v1, v2, AppState};
 use transitmux::Result;
-
-mod app_state;
-mod health;
-mod v1;
-mod v2;
-
-use app_state::AppState;
 
 #[actix_web::main]
 async fn main() -> Result<()> {

@@ -1,4 +1,4 @@
-use transitmux::{otp::OtpCluster, valhalla::ValhallaRouter, Error, Result};
+use crate::{otp::OtpCluster, valhalla::ValhallaRouter, Error, Result};
 use url::Url;
 
 #[derive(Debug, Clone)]

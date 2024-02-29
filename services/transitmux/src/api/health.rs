@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 
-use crate::AppState;
+use crate::api::AppState;
 
 #[get("/health/alive")]
 pub async fn get_alive(_app_state: web::Data<AppState>) -> impl Responder {

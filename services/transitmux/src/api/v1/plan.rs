@@ -2,9 +2,8 @@ use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
 use geo::geometry::Point;
 use serde::{Deserialize, Serialize};
 
-use transitmux::{util::deserialize_point_from_lat_lon, Error};
-
-use crate::AppState;
+use crate::api::AppState;
+use crate::{util::deserialize_point_from_lat_lon, Error};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

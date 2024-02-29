@@ -5,11 +5,10 @@ use serde::de::IntoDeserializer;
 use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-use transitmux::otp::otp_api;
-use transitmux::valhalla::valhalla_api;
-use transitmux::{util::deserialize_point_from_lat_lon, DistanceUnit, Error, TravelMode};
-
-use crate::AppState;
+use crate::api::AppState;
+use crate::otp::otp_api;
+use crate::valhalla::valhalla_api;
+use crate::{util::deserialize_point_from_lat_lon, DistanceUnit, Error, TravelMode};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
