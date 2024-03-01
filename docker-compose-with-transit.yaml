@@ -47,8 +47,8 @@ services:
         condition: service_completed_successfully
     networks:
       - otp_backend
-    # ports:
-    #   - "9001:8000"
+    ports:
+      - "9001:8000"
   travelmux:
     image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
@@ -166,6 +166,8 @@ services:
         condition: service_healthy
       pelias-config-init:
         condition: service_completed_successfully
+    ports:
+      - "4000:4000"
   pelias-placeholder:
     image: pelias/placeholder:master
     restart: always
