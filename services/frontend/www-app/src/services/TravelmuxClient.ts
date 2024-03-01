@@ -30,10 +30,11 @@ export interface TravelmuxLeg {
 }
 
 export interface TravelmuxItinerary {
-  duration: number;
   mode: TravelmuxMode;
+  duration: number;
   distance: number;
   distanceUnits: DistanceUnits;
+  bounds: { min: [number, number]; max: [number, number] };
   legs: TravelmuxLeg[];
 }
 
@@ -134,15 +135,7 @@ export class TravelmuxTrip {
   }
 
   get bounds(): LngLatBounds {
-    // PERF: do this server side. Valhalla provides it but OTP does not.
-    const bounds = new LngLatBounds();
-    for (const leg of this.legs) {
-      const lineString = leg.geometry;
-      for (const coord of lineString.coordinates) {
-        bounds.extend([coord[0], coord[1]]);
-      }
-    }
-    return bounds;
+    return new LngLatBounds(this.raw.bounds.min, this.raw.bounds.max);
   }
 
   get legs(): TravelmuxTripLeg[] {
