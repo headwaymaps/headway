@@ -1,4 +1,4 @@
-use geo::Point;
+use geo::{Point, Rect};
 use serde::{Deserialize, Deserializer};
 use std::time::Duration;
 
@@ -47,4 +47,16 @@ where
     S: serde::Serializer,
 {
     serializer.serialize_u64(duration.as_secs())
+}
+
+pub fn extend_bounds(bounds: &mut Rect, extension: &Rect) {
+    let min_x = f64::min(bounds.min().x, extension.min().x);
+    let min_y = f64::min(bounds.min().y, extension.min().y);
+    let max_x = f64::max(bounds.max().x, extension.max().x);
+    let max_y = f64::max(bounds.max().y, extension.max().y);
+    let mut new_bounds = Rect::new(
+        geo::coord! { x: min_x, y: min_y},
+        geo::coord! { x: max_x, y: max_y },
+    );
+    std::mem::swap(bounds, &mut new_bounds);
 }

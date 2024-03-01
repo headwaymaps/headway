@@ -47,7 +47,11 @@ pub struct Alternate {
 pub struct Summary {
     pub length: f64,
     pub time: f64,
-    // transit: Transit
+    pub min_lat: f64,
+    pub min_lon: f64,
+    pub max_lat: f64,
+    pub max_lon: f64,
+
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }

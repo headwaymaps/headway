@@ -1,5 +1,7 @@
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
-use geo::geometry::Point;
+use geo::algorithm::BoundingRect;
+use geo::geometry::{LineString, Point, Rect};
+use polyline::decode_polyline;
 use reqwest::header::{HeaderName, HeaderValue};
 use serde::de::IntoDeserializer;
 use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize};
@@ -7,8 +9,9 @@ use std::fmt;
 
 use crate::api::AppState;
 use crate::otp::otp_api;
+use crate::util::{deserialize_point_from_lat_lon, extend_bounds};
 use crate::valhalla::valhalla_api;
-use crate::{util::deserialize_point_from_lat_lon, DistanceUnit, Error, TravelMode};
+use crate::{DistanceUnit, Error, TravelMode};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -55,12 +58,24 @@ impl PlanResponse {
             .map(|itinerary: &otp_api::Itinerary| {
                 // OTP responses are always in meters
                 let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
+                let legs: Vec<Leg> = itinerary.legs.iter().map(Leg::from_otp).collect();
+                let mut legs_iter = legs.iter();
+                // TODO: return server error?
+                let first_leg = legs_iter
+                    .next()
+                    .expect("at least one leg in any valid itinerary");
+                let mut itinerary_bounds = first_leg.bounding_rect().expect("TODO").expect("TODO");
+                for leg in legs_iter {
+                    let leg_bounds = leg.bounding_rect().expect("TODO").expect("TODO");
+                    extend_bounds(&mut itinerary_bounds, &leg_bounds);
+                }
                 Itinerary {
                     duration: itinerary.duration as f64,
                     mode,
                     distance: distance_meters / 1000.0,
                     distance_units: DistanceUnit::Kilometers,
-                    legs: itinerary.legs.iter().map(Leg::from_otp).collect(),
+                    bounds: itinerary_bounds,
+                    legs,
                 }
             })
             .collect();
@@ -101,6 +116,7 @@ struct Itinerary {
     duration: f64,
     distance: f64,
     distance_units: DistanceUnit,
+    bounds: Rect,
     legs: Vec<Leg>,
 }
 
@@ -112,22 +128,29 @@ struct Leg {
 
     /// Some transit agencies have a color associated with their routes
     route_color: Option<String>,
-    // mode: String,
-    // from: Point,
-    // to: Point,
-    // distance: f64,
-    // duration: f64,
 }
 
 impl Leg {
+    const GEOMETRY_PRECISION: u32 = 6;
+
+    fn decoded_geometry(&self) -> Result<LineString, String> {
+        decode_polyline(&self.geometry, Self::GEOMETRY_PRECISION)
+    }
+
+    fn bounding_rect(&self) -> Result<Option<Rect>, String> {
+        let line_string = self.decoded_geometry()?;
+        Ok(line_string.bounding_rect())
+    }
+
     fn from_otp(otp: &otp_api::Leg) -> Self {
-        let line = polyline::decode_polyline(&otp.leg_geometry.points, 5).expect("TODO");
-        let geometry = polyline::encode_coordinates(line, 6).expect("TODO");
+        let line = decode_polyline(&otp.leg_geometry.points, 5).expect("TODO");
+        let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION).expect("TODO");
         Self {
             geometry,
             route_color: otp.route_color.clone(),
         }
     }
+
     fn from_valhalla(valhalla: &valhalla_api::Leg) -> Self {
         Self {
             geometry: valhalla.shape.clone(),
@@ -138,10 +161,15 @@ impl Leg {
 
 impl Itinerary {
     fn from_valhalla_trip(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
+        let bounds = Rect::new(
+            geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
+            geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
+        );
         Self {
             mode,
             duration: valhalla.summary.time,
             distance: valhalla.summary.length,
+            bounds,
             distance_units: valhalla.units,
             legs: valhalla.legs.iter().map(Leg::from_valhalla).collect(),
         }
@@ -299,11 +327,18 @@ mod tests {
         assert_eq!(first_itinerary.mode, TravelMode::Walk);
         assert_relative_eq!(first_itinerary.distance, 9.148);
         assert_relative_eq!(first_itinerary.duration, 6488.443);
+        assert_relative_eq!(
+            first_itinerary.bounds,
+            Rect::new(
+                geo::coord!(x: -122.347201, y: 47.575663),
+                geo::coord!(x: -122.335618, y: 47.651047)
+            )
+        );
 
         // legs
         assert_eq!(first_itinerary.legs.len(), 1);
         let first_leg = &first_itinerary.legs[0];
-        let geometry = polyline::decode_polyline(&first_leg.geometry, 6).unwrap();
+        let geometry = decode_polyline(&first_leg.geometry, 6).unwrap();
         assert_relative_eq!(
             geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
