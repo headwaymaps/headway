@@ -55,7 +55,9 @@ module.exports = configure(function (/* ctx */) {
         node: 'node16',
       },
 
-      vueRouterMode: 'hash', // available values: 'hash', 'history'
+      vueRouterMode: 'history', // available values: 'hash', 'history'
+      // Use this for dev where we don't have mod_rewrite, otherwise refreshing page 404's
+      // vueRouterMode: 'hash',
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,
@@ -117,9 +119,9 @@ module.exports = configure(function (/* ctx */) {
         },
         '/travelmux': {
           changeOrigin: true,
-          // target: HEADWAY_HOST,
-          target: 'http://0.0.0.0:8000',
-          rewrite: (path) => path.replace(/^\/travelmux/, ''),
+          target: HEADWAY_HOST,
+          // target: 'http://0.0.0.0:8000',
+          // rewrite: (path) => path.replace(/^\/travelmux/, ''),
         },
       },
     },
