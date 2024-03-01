@@ -4,8 +4,9 @@ use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
 use reqwest::header::{HeaderName, HeaderValue};
 use serde::de::IntoDeserializer;
-use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize};
+use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
+use serde::ser::SerializeStruct;
 
 use crate::api::AppState;
 use crate::otp::otp_api;
@@ -94,6 +95,7 @@ struct Itinerary {
     duration: f64,
     distance: f64,
     distance_units: DistanceUnit,
+    #[serde(flatten, serialize_with="serialize_rect_to_lng_lat")]
     bounds: Rect,
     legs: Vec<Leg>,
 }
@@ -187,9 +189,9 @@ impl<'de> Deserialize<'de> for TravelModes {
     where
         D: Deserializer<'de>,
     {
-        struct ColorVecVisitor;
+        struct CommaSeparatedVecVisitor;
 
-        impl<'de> Visitor<'de> for ColorVecVisitor {
+        impl<'de> Visitor<'de> for CommaSeparatedVecVisitor {
             type Value = TravelModes;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -208,8 +210,15 @@ impl<'de> Deserialize<'de> for TravelModes {
             }
         }
 
-        deserializer.deserialize_str(ColorVecVisitor)
+        deserializer.deserialize_str(CommaSeparatedVecVisitor)
     }
+}
+
+fn serialize_rect_to_lng_lat<S: Serializer>(rect: &Rect, serializer: S)  -> Result<S::Ok, S::Error>{
+    let mut struct_serializer = serializer.serialize_struct("BBox", 2)?;
+    struct_serializer.serialize_field("bbox_min", &[rect.min().x, rect.min().y])?;
+    struct_serializer.serialize_field("bbox_max", &[rect.max().x, rect.max().y])?;
+    struct_serializer.end()
 }
 
 #[get("/v2/plan")]
