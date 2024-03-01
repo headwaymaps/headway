@@ -32,9 +32,6 @@ services:
     image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
     env_file: .env
-    depends_on:
-      opentripplanner:
-        condition: service_healthy
     networks:
       - travel_frontend
       - valhalla_backend
