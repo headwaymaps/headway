@@ -34,6 +34,8 @@ pub struct PlanQuery {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct PlanResponse {
+    plan: Plan,
+
     // The raw response from the upstream OTP /plan service
     #[serde(rename = "_otp")]
     _otp: Option<otp_api::PlanResponse>,
@@ -41,8 +43,6 @@ struct PlanResponse {
     // The raw response from the upstream Valhalla /route service
     #[serde(rename = "_valhalla")]
     _valhalla: Option<valhalla_api::RouteResponse>,
-
-    plan: Plan,
 }
 
 impl PlanResponse {
@@ -55,29 +55,7 @@ impl PlanResponse {
             .plan
             .itineraries
             .iter()
-            .map(|itinerary: &otp_api::Itinerary| {
-                // OTP responses are always in meters
-                let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
-                let legs: Vec<Leg> = itinerary.legs.iter().map(Leg::from_otp).collect();
-                let mut legs_iter = legs.iter();
-                // TODO: return server error?
-                let first_leg = legs_iter
-                    .next()
-                    .expect("at least one leg in any valid itinerary");
-                let mut itinerary_bounds = first_leg.bounding_rect().expect("TODO").expect("TODO");
-                for leg in legs_iter {
-                    let leg_bounds = leg.bounding_rect().expect("TODO").expect("TODO");
-                    extend_bounds(&mut itinerary_bounds, &leg_bounds);
-                }
-                Itinerary {
-                    duration: itinerary.duration as f64,
-                    mode,
-                    distance: distance_meters / 1000.0,
-                    distance_units: DistanceUnit::Kilometers,
-                    bounds: itinerary_bounds,
-                    legs,
-                }
-            })
+            .map(|itinerary: &otp_api::Itinerary| Itinerary::from_otp(itinerary, mode))
             .collect();
 
         PlanResponse {
@@ -88,10 +66,10 @@ impl PlanResponse {
     }
 
     fn from_valhalla(mode: TravelMode, valhalla: valhalla_api::RouteResponse) -> Self {
-        let mut itineraries = vec![Itinerary::from_valhalla_trip(&valhalla.trip, mode)];
+        let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
         if let Some(alternates) = &valhalla.alternates {
             for alternate in alternates {
-                itineraries.push(Itinerary::from_valhalla_trip(&alternate.trip, mode));
+                itineraries.push(Itinerary::from_valhalla(&alternate.trip, mode));
             }
         }
 
@@ -118,6 +96,47 @@ struct Itinerary {
     distance_units: DistanceUnit,
     bounds: Rect,
     legs: Vec<Leg>,
+}
+
+impl Itinerary {
+    fn from_valhalla(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
+        let bounds = Rect::new(
+            geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
+            geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
+        );
+        Self {
+            mode,
+            duration: valhalla.summary.time,
+            distance: valhalla.summary.length,
+            bounds,
+            distance_units: valhalla.units,
+            legs: valhalla.legs.iter().map(Leg::from_valhalla).collect(),
+        }
+    }
+
+    fn from_otp(itinerary: &otp_api::Itinerary, mode: TravelMode) -> Self {
+        // OTP responses are always in meters
+        let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
+        let legs: Vec<Leg> = itinerary.legs.iter().map(Leg::from_otp).collect();
+        let mut legs_iter = legs.iter();
+        // TODO: return server error?
+        let first_leg = legs_iter
+            .next()
+            .expect("at least one leg in any valid itinerary");
+        let mut itinerary_bounds = first_leg.bounding_rect().expect("TODO").expect("TODO");
+        for leg in legs_iter {
+            let leg_bounds = leg.bounding_rect().expect("TODO").expect("TODO");
+            extend_bounds(&mut itinerary_bounds, &leg_bounds);
+        }
+        Self {
+            duration: itinerary.duration as f64,
+            mode,
+            distance: distance_meters / 1000.0,
+            distance_units: DistanceUnit::Kilometers,
+            bounds: itinerary_bounds,
+            legs,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -159,20 +178,37 @@ impl Leg {
     }
 }
 
-impl Itinerary {
-    fn from_valhalla_trip(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
-        let bounds = Rect::new(
-            geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
-            geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
-        );
-        Self {
-            mode,
-            duration: valhalla.summary.time,
-            distance: valhalla.summary.length,
-            bounds,
-            distance_units: valhalla.units,
-            legs: valhalla.legs.iter().map(Leg::from_valhalla).collect(),
+// Comma separated list of travel modes
+#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
+struct TravelModes(Vec<TravelMode>);
+
+impl<'de> Deserialize<'de> for TravelModes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ColorVecVisitor;
+
+        impl<'de> Visitor<'de> for ColorVecVisitor {
+            type Value = TravelModes;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a comma-separated string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let modes = value
+                    .split(',')
+                    .map(|s| TravelMode::deserialize(s.into_deserializer()))
+                    .collect::<Result<_, _>>()?;
+                Ok(TravelModes(modes))
+            }
         }
+
+        deserializer.deserialize_str(ColorVecVisitor)
     }
 }
 
@@ -269,40 +305,6 @@ pub async fn get_plan(
             let plan_response = PlanResponse::from_valhalla(*primary_mode, valhalla_route_response);
             Ok(response.json(plan_response))
         }
-    }
-}
-
-// Comma separated list of travel modes
-#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
-struct TravelModes(Vec<TravelMode>);
-
-impl<'de> Deserialize<'de> for TravelModes {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ColorVecVisitor;
-
-        impl<'de> Visitor<'de> for ColorVecVisitor {
-            type Value = TravelModes;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a comma-separated string")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                let modes = value
-                    .split(',')
-                    .map(|s| TravelMode::deserialize(s.into_deserializer()))
-                    .collect::<Result<_, _>>()?;
-                Ok(TravelModes(modes))
-            }
-        }
-
-        deserializer.deserialize_str(ColorVecVisitor)
     }
 }
 
