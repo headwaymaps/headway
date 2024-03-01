@@ -65,15 +65,14 @@ rm -f "${OUTPUT_DIR}"/*
 
 function generate_transit() {
   local otp_endpoints=""
-  local separator=""
+  local separator=", "
   for headway_transit_area in $HEADWAY_TRANSIT_AREAS; do
       local otp_endpoint_name=$(generate_otp $headway_transit_area);
 
       otp_endpoints+="${separator}\"http://${otp_endpoint_name}:8000/otp/routers\""
-      separator=", "
   done
 
-  export OTP_ENDPOINTS_JSON="[${otp_endpoints}]"
+  export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
   render_template "_template/travelmux-deployment.yaml.tpl"
 }
 
