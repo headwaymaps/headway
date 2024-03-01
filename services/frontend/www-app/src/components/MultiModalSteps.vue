@@ -127,7 +127,7 @@ import { defineComponent, PropType } from 'vue';
 import { formatDuration, formatTime } from 'src/utils/format';
 import { LngLat } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
-import { TravelmuxTrip } from 'src/services/TravelmuxClient';
+import Trip from 'src/models/Trip';
 
 export default defineComponent({
   name: 'MultiModalSteps',
@@ -142,7 +142,7 @@ export default defineComponent({
   },
   props: {
     trip: {
-      type: Object as PropType<TravelmuxTrip>,
+      type: Object as PropType<Trip>,
       required: true,
     },
   },

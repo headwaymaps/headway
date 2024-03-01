@@ -28,8 +28,7 @@
       <trip-list-item
         v-for="trip in trips"
         :click-handler="
-          /* why is this cast necessary? */ () =>
-            clickTrip(trip as TravelmuxTrip)
+          /* why is this cast necessary? */ () => clickTrip(trip as Trip)
         "
         :active="$data.activeTrip === trip"
         :duration-formatted="trip.durationFormatted"
@@ -50,9 +49,7 @@
             :label="$t('route_picker_show_route_details_btn')"
             size="sm"
             v-on:click="
-              /* why is this cast necessary? */ showTripSteps(
-                trip as TravelmuxTrip,
-              )
+              /* why is this cast necessary? */ showTripSteps(trip as Trip)
             "
           />
         </q-item-label>
@@ -75,7 +72,7 @@ import TripListItem from 'src/components/TripListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
-import { fetchBestTrips, TripFetchError } from 'src/models/Trip';
+import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
 import TripLayerId from 'src/models/TripLayerId';
 import { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
@@ -83,7 +80,6 @@ import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
-import { TravelmuxTrip } from 'src/services/TravelmuxClient';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -96,10 +92,10 @@ export default defineComponent({
     from: String,
   },
   data(): {
-    trips: TravelmuxTrip[];
+    trips: Trip[];
     tripMarkers: string[];
     error?: TripFetchError;
-    activeTrip?: TravelmuxTrip;
+    activeTrip?: Trip;
     isLoading: boolean;
   } {
     return {
@@ -145,7 +141,7 @@ export default defineComponent({
           throw new Error(`unexpected mode: ${mode ?? 'none'}`);
       }
     },
-    clickTrip(trip: TravelmuxTrip) {
+    clickTrip(trip: Trip) {
       this.$data.activeTrip = trip;
       let index = this.$data.trips.indexOf(trip);
       if (index !== -1) {
@@ -160,7 +156,7 @@ export default defineComponent({
       this.toPlace = place;
       this.rewriteUrl();
     },
-    showTripSteps(trip: TravelmuxTrip) {
+    showTripSteps(trip: Trip) {
       let index = this.$data.trips.indexOf(trip);
       if (index !== -1 && this.to && this.from) {
         let path = `/directions/${this.mode}/${encodeURIComponent(
@@ -255,7 +251,7 @@ export default defineComponent({
     },
     renderTrips(selectedIdx: number) {
       console.assert(this.trips.length > 0);
-      const trips: TravelmuxTrip[] = this.trips as TravelmuxTrip[];
+      const trips: Trip[] = this.trips as Trip[];
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');

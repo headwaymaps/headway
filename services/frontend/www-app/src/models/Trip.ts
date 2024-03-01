@@ -1,13 +1,119 @@
-import { LineLayerSpecification, LngLat } from 'maplibre-gl';
+import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
-import { ItineraryError } from './Itinerary';
-import { RouteError } from './Route';
+import Itinerary, { ItineraryError } from './Itinerary';
+import Route, { RouteError } from './Route';
 import {
   TravelmuxMode,
   TravelmuxClient,
-  TravelmuxTrip,
+  TravelmuxItinerary,
+  TravelmuxLeg,
+  travelModeFromTravelmuxMode,
 } from 'src/services/TravelmuxClient';
+import { formatDistance, formatDuration } from 'src/utils/format';
+import { decodePolyline } from 'src/third_party/decodePath';
+
+export default class Trip {
+  raw: TravelmuxItinerary;
+  inner: Route | Itinerary;
+  preferredDistanceUnits: DistanceUnits;
+  innerDistanceUnits: DistanceUnits;
+
+  constructor(
+    raw: TravelmuxItinerary,
+    preferredDistanceUnits: DistanceUnits,
+    inner: Route | Itinerary,
+    innerDistanceUnits: DistanceUnits,
+  ) {
+    this.raw = raw;
+    this.preferredDistanceUnits = preferredDistanceUnits;
+    this.inner = inner;
+    this.innerDistanceUnits = innerDistanceUnits;
+  }
+
+  get durationFormatted(): string {
+    return formatDuration(this.raw.duration, 'shortform');
+  }
+
+  get distanceFormatted(): string | undefined {
+    return formatDistance(
+      this.raw.distance,
+      this.innerDistanceUnits,
+      this.preferredDistanceUnits,
+    );
+  }
+
+  get bounds(): LngLatBounds {
+    return new LngLatBounds(this.raw.bounds.min, this.raw.bounds.max);
+  }
+
+  get legs(): TripLeg[] {
+    return this.raw.legs.map((raw: TravelmuxLeg) => new TripLeg(raw));
+  }
+
+  get mode(): TravelMode {
+    return travelModeFromTravelmuxMode(this.raw.mode);
+  }
+
+  transitItinerary(): Itinerary | undefined {
+    if (this.mode == TravelMode.Transit) {
+      return this.inner as Itinerary;
+    } else {
+      return undefined;
+    }
+  }
+
+  nonTransitRoute(): Route | undefined {
+    if (this.mode != TravelMode.Transit) {
+      return this.inner as Route;
+    } else {
+      return undefined;
+    }
+  }
+}
+
+export class TripLeg {
+  raw: TravelmuxLeg;
+  geometry: GeoJSON.LineString;
+
+  constructor(raw: TravelmuxLeg) {
+    this.raw = raw;
+    const points = decodePolyline(this.raw.geometry, 6, false);
+    this.geometry = {
+      type: 'LineString',
+      coordinates: points,
+    };
+  }
+
+  get start(): LngLat {
+    const lngLat = this.geometry.coordinates[0];
+    return new LngLat(lngLat[0], lngLat[1]);
+  }
+
+  get mode(): TravelMode {
+    return travelModeFromTravelmuxMode(this.raw.mode);
+  }
+
+  paintStyle(active: boolean): LineLayerSpecification['paint'] {
+    if (active) {
+      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
+        return LineStyles.walkingActive;
+      } else {
+        if (this.raw.routeColor) {
+          return LineStyles.activeColored(`#${this.raw.routeColor}`);
+        } else {
+          return LineStyles.active;
+        }
+      }
+    } else {
+      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
+        return LineStyles.walkingInactive;
+      } else {
+        return LineStyles.inactive;
+      }
+    }
+  }
+}
 
 export type TripFetchError =
   | { transit: true; itineraryError: ItineraryError }
@@ -22,7 +128,7 @@ export async function fetchBestTrips(
   departureDate?: string,
   arriveBy?: boolean,
   transitWithBicycle?: boolean,
-): Promise<Result<TravelmuxTrip[], TripFetchError>> {
+): Promise<Result<Trip[], TripFetchError>> {
   const modes = [mode];
   if (mode == TravelMode.Transit && transitWithBicycle) {
     modes.push(TravelMode.Bike);

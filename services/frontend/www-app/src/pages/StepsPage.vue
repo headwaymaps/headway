@@ -38,7 +38,7 @@ import { getBaseMap } from 'src/components/BaseMap.vue';
 import { TravelMode, DistanceUnits } from 'src/utils/models';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { defineComponent, Component, Ref, ref } from 'vue';
-import { fetchBestTrips } from 'src/models/Trip';
+import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
@@ -46,7 +46,6 @@ import TripLayerId from 'src/models/TripLayerId';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery from 'src/models/TransitQuery';
-import { TravelmuxTrip } from 'src/services/TravelmuxClient';
 
 export default defineComponent({
   name: 'StepsPage',
@@ -70,7 +69,7 @@ export default defineComponent({
   },
   components: { SearchBox },
   data: function (): {
-    trip?: TravelmuxTrip;
+    trip?: Trip;
     tripMarkers: string[];
   } {
     return {

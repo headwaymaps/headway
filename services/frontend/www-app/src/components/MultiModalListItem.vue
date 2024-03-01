@@ -53,13 +53,13 @@ import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
 import { formatDuration } from 'src/utils/format';
 import { i18n } from 'src/i18n/lang';
-import { TravelmuxTrip } from 'src/services/TravelmuxClient';
+import Trip from 'src/models/Trip';
 
 export default defineComponent({
   name: 'MultiModalListItem',
   props: {
     trip: {
-      type: Object as PropType<TravelmuxTrip>,
+      type: Object as PropType<Trip>,
       required: true,
     },
     active: {

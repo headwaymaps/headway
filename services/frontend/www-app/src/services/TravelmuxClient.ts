@@ -1,15 +1,12 @@
-import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
+import { LngLat } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Result } from 'src/utils/Result';
-import { LineStyles, TripFetchError } from 'src/models/Trip';
+import Trip, { TripFetchError } from 'src/models/Trip';
 import { OTPPlanResponse, OTPItinerary } from './OTPClient';
 import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaClient';
 import Itinerary from 'src/models/Itinerary';
 import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
-import { formatDistance, formatDuration } from 'src/utils/format';
-import { LineString } from 'geojson';
-import { decodePolyline } from 'src/third_party/decodePath';
 
 export interface TravelmuxPlanResponse {
   _otp: OTPPlanResponse;
@@ -61,108 +58,6 @@ export enum TravelmuxMode {
   Transit = 'TRANSIT',
 }
 
-export class TravelmuxTripLeg {
-  raw: TravelmuxLeg;
-  geometry: LineString;
-
-  constructor(raw: TravelmuxLeg) {
-    this.raw = raw;
-    const points = decodePolyline(this.raw.geometry, 6, false);
-    this.geometry = {
-      type: 'LineString',
-      coordinates: points,
-    };
-  }
-
-  get start(): LngLat {
-    const lngLat = this.geometry.coordinates[0];
-    return new LngLat(lngLat[0], lngLat[1]);
-  }
-
-  get mode(): TravelMode {
-    return travelModeFromTravelmuxMode(this.raw.mode);
-  }
-
-  paintStyle(active: boolean): LineLayerSpecification['paint'] {
-    if (active) {
-      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
-        return LineStyles.walkingActive;
-      } else {
-        if (this.raw.routeColor) {
-          return LineStyles.activeColored(`#${this.raw.routeColor}`);
-        } else {
-          return LineStyles.active;
-        }
-      }
-    } else {
-      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
-        return LineStyles.walkingInactive;
-      } else {
-        return LineStyles.inactive;
-      }
-    }
-  }
-}
-
-export class TravelmuxTrip {
-  raw: TravelmuxItinerary;
-  inner: Route | Itinerary;
-  preferredDistanceUnits: DistanceUnits;
-  innerDistanceUnits: DistanceUnits;
-
-  constructor(
-    raw: TravelmuxItinerary,
-    preferredDistanceUnits: DistanceUnits,
-    inner: Route | Itinerary,
-    innerDistanceUnits: DistanceUnits,
-  ) {
-    this.raw = raw;
-    this.preferredDistanceUnits = preferredDistanceUnits;
-    this.inner = inner;
-    this.innerDistanceUnits = innerDistanceUnits;
-  }
-
-  get durationFormatted(): string {
-    return formatDuration(this.raw.duration, 'shortform');
-  }
-
-  get distanceFormatted(): string | undefined {
-    return formatDistance(
-      this.raw.distance,
-      this.innerDistanceUnits,
-      this.preferredDistanceUnits,
-    );
-  }
-
-  get bounds(): LngLatBounds {
-    return new LngLatBounds(this.raw.bounds.min, this.raw.bounds.max);
-  }
-
-  get legs(): TravelmuxTripLeg[] {
-    return this.raw.legs.map((raw: TravelmuxLeg) => new TravelmuxTripLeg(raw));
-  }
-
-  get mode(): TravelMode {
-    return travelModeFromTravelmuxMode(this.raw.mode);
-  }
-
-  transitItinerary(): Itinerary | undefined {
-    if (this.mode == TravelMode.Transit) {
-      return this.inner as Itinerary;
-    } else {
-      return undefined;
-    }
-  }
-
-  nonTransitRoute(): Route | undefined {
-    if (this.mode != TravelMode.Transit) {
-      return this.inner as Route;
-    } else {
-      return undefined;
-    }
-  }
-}
-
 export class TravelmuxClient {
   public static async fetchPlans(
     from: LngLat,
@@ -173,7 +68,7 @@ export class TravelmuxClient {
     time?: string,
     date?: string,
     arriveBy?: boolean,
-  ): Promise<Result<TravelmuxTrip[], TripFetchError>> {
+  ): Promise<Result<Trip[], TripFetchError>> {
     const params: TravelmuxPlanRequest = {
       fromPlace: `${from.lat},${from.lng}`,
       toPlace: `${to.lat},${to.lng}`,
@@ -222,7 +117,7 @@ export class TravelmuxClient {
               modes.includes(TravelmuxMode.Bike),
             );
             // OTP always returns metric units
-            return new TravelmuxTrip(
+            return new Trip(
               tmxItinerary,
               preferredDistanceUnits,
               otpItinerary,
@@ -256,7 +151,7 @@ export class TravelmuxClient {
               preferredDistanceUnits == tmxItinerary.distanceUnits,
               'expected preferredDistanceUnits to match tmxItinerary.distanceUnits for valhalla requests',
             );
-            return new TravelmuxTrip(
+            return new Trip(
               tmxItinerary,
               preferredDistanceUnits,
               route,
@@ -282,7 +177,7 @@ export class TravelmuxClient {
   }
 }
 
-function travelModeFromTravelmuxMode(mode: TravelmuxMode): TravelMode {
+export function travelModeFromTravelmuxMode(mode: TravelmuxMode): TravelMode {
   switch (mode) {
     case TravelmuxMode.Walk:
       return TravelMode.Walk;
