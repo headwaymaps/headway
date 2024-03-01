@@ -2,8 +2,8 @@ import { LngLat } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Result } from 'src/utils/Result';
 import Trip, { TripFetchError } from 'src/models/Trip';
-import { OTPPlanResponse, OTPItinerary } from './OTPClient';
-import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaClient';
+import { OTPPlanResponse, OTPItinerary } from './OpenTripPlannerAPI';
+import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaAPI';
 import Itinerary from 'src/models/Itinerary';
 import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
@@ -99,7 +99,6 @@ export class TravelmuxClient {
     const response = await fetch('/travelmux/v2/plan?' + query);
 
     if (response.ok) {
-      // TODO: sort responses by arrival time like we did w/ OTPClient
       const travelmuxResponseJson: TravelmuxPlanResponse =
         await response.json();
 

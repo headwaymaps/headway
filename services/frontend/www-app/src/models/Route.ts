@@ -4,7 +4,7 @@ import {
   ValhallaRouteLegManeuver,
   ValhallaError,
   ValhallaErrorCode,
-} from 'src/services/ValhallaClient';
+} from 'src/services/ValhallaAPI';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 
 export enum RouteErrorCode {

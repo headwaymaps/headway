@@ -7,7 +7,7 @@ import {
   OTPItinerary,
   OTPItineraryLeg,
   OTPMode,
-} from 'src/services/OTPClient';
+} from 'src/services/OpenTripPlannerAPI';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { formatDistance, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/third_party/decodePath';
@@ -83,7 +83,9 @@ export default class Itinerary {
     withBicycle: boolean,
   ) {
     this.raw = otp;
-    this.legs = otp.legs.map((otpLeg) => new ItineraryLeg(otpLeg));
+    this.legs = otp.legs.map(
+      (otpLeg: OTPItineraryLeg) => new ItineraryLeg(otpLeg),
+    );
     this.preferredDistanceUnits = distanceUnits;
     this.withBicycle = withBicycle;
   }

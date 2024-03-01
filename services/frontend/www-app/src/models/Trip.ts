@@ -18,6 +18,7 @@ export default class Trip {
   inner: Route | Itinerary;
   preferredDistanceUnits: DistanceUnits;
   innerDistanceUnits: DistanceUnits;
+  legs: TripLeg[];
 
   constructor(
     raw: TravelmuxItinerary,
@@ -28,6 +29,7 @@ export default class Trip {
     this.raw = raw;
     this.preferredDistanceUnits = preferredDistanceUnits;
     this.inner = inner;
+    this.legs = raw.legs.map((raw: TravelmuxLeg) => new TripLeg(raw));
     this.innerDistanceUnits = innerDistanceUnits;
   }
 
@@ -45,10 +47,6 @@ export default class Trip {
 
   get bounds(): LngLatBounds {
     return new LngLatBounds(this.raw.bounds.min, this.raw.bounds.max);
-  }
-
-  get legs(): TripLeg[] {
-    return this.raw.legs.map((raw: TravelmuxLeg) => new TripLeg(raw));
   }
 
   get mode(): TravelMode {

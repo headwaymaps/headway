@@ -37,7 +37,7 @@ import { defineComponent, PropType } from 'vue';
 import {
   ValhallaRouteLegManeuver,
   valhallaTypeToIcon,
-} from 'src/services/ValhallaClient';
+} from 'src/services/ValhallaAPI';
 import { getBaseMap } from './BaseMap.vue';
 import Trip from 'src/models/Trip';
 
