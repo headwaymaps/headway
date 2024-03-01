@@ -285,6 +285,7 @@ function travelModeFromOtpMode(mode: OTPMode): TravelMode {
     case OTPMode.Bicycle:
       return TravelMode.Bike;
     case OTPMode.Transit:
+    case OTPMode.Bus:
       return TravelMode.Transit;
     case OTPMode.Car:
       return TravelMode.Drive;
