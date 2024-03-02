@@ -79,5 +79,5 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets --all-features
-      - run: cargo test --all-targets --all-feauture
+      - run: cargo test --all-targets --all-features
       - run: cargo build --release
