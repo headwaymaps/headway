@@ -12,6 +12,7 @@ use crate::api::AppState;
 use crate::otp::otp_api;
 use crate::util::{deserialize_point_from_lat_lon, extend_bounds};
 use crate::valhalla::valhalla_api;
+use crate::valhalla::valhalla_api::ValhallaRouteResponseResult;
 use crate::{DistanceUnit, Error, TravelMode};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -46,6 +47,27 @@ struct PlanResponse {
     _valhalla: Option<valhalla_api::RouteResponse>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+enum PlanError {
+    // TODO
+    // Otp(otp_api::PlanResponseError),
+    Valhalla(valhalla_api::RouteResponseError),
+}
+
+impl From<valhalla_api::RouteResponseError> for PlanError {
+    fn from(value: valhalla_api::RouteResponseError) -> Self {
+        PlanError::Valhalla(value)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(untagged)]
+enum PlanResult {
+    Ok(Box<PlanResponse>),
+    Err(PlanError),
+}
+
 impl PlanResponse {
     fn from_otp(mode: TravelMode, mut otp: otp_api::PlanResponse) -> Self {
         otp.plan
@@ -66,7 +88,14 @@ impl PlanResponse {
         }
     }
 
-    fn from_valhalla(mode: TravelMode, valhalla: valhalla_api::RouteResponse) -> Self {
+    fn from_valhalla(mode: TravelMode, valhalla: ValhallaRouteResponseResult) -> PlanResult {
+        log::info!("valhalla response: {:?}", valhalla);
+
+        let valhalla = match valhalla {
+            ValhallaRouteResponseResult::Ok(valhalla) => valhalla,
+            ValhallaRouteResponseResult::Err(err) => return PlanResult::Err(err.into()),
+        };
+
         let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
         if let Some(alternates) = &valhalla.alternates {
             for alternate in alternates {
@@ -74,11 +103,11 @@ impl PlanResponse {
             }
         }
 
-        PlanResponse {
+        PlanResult::Ok(Box::new(PlanResponse {
             plan: Plan { itineraries },
             _otp: None,
             _valhalla: Some(valhalla),
-        }
+        }))
     }
 }
 
@@ -235,7 +264,7 @@ pub async fn get_plan(
         .preferred_distance_units
         .unwrap_or(DistanceUnit::Kilometers);
 
-    // FIXME: Handle bus+bike if bike is first
+    // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforicing this
     match primary_mode {
         TravelMode::Transit => {
             let Some(mut router_url) = app_state
@@ -309,7 +338,7 @@ pub async fn get_plan(
             );
             response.content_type("application/json;charset=utf-8");
 
-            let valhalla_route_response: valhalla_api::RouteResponse =
+            let valhalla_route_response: ValhallaRouteResponseResult =
                 valhalla_response.json().await?;
             let plan_response = PlanResponse::from_valhalla(*primary_mode, valhalla_route_response);
             Ok(response.json(plan_response))
@@ -330,7 +359,13 @@ mod tests {
             File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
-        let plan_response = PlanResponse::from_valhalla(TravelMode::Walk, valhalla);
+
+        let valhalla_response_result = ValhallaRouteResponseResult::Ok(valhalla);
+        let plan_result = PlanResponse::from_valhalla(TravelMode::Walk, valhalla_response_result);
+        let plan_response = match plan_result {
+            PlanResult::Ok(plan_response) => plan_response,
+            PlanResult::Err(err) => panic!("unexpected error: {:?}", err),
+        };
         assert_eq!(plan_response.plan.itineraries.len(), 3);
 
         // itineraries

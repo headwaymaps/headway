@@ -125,7 +125,13 @@ export default defineComponent({
           case RouteErrorCode.UnsupportedArea:
             return this.$t('routing_area_not_supported');
           case RouteErrorCode.Other:
-            return this.$t('routing_error_unknown');
+            if (error.routeError.message) {
+              return this.$t('other_routing_error_with_$message', {
+                message: error.routeError.message,
+              });
+            } else {
+              return this.$t('routing_error_unknown');
+            }
         }
       }
     },

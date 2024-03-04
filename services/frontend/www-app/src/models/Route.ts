@@ -29,6 +29,12 @@ export class RouteError {
           message: vError.error,
         };
       }
+      default: {
+        return {
+          errorCode: RouteErrorCode.Other,
+          message: vError.error,
+        };
+      }
     }
   }
 }

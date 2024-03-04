@@ -97,4 +97,4 @@ export type OTPError =
   | { planError: OTPPlanError }
   | { responseError: OTPResponseError };
 
-type OTPResponseError = { status: number };
+export type OTPResponseError = { status: number };

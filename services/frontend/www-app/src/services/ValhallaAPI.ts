@@ -15,6 +15,7 @@ export interface ValhallaRouteLegManeuver {
 // incomplete
 export enum ValhallaErrorCode {
   UnsupportedArea = 171,
+  Unknown,
 }
 
 export type ValhallaError = {

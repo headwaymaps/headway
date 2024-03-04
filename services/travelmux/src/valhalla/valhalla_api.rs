@@ -22,9 +22,22 @@ pub struct ValhallaRouteQuery {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RouteResponseError {
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RouteResponse {
     pub trip: Trip,
     pub alternates: Option<Vec<Alternate>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ValhallaRouteResponseResult {
+    Ok(RouteResponse),
+    Err(RouteResponseError),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

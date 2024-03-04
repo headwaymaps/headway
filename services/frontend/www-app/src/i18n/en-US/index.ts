@@ -9,6 +9,10 @@ export default {
     'Sorry, unable to find transit directions for this trip.',
   transit_routing_not_enabled:
     'Transit directions are disabled or incorrectly configured. Please contact the server administrator',
+  routing_error_unknown:
+    'Sorry, there was an unknown error while trying to get directions for this trip.',
+  other_routing_error_with_$message:
+    'There was an error while trying to get directions for this trip: {message}',
   try_driving_directions: 'Try driving directions instead?',
   where_to_question: 'Where to?',
   my_location: 'My Location',

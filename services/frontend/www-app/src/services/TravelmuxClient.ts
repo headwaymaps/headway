@@ -1,11 +1,15 @@
 import { LngLat } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import { Ok, Result } from 'src/utils/Result';
+import { Ok, Err, Result } from 'src/utils/Result';
 import Trip, { TripFetchError } from 'src/models/Trip';
-import { OTPPlanResponse, OTPItinerary } from './OpenTripPlannerAPI';
+import {
+  OTPPlanResponse,
+  OTPItinerary,
+  OTPResponseError,
+} from './OpenTripPlannerAPI';
 import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaAPI';
-import Itinerary from 'src/models/Itinerary';
-import Route from 'src/models/Route';
+import Itinerary, { ItineraryError } from 'src/models/Itinerary';
+import Route, { RouteError } from 'src/models/Route';
 import { zipWith } from 'lodash';
 
 export interface TravelmuxPlanResponse {
@@ -165,12 +169,21 @@ export class TravelmuxClient {
     } else {
       if (modes.includes(TravelmuxMode.Transit)) {
         console.warn('Error in OTP response', response);
-        // const responseError = { status: response.status };
-        // TODO: handle OTPErrorId.
-        throw new Error('Transit error handling not yet implemented');
+        // currently travelmux doesn't return json for error responses, it should.
+        // This was broken before "travelmux" - I think it broke when first introducing
+        // transitmux in front of OTP
+        const otpError: OTPResponseError = { status: response.status };
+        const itineraryError = ItineraryError.fromOtp({
+          responseError: otpError,
+        });
+        return Err({ transit: true, itineraryError });
       } else {
-        //return Err({ transit: false, responseError });
-        throw new Error('Non-transit error handling not yet implemented');
+        const errorBody = await response.json();
+        console.log('errorBody', errorBody);
+        const valhallaErrorBody = errorBody['valhalla'];
+        console.log('Valhalla errorBody', valhallaErrorBody);
+        const routeError = RouteError.fromValhalla(valhallaErrorBody);
+        return Err({ transit: false, routeError });
       }
     }
   }

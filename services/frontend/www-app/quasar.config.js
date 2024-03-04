@@ -56,7 +56,7 @@ module.exports = configure(function (/* ctx */) {
       },
 
       vueRouterMode: 'history', // available values: 'hash', 'history'
-      // Use this for dev where we don't have mod_rewrite, otherwise refreshing page 404's
+      // Dev: Use this where we don't have mod_rewrite, otherwise refreshing page with path 404's
       // vueRouterMode: 'hash',
 
       // vueRouterBase,
