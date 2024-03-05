@@ -1,3 +1,5 @@
+// The polline decode method was originally based on the following (though it's changed a bit):
+
 // Copyright (c) 2018 Valhalla contributors
 // Copyright (c) 2015-2017 Mapillary AB, Mapzen
 
@@ -22,8 +24,6 @@
 export function decodePolyline(
   str: string,
   precision: number,
-  // REVIEW: get rid of this bool now that we've normalized the API
-  latBeforelng: boolean,
 ): [number, number][] {
   let index = 0,
     lat = 0,
@@ -31,8 +31,8 @@ export function decodePolyline(
     shift = 0,
     result = 0,
     byte = null,
-    latitude_change,
-    longitude_change;
+    latitudeChange,
+    longitudeChange;
   const coordinates: [number, number][] = [],
     factor = Math.pow(10, precision);
 
@@ -51,7 +51,7 @@ export function decodePolyline(
       shift += 5;
     } while (byte >= 0x20);
 
-    latitude_change = result & 1 ? ~(result >> 1) : result >> 1;
+    latitudeChange = result & 1 ? ~(result >> 1) : result >> 1;
 
     shift = result = 0;
 
@@ -61,16 +61,13 @@ export function decodePolyline(
       shift += 5;
     } while (byte >= 0x20);
 
-    longitude_change = result & 1 ? ~(result >> 1) : result >> 1;
+    longitudeChange = result & 1 ? ~(result >> 1) : result >> 1;
 
-    lat += latitude_change;
-    lng += longitude_change;
+    lat += latitudeChange;
+    lng += longitudeChange;
 
-    if (latBeforelng) {
-      coordinates.push([lat / factor, lng / factor]);
-    } else {
-      coordinates.push([lng / factor, lat / factor]);
-    }
+    const coord: [number, number] = [lng / factor, lat / factor];
+    coordinates.push(coord);
   }
 
   return coordinates;

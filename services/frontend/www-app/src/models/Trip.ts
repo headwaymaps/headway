@@ -11,7 +11,7 @@ import {
   travelModeFromTravelmuxMode,
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration } from 'src/utils/format';
-import { decodePolyline } from 'src/third_party/decodePath';
+import { decodePolyline } from 'src/utils/decodePolyline';
 
 export default class Trip {
   raw: TravelmuxItinerary;
@@ -76,7 +76,7 @@ export class TripLeg {
 
   constructor(raw: TravelmuxLeg) {
     this.raw = raw;
-    const points = decodePolyline(this.raw.geometry, 6, false);
+    const points = decodePolyline(this.raw.geometry, 6);
     this.geometry = {
       type: 'LineString',
       coordinates: points,

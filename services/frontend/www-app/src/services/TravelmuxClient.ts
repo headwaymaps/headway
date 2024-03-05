@@ -179,9 +179,7 @@ export class TravelmuxClient {
         return Err({ transit: true, itineraryError });
       } else {
         const errorBody = await response.json();
-        console.log('errorBody', errorBody);
         const valhallaErrorBody = errorBody['valhalla'];
-        console.log('Valhalla errorBody', valhallaErrorBody);
         const routeError = RouteError.fromValhalla(valhallaErrorBody);
         return Err({ transit: false, routeError });
       }

@@ -10,7 +10,7 @@ import {
 } from 'src/services/OpenTripPlannerAPI';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { formatDistance, formatTime } from 'src/utils/format';
-import { decodePolyline } from 'src/third_party/decodePath';
+import { decodePolyline } from 'src/utils/decodePolyline';
 
 export enum ItineraryErrorCode {
   Other,
@@ -206,7 +206,6 @@ export class ItineraryLeg {
     const points: [number, number][] = decodePolyline(
       this.raw.legGeometry.points,
       5,
-      false,
     );
     return {
       type: 'LineString',
