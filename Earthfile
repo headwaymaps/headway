@@ -180,7 +180,7 @@ images:
     FROM debian:bookworm-slim
     ARG tags="dev"
     ARG branding
-    BUILD +transitmux-serve-image --tags=${tags}
+    BUILD +travelmux-serve-image --tags=${tags}
     BUILD +otp-serve-image --tags=${tags}
     BUILD +valhalla-serve-image --tags=${tags}
     BUILD +web-serve-image --tags=${tags} --branding=${branding}
@@ -585,47 +585,47 @@ otp-serve-image:
         SAVE IMAGE --push ghcr.io/headwaymaps/opentripplanner:${tag}
     END
 
-build-transitmux:
+build-travelmux:
     FROM rust:bookworm
 
-    WORKDIR transitmux
+    WORKDIR travelmux
 
     # This speeds up rebuilds of rust projectst by caching the prebuilt
     # dependencies in a separate docker layer. Without this, every change to
     # the source requires re-downloading and re-building all the project deps,
     # which takes a while.
-    COPY ./services/transitmux/Cargo.toml .
-    COPY ./services/transitmux/Cargo.lock .
+    COPY ./services/travelmux/Cargo.toml .
+    COPY ./services/travelmux/Cargo.lock .
     RUN mkdir src
     RUN echo 'fn main() { /* dummy main to get cargo to build deps */ }' > src/main.rs
     RUN cargo build --release
     RUN rm src/main.rs
 
-    COPY ./services/transitmux .
+    COPY ./services/travelmux .
     RUN cargo build --release
-    SAVE ARTIFACT target/release/transitmux-server /transitmux-server
+    SAVE ARTIFACT target/release/travelmux-server /travelmux-server
 
-transitmux-serve-image:
+travelmux-serve-image:
     FROM debian:bookworm-slim
 
     RUN apt-get update \
         && apt-get install -y --no-install-recommends libssl3 \
         && rm -rf /var/lib/apt/lists/*
 
-    RUN adduser --disabled-login transitmux --gecos ""
-    USER transitmux
+    RUN adduser --disabled-login travelmux --gecos ""
+    USER travelmux
 
-    WORKDIR /home/transitmux
-    COPY +build-transitmux/transitmux-server transitmux-server
+    WORKDIR /home/travelmux
+    COPY +build-travelmux/travelmux-server travelmux-server
 
     EXPOSE 8000
     ENV RUST_LOG=info
-    ENTRYPOINT ["/home/transitmux/transitmux-server"]
-    CMD ["http://opentripplanner:8000/otp/routers"]
+    ENTRYPOINT ["/home/travelmux/travelmux-server"]
+    CMD ["http://valhalla:8002", "http://opentripplanner:8000/otp/routers"]
 
     ARG --required tags
     FOR tag IN ${tags}
-        SAVE IMAGE --push ghcr.io/headwaymaps/transitmux:${tag}
+        SAVE IMAGE --push ghcr.io/headwaymaps/travelmux:${tag}
     END
 
 ##############################
@@ -825,8 +825,7 @@ web-serve-image:
     ENV HEADWAY_SHARED_VOL=/data
     ENV HEADWAY_HTTP_PORT=8080
     ENV HEADWAY_RESOLVER=127.0.0.11
-    ENV HEADWAY_TRANSITMUX_URL=http://transitmux:8000
-    ENV HEADWAY_VALHALLA_URL=http://valhalla:8002
+    ENV HEADWAY_TRAVELMUX_URL=http://travelmux:8000
     ENV HEADWAY_TILESERVER_URL=http://tileserver:8000
     ENV HEADWAY_PELIAS_URL=http://pelias-api:8080
     # for escaping $ in nginx template

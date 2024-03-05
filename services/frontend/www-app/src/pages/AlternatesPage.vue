@@ -27,18 +27,18 @@
     <q-list v-if="trips.length > 0">
       <trip-list-item
         v-for="trip in trips"
-        :click-handler="() => clickTrip(trip)"
+        :click-handler="
+          /* why is this cast necessary? */ () => clickTrip(trip as Trip)
+        "
         :active="$data.activeTrip === trip"
         :duration-formatted="trip.durationFormatted"
-        :distance-formatted="trip.lengthFormatted"
+        :distance-formatted="trip.distanceFormatted"
         v-bind:key="JSON.stringify(trip)"
       >
         <component
           :is="componentForMode(trip.mode)"
           :trip="trip"
           :active="trip === activeTrip"
-          :earliest-start="earliestStart"
-          :latest-arrival="latestArrival"
         />
         <q-item-label>
           <q-btn
@@ -48,7 +48,9 @@
             icon="directions"
             :label="$t('route_picker_show_route_details_btn')"
             size="sm"
-            v-on:click="showTripSteps(trip)"
+            v-on:click="
+              /* why is this cast necessary? */ showTripSteps(trip as Trip)
+            "
           />
         </q-item-label>
       </trip-list-item>
@@ -72,7 +74,7 @@ import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 import Trip, { fetchBestTrips, TripFetchError } from 'src/models/Trip';
 import TripLayerId from 'src/models/TripLayerId';
-import Itinerary, { ItineraryErrorCode } from 'src/models/Itinerary';
+import { ItineraryErrorCode } from 'src/models/Itinerary';
 import { RouteErrorCode } from 'src/models/Route';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
@@ -95,9 +97,6 @@ export default defineComponent({
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
-    // only used by transit
-    earliestStart: number;
-    latestArrival: number;
   } {
     return {
       trips: [],
@@ -105,8 +104,6 @@ export default defineComponent({
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
-      earliestStart: 0,
-      latestArrival: 0,
     };
   },
   components: { TripListItem, TripSearch },
@@ -128,7 +125,13 @@ export default defineComponent({
           case RouteErrorCode.UnsupportedArea:
             return this.$t('routing_area_not_supported');
           case RouteErrorCode.Other:
-            return this.$t('routing_error_unknown');
+            if (error.routeError.message) {
+              return this.$t('other_routing_error_with_$message', {
+                message: error.routeError.message,
+              });
+            } else {
+              return this.$t('routing_error_unknown');
+            }
         }
       }
     },
@@ -140,6 +143,8 @@ export default defineComponent({
           return SingleModeListItem;
         case TravelMode.Transit:
           return MultiModalListItem;
+        default:
+          throw new Error(`unexpected mode: ${mode ?? 'none'}`);
       }
     },
     clickTrip(trip: Trip) {
@@ -223,7 +228,6 @@ export default defineComponent({
 
         if (result.ok) {
           const trips = result.value;
-          this.calculateTransitStats(trips);
           this.trips = trips;
           this.renderTrips(0);
           this.error = undefined;
@@ -253,7 +257,7 @@ export default defineComponent({
     },
     renderTrips(selectedIdx: number) {
       console.assert(this.trips.length > 0);
-      const trips: Trip[] = this.trips;
+      const trips: Trip[] = this.trips as Trip[];
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');
@@ -282,12 +286,12 @@ export default defineComponent({
           }
 
           let layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
-          map.pushTripLayer(layerId, leg.geometry(), leg.paintStyle(false));
+          map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(false));
           if (legIdx > 0) {
             let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
             map.pushMarker(
               transferLayerId.toString(),
-              Markers.transfer().setLngLat(leg.start()),
+              Markers.transfer().setLngLat(leg.start),
             );
           }
           map.on('mouseover', layerId.toString(), () => {
@@ -309,33 +313,12 @@ export default defineComponent({
         if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
           map.pushTripLayer(
             TripLayerId.selectedLeg(selectedIdx, legIdx),
-            leg.geometry(),
+            leg.geometry,
             leg.paintStyle(true),
           );
         }
       }
       getBaseMap()?.fitBounds(selectedTrip.bounds);
-    },
-    calculateTransitStats(trips: Trip[]) {
-      this.$data.earliestStart = Number.MAX_SAFE_INTEGER;
-      this.$data.latestArrival = 0;
-      // terrible hack.
-      if (this.mode != TravelMode.Transit) {
-        return;
-      }
-
-      let itineraries: Itinerary[] = trips as Itinerary[];
-
-      for (var index = 0; index < itineraries.length; index++) {
-        this.$data.earliestStart = Math.min(
-          this.$data.earliestStart,
-          itineraries[index].startTime,
-        );
-        this.$data.latestArrival = Math.max(
-          this.$data.latestArrival,
-          itineraries[index].endTime,
-        );
-      }
     },
   },
   watch: {

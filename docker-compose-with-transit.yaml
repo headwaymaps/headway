@@ -6,8 +6,8 @@ services:
     environment:
       AREAMAP_ARTIFACT_DEST: /data/${HEADWAY_AREA}.mbtiles
       AREAMAP_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_AREA}.mbtiles
-      TERRAIN_ARTIFACT_DEST_PATH: /data/terrain.mbtiles
-      TERRAIN_ARTIFACT_SOURCE_PATH: /bootstrap/terrain.mbtiles
+      TERRAIN_ARTIFACT_DEST: /data/terrain.mbtiles
+      TERRAIN_ARTIFACT_SOURCE: /bootstrap/terrain.mbtiles
       LANDCOVER_ARTIFACT_DEST: /data/landcover.mbtiles
       LANDCOVER_ARTIFACT_SOURCE: /bootstrap/landcover.mbtiles
     volumes:
@@ -46,17 +46,21 @@ services:
       opentripplanner-init:
         condition: service_completed_successfully
     networks:
-      - transit_backend
-  transitmux:
-    image: ghcr.io/headwaymaps/transitmux:latest
+      - otp_backend
+    # ports:
+    #   - "9001:8000"
+  travelmux:
+    image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
     env_file: .env
     depends_on:
       opentripplanner:
         condition: service_healthy
     networks:
-      - transit_backend
-      - transit_frontend
+      - travel_frontend
+      - otp_backend
+      - valhalla_backend
+    command: ["http://valhalla:8002", "http://opentripplanner:8000/otp/routers"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
@@ -74,7 +78,7 @@ services:
     restart: always
     env_file: .env
     networks:
-      - valhalla_frontend
+      - valhalla_backend
     volumes:
       - "valhalla_data:/data/:ro"
     ulimits:
@@ -84,6 +88,8 @@ services:
     depends_on:
       valhalla-init:
         condition: service_completed_successfully
+    # ports:
+    #   - "9002:8002"
   frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
@@ -98,21 +104,19 @@ services:
       HEADWAY_RESOLVER: 127.0.0.11
       HEADWAY_PELIAS_URL: http://pelias-api:4000
       HEADWAY_TILESERVER_URL: http://tileserver:8000
-      HEADWAY_TRANSITMUX_URL: http://transitmux:8000
-      HEADWAY_VALHALLA_URL: http://valhalla:8002
+      HEADWAY_TRAVELMUX_URL: http://travelmux:8000
     ports:
       - "8080:8080"
     networks:
       - pelias_frontend
       - tileserver_frontend
-      - transit_frontend
-      - valhalla_frontend
+      - travel_frontend
     volumes:
       - "frontend_data:/data/:ro"
     depends_on:
       - "pelias-api"
       - "tileserver"
-      - "transitmux"
+      - "travelmux"
       - "valhalla"
   pelias-config-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
@@ -162,6 +166,8 @@ services:
         condition: service_healthy
       pelias-config-init:
         condition: service_completed_successfully
+    # ports:
+    #   - "4000:4000"
   pelias-placeholder:
     image: pelias/placeholder:master
     restart: always
@@ -205,9 +211,9 @@ networks:
   tileserver_frontend:
   pelias_frontend:
   pelias_backend:
-  valhalla_frontend:
-  transit_frontend:
-  transit_backend:
+  travel_frontend:
+  valhalla_backend:
+  otp_backend:
 volumes:
   pelias_config_data:
   pelias_placeholder_data:

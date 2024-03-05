@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travelmux
+spec:
+  selector:
+    matchLabels:
+      app: travelmux
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: travelmux
+    spec:
+      containers:
+        - name: main
+          image: ghcr.io/headwaymaps/travelmux:maps-earth-dev
+          imagePullPolicy: Always
+          args: ["http://valhalla:8002", "http://opentripplanner-seattle:8000/otp/routers"]
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health/alive
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 10

@@ -25,16 +25,8 @@ http {
       proxy_pass      ${HEADWAY_PELIAS_URL}/;
     }
 
-    location ^~ /transitmux/ {
-      set $enable_transit_routing ${HEADWAY_ENABLE_TRANSIT_ROUTING};
-      if ($enable_transit_routing != 1) {
-        return 404;
-      }
-      proxy_pass      ${HEADWAY_TRANSITMUX_URL}/;
-    }
-
-    location ^~ /valhalla/  {
-      proxy_pass      ${HEADWAY_VALHALLA_URL}/;
+    location ^~ /travelmux/ {
+      proxy_pass      ${HEADWAY_TRAVELMUX_URL}/;
     }
 
     location ^~ /tileserver/  {

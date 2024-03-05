@@ -74,6 +74,7 @@ export function formatLngLatAsLatLng(point: LngLatLike): string {
 }
 
 export function formatTime(dateArgs: number | string | Date): string {
+  console.assert(dateArgs !== undefined);
   return new Date(dateArgs).toLocaleTimeString([], { timeStyle: 'short' });
 }
 
@@ -96,19 +97,66 @@ export function dayOfWeek(dateArgs: number | string | Date): string {
   return new Date(dateArgs).toLocaleString([], { weekday: 'short' });
 }
 
-export function kilometersToMiles(kilometers: number): number {
-  return kilometers * 0.62137119;
-}
-
 export function formatDistance(
-  distance: number,
-  units: DistanceUnits,
+  inputDistance: number,
+  inputUnits: DistanceUnits,
+  outputUnits: DistanceUnits,
   precision = 1,
 ): string {
-  const rounded = distance.toFixed(precision);
-  if (units == DistanceUnits.Kilometers) {
-    return `${rounded} ${i18n.global.t('shortened_distances.kilometers')}`;
+  console.assert(inputUnits, 'missing input distance units');
+  console.assert(outputUnits, 'missing output distance units');
+
+  let distance;
+
+  if (inputUnits == outputUnits) {
+    distance = inputDistance;
+  } else if (
+    inputUnits == DistanceUnits.Miles &&
+    outputUnits == DistanceUnits.Kilometers
+  ) {
+    distance = inputDistance * 1.60934;
+  } else if (
+    inputUnits == DistanceUnits.Miles &&
+    outputUnits == DistanceUnits.Meters
+  ) {
+    distance = inputDistance * 1609.34;
+  } else if (
+    inputUnits == DistanceUnits.Kilometers &&
+    outputUnits == DistanceUnits.Miles
+  ) {
+    distance = inputDistance * 0.6213727366;
+  } else if (
+    inputUnits == DistanceUnits.Kilometers &&
+    outputUnits == DistanceUnits.Meters
+  ) {
+    distance = inputDistance * 1000;
+  } else if (
+    inputUnits == DistanceUnits.Meters &&
+    outputUnits == DistanceUnits.Kilometers
+  ) {
+    distance = inputDistance * 0.001;
+  } else if (
+    inputUnits == DistanceUnits.Meters &&
+    outputUnits == DistanceUnits.Miles
+  ) {
+    distance = inputDistance * 0.0006213727366;
   } else {
+    console.assert(
+      false,
+      'unhandled case: ' + inputUnits + ' -> ' + outputUnits,
+    );
+    distance = inputDistance;
+  }
+
+  const rounded = distance.toFixed(precision);
+  if (outputUnits == DistanceUnits.Kilometers) {
+    return `${rounded} ${i18n.global.t('shortened_distances.kilometers')}`;
+  } else if (outputUnits == DistanceUnits.Meters) {
+    return `${rounded} ${i18n.global.t('shortened_distances.meters')}`;
+  } else if (outputUnits == DistanceUnits.Miles) {
     return `${rounded} ${i18n.global.t('shortened_distances.miles')}`;
+  } else {
+    console.assert(`unhandled output units: ${outputUnits}`);
+    return `${rounded}`;
   }
 }

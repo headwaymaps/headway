@@ -1,9 +1,9 @@
 <template>
   <q-item-label>
-    {{ trip.startStopTimesFormatted() }}
+    {{ itinerary.startStopTimesFormatted }}
   </q-item-label>
   <q-item-label>
-    <span v-for="(leg, idx) in trip.legs" v-bind:key="JSON.stringify(leg)">
+    <span v-for="(leg, idx) in itinerary.legs" v-bind:key="JSON.stringify(leg)">
       <span v-if="idx > 0"> → </span>
       {{ leg.shortName }}
       <sup v-if="leg.alerts.length > 0"><q-icon name="warning" /></sup>
@@ -13,9 +13,10 @@
     </span>
   </q-item-label>
   <q-item-label caption v-if="active">
-    {{ trip.formattedFootDistance() }}
+    {{ itinerary.walkingDistanceFormatted }}
   </q-item-label>
   <div v-if="formattedRealTimeUntilStart() !== undefined">
+    <!-- FIXME: this isn't *always* realtime, we shouldn't imply that it is -->
     <q-icon name="rss_feed" style="margin-right: 4px" />
     <span class="real-time-departure-time">
       {{ formattedRealTimeUntilStart() }}&nbsp;
@@ -28,8 +29,8 @@
       }}
     </span>
   </div>
-  <ul class="alert-list" :hidden="!active" v-if="trip.hasAlerts">
-    <li v-for="alert in trip.alerts" v-bind:key="JSON.stringify(alert)">
+  <ul class="alert-list" :hidden="!active" v-if="itinerary.hasAlerts">
+    <li v-for="alert in itinerary.alerts" v-bind:key="JSON.stringify(alert)">
       ⚠️ {{ alert.headerText }}
     </li>
   </ul>
@@ -52,33 +53,32 @@ import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
 import { formatDuration } from 'src/utils/format';
 import { i18n } from 'src/i18n/lang';
+import Trip from 'src/models/Trip';
 
 export default defineComponent({
   name: 'MultiModalListItem',
   props: {
     trip: {
-      type: Object as PropType<Itinerary>,
+      type: Object as PropType<Trip>,
       required: true,
     },
     active: {
       type: Boolean,
       required: true,
     },
-    earliestStart: {
-      type: Number,
-      required: true,
-    },
-    latestArrival: {
-      type: Number,
-      required: true,
-    },
   },
-  data(): { nowTime: number } {
-    return { nowTime: Date.now() };
+  data(): { nowTime: number; itinerary: Itinerary } {
+    // this cast is safe because we know that the trip is a transit trip
+    const itinerary = this.trip.transitItinerary() as Itinerary;
+    console.assert(itinerary);
+    return {
+      nowTime: Date.now(),
+      itinerary,
+    };
   },
   methods: {
     formattedRealTimeUntilStart(): string | undefined {
-      let startTime = this.trip.firstTransitLeg?.startTime;
+      let startTime = this.itinerary.firstTransitLeg?.startTime;
       if (!startTime) {
         return undefined;
       }

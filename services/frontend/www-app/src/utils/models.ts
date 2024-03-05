@@ -136,6 +136,7 @@ export function isDense(): boolean {
 export enum DistanceUnits {
   Miles = 'miles',
   Kilometers = 'kilometers',
+  Meters = 'meters',
 }
 
 export enum TravelMode {

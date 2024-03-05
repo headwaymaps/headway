@@ -8,7 +8,7 @@
       :ripple="false"
       size="sm"
       :to="linkPath('transit')"
-      :color="currentMode === 'transit' ? 'primary' : undefined"
+      :color="currentMode === TravelMode.Transit ? 'primary' : undefined"
     >
       {{ $t('modes.transit') }}
     </q-btn>
@@ -19,7 +19,7 @@
       :ripple="false"
       size="sm"
       :to="linkPath('car')"
-      :color="currentMode === 'car' ? 'primary' : undefined"
+      :color="currentMode === TravelMode.Drive ? 'primary' : undefined"
     >
       {{ $t('modes.drive') }}
     </q-btn>
@@ -30,7 +30,7 @@
       :ripple="false"
       size="sm"
       :to="linkPath('bicycle')"
-      :color="currentMode === 'bicycle' ? 'primary' : undefined"
+      :color="currentMode === TravelMode.Bike ? 'primary' : undefined"
     >
       {{ $t('modes.bike') }}
     </q-btn>
@@ -41,7 +41,7 @@
       :ripple="false"
       size="sm"
       :to="linkPath('walk')"
-      :color="currentMode === 'walk' ? 'primary' : undefined"
+      :color="currentMode === TravelMode.Walk ? 'primary' : undefined"
     >
       {{ $t('modes.walk') }}
     </q-btn>
@@ -67,6 +67,9 @@ export default defineComponent({
     fromPlace: Place,
     toPlace: Place,
   },
+  data: () => ({
+    TravelMode,
+  }),
   setup: function () {
     return { transitRoutingEnabled: Config.transitRoutingEnabled };
   },

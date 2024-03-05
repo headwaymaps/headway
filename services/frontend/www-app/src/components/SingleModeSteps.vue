@@ -3,7 +3,7 @@
     <q-item
       class="maneuver"
       active-class="bg-blue-1"
-      v-for="maneuver in trip.valhallaRoute.legs[0].maneuvers"
+      v-for="maneuver in route.valhallaRoute.legs[0].maneuvers"
       clickable
       v-on:click="clickedManeuver(maneuver)"
       v-bind:key="JSON.stringify(maneuver)"
@@ -37,22 +37,28 @@ import { defineComponent, PropType } from 'vue';
 import {
   ValhallaRouteLegManeuver,
   valhallaTypeToIcon,
-} from 'src/services/ValhallaClient';
+} from 'src/services/ValhallaAPI';
 import { getBaseMap } from './BaseMap.vue';
+import Trip from 'src/models/Trip';
 
 export default defineComponent({
   name: 'SingleModeSteps',
   props: {
     trip: {
-      type: Object as PropType<Route>,
+      type: Object as PropType<Trip>,
       required: true,
     },
   },
   data(): {
     geometry: GeoJSON.LineString;
+    route: Route;
   } {
+    // this cast is safe because we know that the trip is a non-transit trip
+    const route = this.trip.nonTransitRoute() as Route;
+    console.assert(route);
     return {
-      geometry: this.trip.legs[0].geometry(),
+      route,
+      geometry: this.trip.legs[0].geometry,
     };
   },
   methods: {
