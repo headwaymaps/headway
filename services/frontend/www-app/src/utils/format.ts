@@ -141,7 +141,6 @@ export function formatDistance(
   ) {
     distance = inputDistance * 0.0006213727366;
   } else {
-    // km -> miles
     console.assert(
       false,
       'unhandled case: ' + inputUnits + ' -> ' + outputUnits,
@@ -152,7 +151,12 @@ export function formatDistance(
   const rounded = distance.toFixed(precision);
   if (outputUnits == DistanceUnits.Kilometers) {
     return `${rounded} ${i18n.global.t('shortened_distances.kilometers')}`;
-  } else {
+  } else if (outputUnits == DistanceUnits.Meters) {
+    return `${rounded} ${i18n.global.t('shortened_distances.meters')}`;
+  } else if (outputUnits == DistanceUnits.Miles) {
     return `${rounded} ${i18n.global.t('shortened_distances.miles')}`;
+  } else {
+    console.assert(`unhandled output units: ${outputUnits}`);
+    return `${rounded}`;
   }
 }

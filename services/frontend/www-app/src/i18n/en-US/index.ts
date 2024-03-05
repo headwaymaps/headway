@@ -56,6 +56,7 @@ export default {
   shortened_distances: {
     kilometers: 'km',
     miles: 'mi',
+    meters: 'm',
   },
   walk_distance: '{preformattedDistance} walk total',
   bike_distance: '{preformattedDistance} bike total',
