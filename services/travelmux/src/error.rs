@@ -1,6 +1,7 @@
+use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 use std::error::Error as StdError;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 enum ErrorType {
     User,
     Server,
@@ -11,6 +12,18 @@ enum ErrorType {
 pub struct Error {
     error_type: ErrorType,
     source: Box<dyn StdError>,
+}
+
+impl serde::Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut my_struct = serializer.serialize_struct("Error", 2)?;
+        my_struct.serialize_field("error_type", &self.error_type)?;
+        my_struct.serialize_field("message", &self.source.to_string())?;
+        my_struct.end()
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

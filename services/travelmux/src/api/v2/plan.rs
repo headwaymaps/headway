@@ -47,45 +47,66 @@ struct PlanResponse {
     _valhalla: Option<valhalla_api::RouteResponse>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 enum PlanError {
-    // TODO
-    // Otp(otp_api::PlanResponseError),
     Valhalla(valhalla_api::RouteResponseError),
+    Travelmux(Error),
 }
 
 impl From<valhalla_api::RouteResponseError> for PlanError {
     fn from(value: valhalla_api::RouteResponseError) -> Self {
-        PlanError::Valhalla(value)
+        Self::Valhalla(value)
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+impl From<Error> for PlanError {
+    fn from(value: Error) -> Self {
+        Self::Travelmux(value)
+    }
+}
+
+#[derive(Debug, Serialize)]
 #[serde(untagged)]
 enum PlanResult {
     Ok(Box<PlanResponse>),
     Err(PlanError),
 }
 
+impl PlanResult {
+    // used in tests
+    #[allow(dead_code)]
+    fn unwrap(self) -> Box<PlanResponse> {
+        match self {
+            PlanResult::Ok(plan) => plan,
+            PlanResult::Err(err) => panic!("unexpected error: {:?}", err),
+        }
+    }
+}
+
 impl PlanResponse {
-    fn from_otp(mode: TravelMode, mut otp: otp_api::PlanResponse) -> Self {
+    fn from_otp(mode: TravelMode, mut otp: otp_api::PlanResponse) -> PlanResult {
         otp.plan
             .itineraries
             .sort_by(|a, b| a.end_time.cmp(&b.end_time));
 
-        let itineraries = otp
+        let itineraries_result: crate::Result<Vec<_>> = otp
             .plan
             .itineraries
             .iter()
             .map(|itinerary: &otp_api::Itinerary| Itinerary::from_otp(itinerary, mode))
             .collect();
 
-        PlanResponse {
+        let itineraries = match itineraries_result {
+            Ok(itineraries) => itineraries,
+            Err(err) => return PlanResult::Err(err.into()),
+        };
+
+        PlanResult::Ok(Box::new(PlanResponse {
             plan: Plan { itineraries },
             _otp: Some(otp),
             _valhalla: None,
-        }
+        }))
     }
 
     fn from_valhalla(mode: TravelMode, valhalla: ValhallaRouteResponseResult) -> PlanResult {
@@ -145,28 +166,34 @@ impl Itinerary {
         }
     }
 
-    fn from_otp(itinerary: &otp_api::Itinerary, mode: TravelMode) -> Self {
+    fn from_otp(itinerary: &otp_api::Itinerary, mode: TravelMode) -> crate::Result<Self> {
         // OTP responses are always in meters
         let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
-        let legs: Vec<Leg> = itinerary.legs.iter().map(Leg::from_otp).collect();
+        let Ok(legs): Result<Vec<_>, _> = itinerary.legs.iter().map(Leg::from_otp).collect() else {
+            return Err(Error::server("failed to parse legs"));
+        };
+
         let mut legs_iter = legs.iter();
-        // TODO: return server error?
-        let first_leg = legs_iter
-            .next()
-            .expect("at least one leg in any valid itinerary");
-        let mut itinerary_bounds = first_leg.bounding_rect().expect("TODO").expect("TODO");
+        let Some(first_leg) = legs_iter.next() else {
+            return Err(Error::server("itinerary had no legs"));
+        };
+        let Ok(Some(mut itinerary_bounds)) = first_leg.bounding_rect() else {
+            return Err(Error::server("first leg has no bounding_rect"));
+        };
         for leg in legs_iter {
-            let leg_bounds = leg.bounding_rect().expect("TODO").expect("TODO");
+            let Ok(Some(leg_bounds)) = leg.bounding_rect() else {
+                return Err(Error::server("leg has no bounding_rect"));
+            };
             extend_bounds(&mut itinerary_bounds, &leg_bounds);
         }
-        Self {
+        Ok(Self {
             duration: itinerary.duration as f64,
             mode,
             distance: distance_meters / 1000.0,
             distance_units: DistanceUnit::Kilometers,
             bounds: itinerary_bounds,
             legs,
-        }
+        })
     }
 }
 
@@ -192,13 +219,14 @@ impl Leg {
         Ok(line_string.bounding_rect())
     }
 
-    fn from_otp(otp: &otp_api::Leg) -> Self {
-        let line = decode_polyline(&otp.leg_geometry.points, 5).expect("TODO");
-        let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION).expect("TODO");
-        Self {
+    fn from_otp(otp: &otp_api::Leg) -> Result<Self, String> {
+        let line = decode_polyline(&otp.leg_geometry.points, 5)?;
+        let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION)?;
+
+        Ok(Self {
             geometry,
             route_color: otp.route_color.clone(),
-        }
+        })
     }
 
     fn from_valhalla(valhalla: &valhalla_api::Leg) -> Self {
@@ -401,10 +429,11 @@ mod tests {
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
         let plan_response = PlanResponse::from_otp(TravelMode::Transit, otp);
 
-        assert_eq!(plan_response.plan.itineraries.len(), 5);
+        let itineraries = plan_response.unwrap().plan.itineraries;
+        assert_eq!(itineraries.len(), 5);
 
         // itineraries
-        let first_itinerary = &plan_response.plan.itineraries[0];
+        let first_itinerary = &itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
         assert_relative_eq!(first_itinerary.distance, 10.69944);
         assert_relative_eq!(first_itinerary.duration, 3273.0);
