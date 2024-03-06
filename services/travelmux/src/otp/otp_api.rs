@@ -48,16 +48,30 @@ pub struct Itinerary {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Leg {
-    // pub mode: String,
-    // pub from: Location,
-    // pub to: Location,
+    pub mode: TransitMode,
     pub distance: f64,
-    // pub duration: f64,
     pub leg_geometry: LegGeometry,
     pub route_color: Option<String>,
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransitMode {
+    Walk,
+    Bicycle,
+    Car,
+    Tram,
+    Subway,
+    Rail,
+    Bus,
+    Ferry,
+    CableCar,
+    Gondola,
+    Funicular,
+    Transit,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -72,4 +86,37 @@ pub struct LegGeometry {
 pub struct Location {
     pub lat: f64,
     pub lon: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_walk_serialization() {
+        let mode = TransitMode::Walk;
+        let serialized = serde_json::to_string(&mode).unwrap();
+        assert_eq!(serialized, "\"WALK\"");
+    }
+
+    #[test]
+    fn test_walk_deserialization() {
+        let json = "\"WALK\"";
+        let deserialized: TransitMode = serde_json::from_str(json).unwrap();
+        assert_eq!(deserialized, TransitMode::Walk);
+    }
+
+    #[test]
+    fn test_cable_car_serialization() {
+        let mode = TransitMode::CableCar;
+        let serialized = serde_json::to_string(&mode).unwrap();
+        assert_eq!(serialized, "\"CABLE_CAR\"");
+    }
+
+    #[test]
+    fn test_cable_car_deserialization() {
+        let json = "\"CABLE_CAR\"";
+        let deserialized: TransitMode = serde_json::from_str(json).unwrap();
+        assert_eq!(deserialized, TransitMode::CableCar);
+    }
 }

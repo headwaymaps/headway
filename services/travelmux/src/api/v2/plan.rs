@@ -162,7 +162,11 @@ impl Itinerary {
             distance: valhalla.summary.length,
             bounds,
             distance_units: valhalla.units,
-            legs: valhalla.legs.iter().map(Leg::from_valhalla).collect(),
+            legs: valhalla
+                .legs
+                .iter()
+                .map(|v_leg| Leg::from_valhalla(v_leg, mode))
+                .collect(),
         }
     }
 
@@ -205,6 +209,9 @@ struct Leg {
 
     /// Some transit agencies have a color associated with their routes
     route_color: Option<String>,
+
+    /// Which mode is this leg of the journey?
+    mode: TravelMode,
 }
 
 impl Leg {
@@ -226,13 +233,15 @@ impl Leg {
         Ok(Self {
             geometry,
             route_color: otp.route_color.clone(),
+            mode: otp.mode.into(),
         })
     }
 
-    fn from_valhalla(valhalla: &valhalla_api::Leg) -> Self {
+    fn from_valhalla(valhalla: &valhalla_api::Leg, travel_mode: TravelMode) -> Self {
         Self {
             geometry: valhalla.shape.clone(),
             route_color: None,
+            mode: travel_mode,
         }
     }
 }
@@ -419,6 +428,7 @@ mod tests {
             epsilon = 1e-4
         );
         assert_eq!(first_leg.route_color, None);
+        assert_eq!(first_leg.mode, TravelMode::Walk);
     }
 
     #[test]
@@ -449,8 +459,10 @@ mod tests {
         );
 
         assert_eq!(first_leg.route_color, None);
+        assert_eq!(first_leg.mode, TravelMode::Walk);
 
         let fourth_leg = &first_itinerary.legs[3];
         assert_eq!(fourth_leg.route_color, Some("28813F".to_string()));
+        assert_eq!(fourth_leg.mode, TravelMode::Transit);
     }
 }
