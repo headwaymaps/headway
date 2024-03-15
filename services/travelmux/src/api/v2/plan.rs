@@ -12,7 +12,6 @@ use crate::api::AppState;
 use crate::otp::otp_api;
 use crate::util::{deserialize_point_from_lat_lon, extend_bounds};
 use crate::valhalla::valhalla_api;
-use crate::valhalla::valhalla_api::ValhallaRouteResponseResult;
 use crate::{DistanceUnit, Error, TravelMode};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -109,12 +108,17 @@ impl PlanResponse {
         }))
     }
 
-    fn from_valhalla(mode: TravelMode, valhalla: ValhallaRouteResponseResult) -> PlanResult {
+    fn from_valhalla(
+        mode: TravelMode,
+        valhalla: valhalla_api::ValhallaRouteResponseResult,
+    ) -> PlanResult {
         log::info!("valhalla response: {:?}", valhalla);
 
         let valhalla = match valhalla {
-            ValhallaRouteResponseResult::Ok(valhalla) => valhalla,
-            ValhallaRouteResponseResult::Err(err) => return PlanResult::Err(err.into()),
+            valhalla_api::ValhallaRouteResponseResult::Ok(valhalla) => valhalla,
+            valhalla_api::ValhallaRouteResponseResult::Err(err) => {
+                return PlanResult::Err(err.into())
+            }
         };
 
         let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
@@ -212,6 +216,50 @@ struct Leg {
 
     /// Which mode is this leg of the journey?
     mode: TravelMode,
+
+    maneuvers: Option<Vec<Maneuver>>,
+}
+
+// Eventually we might want to coalesce this into something not valhalla specific
+// but for now we only use it for valhalla trips
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Maneuver {
+    pub instruction: String,
+    pub cost: f64,
+    pub begin_shape_index: u64,
+    pub end_shape_index: u64,
+    pub highway: Option<bool>,
+    pub length: f64,
+    pub street_names: Option<Vec<String>>,
+    pub time: f64,
+    pub travel_mode: String,
+    pub travel_type: String,
+    pub r#type: u64,
+    pub verbal_post_transition_instruction: Option<String>,
+    pub verbal_pre_transition_instruction: String,
+    pub verbal_succinct_transition_instruction: Option<String>,
+}
+
+impl Maneuver {
+    fn from_valhalla(valhalla: valhalla_api::Maneuver) -> Self {
+        Self {
+            instruction: valhalla.instruction,
+            cost: valhalla.cost,
+            begin_shape_index: valhalla.begin_shape_index,
+            end_shape_index: valhalla.end_shape_index,
+            highway: valhalla.highway,
+            length: valhalla.length,
+            street_names: valhalla.street_names,
+            time: valhalla.time,
+            travel_mode: valhalla.travel_mode,
+            travel_type: valhalla.travel_type,
+            r#type: valhalla.r#type,
+            verbal_post_transition_instruction: valhalla.verbal_post_transition_instruction,
+            verbal_pre_transition_instruction: valhalla.verbal_pre_transition_instruction,
+            verbal_succinct_transition_instruction: valhalla.verbal_succinct_transition_instruction,
+        }
+    }
 }
 
 impl Leg {
@@ -234,6 +282,7 @@ impl Leg {
             geometry,
             route_color: otp.route_color.clone(),
             mode: otp.mode.into(),
+            maneuvers: None,
         })
     }
 
@@ -242,6 +291,14 @@ impl Leg {
             geometry: valhalla.shape.clone(),
             route_color: None,
             mode: travel_mode,
+            maneuvers: Some(
+                valhalla
+                    .maneuvers
+                    .iter()
+                    .cloned()
+                    .map(Maneuver::from_valhalla)
+                    .collect(),
+            ),
         }
     }
 }
@@ -375,7 +432,7 @@ pub async fn get_plan(
             );
             response.content_type("application/json;charset=utf-8");
 
-            let valhalla_route_response: ValhallaRouteResponseResult =
+            let valhalla_route_response: valhalla_api::ValhallaRouteResponseResult =
                 valhalla_response.json().await?;
             let plan_response = PlanResponse::from_valhalla(*primary_mode, valhalla_route_response);
             Ok(response.json(plan_response))
@@ -387,6 +444,7 @@ pub async fn get_plan(
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+    use serde_json::Value;
     use std::fs::File;
     use std::io::BufReader;
 
@@ -397,7 +455,7 @@ mod tests {
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
 
-        let valhalla_response_result = ValhallaRouteResponseResult::Ok(valhalla);
+        let valhalla_response_result = valhalla_api::ValhallaRouteResponseResult::Ok(valhalla);
         let plan_result = PlanResponse::from_valhalla(TravelMode::Walk, valhalla_response_result);
         let plan_response = match plan_result {
             PlanResult::Ok(plan_response) => plan_response,
@@ -429,6 +487,8 @@ mod tests {
         );
         assert_eq!(first_leg.route_color, None);
         assert_eq!(first_leg.mode, TravelMode::Walk);
+        let maneuvers = first_leg.maneuvers.as_ref().unwrap();
+        assert_eq!(maneuvers.len(), 21);
     }
 
     #[test]
@@ -464,5 +524,61 @@ mod tests {
         let fourth_leg = &first_itinerary.legs[3];
         assert_eq!(fourth_leg.route_color, Some("28813F".to_string()));
         assert_eq!(fourth_leg.mode, TravelMode::Transit);
+    }
+
+    #[test]
+    fn test_maneuver_from_valhalla_json() {
+        // deserialize a maneuever from a JSON string
+        let json = r#"
+        {
+            "begin_shape_index": 0,
+            "cost": 246.056,
+            "end_shape_index": 69,
+            "highway": true,
+            "instruction": "Drive northeast on Fauntleroy Way Southwest.",
+            "length": 2.218,
+            "street_names": [
+            "Fauntleroy Way Southwest"
+            ],
+            "time": 198.858,
+            "travel_mode": "drive",
+            "travel_type": "car",
+            "type": 2,
+            "verbal_post_transition_instruction": "Continue for 2 miles.",
+            "verbal_pre_transition_instruction": "Drive northeast on Fauntleroy Way Southwest.",
+            "verbal_succinct_transition_instruction": "Drive northeast."
+        }"#;
+
+        let valhalla_maneuver: valhalla_api::Maneuver = serde_json::from_str(json).unwrap();
+        assert_eq!(valhalla_maneuver.r#type, 2);
+        assert_eq!(
+            valhalla_maneuver.instruction,
+            "Drive northeast on Fauntleroy Way Southwest."
+        );
+
+        let maneuver = Maneuver::from_valhalla(valhalla_maneuver);
+        let actual = serde_json::to_string(&maneuver).unwrap();
+        dbg!(&actual);
+        // parse the JSON string back into an Object Value
+        let actual_object: Value = serde_json::from_str(&actual).unwrap();
+
+        let expected_object = serde_json::json!({
+            "beginShapeIndex": 0,
+            "cost": 246.056,
+            "endShapeIndex": 69,
+            "highway": true,
+            "instruction": "Drive northeast on Fauntleroy Way Southwest.",
+            "length": 2.218,
+            "streetNames": ["Fauntleroy Way Southwest"],
+            "time": 198.858,
+            "travelMode": "drive",
+            "travelType": "car",
+            "type": 2,
+            "verbalPostTransitionInstruction": "Continue for 2 miles.",
+            "verbalPreTransitionInstruction": "Drive northeast on Fauntleroy Way Southwest.",
+            "verbalSuccinctTransitionInstruction": "Drive northeast."
+        });
+
+        assert_eq!(actual_object, expected_object);
     }
 }
