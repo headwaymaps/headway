@@ -60,7 +60,7 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_elasticsearch:
-    image: pelias/elasticsearch:7.16.1
+    image: pelias/elasticsearch:8.12.2-beta
     container_name: pelias_elasticsearch
     volumes:
       - "${DATA_DIR}/elasticsearch:/usr/share/elasticsearch/data"

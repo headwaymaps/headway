@@ -184,7 +184,7 @@ services:
       pelias-placeholder-init:
         condition: service_completed_successfully
   pelias-elasticsearch:
-    image: pelias/elasticsearch:7.16.1
+    image: pelias/elasticsearch:8.12.2-beta
     restart: always
     networks:
       - pelias_backend
