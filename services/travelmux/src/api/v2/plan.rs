@@ -112,8 +112,6 @@ impl PlanResponse {
         mode: TravelMode,
         valhalla: valhalla_api::ValhallaRouteResponseResult,
     ) -> PlanResult {
-        log::info!("valhalla response: {:?}", valhalla);
-
         let valhalla = match valhalla {
             valhalla_api::ValhallaRouteResponseResult::Ok(valhalla) => valhalla,
             valhalla_api::ValhallaRouteResponseResult::Err(err) => {
