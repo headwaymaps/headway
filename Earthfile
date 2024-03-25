@@ -449,7 +449,7 @@ bbox:
     SAVE ARTIFACT bbox.txt /bbox.txt
 
 gtfs-get-mobilitydb:
-    FROM +debian:bookworm-slim
+    FROM debian:bookworm-slim
     ARG --required cache_key
     RUN curl 'https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media' > mobilitydb.csv
     SAVE ARTIFACT mobilitydb.csv mobilitydb.csv AS LOCAL "./data/mobilitydb-${cache_key}.csv"
