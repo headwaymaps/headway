@@ -14,7 +14,11 @@ Prerequisites: [Install earthly.](#install-earthly)
 
 ## Install Earthly
 
-Headway processes data and builds its Docker images using Earthly. Visit [earthly.dev](https://earthly.dev/) for information about Earthly, and documentation on how to install it.
+Headway processes data and builds its containers for hosting using Earthly. Earthly is a build system (like a Makefile) for orchestrating a bunch of depdendent docker containers. 
+
+Instructions for installing the cloud-free version of earthly can be found here: https://earthly.dev/get-earthly
+
+⚠️ The earthly company has a cloud product that they will try to upsell you, but **you do not need to create an account** or use their cloud product to build Headway. I only ever use their account-free local client and recommend you start there as well.
 
 ## Supported Build Methods
 
