@@ -23,6 +23,10 @@ pub struct ValhallaRouteQuery {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RouteResponseError {
+    pub status_code: u16,
+    pub error_code: u32,
+    pub error: String,
+
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -120,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_maneuver_from_json() {
-        // deserialize a maneuever from a JSON string
+        // deserialize a maneuver from a JSON string
         let json = r#"
         {
             "begin_shape_index": 0,

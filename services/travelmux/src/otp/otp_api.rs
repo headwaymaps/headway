@@ -18,8 +18,23 @@ pub struct Routers {
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct PlanError {
+    pub id: u32,
+    // Readable English message text
+    pub msg: String,
+    // a stable message key
+    pub message: String,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct PlanResponse {
     pub plan: Plan,
+
+    // Note that `plan` will be present even if error is present, but plan.itinieraries will be []
+    pub error: Option<PlanError>,
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,

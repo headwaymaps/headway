@@ -2,42 +2,8 @@ import { i18n } from 'src/i18n/lang';
 import {
   ValhallaRoute,
   ValhallaRouteLegManeuver,
-  ValhallaError,
-  ValhallaErrorCode,
 } from 'src/services/ValhallaAPI';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-
-export enum RouteErrorCode {
-  Other,
-  UnsupportedArea,
-}
-
-export class RouteError {
-  errorCode: RouteErrorCode;
-  message: string;
-
-  constructor(errorCode: RouteErrorCode, message: string) {
-    this.errorCode = errorCode;
-    this.message = message;
-  }
-
-  static fromValhalla(vError: ValhallaError): RouteError {
-    switch (vError.error_code) {
-      case ValhallaErrorCode.UnsupportedArea: {
-        return {
-          errorCode: RouteErrorCode.UnsupportedArea,
-          message: vError.error,
-        };
-      }
-      default: {
-        return {
-          errorCode: RouteErrorCode.Other,
-          message: vError.error,
-        };
-      }
-    }
-  }
-}
 
 export default class Route {
   durationSeconds: number;
