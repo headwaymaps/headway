@@ -88,7 +88,6 @@ pub struct Leg {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all(serialize = "camelCase", deserialize = "snake_case"))]
 pub struct Maneuver {
     pub instruction: String,
     pub cost: f64,
