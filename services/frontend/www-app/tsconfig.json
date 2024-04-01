@@ -10,8 +10,8 @@
       "pages/*": ["src/pages/*"],
       "assets/*": ["src/assets/*"],
       "boot/*": ["src/boot/*"],
-      "stores/*": ["src/stores/*"],
-    },
+      "stores/*": ["src/stores/*"]
+    }
   },
   "include": [
     "src/**/*.ts",
@@ -20,6 +20,6 @@
     "src/**/*.vue",
     "src-pwa/*.d.ts",
     "src-bex/*.d.ts",
-    "src-ssr/*.d.ts",
-  ],
+    "src-ssr/*.d.ts"
+  ]
 }
