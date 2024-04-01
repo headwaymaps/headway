@@ -1,17 +1,21 @@
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 use std::error::Error as StdError;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum ErrorType {
-    User,
-    Server,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ErrorType {
+    /// Generic error for bad user input
+    User = 400,
+    /// Generic error for when something goes wrong on the server
+    Server = 500,
+    /// The requested transit trip area is not covered
+    ThisTransitAreaNotCovered = 1701,
 }
 
 #[derive(Debug)]
 #[allow(unused)]
 pub struct Error {
-    error_type: ErrorType,
-    source: Box<dyn StdError>,
+    pub(crate) error_type: ErrorType,
+    pub(crate) source: Box<dyn StdError>,
 }
 
 impl serde::Serialize for Error {
@@ -29,6 +33,8 @@ impl serde::Serialize for Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 impl Error {
+    /// An error with some logic or state on the service. There is no meaningful
+    /// output for the user here except maybe "try again later".
     pub fn server(source: impl Into<Box<dyn StdError>> + 'static) -> Self {
         Self {
             source: source.into(),
@@ -36,11 +42,19 @@ impl Error {
         }
     }
 
+    /// An error with meaningful output for the user. It may mean the user
+    /// gave invalid input or that they are doing something the server doesn't
+    /// support.
     pub fn user(source: impl Into<Box<dyn StdError>> + 'static) -> Self {
         Self {
             source: source.into(),
             error_type: ErrorType::User,
         }
+    }
+
+    pub fn error_type(mut self, error_type: ErrorType) -> Self {
+        self.error_type = error_type;
+        self
     }
 }
 

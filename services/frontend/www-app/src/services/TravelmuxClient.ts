@@ -2,14 +2,14 @@ import { LngLat } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Err, Result } from 'src/utils/Result';
 import Trip, { TripFetchError } from 'src/models/Trip';
+import { OTPPlanResponse, OTPItinerary } from './OpenTripPlannerAPI';
 import {
-  OTPPlanResponse,
-  OTPItinerary,
-  OTPResponseError,
-} from './OpenTripPlannerAPI';
-import { ValhallaRouteResponse, ValhallaRoute } from './ValhallaAPI';
-import Itinerary, { ItineraryError } from 'src/models/Itinerary';
-import Route, { RouteError } from 'src/models/Route';
+  ValhallaRouteResponse,
+  ValhallaRoute,
+  ValhallaErrorCode,
+} from './ValhallaAPI';
+import Itinerary from 'src/models/Itinerary';
+import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
 
 export interface TravelmuxPlanResponse {
@@ -37,6 +37,22 @@ export interface TravelmuxItinerary {
   distanceUnits: DistanceUnits;
   bounds: { min: [number, number]; max: [number, number] };
   legs: TravelmuxLeg[];
+}
+
+// Non-exaustive
+export enum TravelmuxErrorCode {
+  TransitUnsupportedArea = 1701,
+
+  // Currently, errors originating in Valhalla are +2000
+  ValhallaUnsupportedArea = ValhallaErrorCode.UnsupportedArea + 2000,
+
+  // Errors originating in OpenTripPlanner are +3000
+}
+
+export interface TravelmuxError {
+  errorCode: TravelmuxErrorCode;
+  statusCode: number;
+  message: string;
 }
 
 // incomplete
@@ -100,7 +116,7 @@ export class TravelmuxClient {
 
     const query = new URLSearchParams(params).toString();
 
-    const response = await fetch('/travelmux/v2/plan?' + query);
+    const response = await fetch('/travelmux/v3/plan?' + query);
 
     if (response.ok) {
       const travelmuxResponseJson: TravelmuxPlanResponse =
@@ -167,22 +183,11 @@ export class TravelmuxClient {
         throw Error('missing routing backend');
       }
     } else {
-      if (modes.includes(TravelmuxMode.Transit)) {
-        console.warn('Error in OTP response', response);
-        // currently travelmux doesn't return json for error responses, it should.
-        // This was broken before "travelmux" - I think it broke when first introducing
-        // transitmux in front of OTP
-        const otpError: OTPResponseError = { status: response.status };
-        const itineraryError = ItineraryError.fromOtp({
-          responseError: otpError,
-        });
-        return Err({ transit: true, itineraryError });
-      } else {
-        const errorBody = await response.json();
-        const valhallaErrorBody = errorBody['valhalla'];
-        const routeError = RouteError.fromValhalla(valhallaErrorBody);
-        return Err({ transit: false, routeError });
-      }
+      const errorBody = await response.json();
+      const error = errorBody['error'];
+      console.assert(error);
+      const routeError = TripFetchError.fromTravelmux(error);
+      return Err(routeError);
     }
   }
 }

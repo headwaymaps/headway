@@ -1,6 +1,8 @@
 export default {
   routing_area_not_supported:
     'Sorry, directions are not supported for this trip area.',
+  transit_routing_area_not_supported:
+    'Sorry, transit directions are not currently supported for this trip area.',
   transit_area_not_supported_for_source:
     'Sorry, trips starting here are outside of our current transit coverage area.',
   transit_area_not_supported_for_destination:
@@ -12,7 +14,7 @@ export default {
   routing_error_unknown:
     'Sorry, there was an unknown error while trying to get directions for this trip.',
   other_routing_error_with_$message:
-    'There was an error while trying to get directions for this trip: {message}',
+    'Unable to get directions for this trip — {message}',
   try_driving_directions: 'Try driving directions instead?',
   where_to_question: 'Where to?',
   my_location: 'My Location',

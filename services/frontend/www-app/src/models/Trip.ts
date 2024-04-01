@@ -1,14 +1,16 @@
 import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
-import Itinerary, { ItineraryError } from './Itinerary';
-import Route, { RouteError } from './Route';
+import Itinerary from './Itinerary';
+import Route from './Route';
 import {
   TravelmuxMode,
   TravelmuxClient,
   TravelmuxItinerary,
   TravelmuxLeg,
   travelModeFromTravelmuxMode,
+  TravelmuxError,
+  TravelmuxErrorCode,
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration } from 'src/utils/format';
 import { decodePolyline } from 'src/utils/decodePolyline';
@@ -113,9 +115,44 @@ export class TripLeg {
   }
 }
 
-export type TripFetchError =
-  | { transit: true; itineraryError: ItineraryError }
-  | { transit: false; routeError: RouteError };
+export enum TripFetchErrorCode {
+  Other,
+  UnsupportedNonTransitArea,
+  UnsupportedTransitArea,
+}
+
+export class TripFetchError {
+  errorCode: TripFetchErrorCode;
+  message: string;
+
+  constructor(errorCode: TripFetchErrorCode, message: string) {
+    this.errorCode = errorCode;
+    this.message = message;
+  }
+
+  static fromTravelmux(tError: TravelmuxError): TripFetchError {
+    switch (tError.errorCode) {
+      case TravelmuxErrorCode.ValhallaUnsupportedArea: {
+        return {
+          errorCode: TripFetchErrorCode.UnsupportedNonTransitArea,
+          message: tError.message,
+        };
+      }
+      case TravelmuxErrorCode.TransitUnsupportedArea: {
+        return {
+          errorCode: TripFetchErrorCode.UnsupportedTransitArea,
+          message: tError.message,
+        };
+      }
+      default: {
+        return {
+          errorCode: TripFetchErrorCode.Other,
+          message: tError.message,
+        };
+      }
+    }
+  }
+}
 
 export async function fetchBestTrips(
   from: LngLat,
