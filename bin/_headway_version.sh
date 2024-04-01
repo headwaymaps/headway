@@ -21,9 +21,14 @@
 # A bump in the DATA tag pretty much always implies a bump in the CONTAINER
 # tag, but not necessarily vice-versa.
 
-export HEADWAY_DATA_TAG=0.7.0
+export HEADWAY_DATA_TAG=0.8.0
 
 # # Schema change Log
+#
+# ## DATA v0.8.0, CONTAINER v0.10.0
+#
+# BREAKING DATA: pelias is now on es8
+# BREAKING CONTAINER: travelmux added api v3, removed v1
 #
 # ## DATA v0.7.0, CONTAINER v0.9.0
 #
