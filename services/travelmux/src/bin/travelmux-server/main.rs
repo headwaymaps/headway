@@ -3,7 +3,7 @@ use url::Url;
 
 use std::env;
 
-use travelmux::api::{health, v1, v2, v3, AppState};
+use travelmux::api::{health, v2, v3, AppState};
 use travelmux::Result;
 
 #[actix_web::main]
@@ -48,7 +48,6 @@ async fn main() -> Result<()> {
         App::new()
             .wrap(Logger::default())
             .app_data(web::Data::new(app_state.clone()))
-            .service(v1::plan::get_plan)
             .service(v2::plan::get_plan)
             .service(v3::plan::get_plan)
             .service(health::get_ready)
