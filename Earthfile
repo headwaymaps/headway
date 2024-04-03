@@ -507,9 +507,7 @@ gtfs-build:
 ##############################
 
 otp-base:
-    # The version tag is ignored when sha256 is specified, but I'm leaving it
-    # in to document which "release" our sha pins to.
-    FROM opentripplanner/opentripplanner:2.3.0@sha256:630779e4b595462502b3813c1d6141da3e180d266d4a26371cc4ab6cb3390db0
+    FROM opentripplanner/opentripplanner:2.5.0
 
     RUN mkdir /var/opentripplanner
 
