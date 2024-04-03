@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: otp-pugetsound-config
 data:
-  graph-url: https://data.example.com/0.7.0/maps-earth-planet-v1.41/PugetSound.graph.obj.zst
+  graph-url: https://data.example.com/0.7.0/maps-earth-planet-v1.42/PugetSound.graph.obj.zst
   router-config-json: |
     {
       "configVersion": "2023-05-24",
