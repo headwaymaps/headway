@@ -342,7 +342,7 @@ pub struct Maneuver {
     pub travel_type: String,
     pub r#type: u64,
     pub verbal_post_transition_instruction: Option<String>,
-    pub verbal_pre_transition_instruction: String,
+    pub verbal_pre_transition_instruction: Option<String>,
     pub verbal_succinct_transition_instruction: Option<String>,
 }
 

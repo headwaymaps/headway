@@ -73,6 +73,7 @@ pub struct Summary {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
+// CLEANUP: rename to LonLat to match their field spelling?
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LngLat {
     pub lat: f64,
@@ -105,7 +106,20 @@ pub struct Maneuver {
     pub travel_type: String,
     pub r#type: u64,
     pub verbal_post_transition_instruction: Option<String>,
-    pub verbal_pre_transition_instruction: String,
+    // Usually, but not always, present - e.g. missing from:
+    //     {
+    //       "type": 39,
+    //       "instruction": "Take the elevator.",
+    //       "time": 21.176,
+    //       "length": 0.018,
+    //       "cost": 21.176,
+    //       "begin_shape_index": 291,
+    //       "end_shape_index": 293,
+    //       "rough": true,
+    //       "travel_mode": "pedestrian",
+    //       "travel_type": "foot"
+    //     },
+    pub verbal_pre_transition_instruction: Option<String>,
     pub verbal_succinct_transition_instruction: Option<String>,
 }
 
