@@ -10,9 +10,11 @@ use super::error::{PlanResponseErr, PlanResponseOk};
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::otp_api;
+use crate::otp::otp_api::RelativeDirection;
 use crate::util::serialize_rect_to_lng_lat;
 use crate::util::{deserialize_point_from_lat_lon, extend_bounds};
 use crate::valhalla::valhalla_api;
+use crate::valhalla::valhalla_api::ManeuverType;
 use crate::{DistanceUnit, Error, TravelMode};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -43,7 +45,12 @@ pub struct Plan {
 #[serde(rename_all = "camelCase")]
 pub struct Itinerary {
     mode: TravelMode,
+    /// seconds
     duration: f64,
+    /// unix millis, UTC
+    start_time: u64,
+    /// unix millis, UTC
+    end_time: u64,
     distance: f64,
     distance_units: DistanceUnit,
     #[serde(serialize_with = "serialize_rect_to_lng_lat")]
@@ -57,8 +64,21 @@ impl Itinerary {
             geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
             geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
         );
+
+        use std::time::Duration;
+        fn time_since_epoch() -> Duration {
+            use std::time::{SystemTime, UNIX_EPOCH};
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time is after unix epoch")
+        }
+
+        let start_time = time_since_epoch().as_millis() as u64;
+        let end_time = start_time + (valhalla.summary.time * 1000.0) as u64;
         Self {
             mode,
+            start_time,
+            end_time,
             duration: valhalla.summary.time,
             distance: valhalla.summary.length,
             bounds,
@@ -95,6 +115,8 @@ impl Itinerary {
         }
         Ok(Self {
             duration: itinerary.duration as f64,
+            start_time: itinerary.start_time,
+            end_time: itinerary.end_time,
             mode,
             distance: distance_meters / 1000.0,
             distance_units: DistanceUnit::Kilometers,
@@ -110,13 +132,25 @@ struct Leg {
     /// encoded polyline. 1e-6 scale, (lat, lon)
     geometry: String,
 
-    /// Some transit agencies have a color associated with their routes
-    route_color: Option<String>,
-
     /// Which mode is this leg of the journey?
     mode: TravelMode,
 
-    maneuvers: Option<Vec<Maneuver>>,
+    #[serde(flatten)]
+    mode_leg: ModeLeg,
+}
+
+// Should we just pass the entire OTP leg?
+type TransitLeg = otp_api::Leg;
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+enum ModeLeg {
+    // REVIEW: rename? There is a boolean field for OTP called TransitLeg
+    #[serde(rename = "transitLeg")]
+    Transit(TransitLeg),
+
+    #[serde(rename = "maneuvers")]
+    NonTransit(Vec<Maneuver>),
 }
 
 // Eventually we might want to coalesce this into something not valhalla specific
@@ -124,39 +158,51 @@ struct Leg {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Maneuver {
-    pub instruction: String,
-    pub cost: f64,
-    pub begin_shape_index: u64,
-    pub end_shape_index: u64,
-    pub highway: Option<bool>,
-    pub length: f64,
-    pub street_names: Option<Vec<String>>,
-    pub time: f64,
-    pub travel_mode: String,
-    pub travel_type: String,
-    pub r#type: u64,
+    pub instruction: Option<String>,
+    // pub cost: f64,
+    // pub begin_shape_index: u64,
+    // pub end_shape_index: u64,
+    // pub highway: Option<bool>,
+    // pub length: f64,
+    // pub street_names: Option<Vec<String>>,
+    // pub time: f64,
+    // pub travel_mode: String,
+    // pub travel_type: String,
+    pub r#type: ManeuverType,
     pub verbal_post_transition_instruction: Option<String>,
-    pub verbal_pre_transition_instruction: Option<String>,
-    pub verbal_succinct_transition_instruction: Option<String>,
+    // pub verbal_pre_transition_instruction: Option<String>,
+    // pub verbal_succinct_transition_instruction: Option<String>,
 }
 
 impl Maneuver {
     fn from_valhalla(valhalla: valhalla_api::Maneuver) -> Self {
         Self {
-            instruction: valhalla.instruction,
-            cost: valhalla.cost,
-            begin_shape_index: valhalla.begin_shape_index,
-            end_shape_index: valhalla.end_shape_index,
-            highway: valhalla.highway,
-            length: valhalla.length,
-            street_names: valhalla.street_names,
-            time: valhalla.time,
-            travel_mode: valhalla.travel_mode,
-            travel_type: valhalla.travel_type,
+            instruction: Some(valhalla.instruction),
             r#type: valhalla.r#type,
             verbal_post_transition_instruction: valhalla.verbal_post_transition_instruction,
-            verbal_pre_transition_instruction: valhalla.verbal_pre_transition_instruction,
-            verbal_succinct_transition_instruction: valhalla.verbal_succinct_transition_instruction,
+        }
+    }
+
+    fn from_otp(otp: otp_api::Step) -> Self {
+        let maneuver_type = match otp.relative_direction {
+            RelativeDirection::Depart => ManeuverType::Start,
+            RelativeDirection::HardLeft => ManeuverType::SharpLeft,
+            RelativeDirection::Left => ManeuverType::Left,
+            RelativeDirection::SlightlyLeft => ManeuverType::SlightLeft,
+            RelativeDirection::Continue => ManeuverType::Continue,
+            RelativeDirection::SlightlyRight => ManeuverType::SlightRight,
+            RelativeDirection::Right => ManeuverType::Right,
+            RelativeDirection::HardRight => ManeuverType::SharpRight,
+            RelativeDirection::CircleClockwise => ManeuverType::RoundaboutEnter,
+            RelativeDirection::CircleCounterclockwise => ManeuverType::RoundaboutEnter,
+            RelativeDirection::Elevator => ManeuverType::ElevatorEnter,
+            RelativeDirection::UturnLeft => ManeuverType::UturnLeft,
+            RelativeDirection::UturnRight => ManeuverType::UturnRight,
+        };
+        Self {
+            instruction: None,
+            r#type: maneuver_type,
+            verbal_post_transition_instruction: None,
         }
     }
 }
@@ -177,20 +223,30 @@ impl Leg {
         let line = decode_polyline(&otp.leg_geometry.points, 5)?;
         let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION)?;
 
+        let mode_leg = match otp.mode {
+            otp_api::TransitMode::Walk
+            | otp_api::TransitMode::Bicycle
+            | otp_api::TransitMode::Car => {
+                ModeLeg::NonTransit(otp.steps.iter().cloned().map(Maneuver::from_otp).collect())
+            }
+            _ => {
+                // assume everything else is transit
+                ModeLeg::Transit(otp.clone())
+            }
+        };
+
         Ok(Self {
             geometry,
-            route_color: otp.route_color.clone(),
             mode: otp.mode.into(),
-            maneuvers: None,
+            mode_leg,
         })
     }
 
     fn from_valhalla(valhalla: &valhalla_api::Leg, travel_mode: TravelMode) -> Self {
         Self {
             geometry: valhalla.shape.clone(),
-            route_color: None,
             mode: travel_mode,
-            maneuvers: Some(
+            mode_leg: ModeLeg::NonTransit(
                 valhalla
                     .maneuvers
                     .iter()
@@ -260,7 +316,8 @@ pub async fn get_plan(
         .preferred_distance_units
         .unwrap_or(DistanceUnit::Kilometers);
 
-    // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing this
+    // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
+    // the "primary" mode appears first.
     match primary_mode {
         TravelMode::Transit => {
             let Some(mut router_url) = app_state
@@ -366,12 +423,12 @@ pub async fn get_plan(
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use serde_json::Value;
+    use serde_json::{json, Value};
     use std::fs::File;
     use std::io::BufReader;
 
     #[test]
-    fn from_valhalla() {
+    fn parse_from_valhalla() {
         let stubbed_response =
             File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
@@ -404,14 +461,17 @@ mod tests {
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
         );
-        assert_eq!(first_leg.route_color, None);
+
+        let ModeLeg::NonTransit(maneuvers) = &first_leg.mode_leg else {
+            panic!("unexpected transit leg")
+        };
+
         assert_eq!(first_leg.mode, TravelMode::Walk);
-        let maneuvers = first_leg.maneuvers.as_ref().unwrap();
         assert_eq!(maneuvers.len(), 21);
     }
 
     #[test]
-    fn from_otp() {
+    fn parse_from_otp() {
         let stubbed_response =
             File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
         let otp: otp_api::PlanResponse =
@@ -437,16 +497,129 @@ mod tests {
             epsilon = 1e-4
         );
 
-        assert_eq!(first_leg.route_color, None);
         assert_eq!(first_leg.mode, TravelMode::Walk);
+        let ModeLeg::NonTransit(maneuvers) = &first_leg.mode_leg else {
+            panic!("expected non-transit leg")
+        };
+        assert_eq!(maneuvers.len(), 4);
+        assert_eq!(maneuvers[0].r#type, ManeuverType::Start);
+        assert_eq!(maneuvers[1].r#type, ManeuverType::Left);
 
         let fourth_leg = &first_itinerary.legs[3];
-        assert_eq!(fourth_leg.route_color, Some("28813F".to_string()));
         assert_eq!(fourth_leg.mode, TravelMode::Transit);
+        let ModeLeg::Transit(transit_leg) = &fourth_leg.mode_leg else {
+            panic!("expected transit leg")
+        };
+        assert_eq!(transit_leg.route_color, Some("28813F".to_string()));
     }
 
     #[test]
-    fn test_maneuver_from_valhalla_json() {
+    fn serialize_response_from_otp() {
+        let stubbed_response =
+            File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
+        let otp: otp_api::PlanResponse =
+            serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
+        let plan_response = PlanResponseOk::from_otp(TravelMode::Transit, otp).unwrap();
+        let response = serde_json::to_string(&plan_response).unwrap();
+        let parsed_response: serde_json::Value = serde_json::from_str(&response).unwrap();
+        let response_object = parsed_response.as_object().expect("expected Object");
+        let plan = response_object
+            .get("plan")
+            .unwrap()
+            .as_object()
+            .expect("expected Object");
+        let first_itinerary = plan
+            .get("itineraries")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        let legs = first_itinerary.get("legs").unwrap().as_array().unwrap();
+
+        // Verify walking leg
+        let first_leg = legs.get(0).unwrap().as_object().unwrap();
+        let mode = first_leg.get("mode").unwrap().as_str().unwrap();
+        assert_eq!(mode, "WALK");
+        assert!(first_leg.get("transitLeg").is_none());
+        let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
+        let first_maneuver = maneuvers.get(0).unwrap();
+        let expected_maneuver = json!({
+            "type": 1,
+            "instruction": null,
+            "verbalPostTransitionInstruction": null
+        });
+        assert_eq!(first_maneuver, &expected_maneuver);
+
+        // Verify Transit leg
+        let fourth_leg = legs.get(3).unwrap().as_object().unwrap();
+        let mode = fourth_leg.get("mode").unwrap().as_str().unwrap();
+        assert_eq!(mode, "TRANSIT");
+        assert!(fourth_leg.get("maneuvers").is_none());
+        let transit_leg = fourth_leg
+            .get("transitLeg")
+            .unwrap()
+            .as_object()
+            .expect("json object");
+        dbg!(transit_leg);
+
+        // Brittle: If the fixtures are updated, these values might change due to time of day or whatever.
+        assert_eq!(
+            transit_leg.get("agencyName").unwrap().as_str().unwrap(),
+            "Sound Transit"
+        );
+
+        assert_eq!(
+            transit_leg.get("route").unwrap().as_str().unwrap(),
+            "Northgate - Angle Lake"
+        );
+    }
+
+    #[test]
+    fn serialize_response_from_valhalla() {
+        let stubbed_response =
+            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
+        let valhalla: valhalla_api::RouteResponse =
+            serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
+
+        let valhalla_response_result = valhalla_api::ValhallaRouteResponseResult::Ok(valhalla);
+        let plan_response =
+            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response_result).unwrap();
+
+        let response = serde_json::to_string(&plan_response).unwrap();
+        let parsed_response: serde_json::Value = serde_json::from_str(&response).unwrap();
+        let response_object = parsed_response.as_object().expect("expected Object");
+        let plan = response_object
+            .get("plan")
+            .unwrap()
+            .as_object()
+            .expect("expected Object");
+        let first_itinerary = plan
+            .get("itineraries")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        let legs = first_itinerary.get("legs").unwrap().as_array().unwrap();
+
+        // Verify walking leg
+        let first_leg = legs.get(0).unwrap().as_object().unwrap();
+        let mode = first_leg.get("mode").unwrap().as_str().unwrap();
+        assert_eq!(mode, "WALK");
+        assert!(first_leg.get("transitLeg").is_none());
+        let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
+        let first_maneuver = maneuvers.get(0).unwrap();
+        let expected_maneuver = json!({
+            "type": 2,
+            "instruction": "Walk south on East Marginal Way South.",
+            "verbalPostTransitionInstruction": "Continue for 20 meters."
+        });
+        assert_eq!(first_maneuver, &expected_maneuver);
+    }
+
+    #[test]
+    fn parse_maneuver_from_valhalla_json() {
         // deserialize a maneuver from a JSON string
         let json = r#"
         {
@@ -469,7 +642,7 @@ mod tests {
         }"#;
 
         let valhalla_maneuver: valhalla_api::Maneuver = serde_json::from_str(json).unwrap();
-        assert_eq!(valhalla_maneuver.r#type, 2);
+        assert_eq!(valhalla_maneuver.r#type, ManeuverType::StartRight);
         assert_eq!(
             valhalla_maneuver.instruction,
             "Drive northeast on Fauntleroy Way Southwest."
@@ -481,27 +654,16 @@ mod tests {
         let actual_object: Value = serde_json::from_str(&actual).unwrap();
 
         let expected_object = serde_json::json!({
-            "beginShapeIndex": 0,
-            "cost": 246.056,
-            "endShapeIndex": 69,
-            "highway": true,
             "instruction": "Drive northeast on Fauntleroy Way Southwest.",
-            "length": 2.218,
-            "streetNames": ["Fauntleroy Way Southwest"],
-            "time": 198.858,
-            "travelMode": "drive",
-            "travelType": "car",
             "type": 2,
             "verbalPostTransitionInstruction": "Continue for 2 miles.",
-            "verbalPreTransitionInstruction": "Drive northeast on Fauntleroy Way Southwest.",
-            "verbalSuccinctTransitionInstruction": "Drive northeast."
         });
 
         assert_eq!(actual_object, expected_object);
     }
 
     #[test]
-    fn error_from_valhalla() {
+    fn parse_error_from_valhalla() {
         let json = serde_json::json!({
             "error_code": 154,
             "error": "Path distance exceeds the max distance limit: 200000 meters",

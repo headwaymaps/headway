@@ -13,7 +13,6 @@ export enum OTPMode {
   Gondola = 'GONDOLA',
   Rail = 'RAIL',
   Subway = 'SUBWAY',
-  Train = 'TRAIN',
   Tram = 'TRAM',
   Transit = 'TRANSIT',
   Walk = 'WALK',

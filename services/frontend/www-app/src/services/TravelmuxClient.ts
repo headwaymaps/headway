@@ -116,7 +116,7 @@ export class TravelmuxClient {
 
     const query = new URLSearchParams(params).toString();
 
-    const response = await fetch('/travelmux/v3/plan?' + query);
+    const response = await fetch('/travelmux/v4/plan?' + query);
 
     if (response.ok) {
       const travelmuxResponseJson: TravelmuxPlanResponse =

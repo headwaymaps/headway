@@ -167,7 +167,6 @@ export class ItineraryLeg {
       case OTPMode.Bus:
       case OTPMode.Transit:
         return '🚍';
-      case OTPMode.Train:
       case OTPMode.Rail:
         return '🚆';
       case OTPMode.Subway:

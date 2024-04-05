@@ -1,6 +1,7 @@
 use crate::DistanceUnit;
 use geo::Point;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -104,7 +105,7 @@ pub struct Maneuver {
     pub time: f64,
     pub travel_mode: String,
     pub travel_type: String,
-    pub r#type: u64,
+    pub r#type: ManeuverType,
     pub verbal_post_transition_instruction: Option<String>,
     // Usually, but not always, present - e.g. missing from:
     //     {
@@ -121,6 +122,57 @@ pub struct Maneuver {
     //     },
     pub verbal_pre_transition_instruction: Option<String>,
     pub verbal_succinct_transition_instruction: Option<String>,
+}
+
+// Corresponding to valhalla/src/odin/maneuver.cc
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(i32)] // Using u8 assuming all values fit into an 8-bit unsigned integer
+#[non_exhaustive]
+pub enum ManeuverType {
+    None = 0,
+    Start = 1,
+    StartRight = 2,
+    StartLeft = 3,
+    Destination = 4,
+    DestinationRight = 5,
+    DestinationLeft = 6,
+    Becomes = 7,
+    Continue = 8,
+    SlightRight = 9,
+    Right = 10,
+    SharpRight = 11,
+    UturnRight = 12,
+    UturnLeft = 13,
+    SharpLeft = 14,
+    Left = 15,
+    SlightLeft = 16,
+    RampStraight = 17,
+    RampRight = 18,
+    RampLeft = 19,
+    ExitRight = 20,
+    ExitLeft = 21,
+    StayStraight = 22,
+    StayRight = 23,
+    StayLeft = 24,
+    Merge = 25,
+    RoundaboutEnter = 26,
+    RoundaboutExit = 27,
+    FerryEnter = 28,
+    FerryExit = 29,
+    Transit = 30,
+    TransitTransfer = 31,
+    TransitRemainOn = 32,
+    TransitConnectionStart = 33,
+    TransitConnectionTransfer = 34,
+    TransitConnectionDestination = 35,
+    PostTransitConnectionDestination = 36,
+    MergeRight = 37,
+    MergeLeft = 38,
+    ElevatorEnter = 39,
+    StepsEnter = 40,
+    EscalatorEnter = 41,
+    BuildingEnter = 42,
+    BuildingExit = 43,
 }
 
 impl From<Point> for LngLat {
@@ -160,7 +212,7 @@ mod tests {
         }"#;
 
         let maneuver: Maneuver = serde_json::from_str(json).unwrap();
-        assert_eq!(maneuver.r#type, 2);
+        assert_eq!(maneuver.r#type, ManeuverType::StartRight);
         assert_eq!(
             maneuver.instruction,
             "Drive northeast on Fauntleroy Way Southwest."
