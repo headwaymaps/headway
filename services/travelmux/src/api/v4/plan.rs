@@ -3,13 +3,14 @@ use geo::algorithm::BoundingRect;
 use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
 use reqwest::header::{HeaderName, HeaderValue};
-use serde::de::IntoDeserializer;
-use serde::ser::SerializeStruct;
-use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, de::IntoDeserializer, de::Visitor, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
+use super::error::{PlanResponseErr, PlanResponseOk};
 use crate::api::AppState;
+use crate::error::ErrorType;
 use crate::otp::otp_api;
+use crate::util::serialize_rect_to_lng_lat;
 use crate::util::{deserialize_point_from_lat_lon, extend_bounds};
 use crate::valhalla::valhalla_api;
 use crate::{DistanceUnit, Error, TravelMode};
@@ -32,222 +33,15 @@ pub struct PlanQuery {
     preferred_distance_units: Option<DistanceUnit>,
 }
 
-use crate::error::ErrorType;
-use error::PlanResponseErr;
-
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct PlanResponseOk {
-    plan: Plan,
-
-    // The raw response from the upstream OTP /plan service
-    #[serde(rename = "_otp")]
-    _otp: Option<otp_api::PlanResponse>,
-
-    // The raw response from the upstream Valhalla /route service
-    #[serde(rename = "_valhalla")]
-    _valhalla: Option<valhalla_api::RouteResponse>,
-}
-
-mod error {
-    use super::*;
-    use crate::error::ErrorType;
-    use actix_web::body::BoxBody;
-    use actix_web::HttpResponse;
-    use std::fmt;
-
-    #[derive(Debug, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct UnboxedPlanResponseErr {
-        pub error: PlanError,
-        // The raw response from the upstream OTP /plan service
-        #[serde(rename = "_otp")]
-        _otp: Option<otp_api::PlanError>,
-
-        // The raw response from the upstream Valhalla /route service
-        #[serde(rename = "_valhalla")]
-        _valhalla: Option<valhalla_api::RouteResponseError>,
-    }
-    pub type PlanResponseErr = Box<UnboxedPlanResponseErr>;
-
-    #[derive(Debug, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct PlanError {
-        pub status_code: u16,
-        pub error_code: u32,
-        pub message: String,
-    }
-
-    impl From<valhalla_api::RouteResponseError> for PlanResponseErr {
-        fn from(value: valhalla_api::RouteResponseError) -> Self {
-            Self::new(UnboxedPlanResponseErr {
-                error: (&value).into(),
-                _valhalla: Some(value),
-                _otp: None,
-            })
-        }
-    }
-
-    impl From<otp_api::PlanError> for PlanResponseErr {
-        fn from(value: otp_api::PlanError) -> Self {
-            Self::new(UnboxedPlanResponseErr {
-                error: (&value).into(),
-                _valhalla: None,
-                _otp: Some(value),
-            })
-        }
-    }
-
-    impl From<&valhalla_api::RouteResponseError> for PlanError {
-        fn from(value: &valhalla_api::RouteResponseError) -> Self {
-            PlanError {
-                status_code: value.status_code,
-                error_code: value.error_code + 2000,
-                message: value.error.clone(),
-            }
-        }
-    }
-
-    impl fmt::Display for PlanResponseErr {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(
-                f,
-                "status_code: {}, error_code: {}, message: {}",
-                self.error.status_code, self.error.error_code, self.error.message
-            )
-        }
-    }
-
-    impl std::error::Error for PlanResponseErr {}
-
-    impl From<Error> for PlanResponseErr {
-        fn from(value: Error) -> Self {
-            Self::new(UnboxedPlanResponseErr {
-                error: value.into(),
-                _valhalla: None,
-                _otp: None,
-            })
-        }
-    }
-
-    impl From<Error> for PlanError {
-        fn from(value: Error) -> Self {
-            let error_code = value.error_type as u32;
-            debug_assert!(error_code < 2000);
-            debug_assert!(error_code > 1000);
-            match value.error_type {
-                ErrorType::ThisTransitAreaNotCovered => Self {
-                    status_code: 400,
-                    error_code,
-                    message: value.source.to_string(),
-                },
-                ErrorType::User => Self {
-                    status_code: 400,
-                    error_code,
-                    message: value.source.to_string(),
-                },
-                ErrorType::Server => Self {
-                    status_code: 500,
-                    error_code,
-                    message: value.source.to_string(),
-                },
-            }
-        }
-    }
-
-    impl From<&otp_api::PlanError> for PlanError {
-        fn from(value: &otp_api::PlanError) -> Self {
-            Self {
-                // This might be overzealous, but anecdotally, I haven't encountered any 500ish
-                // errors with OTP surfaced in this way yet
-                status_code: 400,
-                error_code: value.id,
-                message: value.msg.clone(),
-            }
-        }
-    }
-
-    impl actix_web::ResponseError for PlanResponseErr {
-        fn status_code(&self) -> actix_web::http::StatusCode {
-            self.error.status_code.try_into().unwrap_or_else(|e| {
-                log::error!(
-                    "invalid status code: {}, err: {e:?}",
-                    self.error.status_code
-                );
-                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
-            })
-        }
-
-        fn error_response(&self) -> HttpResponse<BoxBody> {
-            HttpResponseBuilder::new(self.status_code())
-                .content_type("application/json")
-                .json(self)
-        }
-    }
-
-    impl PlanResponseOk {
-        pub fn from_otp(
-            mode: TravelMode,
-            mut otp: otp_api::PlanResponse,
-        ) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
-            if let Some(otp_error) = otp.error {
-                return Err(otp_error.into());
-            }
-
-            otp.plan
-                .itineraries
-                .sort_by(|a, b| a.end_time.cmp(&b.end_time));
-
-            let itineraries_result: crate::Result<Vec<_>> = otp
-                .plan
-                .itineraries
-                .iter()
-                .map(|itinerary: &otp_api::Itinerary| Itinerary::from_otp(itinerary, mode))
-                .collect();
-
-            let itineraries = itineraries_result?;
-
-            Ok(PlanResponseOk {
-                plan: Plan { itineraries },
-                _otp: Some(otp),
-                _valhalla: None,
-            })
-        }
-
-        pub fn from_valhalla(
-            mode: TravelMode,
-            valhalla: valhalla_api::ValhallaRouteResponseResult,
-        ) -> std::result::Result<PlanResponseOk, valhalla_api::RouteResponseError> {
-            let valhalla = match valhalla {
-                valhalla_api::ValhallaRouteResponseResult::Ok(valhalla) => valhalla,
-                valhalla_api::ValhallaRouteResponseResult::Err(err) => return Err(err),
-            };
-
-            let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
-            if let Some(alternates) = &valhalla.alternates {
-                for alternate in alternates {
-                    itineraries.push(Itinerary::from_valhalla(&alternate.trip, mode));
-                }
-            }
-
-            Ok(PlanResponseOk {
-                plan: Plan { itineraries },
-                _otp: None,
-                _valhalla: Some(valhalla),
-            })
-        }
-    }
+pub struct Plan {
+    pub(crate) itineraries: Vec<Itinerary>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Plan {
-    itineraries: Vec<Itinerary>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-#[serde(rename_all = "camelCase")]
-struct Itinerary {
+pub struct Itinerary {
     mode: TravelMode,
     duration: f64,
     distance: f64,
@@ -258,7 +52,7 @@ struct Itinerary {
 }
 
 impl Itinerary {
-    fn from_valhalla(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
+    pub fn from_valhalla(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
         let bounds = Rect::new(
             geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
             geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
@@ -277,7 +71,7 @@ impl Itinerary {
         }
     }
 
-    fn from_otp(itinerary: &otp_api::Itinerary, mode: TravelMode) -> crate::Result<Self> {
+    pub fn from_otp(itinerary: &otp_api::Itinerary, mode: TravelMode) -> crate::Result<Self> {
         // OTP responses are always in meters
         let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
         let Ok(legs): std::result::Result<Vec<_>, _> =
@@ -440,16 +234,6 @@ impl<'de> Deserialize<'de> for TravelModes {
 
         deserializer.deserialize_str(CommaSeparatedVecVisitor)
     }
-}
-
-fn serialize_rect_to_lng_lat<S: Serializer>(
-    rect: &Rect,
-    serializer: S,
-) -> std::result::Result<S::Ok, S::Error> {
-    let mut struct_serializer = serializer.serialize_struct("BBox", 2)?;
-    struct_serializer.serialize_field("min", &[rect.min().x, rect.min().y])?;
-    struct_serializer.serialize_field("max", &[rect.max().x, rect.max().y])?;
-    struct_serializer.end()
 }
 
 impl actix_web::Responder for PlanResponseOk {
@@ -693,7 +477,6 @@ mod tests {
 
         let maneuver = Maneuver::from_valhalla(valhalla_maneuver);
         let actual = serde_json::to_string(&maneuver).unwrap();
-        dbg!(&actual);
         // parse the JSON string back into an Object Value
         let actual_object: Value = serde_json::from_str(&actual).unwrap();
 

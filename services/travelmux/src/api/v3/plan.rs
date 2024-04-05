@@ -693,7 +693,6 @@ mod tests {
 
         let maneuver = Maneuver::from_valhalla(valhalla_maneuver);
         let actual = serde_json::to_string(&maneuver).unwrap();
-        dbg!(&actual);
         // parse the JSON string back into an Object Value
         let actual_object: Value = serde_json::from_str(&actual).unwrap();
 

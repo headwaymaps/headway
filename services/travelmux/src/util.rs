@@ -1,5 +1,5 @@
 use geo::{Point, Rect};
-use serde::{Deserialize, Deserializer};
+use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serializer};
 use std::time::Duration;
 
 pub fn deserialize_point_from_lat_lon<'de, D>(deserializer: D) -> Result<Point, D::Error>
@@ -44,7 +44,7 @@ pub fn serialize_duration_as_seconds<S>(
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
-    S: serde::Serializer,
+    S: Serializer,
 {
     serializer.serialize_u64(duration.as_secs())
 }
@@ -59,4 +59,14 @@ pub fn extend_bounds(bounds: &mut Rect, extension: &Rect) {
         geo::coord! { x: max_x, y: max_y },
     );
     std::mem::swap(bounds, &mut new_bounds);
+}
+
+pub fn serialize_rect_to_lng_lat<S: Serializer>(
+    rect: &Rect,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let mut struct_serializer = serializer.serialize_struct("BBox", 2)?;
+    struct_serializer.serialize_field("min", &[rect.min().x, rect.min().y])?;
+    struct_serializer.serialize_field("max", &[rect.max().x, rect.max().y])?;
+    struct_serializer.end()
 }

@@ -14,7 +14,6 @@ mod integration_tests {
         let response = reqwest::blocking::get(url).unwrap();
         let status = response.status();
         if !status.is_success() {
-            dbg!(&response);
             let body = response.text().unwrap();
             panic!("status was: {status}, body: {body}");
         }
@@ -48,7 +47,6 @@ mod integration_tests {
         let response = reqwest::blocking::get(url).unwrap();
         let status = response.status();
         if !status.is_success() {
-            dbg!(&response);
             let body = response.text().unwrap();
             panic!("status was: {status}, body: {body}");
         }
