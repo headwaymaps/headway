@@ -33,6 +33,7 @@ pub struct PlanQuery {
 }
 
 use crate::error::ErrorType;
+use crate::valhalla::valhalla_api::ManeuverType;
 use error::PlanResponseErr;
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -340,7 +341,7 @@ pub struct Maneuver {
     pub time: f64,
     pub travel_mode: String,
     pub travel_type: String,
-    pub r#type: u64,
+    pub r#type: ManeuverType,
     pub verbal_post_transition_instruction: Option<String>,
     pub verbal_pre_transition_instruction: Option<String>,
     pub verbal_succinct_transition_instruction: Option<String>,
@@ -685,7 +686,7 @@ mod tests {
         }"#;
 
         let valhalla_maneuver: valhalla_api::Maneuver = serde_json::from_str(json).unwrap();
-        assert_eq!(valhalla_maneuver.r#type, 2);
+        assert_eq!(valhalla_maneuver.r#type, ManeuverType::StartRight);
         assert_eq!(
             valhalla_maneuver.instruction,
             "Drive northeast on Fauntleroy Way Southwest."
@@ -693,7 +694,6 @@ mod tests {
 
         let maneuver = Maneuver::from_valhalla(valhalla_maneuver);
         let actual = serde_json::to_string(&maneuver).unwrap();
-        dbg!(&actual);
         // parse the JSON string back into an Object Value
         let actual_object: Value = serde_json::from_str(&actual).unwrap();
 
