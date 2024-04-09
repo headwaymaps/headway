@@ -5,16 +5,19 @@ use polyline::decode_polyline;
 use reqwest::header::{HeaderName, HeaderValue};
 use serde::{de, de::IntoDeserializer, de::Visitor, Deserialize, Deserializer, Serialize};
 use std::fmt;
+use std::time::{Duration, SystemTime};
 
 use super::error::{PlanResponseErr, PlanResponseOk};
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::otp_api;
 use crate::otp::otp_api::RelativeDirection;
-use crate::util::serialize_rect_to_lng_lat;
-use crate::util::{deserialize_point_from_lat_lon, extend_bounds};
+use crate::util::{
+    deserialize_point_from_lat_lon, extend_bounds, serialize_rect_to_lng_lat,
+    serialize_system_time_as_millis, system_time_from_millis,
+};
 use crate::valhalla::valhalla_api;
-use crate::valhalla::valhalla_api::ManeuverType;
+use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -48,9 +51,11 @@ pub struct Itinerary {
     /// seconds
     duration: f64,
     /// unix millis, UTC
-    start_time: u64,
+    #[serde(serialize_with = "serialize_system_time_as_millis")]
+    start_time: SystemTime,
     /// unix millis, UTC
-    end_time: u64,
+    #[serde(serialize_with = "serialize_system_time_as_millis")]
+    end_time: SystemTime,
     distance: f64,
     distance_units: DistanceUnit,
     #[serde(serialize_with = "serialize_rect_to_lng_lat")]
@@ -65,16 +70,34 @@ impl Itinerary {
             geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
         );
 
-        use std::time::Duration;
-        fn time_since_epoch() -> Duration {
-            use std::time::{SystemTime, UNIX_EPOCH};
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("system time is after unix epoch")
-        }
+        let start_time = SystemTime::now();
+        let end_time = start_time + Duration::from_millis((valhalla.summary.time * 1000.0) as u64);
+        debug_assert!(
+            valhalla.locations.len() == valhalla.legs.len() + 1,
+            "assuming each leg has a start and end location"
+        );
 
-        let start_time = time_since_epoch().as_millis() as u64;
-        let end_time = start_time + (valhalla.summary.time * 1000.0) as u64;
+        let mut start_time = SystemTime::now();
+        let legs = valhalla
+            .legs
+            .iter()
+            .zip(valhalla.locations.windows(2))
+            .map(|(v_leg, locations)| {
+                let leg_start_time = start_time;
+                let leg_end_time =
+                    start_time + Duration::from_millis((v_leg.summary.time * 1000.0) as u64);
+                start_time = leg_end_time;
+                Leg::from_valhalla(
+                    v_leg,
+                    mode,
+                    leg_start_time,
+                    leg_end_time,
+                    locations[0],
+                    locations[1],
+                )
+            })
+            .collect();
+
         Self {
             mode,
             start_time,
@@ -83,11 +106,7 @@ impl Itinerary {
             distance: valhalla.summary.length,
             bounds,
             distance_units: valhalla.units,
-            legs: valhalla
-                .legs
-                .iter()
-                .map(|v_leg| Leg::from_valhalla(v_leg, mode))
-                .collect(),
+            legs,
         }
     }
 
@@ -113,16 +132,43 @@ impl Itinerary {
             };
             extend_bounds(&mut itinerary_bounds, &leg_bounds);
         }
+
         Ok(Self {
             duration: itinerary.duration as f64,
-            start_time: itinerary.start_time,
-            end_time: itinerary.end_time,
+            start_time: system_time_from_millis(itinerary.start_time),
+            end_time: system_time_from_millis(itinerary.end_time),
             mode,
             distance: distance_meters / 1000.0,
             distance_units: DistanceUnit::Kilometers,
             bounds: itinerary_bounds,
             legs,
         })
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct Place {
+    #[serde(flatten)]
+    location: LonLat,
+    name: Option<String>,
+}
+
+impl From<&otp_api::Place> for Place {
+    fn from(value: &otp_api::Place) -> Self {
+        Self {
+            location: value.location.into(),
+            name: value.name.clone(),
+        }
+    }
+}
+
+impl From<valhalla_api::LonLat> for Place {
+    fn from(value: LonLat) -> Self {
+        Self {
+            location: value,
+            name: None,
+        }
     }
 }
 
@@ -137,6 +183,24 @@ struct Leg {
 
     #[serde(flatten)]
     mode_leg: ModeLeg,
+
+    /// Beginning of the leg
+    from_place: Place,
+
+    /// End of the Leg
+    to_place: Place,
+
+    // This is mostly OTP specific. We can synthesize a value from the valhalla response, but we
+    // don't currently use it.
+    /// Start time of the leg
+    #[serde(serialize_with = "serialize_system_time_as_millis")]
+    start_time: SystemTime,
+
+    // This is mostly OTP specific. We can synthesize a value from the valhalla response, but we
+    // don't currently use it.
+    /// Start time of the leg
+    #[serde(serialize_with = "serialize_system_time_as_millis")]
+    end_time: SystemTime,
 }
 
 // Should we just pass the entire OTP leg?
@@ -147,7 +211,7 @@ type TransitLeg = otp_api::Leg;
 enum ModeLeg {
     // REVIEW: rename? There is a boolean field for OTP called TransitLeg
     #[serde(rename = "transitLeg")]
-    Transit(TransitLeg),
+    Transit(Box<TransitLeg>),
 
     #[serde(rename = "maneuvers")]
     NonTransit(Vec<Maneuver>),
@@ -231,19 +295,36 @@ impl Leg {
             }
             _ => {
                 // assume everything else is transit
-                ModeLeg::Transit(otp.clone())
+                ModeLeg::Transit(Box::new(otp.clone()))
             }
         };
 
+        let from_place = (&otp.from).into();
+        let to_place = (&otp.to).into();
         Ok(Self {
+            from_place,
+            to_place,
+            start_time: system_time_from_millis(otp.start_time),
+            end_time: system_time_from_millis(otp.end_time),
             geometry,
             mode: otp.mode.into(),
             mode_leg,
         })
     }
 
-    fn from_valhalla(valhalla: &valhalla_api::Leg, travel_mode: TravelMode) -> Self {
+    fn from_valhalla(
+        valhalla: &valhalla_api::Leg,
+        travel_mode: TravelMode,
+        start_time: SystemTime,
+        end_time: SystemTime,
+        from_place: LonLat,
+        to_place: LonLat,
+    ) -> Self {
         Self {
+            start_time,
+            end_time,
+            from_place: from_place.into(),
+            to_place: to_place.into(),
             geometry: valhalla.shape.clone(),
             mode: travel_mode,
             mode_leg: ModeLeg::NonTransit(
@@ -462,6 +543,16 @@ mod tests {
             epsilon = 1e-4
         );
 
+        assert_relative_eq!(
+            geo::Point::from(first_leg.from_place.location),
+            geo::point!(x: -122.339414, y: 47.575837)
+        );
+        assert_relative_eq!(
+            geo::Point::from(first_leg.to_place.location),
+            geo::point!(x:-122.347234, y: 47.651048)
+        );
+        assert!(first_leg.to_place.name.is_none());
+
         let ModeLeg::NonTransit(maneuvers) = &first_leg.mode_leg else {
             panic!("unexpected transit leg")
         };
@@ -495,6 +586,19 @@ mod tests {
             geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
+        );
+
+        assert_relative_eq!(
+            geo::Point::from(first_leg.from_place.location),
+            geo::point!(x: -122.339414, y: 47.575837)
+        );
+        assert_relative_eq!(
+            geo::Point::from(first_leg.to_place.location),
+            geo::point!(x: -122.334106, y: 47.575924)
+        );
+        assert_eq!(
+            first_leg.to_place.name.as_ref().unwrap(),
+            "1st Ave S & S Hanford St"
         );
 
         assert_eq!(first_leg.mode, TravelMode::Walk);
@@ -541,6 +645,21 @@ mod tests {
         let first_leg = legs.get(0).unwrap().as_object().unwrap();
         let mode = first_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "WALK");
+
+        let mode = first_leg
+            .get("startTime")
+            .expect("field missing")
+            .as_u64()
+            .expect("unexpected type. expected u64");
+        assert_eq!(mode, 1708728373000);
+
+        let mode = first_leg
+            .get("endTime")
+            .expect("field missing")
+            .as_u64()
+            .expect("unexpected type. expected u64");
+        assert_eq!(mode, 1708728745000);
+
         assert!(first_leg.get("transitLeg").is_none());
         let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
         let first_maneuver = maneuvers.get(0).unwrap();

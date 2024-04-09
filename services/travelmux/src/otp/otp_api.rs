@@ -73,6 +73,16 @@ pub struct Leg {
     pub route_color: Option<String>,
     // Present, but empty, for transit legs. Non-empty for non-transit legs.
     pub steps: Vec<Step>,
+
+    pub from: Place,
+    pub to: Place,
+
+    /// What time the leg starts, in millis since Unix epoch (UTC)
+    pub start_time: u64,
+
+    /// What time the leg starts, in millis since Unix epoch (UTC)
+    pub end_time: u64,
+
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -160,11 +170,34 @@ pub struct LegGeometry {
     pub points: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-pub struct Location {
+pub struct LonLat {
     pub lat: f64,
     pub lon: f64,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Place {
+    #[serde(flatten)]
+    pub location: LonLat,
+
+    /// millis since Unix epoch
+    /// I think it's None iff it's the trip Origin
+    pub arrival: Option<u64>,
+
+    /// millis since Unix epoch
+    /// I think it's None iff it's the trip Destination
+    pub departure: Option<u64>,
+
+    /// "Civic Center / Grand Park Station"
+    /// Transit stops often have names. But this is often blank when
+    /// the place is some random lat/lon (e.g. the users destination)
+    pub name: Option<String>,
+
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[cfg(test)]

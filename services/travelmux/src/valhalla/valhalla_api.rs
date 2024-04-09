@@ -1,3 +1,4 @@
+use crate::otp::otp_api;
 use crate::DistanceUnit;
 use geo::Point;
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,7 @@ pub enum ModeCosting {
 ///     `route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ValhallaRouteQuery {
-    pub locations: Vec<LngLat>,
+    pub locations: Vec<LonLat>,
     pub costing: ModeCosting,
     pub alternates: u32,
     pub units: DistanceUnit,
@@ -47,7 +48,7 @@ pub enum ValhallaRouteResponseResult {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Trip {
-    pub locations: Vec<LngLat>,
+    pub locations: Vec<LonLat>,
     pub summary: Summary,
     pub units: DistanceUnit, // legs: Vec<Leg>
     pub legs: Vec<Leg>,
@@ -74,11 +75,10 @@ pub struct Summary {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-// CLEANUP: rename to LonLat to match their field spelling?
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct LngLat {
-    pub lat: f64,
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LonLat {
     pub lon: f64,
+    pub lat: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -86,7 +86,6 @@ pub struct Leg {
     pub summary: Summary,
     pub maneuvers: Vec<Maneuver>,
     pub shape: String,
-    // pub duration: f64,
     // pub length: f64,
     // pub steps: Vec<Step>,
     #[serde(flatten)]
@@ -175,11 +174,26 @@ pub enum ManeuverType {
     BuildingExit = 43,
 }
 
-impl From<Point> for LngLat {
+impl From<Point> for LonLat {
     fn from(value: Point) -> Self {
         Self {
             lat: value.y(),
             lon: value.x(),
+        }
+    }
+}
+
+impl From<LonLat> for Point {
+    fn from(value: LonLat) -> Self {
+        geo::point!(x: value.lon, y: value.lat)
+    }
+}
+
+impl From<otp_api::LonLat> for LonLat {
+    fn from(value: otp_api::LonLat) -> Self {
+        Self {
+            lon: value.lon,
+            lat: value.lat,
         }
     }
 }

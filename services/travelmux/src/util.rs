@@ -1,6 +1,9 @@
 use geo::{Point, Rect};
-use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serializer};
-use std::time::Duration;
+use serde::{
+    ser::{Error, SerializeStruct},
+    Deserialize, Deserializer, Serializer,
+};
+use std::time::{Duration, SystemTime};
 
 pub fn deserialize_point_from_lat_lon<'de, D>(deserializer: D) -> Result<Point, D::Error>
 where
@@ -69,4 +72,21 @@ pub fn serialize_rect_to_lng_lat<S: Serializer>(
     struct_serializer.serialize_field("min", &[rect.min().x, rect.min().y])?;
     struct_serializer.serialize_field("max", &[rect.max().x, rect.max().y])?;
     struct_serializer.end()
+}
+
+pub fn serialize_system_time_as_millis<S>(
+    time: &SystemTime,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let since_epoch = time
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_e| S::Error::custom("time is before epoch"))?;
+    serializer.serialize_u64(since_epoch.as_millis() as u64)
+}
+
+pub fn system_time_from_millis(millis: u64) -> SystemTime {
+    std::time::UNIX_EPOCH + Duration::from_millis(millis)
 }
