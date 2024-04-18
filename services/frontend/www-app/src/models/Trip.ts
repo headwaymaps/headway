@@ -201,20 +201,20 @@ export const LineStyles = {
     };
   },
   active: {
-    'line-color': '#1976D2',
+    'line-color': '#1296FF',
     'line-width': 6,
   },
   inactive: {
-    'line-color': '#777',
+    'line-color': '#6FC1EE',
     'line-width': 4,
   },
   walkingActive: {
-    'line-color': '#1976D2',
+    'line-color': '#1296FF',
     'line-dasharray': [0, 1.5],
     'line-width': 8,
   },
   walkingInactive: {
-    'line-color': '#777',
+    'line-color': '#6FC1EE',
     'line-dasharray': [0, 1.5],
     'line-width': 8,
   },
