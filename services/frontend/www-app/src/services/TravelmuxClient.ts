@@ -2,7 +2,11 @@ import { LngLat } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Err, Result } from 'src/utils/Result';
 import Trip, { TripFetchError } from 'src/models/Trip';
-import { OTPPlanResponse, OTPItinerary } from './OpenTripPlannerAPI';
+import {
+  OTPPlanResponse,
+  OTPItinerary,
+  OTPItineraryLeg,
+} from './OpenTripPlannerAPI';
 import {
   ValhallaRouteResponse,
   ValhallaRoute,
@@ -27,7 +31,7 @@ export interface TravelmuxLeg {
   distanceMeters: number;
   duration: number;
   geometry: string;
-  routeColor?: string;
+  transitLeg?: OTPItineraryLeg;
 }
 
 export interface TravelmuxItinerary {

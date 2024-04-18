@@ -99,8 +99,10 @@ export class TripLeg {
       if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
         return LineStyles.walkingActive;
       } else {
-        if (this.raw.routeColor) {
-          return LineStyles.activeColored(`#${this.raw.routeColor}`);
+        if (this.raw.transitLeg?.routeColor) {
+          return LineStyles.activeColored(
+            `#${this.raw.transitLeg?.routeColor}`,
+          );
         } else {
           return LineStyles.active;
         }
