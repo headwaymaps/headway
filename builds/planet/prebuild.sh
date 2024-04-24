@@ -11,7 +11,8 @@ if [[ -f "${OUTPUT_PBF}" ]]; then
     exit 0
 fi
 
+OUTPUT_ROOT=../../../data
 (cd $(dirname "$0") && \
     cd assemble-planet-pbf && \
-    cargo run -- $HEADWAY_PLANET_VERSION && \
-    mv "generated/${HEADWAY_PLANET_VERSION}/final-planet-${HEADWAY_PLANET_VERSION}.osm.pbf" ../../../${OUTPUT_PBF})
+    cargo run --release -- "$HEADWAY_PLANET_VERSION" "$OUTPUT_ROOT" && \
+    mv "${OUTPUT_ROOT}/generated/${HEADWAY_PLANET_VERSION}/final-planet-${HEADWAY_PLANET_VERSION}.osm.pbf" ../../../${OUTPUT_PBF})

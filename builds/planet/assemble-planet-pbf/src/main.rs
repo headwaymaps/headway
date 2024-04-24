@@ -9,6 +9,7 @@ mod error {
 use error::Result;
 use resource::Resource;
 use std::env;
+use std::path::PathBuf;
 
 fn main() {
     env_logger::init();
@@ -25,13 +26,24 @@ fn main() {
 
     let mut args = env::args();
     let bin_name = args.next().unwrap();
+
+    let example_usage = format!("{bin_name} v1.36 ../../data/");
     let Some(version) = args.next() else {
-        panic!("must specify _version_ arg\nusage: {bin_name} v1.36");
+        panic!("must specify _version_ arg\nusage: {example_usage}");
     };
+
+    let Some(output_root) = args.next() else {
+        panic!("must specify _output_root_ arg\nusage: {example_usage}");
+    };
+
+    let output_root = PathBuf::from(output_root);
+    if !output_root.is_dir() {
+        panic!("directory at output_root does not exist: {output_root:?}")
+    }
 
     // Download
     info!("starting download of {version}");
-    let dist = Distribution::new(version.to_string());
+    let dist = Distribution::new(version.to_string(), &output_root);
     dist.download_and_build().unwrap();
     info!("done with {version}");
 }
@@ -73,9 +85,29 @@ mod distribution {
         version: String,
         resources: Resources,
     }
+    struct ResourceBuilder {
+        download_dir: PathBuf,
+        generated_dir: PathBuf,
+    }
+    impl ResourceBuilder {
+        fn new(version: String, data_root: PathBuf) -> Self {
+            Self {
+                download_dir: data_root.join("download").join(&version),
+                generated_dir: data_root.join("generated").join(&version),
+            }
+        }
+        fn downloadable(&self, name: String) -> Resource {
+            let path = self.download_dir.join(&name);
+            Resource::new(name, path)
+        }
+        fn generated(&self, name: String) -> Resource {
+            let path = self.generated_dir.join(&name);
+            Resource::new(name, path)
+        }
+    }
 
     struct Resources {
-        version: String,
+        resource_builder: ResourceBuilder,
         planet_pbf: Resource,
         buildings_pbf: Resource,
         admin_osc: Resource,
@@ -84,35 +116,24 @@ mod distribution {
     }
 
     impl Resources {
-        pub fn new(version: &str) -> Self {
-            let merged_planet_and_ml_buildings_name = format!("merged-planet-and-ml-buildings-{version}.osm.pbf");
-            let merged_planet_and_ml_buildings_pbf_path =
-                Self::_generated_dir(version).join(&merged_planet_and_ml_buildings_name);
-
-
-            let final_planet_name = format!("final-planet-{version}.osm.pbf");
-            let final_planet_pbf_path =
-                Self::_generated_dir(version).join(&final_planet_name);
-
+        pub fn new(version: &str, data_root: &Path) -> Self {
+            let resource_builder =
+                ResourceBuilder::new(version.to_string(), data_root.to_path_buf());
             Self {
-                version: version.to_string(),
-                planet_pbf: Self::downloadable_resource(
-                    format!("planet-{version}.osm.pbf"),
-                    version,
-                ),
-                admin_osc: Self::downloadable_resource(format!("admin-{version}.osc.gz"), version),
-                buildings_pbf: Self::downloadable_resource(
-                    format!("ml-buildings-{version}.osm.pbf"),
-                    version,
-                ),
-                merged_planet_and_ml_buildings_pbf: Resource::new(merged_planet_and_ml_buildings_name, merged_planet_and_ml_buildings_pbf_path),
-                final_planet_pbf: Resource::new(final_planet_name, final_planet_pbf_path),
+                planet_pbf: resource_builder.downloadable(format!("planet-{version}.osm.pbf")),
+                admin_osc: resource_builder.downloadable(format!("admin-{version}.osc.gz")),
+                buildings_pbf: resource_builder
+                    .downloadable(format!("ml-buildings-{version}.osm.pbf")),
+                merged_planet_and_ml_buildings_pbf: resource_builder
+                    .generated(format!("merged-planet-and-ml-buildings-{version}.osm.pbf")),
+                final_planet_pbf: resource_builder
+                    .generated(format!("final-planet-{version}.osm.pbf")),
+                resource_builder,
             }
         }
 
-        pub fn downloadable_resource(name: String, version: &str) -> Resource {
-            let download_path = Self::_download_dir(&version).join(&name);
-            Resource::new(name, download_path)
+        pub fn download_dir(&self) -> &Path {
+            &self.resource_builder.download_dir
         }
 
         pub fn ensure_download_dir(&self) -> Result<()> {
@@ -121,13 +142,8 @@ mod distribution {
             Ok(())
         }
 
-        pub fn download_dir(&self) -> PathBuf {
-            Self::_download_dir(&self.version)
-        }
-
-        pub fn _download_dir(version: &str) -> PathBuf {
-            let dir = "downloads";
-            Path::new(dir).join(version)
+        pub fn generated_dir(&self) -> &Path {
+            &self.resource_builder.generated_dir
         }
 
         pub fn ensure_generated_dir(&self) -> Result<()> {
@@ -135,21 +151,12 @@ mod distribution {
             std::fs::create_dir_all(dir)?;
             Ok(())
         }
-
-        pub fn generated_dir(&self) -> PathBuf {
-            Self::_generated_dir(&self.version)
-        }
-
-        pub fn _generated_dir(version: &str) -> PathBuf {
-            let dir = "generated";
-            Path::new(dir).join(version)
-        }
     }
 
     impl Distribution {
-        pub fn new(version: String) -> Self {
+        pub fn new(version: String, output_root: &Path) -> Self {
             Self {
-                resources: Resources::new(&version),
+                resources: Resources::new(&version, output_root),
                 version,
             }
         }
@@ -163,8 +170,8 @@ mod distribution {
             cmd.args(["-x", "16"])
                 .args(["-s", "16"])
                 .arg(&format!(
-                        "-d {download_dir}",
-                        download_dir = self
+                    "-d {download_dir}",
+                    download_dir = self
                         .resources
                         .download_dir()
                         .to_str()
@@ -181,7 +188,6 @@ mod distribution {
                     return Err(err.into());
                 }
             };
-
 
             let status = child.wait()?;
             if !status.success() {
@@ -212,7 +218,6 @@ mod distribution {
                 self.download(resource)
             }
         }
-
 
         pub fn download_and_build(&self) -> Result<()> {
             self.download_if_missing(&self.resources.admin_osc)?;
@@ -258,14 +263,14 @@ mod osmio {
         let mut cmd = Command::new("osmium");
         cmd.arg("version");
         let mut child = match cmd.spawn() {
-                Ok(child) => child,
-                Err(err) => {
-                    if let std::io::ErrorKind::NotFound = err.kind() {
-                        eprintln!("osmium is missing. Install osmium and try again.");
-                    }
-                    return Err(err.into());
+            Ok(child) => child,
+            Err(err) => {
+                if let std::io::ErrorKind::NotFound = err.kind() {
+                    eprintln!("osmium is missing. Install osmium and try again.");
                 }
-            };
+                return Err(err.into());
+            }
+        };
 
         let status = child.wait()?;
         if !status.success() {
@@ -382,5 +387,4 @@ mod osmio {
             Ok(())
         }
     }
-
 }
