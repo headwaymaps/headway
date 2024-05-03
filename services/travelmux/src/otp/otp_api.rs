@@ -96,8 +96,8 @@ pub struct Step {
     pub relative_direction: RelativeDirection,
     /// The name of the street.
     pub street_name: String,
-    /// The absolute direction of this step.
-    pub absolute_direction: AbsoluteDirection,
+    /// The absolute (compass) direction of this step.
+    pub absolute_direction: Option<AbsoluteDirection>,
     /// When exiting a highway or traffic circle, the exit name/number.
     pub exit: Option<String>,
     /// Indicates whether or not a street changes direction at an intersection.

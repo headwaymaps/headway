@@ -48,7 +48,7 @@ services:
     networks:
       - otp_backend
     # ports:
-    #   - "9001:8000"
+    #   - "9002:8000"
   travelmux:
     image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
@@ -89,7 +89,7 @@ services:
       valhalla-init:
         condition: service_completed_successfully
     # ports:
-    #   - "9002:8002"
+    #   - "9001:8002"
   frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
