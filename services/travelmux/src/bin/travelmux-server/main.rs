@@ -50,6 +50,7 @@ async fn main() -> Result<()> {
             .app_data(web::Data::new(app_state.clone()))
             .service(api::v3::plan::get_plan)
             .service(api::v4::plan::get_plan)
+            .service(api::v5::plan::get_plan)
             .service(api::health::get_ready)
             .service(api::health::get_alive)
     })

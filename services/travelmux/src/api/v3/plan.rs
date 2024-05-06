@@ -137,7 +137,7 @@ mod error {
             debug_assert!(error_code < 2000);
             debug_assert!(error_code > 1000);
             match value.error_type {
-                ErrorType::ThisTransitAreaNotCovered => Self {
+                ErrorType::NoCoverageForArea => Self {
                     status_code: 400,
                     error_code,
                     message: value.source.to_string(),
@@ -486,7 +486,7 @@ pub async fn get_plan(
             else {
                 Err(
                     Error::user("Transit directions not available for this area.")
-                        .error_type(ErrorType::ThisTransitAreaNotCovered),
+                        .error_type(ErrorType::NoCoverageForArea),
                 )?
             };
 

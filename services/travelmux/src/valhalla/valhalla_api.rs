@@ -99,6 +99,7 @@ pub struct Maneuver {
     pub begin_shape_index: u64,
     pub end_shape_index: u64,
     pub highway: Option<bool>,
+    /// units depend on the request
     pub length: f64,
     pub street_names: Option<Vec<String>>,
     pub time: f64,
