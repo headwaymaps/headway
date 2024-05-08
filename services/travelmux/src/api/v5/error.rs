@@ -101,8 +101,6 @@ impl From<Error> for PlanResponseErr {
 impl From<Error> for PlanError {
     fn from(value: Error) -> Self {
         let error_code = value.error_type as u32;
-        debug_assert!(error_code < 2000);
-        debug_assert!(error_code > 1000);
         match value.error_type {
             ErrorType::NoCoverageForArea => Self {
                 status_code: 400,
