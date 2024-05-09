@@ -7,8 +7,21 @@ pub enum ErrorType {
     User = 400,
     /// Generic error for when something goes wrong on the server
     Server = 500,
-    /// The requested transit trip area is not covered
-    ThisTransitAreaNotCovered = 1701,
+    /// The requested trip area is not covered by any routing graph.
+    NoCoverageForArea = 1701,
+}
+
+impl TryFrom<u32> for ErrorType {
+    type Error = ();
+
+    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
+        match value {
+            400 => Ok(Self::User),
+            500 => Ok(Self::Server),
+            1701 => Ok(Self::NoCoverageForArea),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug)]

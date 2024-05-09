@@ -1,10 +1,10 @@
 use crate::otp::otp_api;
 use crate::valhalla::valhalla_api;
-use crate::{Error, TravelMode};
+use crate::{DistanceUnit, Error, TravelMode};
 use actix_web::HttpResponseBuilder;
 use serde::{Deserialize, Serialize};
 
-use super::Plan;
+use super::{Itinerary, Plan};
 use crate::error::ErrorType;
 use actix_web::body::BoxBody;
 use actix_web::HttpResponse;
@@ -101,8 +101,6 @@ impl From<Error> for PlanResponseErr {
 impl From<Error> for PlanError {
     fn from(value: Error) -> Self {
         let error_code = value.error_type as u32;
-        debug_assert!(error_code < 2000);
-        debug_assert!(error_code > 1000);
         match value.error_type {
             ErrorType::NoCoverageForArea => Self {
                 status_code: 400,
@@ -157,6 +155,7 @@ impl PlanResponseOk {
     pub fn from_otp(
         mode: TravelMode,
         mut otp: otp_api::PlanResponse,
+        distance_unit: DistanceUnit,
     ) -> Result<PlanResponseOk, PlanResponseErr> {
         if let Some(otp_error) = otp.error {
             return Err(otp_error.into());
@@ -171,7 +170,7 @@ impl PlanResponseOk {
             .itineraries
             .iter()
             .map(|itinerary: &otp_api::Itinerary| {
-                crate::api::v4::plan::Itinerary::from_otp(itinerary, mode)
+                Itinerary::from_otp(itinerary, mode, distance_unit)
             })
             .collect();
 
@@ -193,16 +192,10 @@ impl PlanResponseOk {
             valhalla_api::ValhallaRouteResponseResult::Err(err) => return Err(err),
         };
 
-        let mut itineraries = vec![crate::api::v4::plan::Itinerary::from_valhalla(
-            &valhalla.trip,
-            mode,
-        )];
+        let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
         if let Some(alternates) = &valhalla.alternates {
             for alternate in alternates {
-                itineraries.push(crate::api::v4::plan::Itinerary::from_valhalla(
-                    &alternate.trip,
-                    mode,
-                ));
+                itineraries.push(Itinerary::from_valhalla(&alternate.trip, mode));
             }
         }
 

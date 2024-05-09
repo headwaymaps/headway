@@ -4,6 +4,7 @@ use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
 use reqwest::header::{HeaderName, HeaderValue};
 use serde::{de, de::IntoDeserializer, de::Visitor, Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use std::time::{Duration, SystemTime};
 
@@ -11,6 +12,8 @@ use super::error::{PlanResponseErr, PlanResponseOk};
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::otp_api;
+use crate::otp::otp_api::{AbsoluteDirection, RelativeDirection};
+use crate::util::format::format_meters;
 use crate::util::{
     deserialize_point_from_lat_lon, extend_bounds, serialize_rect_to_lng_lat,
     serialize_system_time_as_millis, system_time_from_millis,
@@ -109,11 +112,22 @@ impl Itinerary {
         }
     }
 
-    pub fn from_otp(itinerary: &otp_api::Itinerary, mode: TravelMode) -> crate::Result<Self> {
+    pub fn from_otp(
+        itinerary: &otp_api::Itinerary,
+        mode: TravelMode,
+        distance_unit: DistanceUnit,
+    ) -> crate::Result<Self> {
         // OTP responses are always in meters
         let distance_meters: f64 = itinerary.legs.iter().map(|l| l.distance).sum();
-        let Ok(legs): std::result::Result<Vec<_>, _> =
-            itinerary.legs.iter().map(Leg::from_otp).collect()
+        let Ok(legs): std::result::Result<Vec<_>, _> = itinerary
+            .legs
+            .iter()
+            .enumerate()
+            .map(|(idx, leg)| {
+                let is_destination_leg = idx == itinerary.legs.len() - 1;
+                Leg::from_otp(leg, is_destination_leg, distance_unit)
+            })
+            .collect()
         else {
             return Err(Error::server("failed to parse legs"));
         };
@@ -212,8 +226,58 @@ enum ModeLeg {
     #[serde(rename = "transitLeg")]
     Transit(Box<TransitLeg>),
 
-    #[serde(rename = "maneuvers")]
-    NonTransit(Vec<Maneuver>),
+    #[serde(rename = "nonTransitLeg")]
+    NonTransit(Box<NonTransitLeg>),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct NonTransitLeg {
+    maneuvers: Vec<Maneuver>,
+
+    /// The substantial road names along the route
+    substantial_street_names: Vec<String>,
+}
+
+impl NonTransitLeg {
+    fn new(maneuvers: Vec<Maneuver>) -> Self {
+        let mut street_distances = HashMap::new();
+        for maneuver in &maneuvers {
+            if let Some(street_names) = &maneuver.street_names {
+                for street_name in street_names {
+                    *street_distances.entry(street_name).or_insert(0.0) += maneuver.distance;
+                }
+            }
+        }
+        let mut scores: Vec<_> = street_distances.into_iter().collect();
+        scores.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+
+        let limit = 3;
+        // Don't include tiny segments in the description of the route
+        let mut inclusion_threshold = None;
+
+        let substantial_street_names = scores
+            .into_iter()
+            .take(limit)
+            .flat_map(|(street_name, distance)| {
+                let Some(inclusion_threshold) = inclusion_threshold else {
+                    // don't consider streets that are much smaller than this one
+                    inclusion_threshold = Some(distance * 0.5);
+                    return Some(street_name.clone());
+                };
+                if distance > inclusion_threshold {
+                    Some(street_name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Self {
+            maneuvers,
+            substantial_street_names,
+        }
+    }
 }
 
 // Eventually we might want to coalesce this into something not valhalla specific
@@ -226,37 +290,137 @@ pub struct Maneuver {
     // pub begin_shape_index: u64,
     // pub end_shape_index: u64,
     // pub highway: Option<bool>,
-    // pub length: f64,
-    // pub street_names: Option<Vec<String>>,
+    /// In units of the `distance_unit` of the trip leg
+    pub distance: f64,
+    pub street_names: Option<Vec<String>>,
     // pub time: f64,
     // pub travel_mode: String,
     // pub travel_type: String,
     pub r#type: ManeuverType,
     pub verbal_post_transition_instruction: Option<String>,
+    pub start_point: LonLat,
     // pub verbal_pre_transition_instruction: Option<String>,
     // pub verbal_succinct_transition_instruction: Option<String>,
 }
 
 impl Maneuver {
-    fn from_valhalla(valhalla: valhalla_api::Maneuver) -> Self {
+    fn from_valhalla(valhalla: valhalla_api::Maneuver, leg_geometry: &LineString) -> Self {
         Self {
             instruction: Some(valhalla.instruction),
+            street_names: valhalla.street_names,
             r#type: valhalla.r#type,
+            start_point: Point(leg_geometry[valhalla.begin_shape_index as usize]).into(),
             verbal_post_transition_instruction: valhalla.verbal_post_transition_instruction,
+            distance: valhalla.length,
         }
     }
 
-    fn from_otp(otp: otp_api::Step) -> Self {
+    fn from_otp(
+        otp: otp_api::Step,
+        mode: otp_api::TransitMode,
+        distance_unit: DistanceUnit,
+    ) -> Self {
+        let instruction = build_instruction(
+            mode,
+            otp.relative_direction,
+            otp.absolute_direction,
+            &otp.street_name,
+        );
+
+        let verbal_post_transition_instruction =
+            build_verbal_post_transition_instruction(otp.distance, distance_unit);
+
+        let street_names = if let Some(true) = otp.bogus_name {
+            None
+        } else {
+            Some(vec![otp.street_name])
+        };
+        let localized_distance = match distance_unit {
+            DistanceUnit::Kilometers => otp.distance,
+            // round to the nearest ten-thousandth
+            DistanceUnit::Miles => (otp.distance * 0.621371 * 10_000.0).round() / 10_000.0,
+        };
         Self {
-            instruction: None,
+            instruction,
             r#type: otp.relative_direction.into(),
-            verbal_post_transition_instruction: None,
+            street_names,
+            verbal_post_transition_instruction,
+            distance: localized_distance,
+            start_point: Point::new(otp.lon, otp.lat).into(),
         }
+    }
+}
+
+// We could do so much better. Look at Valhalla's Odin.
+//
+// e.g. take context of previous maneuver. "Bear right to stay on Main Street"
+fn build_instruction(
+    mode: otp_api::TransitMode,
+    maneuver_type: otp_api::RelativeDirection,
+    absolute_direction: Option<otp_api::AbsoluteDirection>,
+    street_name: &str,
+) -> Option<String> {
+    match maneuver_type {
+        RelativeDirection::Depart => {
+            if let Some(absolute_direction) = absolute_direction {
+                let direction = match absolute_direction {
+                    AbsoluteDirection::North => "north",
+                    AbsoluteDirection::Northeast => "northeast",
+                    AbsoluteDirection::East => "east",
+                    AbsoluteDirection::Southeast => "southeast",
+                    AbsoluteDirection::South => "south",
+                    AbsoluteDirection::Southwest => "southwest",
+                    AbsoluteDirection::West => "west",
+                    AbsoluteDirection::Northwest => "northwest",
+                };
+                let mode = match mode {
+                    otp_api::TransitMode::Walk => "Walk",
+                    otp_api::TransitMode::Bicycle => "Bike",
+                    otp_api::TransitMode::Car => "Drive",
+                    _ => "Transit",
+                };
+                Some(format!("{mode} {direction} on {street_name}."))
+            } else {
+                Some("Depart.".to_string())
+            }
+        }
+        RelativeDirection::HardLeft => Some(format!("Turn left onto {street_name}.")),
+        RelativeDirection::Left => Some(format!("Turn left onto {street_name}.")),
+        RelativeDirection::SlightlyLeft => Some(format!("Turn slightly left onto {street_name}.")),
+        RelativeDirection::Continue => Some(format!("Continue onto {street_name}.")),
+        RelativeDirection::SlightlyRight => {
+            Some(format!("Turn slightly right onto {street_name}."))
+        }
+        RelativeDirection::Right => Some(format!("Turn right onto {street_name}.")),
+        RelativeDirection::HardRight => Some(format!("Turn right onto {street_name}.")),
+        RelativeDirection::CircleClockwise | RelativeDirection::CircleCounterclockwise => {
+            Some("Enter the roundabout.".to_string())
+        }
+        RelativeDirection::Elevator => Some("Enter the elevator.".to_string()),
+        RelativeDirection::UturnLeft | RelativeDirection::UturnRight => {
+            Some("Make a U-turn.".to_string())
+        }
+    }
+}
+
+fn build_verbal_post_transition_instruction(
+    distance: f64,
+    distance_unit: DistanceUnit,
+) -> Option<String> {
+    if distance == 0.0 {
+        None
+    } else {
+        Some(format!(
+            "Continue for {}.",
+            format_meters(distance, distance_unit)
+        ))
     }
 }
 
 impl Leg {
     const GEOMETRY_PRECISION: u32 = 6;
+    const VALHALLA_GEOMETRY_PRECISION: u32 = 6;
+    const OTP_GEOMETRY_PRECISION: u32 = 5;
 
     fn decoded_geometry(&self) -> std::result::Result<LineString, String> {
         decode_polyline(&self.geometry, Self::GEOMETRY_PRECISION)
@@ -267,15 +431,42 @@ impl Leg {
         Ok(line_string.bounding_rect())
     }
 
-    fn from_otp(otp: &otp_api::Leg) -> std::result::Result<Self, String> {
-        let line = decode_polyline(&otp.leg_geometry.points, 5)?;
+    fn from_otp(
+        otp: &otp_api::Leg,
+        is_destination_leg: bool,
+        distance_unit: DistanceUnit,
+    ) -> std::result::Result<Self, String> {
+        debug_assert_ne!(Self::OTP_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
+        let line = decode_polyline(&otp.leg_geometry.points, Self::OTP_GEOMETRY_PRECISION)?;
         let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION)?;
+        let from_place: Place = (&otp.from).into();
+        let to_place: Place = (&otp.to).into();
 
         let mode_leg = match otp.mode {
             otp_api::TransitMode::Walk
             | otp_api::TransitMode::Bicycle
             | otp_api::TransitMode::Car => {
-                ModeLeg::NonTransit(otp.steps.iter().cloned().map(Maneuver::from_otp).collect())
+                let mut maneuvers: Vec<_> = otp
+                    .steps
+                    .iter()
+                    .cloned()
+                    .map(|otp_step| Maneuver::from_otp(otp_step, otp.mode, distance_unit))
+                    .collect();
+
+                // OTP doesn't include an arrival step like valhalla, so we synthesize one
+                if is_destination_leg {
+                    let maneuver = Maneuver {
+                        instruction: Some("Arrive at your destination.".to_string()),
+                        distance: 0.0,
+                        street_names: None,
+                        r#type: ManeuverType::Destination,
+                        verbal_post_transition_instruction: None,
+                        start_point: to_place.location,
+                    };
+                    maneuvers.push(maneuver);
+                }
+                let leg = NonTransitLeg::new(maneuvers);
+                ModeLeg::NonTransit(Box::new(leg))
             }
             _ => {
                 // assume everything else is transit
@@ -283,8 +474,6 @@ impl Leg {
             }
         };
 
-        let from_place = (&otp.from).into();
-        let to_place = (&otp.to).into();
         Ok(Self {
             from_place,
             to_place,
@@ -304,6 +493,16 @@ impl Leg {
         from_place: LonLat,
         to_place: LonLat,
     ) -> Self {
+        let geometry =
+            polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION).unwrap();
+        let maneuvers = valhalla
+            .maneuvers
+            .iter()
+            .cloned()
+            .map(|valhalla_maneuver| Maneuver::from_valhalla(valhalla_maneuver, &geometry))
+            .collect();
+        let leg = NonTransitLeg::new(maneuvers);
+        debug_assert_eq!(Self::VALHALLA_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
         Self {
             start_time,
             end_time,
@@ -311,14 +510,7 @@ impl Leg {
             to_place: to_place.into(),
             geometry: valhalla.shape.clone(),
             mode: travel_mode,
-            mode_leg: ModeLeg::NonTransit(
-                valhalla
-                    .maneuvers
-                    .iter()
-                    .cloned()
-                    .map(Maneuver::from_valhalla)
-                    .collect(),
-            ),
+            mode_leg: ModeLeg::NonTransit(Box::new(leg)),
         }
     }
 }
@@ -367,7 +559,7 @@ impl actix_web::Responder for PlanResponseOk {
     }
 }
 
-#[get("/v4/plan")]
+#[get("/v5/plan")]
 pub async fn get_plan(
     query: web::Query<PlanQuery>,
     req: HttpRequest,
@@ -384,54 +576,7 @@ pub async fn get_plan(
     // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
     // the "primary" mode appears first.
     match primary_mode {
-        TravelMode::Transit => {
-            let Some(mut router_url) = app_state
-                .otp_cluster()
-                .find_router_url(query.from_place, query.to_place)
-            else {
-                Err(
-                    Error::user("Transit directions not available for this area.")
-                        .error_type(ErrorType::NoCoverageForArea),
-                )?
-            };
-
-            // if we end up building this manually rather than passing it through, we'll need to be sure
-            // to handle the bike+bus case
-            router_url.set_query(Some(req.query_string()));
-            log::debug!(
-                "found matching router. Forwarding request to: {}",
-                router_url
-            );
-
-            let otp_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
-                log::error!("error while fetching from otp service: {e}");
-                PlanResponseErr::from(Error::server(e))
-            })?;
-            if !otp_response.status().is_success() {
-                log::warn!(
-                    "upstream HTTP Error from otp service: {}",
-                    otp_response.status()
-                )
-            }
-
-            let mut response = HttpResponseBuilder::new(otp_response.status());
-            debug_assert_eq!(
-                otp_response
-                    .headers()
-                    .get(HeaderName::from_static("content-type")),
-                Some(&HeaderValue::from_str("application/json").unwrap())
-            );
-            response.content_type("application/json");
-
-            let otp_plan_response: otp_api::PlanResponse =
-                otp_response.json().await.map_err(|e| {
-                    log::error!("error while parsing otp response: {e}");
-                    PlanResponseErr::from(Error::server(e))
-                })?;
-
-            let plan_response = PlanResponseOk::from_otp(*primary_mode, otp_plan_response)?;
-            Ok(plan_response)
-        }
+        TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
         other => {
             debug_assert!(query.mode.0.len() == 1, "valhalla only supports one mode");
 
@@ -477,11 +622,99 @@ pub async fn get_plan(
                     PlanResponseErr::from(Error::server(e))
                 })?;
 
-            let plan_response =
+            let mut plan_response =
                 PlanResponseOk::from_valhalla(*primary_mode, valhalla_route_response)?;
+
+            if primary_mode == &TravelMode::Bicycle || primary_mode == &TravelMode::Walk {
+                match otp_plan(&query, req, &app_state, primary_mode).await {
+                    Ok(mut otp_response) => {
+                        debug_assert_eq!(
+                            1,
+                            otp_response.plan.itineraries.len(),
+                            "expected exactly one itinerary from OTP"
+                        );
+                        if let Some(otp_itinerary) = otp_response.plan.itineraries.pop() {
+                            log::debug!("adding OTP itinerary to valhalla response");
+                            plan_response.plan.itineraries.insert(0, otp_itinerary);
+                        }
+                    }
+                    Err(e) => {
+                        // match error_code to raw value of ErrorType enum
+                        match ErrorType::try_from(e.error.error_code) {
+                            Ok(ErrorType::NoCoverageForArea) => {
+                                log::debug!("No OTP coverage for route");
+                            }
+                            other => {
+                                debug_assert!(other.is_ok(), "unexpected error code: {e:?}");
+                                // We're mixing with results from Valhalla anyway, so dont' surface this error
+                                // to the user. Likely we just don't support this area.
+                                log::error!("OTP failed to plan {primary_mode:?} route: {e}");
+                            }
+                        }
+                    }
+                }
+            }
+
             Ok(plan_response)
         }
     }
+}
+
+async fn otp_plan(
+    query: &web::Query<PlanQuery>,
+    req: HttpRequest,
+    app_state: &web::Data<AppState>,
+    primary_mode: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let Some(mut router_url) = app_state
+        .otp_cluster()
+        .find_router_url(query.from_place, query.to_place)
+    else {
+        Err(
+            Error::user("Transit directions not available for this area.")
+                .error_type(ErrorType::NoCoverageForArea),
+        )?
+    };
+
+    // if we end up building this manually rather than passing it through, we'll need to be sure
+    // to handle the bike+bus case
+    router_url.set_query(Some(req.query_string()));
+    log::debug!(
+        "found matching router. Forwarding request to: {}",
+        router_url
+    );
+
+    let otp_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
+        log::error!("error while fetching from otp service: {e}");
+        PlanResponseErr::from(Error::server(e))
+    })?;
+    if !otp_response.status().is_success() {
+        log::warn!(
+            "upstream HTTP Error from otp service: {}",
+            otp_response.status()
+        )
+    }
+
+    let mut response = HttpResponseBuilder::new(otp_response.status());
+    debug_assert_eq!(
+        otp_response
+            .headers()
+            .get(HeaderName::from_static("content-type")),
+        Some(&HeaderValue::from_str("application/json").unwrap())
+    );
+    response.content_type("application/json");
+
+    let otp_plan_response: otp_api::PlanResponse = otp_response.json().await.map_err(|e| {
+        log::error!("error while parsing otp response: {e}");
+        PlanResponseErr::from(Error::server(e))
+    })?;
+    PlanResponseOk::from_otp(
+        *primary_mode,
+        otp_plan_response,
+        query
+            .preferred_distance_units
+            .unwrap_or(DistanceUnit::Kilometers),
+    )
 }
 
 #[cfg(test)]
@@ -537,12 +770,12 @@ mod tests {
         );
         assert!(first_leg.to_place.name.is_none());
 
-        let ModeLeg::NonTransit(maneuvers) = &first_leg.mode_leg else {
-            panic!("unexpected transit leg")
+        let ModeLeg::NonTransit(non_transit_leg) = &first_leg.mode_leg else {
+            panic!("unexpected non-transit leg")
         };
 
         assert_eq!(first_leg.mode, TravelMode::Walk);
-        assert_eq!(maneuvers.len(), 21);
+        assert_eq!(non_transit_leg.maneuvers.len(), 21);
     }
 
     #[test]
@@ -551,7 +784,8 @@ mod tests {
             File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
-        let plan_response = PlanResponseOk::from_otp(TravelMode::Transit, otp).unwrap();
+        let plan_response =
+            PlanResponseOk::from_otp(TravelMode::Transit, otp, DistanceUnit::Miles).unwrap();
 
         let itineraries = plan_response.plan.itineraries;
         assert_eq!(itineraries.len(), 5);
@@ -586,9 +820,10 @@ mod tests {
         );
 
         assert_eq!(first_leg.mode, TravelMode::Walk);
-        let ModeLeg::NonTransit(maneuvers) = &first_leg.mode_leg else {
+        let ModeLeg::NonTransit(non_transit_leg) = &first_leg.mode_leg else {
             panic!("expected non-transit leg")
         };
+        let maneuvers = &non_transit_leg.maneuvers;
         assert_eq!(maneuvers.len(), 4);
         assert_eq!(maneuvers[0].r#type, ManeuverType::Start);
         assert_eq!(maneuvers[1].r#type, ManeuverType::Left);
@@ -607,7 +842,8 @@ mod tests {
             File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
-        let plan_response = PlanResponseOk::from_otp(TravelMode::Transit, otp).unwrap();
+        let plan_response =
+            PlanResponseOk::from_otp(TravelMode::Transit, otp, DistanceUnit::Miles).unwrap();
         let response = serde_json::to_string(&plan_response).unwrap();
         let parsed_response: serde_json::Value = serde_json::from_str(&response).unwrap();
         let response_object = parsed_response.as_object().expect("expected Object");
@@ -645,12 +881,32 @@ mod tests {
         assert_eq!(mode, 1708728745000);
 
         assert!(first_leg.get("transitLeg").is_none());
-        let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
+        let non_transit_leg = first_leg.get("nonTransitLeg").unwrap().as_object().unwrap();
+
+        let substantial_street_names = non_transit_leg
+            .get("substantialStreetNames")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let expected_names = vec!["East Marginal Way South"];
+        assert_eq!(substantial_street_names, &expected_names);
+
+        let maneuvers = non_transit_leg
+            .get("maneuvers")
+            .unwrap()
+            .as_array()
+            .unwrap();
         let first_maneuver = maneuvers.get(0).unwrap();
         let expected_maneuver = json!({
+            "distance": 11.893,
+            "instruction": "Walk south on East Marginal Way South.",
+            "startPoint": {
+                "lat": 47.5758355,
+                "lon": -122.3392164
+            },
+            "streetNames": ["East Marginal Way South"],
             "type": 1,
-            "instruction": null,
-            "verbalPostTransitionInstruction": null
+            "verbalPostTransitionInstruction": "Continue for 60 feet."
         });
         assert_eq!(first_maneuver, &expected_maneuver);
 
@@ -710,12 +966,38 @@ mod tests {
         let mode = first_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "WALK");
         assert!(first_leg.get("transitLeg").is_none());
-        let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
+        let non_transit_leg = first_leg.get("nonTransitLeg").unwrap().as_object().unwrap();
+
+        let substantial_street_names = non_transit_leg
+            .get("substantialStreetNames")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        assert_eq!(
+            substantial_street_names,
+            &[
+                "Dexter Avenue",
+                "East Marginal Way South",
+                "Alaskan Way South"
+            ]
+        );
+
+        let maneuvers = non_transit_leg
+            .get("maneuvers")
+            .unwrap()
+            .as_array()
+            .unwrap();
         let first_maneuver = maneuvers.get(0).unwrap();
         let expected_maneuver = json!({
             "type": 2,
             "instruction": "Walk south on East Marginal Way South.",
-            "verbalPostTransitionInstruction": "Continue for 20 meters."
+            "verbalPostTransitionInstruction": "Continue for 20 meters.",
+            "distance": 0.019,
+            "startPoint": {
+                "lat": 47.575836,
+                "lon": -122.339216
+            },
+            "streetNames": ["East Marginal Way South"],
         });
         assert_eq!(first_maneuver, &expected_maneuver);
     }
@@ -750,7 +1032,12 @@ mod tests {
             "Drive northeast on Fauntleroy Way Southwest."
         );
 
-        let maneuver = Maneuver::from_valhalla(valhalla_maneuver);
+        // fake geometry
+        let geometry = LineString::from(vec![
+            geo::coord!(x: -122.398, y: 47.564),
+            geo::coord!(x: -122.396, y: 47.566),
+        ]);
+        let maneuver = Maneuver::from_valhalla(valhalla_maneuver, &geometry);
         let actual = serde_json::to_string(&maneuver).unwrap();
         // parse the JSON string back into an Object Value
         let actual_object: Value = serde_json::from_str(&actual).unwrap();
@@ -758,6 +1045,9 @@ mod tests {
         let expected_object = serde_json::json!({
             "instruction": "Drive northeast on Fauntleroy Way Southwest.",
             "type": 2,
+            "distance": 2.218,
+            "startPoint": { "lon": -122.398, "lat": 47.564},
+            "streetNames": ["Fauntleroy Way Southwest"],
             "verbalPostTransitionInstruction": "Continue for 2 miles.",
         });
 

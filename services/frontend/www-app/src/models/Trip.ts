@@ -2,7 +2,6 @@ import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
 import Itinerary from './Itinerary';
-import Route from './Route';
 import {
   TravelmuxMode,
   TravelmuxClient,
@@ -14,10 +13,11 @@ import {
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration } from 'src/utils/format';
 import { decodePolyline } from 'src/utils/decodePolyline';
+import { i18n } from 'src/i18n/lang';
 
 export default class Trip {
   raw: TravelmuxItinerary;
-  inner: Route | Itinerary;
+  inner: Itinerary | null;
   preferredDistanceUnits: DistanceUnits;
   innerDistanceUnits: DistanceUnits;
   legs: TripLeg[];
@@ -25,7 +25,7 @@ export default class Trip {
   constructor(
     raw: TravelmuxItinerary,
     preferredDistanceUnits: DistanceUnits,
-    inner: Route | Itinerary,
+    inner: Itinerary | null,
     innerDistanceUnits: DistanceUnits,
   ) {
     this.raw = raw;
@@ -37,6 +37,16 @@ export default class Trip {
 
   get durationFormatted(): string {
     return formatDuration(this.raw.duration, 'shortform');
+  }
+
+  get viaRoadsFormatted(): string | null {
+    const names = this.raw.legs.flatMap((leg) => {
+      return leg.nonTransitLeg?.substantialStreetNames;
+    });
+    if (names.length == 0) {
+      return null;
+    }
+    return names.join(i18n.global.t('punctuation_list_seperator'));
   }
 
   get distanceFormatted(): string | undefined {
@@ -58,14 +68,6 @@ export default class Trip {
   transitItinerary(): Itinerary | undefined {
     if (this.mode == TravelMode.Transit) {
       return this.inner as Itinerary;
-    } else {
-      return undefined;
-    }
-  }
-
-  nonTransitRoute(): Route | undefined {
-    if (this.mode != TravelMode.Transit) {
-      return this.inner as Route;
     } else {
       return undefined;
     }

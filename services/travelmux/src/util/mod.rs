@@ -1,3 +1,5 @@
+pub mod format;
+
 use geo::{Point, Rect};
 use serde::{
     ser::{Error, SerializeStruct},

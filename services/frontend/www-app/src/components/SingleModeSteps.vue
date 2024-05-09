@@ -3,7 +3,7 @@
     <q-item
       class="maneuver"
       active-class="bg-blue-1"
-      v-for="maneuver in route.valhallaRoute.legs[0].maneuvers"
+      v-for="maneuver in nonTransitLeg.maneuvers"
       clickable
       v-on:click="clickedManeuver(maneuver)"
       v-bind:key="JSON.stringify(maneuver)"
@@ -16,7 +16,7 @@
           {{ maneuver.instruction }}
         </q-item-label>
         <q-item-label caption>
-          {{ maneuver.verbal_post_transition_instruction }}
+          {{ maneuver.verbalPostTransitionInstruction }}
         </q-item-label>
       </q-item-section>
     </q-item>
@@ -32,14 +32,11 @@
 </style>
 
 <script lang="ts">
-import Route from 'src/models/Route';
 import { defineComponent, PropType } from 'vue';
-import {
-  ValhallaRouteLegManeuver,
-  valhallaTypeToIcon,
-} from 'src/services/ValhallaAPI';
+import { valhallaTypeToIcon } from 'src/services/ValhallaAPI';
 import { getBaseMap } from './BaseMap.vue';
 import Trip from 'src/models/Trip';
+import { NonTransitLeg, TravelmuxManeuver } from 'src/services/TravelmuxClient';
 
 export default defineComponent({
   name: 'SingleModeSteps',
@@ -51,22 +48,20 @@ export default defineComponent({
   },
   data(): {
     geometry: GeoJSON.LineString;
-    route: Route;
+    nonTransitLeg: NonTransitLeg;
   } {
     // this cast is safe because we know that the trip is a non-transit trip
-    const route = this.trip.nonTransitRoute() as Route;
-    console.assert(route);
+    const nonTransitLeg = this.trip.legs[0]?.raw.nonTransitLeg as NonTransitLeg;
+    console.assert(nonTransitLeg);
     return {
-      route,
+      nonTransitLeg,
       geometry: this.trip.legs[0].geometry,
     };
   },
   methods: {
     valhallaTypeToIcon,
-    clickedManeuver: function (maneuver: ValhallaRouteLegManeuver) {
-      const location = this.geometry.coordinates[maneuver.begin_shape_index];
-      let coord: [number, number] = [location[0], location[1]];
-      getBaseMap()?.flyTo(coord, { zoom: 16 });
+    clickedManeuver: function (maneuver: TravelmuxManeuver) {
+      getBaseMap()?.flyTo(maneuver.startPoint, { zoom: 16 });
     },
   },
 });

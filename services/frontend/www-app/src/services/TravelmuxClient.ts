@@ -1,4 +1,4 @@
-import { LngLat } from 'maplibre-gl';
+import { LngLat, LngLatLike } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Err, Result } from 'src/utils/Result';
 import Trip, { TripFetchError } from 'src/models/Trip';
@@ -7,13 +7,8 @@ import {
   OTPItinerary,
   OTPItineraryLeg,
 } from './OpenTripPlannerAPI';
-import {
-  ValhallaRouteResponse,
-  ValhallaRoute,
-  ValhallaErrorCode,
-} from './ValhallaAPI';
+import { ValhallaRouteResponse, ValhallaErrorCode } from './ValhallaAPI';
 import Itinerary from 'src/models/Itinerary';
-import Route from 'src/models/Route';
 import { zipWith } from 'lodash';
 
 export interface TravelmuxPlanResponse {
@@ -32,6 +27,20 @@ export interface TravelmuxLeg {
   duration: number;
   geometry: string;
   transitLeg?: OTPItineraryLeg;
+  nonTransitLeg?: NonTransitLeg;
+}
+
+export interface NonTransitLeg {
+  maneuvers: [TravelmuxManeuver];
+  substantialStreetNames?: string[];
+}
+
+export interface TravelmuxManeuver {
+  instruction?: string;
+  verbalPostTransitionInstruction?: string;
+  startPoint: LngLatLike;
+  // same as valhalla's maneuver type
+  type: number;
 }
 
 export interface TravelmuxItinerary {
@@ -120,7 +129,7 @@ export class TravelmuxClient {
 
     const query = new URLSearchParams(params).toString();
 
-    const response = await fetch('/travelmux/v4/plan?' + query);
+    const response = await fetch('/travelmux/v5/plan?' + query);
 
     if (response.ok) {
       const travelmuxResponseJson: TravelmuxPlanResponse =
@@ -149,42 +158,21 @@ export class TravelmuxClient {
           },
         );
         return Ok(trips);
-      } else if (travelmuxResponseJson._valhalla) {
-        const routes: ValhallaRoute[] = [];
-        if (travelmuxResponseJson._valhalla.trip) {
-          routes.push(travelmuxResponseJson._valhalla.trip);
-        }
-        for (const route of travelmuxResponseJson._valhalla.alternates || []) {
-          if (route.trip) {
-            routes.push(route.trip);
-          }
-        }
-        const trips = zipWith(
-          tmxItineraries,
-          routes,
-          (tmxItinerary: TravelmuxItinerary, valhallaRoute: ValhallaRoute) => {
-            console.assert(tmxItinerary, 'expected tmxItinerary to be set');
-            console.assert(valhallaRoute, 'expected valhallaRoute to be set');
-            const route = Route.fromValhalla(
-              valhallaRoute,
-              travelModeFromTravelmuxMode(modes[0]),
-              preferredDistanceUnits,
-            );
-            console.assert(
-              preferredDistanceUnits == tmxItinerary.distanceUnits,
-              'expected preferredDistanceUnits to match tmxItinerary.distanceUnits for valhalla requests',
-            );
-            return new Trip(
-              tmxItinerary,
-              preferredDistanceUnits,
-              route,
-              tmxItinerary.distanceUnits,
-            );
-          },
-        );
-        return Ok(trips);
       } else {
-        throw Error('missing routing backend');
+        console.assert(
+          travelmuxResponseJson._valhalla,
+          'expected valhalla in non-transit response',
+        );
+        const trips = tmxItineraries.map((tmxItinerary: TravelmuxItinerary) => {
+          console.assert(tmxItinerary, 'expected tmxItinerary to be set');
+          return new Trip(
+            tmxItinerary,
+            preferredDistanceUnits,
+            null,
+            tmxItinerary.distanceUnits,
+          );
+        });
+        return Ok(trips);
       }
     } else {
       const errorBody = await response.json();

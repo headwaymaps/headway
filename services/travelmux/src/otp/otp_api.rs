@@ -128,7 +128,7 @@ pub enum AbsoluteDirection {
     Northwest,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RelativeDirection {
     Depart,
@@ -198,6 +198,27 @@ pub struct Place {
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+use crate::valhalla::valhalla_api::ManeuverType as ValhallaManeuverType;
+impl From<RelativeDirection> for ValhallaManeuverType {
+    fn from(otp: RelativeDirection) -> Self {
+        match otp {
+            RelativeDirection::Depart => ValhallaManeuverType::Start,
+            RelativeDirection::HardLeft => ValhallaManeuverType::SharpLeft,
+            RelativeDirection::Left => ValhallaManeuverType::Left,
+            RelativeDirection::SlightlyLeft => ValhallaManeuverType::SlightLeft,
+            RelativeDirection::Continue => ValhallaManeuverType::Continue,
+            RelativeDirection::SlightlyRight => ValhallaManeuverType::SlightRight,
+            RelativeDirection::Right => ValhallaManeuverType::Right,
+            RelativeDirection::HardRight => ValhallaManeuverType::SharpRight,
+            RelativeDirection::CircleClockwise => ValhallaManeuverType::RoundaboutEnter,
+            RelativeDirection::CircleCounterclockwise => ValhallaManeuverType::RoundaboutEnter,
+            RelativeDirection::Elevator => ValhallaManeuverType::ElevatorEnter,
+            RelativeDirection::UturnLeft => ValhallaManeuverType::UturnLeft,
+            RelativeDirection::UturnRight => ValhallaManeuverType::UturnRight,
+        }
+    }
 }
 
 #[cfg(test)]
