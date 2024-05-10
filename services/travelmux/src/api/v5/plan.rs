@@ -3,26 +3,27 @@ use geo::algorithm::BoundingRect;
 use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
 use reqwest::header::{HeaderName, HeaderValue};
-use serde::{de, de::IntoDeserializer, de::Visitor, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
 use std::time::{Duration, SystemTime};
 
 use super::error::{PlanResponseErr, PlanResponseOk};
+use super::TravelModes;
+
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::otp_api;
 use crate::otp::otp_api::{AbsoluteDirection, RelativeDirection};
 use crate::util::format::format_meters;
 use crate::util::{
-    deserialize_point_from_lat_lon, extend_bounds, serialize_rect_to_lng_lat,
-    serialize_system_time_as_millis, system_time_from_millis,
+    deserialize_point_from_lat_lon, extend_bounds, serialize_line_string_as_polyline6,
+    serialize_rect_to_lng_lat, serialize_system_time_as_millis, system_time_from_millis,
 };
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanQuery {
     #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
@@ -40,13 +41,13 @@ pub struct PlanQuery {
     preferred_distance_units: Option<DistanceUnit>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Plan {
     pub(crate) itineraries: Vec<Itinerary>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Itinerary {
     mode: TravelMode,
@@ -58,7 +59,11 @@ pub struct Itinerary {
     /// unix millis, UTC
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     end_time: SystemTime,
+    /// Units are in `distance_units`
     distance: f64,
+    /// FIXME: I think we're returning meters even though distance unit is "Kilometers"
+    /// Probably we should rename DistanceUnit::Kilometers to DistanceUnit::Meters
+    /// This is passed as a parameter though, so it'd be a breaking change.
     distance_units: DistanceUnit,
     #[serde(serialize_with = "serialize_rect_to_lng_lat")]
     bounds: Rect,
@@ -66,6 +71,21 @@ pub struct Itinerary {
 }
 
 impl Itinerary {
+    pub fn distance_meters(&self) -> f64 {
+        match self.distance_units {
+            DistanceUnit::Kilometers => self.distance,
+            DistanceUnit::Miles => self.distance * 1609.34,
+        }
+    }
+
+    pub fn combined_geometry(&self) -> LineString {
+        let mut combined_geometry = LineString::new(vec![]);
+        for leg in &self.legs {
+            combined_geometry.0.extend(&leg.geometry.0);
+        }
+        combined_geometry
+    }
+
     pub fn from_valhalla(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
         let bounds = Rect::new(
             geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
@@ -136,11 +156,11 @@ impl Itinerary {
         let Some(first_leg) = legs_iter.next() else {
             return Err(Error::server("itinerary had no legs"));
         };
-        let Ok(Some(mut itinerary_bounds)) = first_leg.bounding_rect() else {
+        let Some(mut itinerary_bounds) = first_leg.bounding_rect() else {
             return Err(Error::server("first leg has no bounding_rect"));
         };
         for leg in legs_iter {
-            let Ok(Some(leg_bounds)) = leg.bounding_rect() else {
+            let Some(leg_bounds) = leg.bounding_rect() else {
                 return Err(Error::server("leg has no bounding_rect"));
             };
             extend_bounds(&mut itinerary_bounds, &leg_bounds);
@@ -185,11 +205,12 @@ impl From<valhalla_api::LonLat> for Place {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct Leg {
     /// encoded polyline. 1e-6 scale, (lat, lon)
-    geometry: String,
+    #[serde(serialize_with = "serialize_line_string_as_polyline6")]
+    geometry: LineString,
 
     /// Which mode is this leg of the journey?
     mode: TravelMode,
@@ -214,12 +235,18 @@ struct Leg {
     /// Start time of the leg
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     end_time: SystemTime,
+
+    /// Length of this leg
+    distance_meters: f64,
+
+    /// Duration of this leg
+    duration_seconds: f64,
 }
 
 // Should we just pass the entire OTP leg?
 type TransitLeg = otp_api::Leg;
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 enum ModeLeg {
     // REVIEW: rename? There is a boolean field for OTP called TransitLeg
@@ -230,7 +257,7 @@ enum ModeLeg {
     NonTransit(Box<NonTransitLeg>),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct NonTransitLeg {
     maneuvers: Vec<Maneuver>,
@@ -282,18 +309,21 @@ impl NonTransitLeg {
 
 // Eventually we might want to coalesce this into something not valhalla specific
 // but for now we only use it for valhalla trips
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Maneuver {
     pub instruction: Option<String>,
     // pub cost: f64,
     // pub begin_shape_index: u64,
     // pub end_shape_index: u64,
+    #[serde(skip_serializing)]
+    pub geometry: LineString,
     // pub highway: Option<bool>,
     /// In units of the `distance_unit` of the trip leg
     pub distance: f64,
     pub street_names: Option<Vec<String>>,
-    // pub time: f64,
+    #[serde(skip_serializing)]
+    pub duration_seconds: f64,
     // pub travel_mode: String,
     // pub travel_type: String,
     pub r#type: ManeuverType,
@@ -305,13 +335,19 @@ pub struct Maneuver {
 
 impl Maneuver {
     fn from_valhalla(valhalla: valhalla_api::Maneuver, leg_geometry: &LineString) -> Self {
+        let coords = leg_geometry.0
+            [valhalla.begin_shape_index as usize..=valhalla.end_shape_index as usize]
+            .to_owned();
+        let geometry = LineString::from(coords);
         Self {
             instruction: Some(valhalla.instruction),
             street_names: valhalla.street_names,
+            duration_seconds: valhalla.time,
             r#type: valhalla.r#type,
             start_point: Point(leg_geometry[valhalla.begin_shape_index as usize]).into(),
             verbal_post_transition_instruction: valhalla.verbal_post_transition_instruction,
             distance: valhalla.length,
+            geometry,
         }
     }
 
@@ -340,13 +376,25 @@ impl Maneuver {
             // round to the nearest ten-thousandth
             DistanceUnit::Miles => (otp.distance * 0.621371 * 10_000.0).round() / 10_000.0,
         };
+
+        log::error!("TODO: synthesize geometry for OTP steps");
+        let geometry = LineString::new(vec![]);
         Self {
             instruction,
             r#type: otp.relative_direction.into(),
             street_names,
             verbal_post_transition_instruction,
             distance: localized_distance,
+            duration_seconds: 666.0, // TODO: OTP doesn't provide this at a granular level - only at the Leg level
             start_point: Point::new(otp.lon, otp.lat).into(),
+            geometry,
+        }
+    }
+
+    fn distance_meters(&self, distance_unit: DistanceUnit) -> f64 {
+        match distance_unit {
+            DistanceUnit::Kilometers => self.distance,
+            DistanceUnit::Miles => self.distance * 1609.34,
         }
     }
 }
@@ -422,13 +470,8 @@ impl Leg {
     const VALHALLA_GEOMETRY_PRECISION: u32 = 6;
     const OTP_GEOMETRY_PRECISION: u32 = 5;
 
-    fn decoded_geometry(&self) -> std::result::Result<LineString, String> {
-        decode_polyline(&self.geometry, Self::GEOMETRY_PRECISION)
-    }
-
-    fn bounding_rect(&self) -> std::result::Result<Option<Rect>, String> {
-        let line_string = self.decoded_geometry()?;
-        Ok(line_string.bounding_rect())
+    fn bounding_rect(&self) -> Option<Rect> {
+        self.geometry.bounding_rect()
     }
 
     fn from_otp(
@@ -437,8 +480,7 @@ impl Leg {
         distance_unit: DistanceUnit,
     ) -> std::result::Result<Self, String> {
         debug_assert_ne!(Self::OTP_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
-        let line = decode_polyline(&otp.leg_geometry.points, Self::OTP_GEOMETRY_PRECISION)?;
-        let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION)?;
+        let geometry = decode_polyline(&otp.leg_geometry.points, Self::OTP_GEOMETRY_PRECISION)?;
         let from_place: Place = (&otp.from).into();
         let to_place: Place = (&otp.to).into();
 
@@ -459,9 +501,11 @@ impl Leg {
                         instruction: Some("Arrive at your destination.".to_string()),
                         distance: 0.0,
                         street_names: None,
+                        duration_seconds: 0.0,
                         r#type: ManeuverType::Destination,
                         verbal_post_transition_instruction: None,
                         start_point: to_place.location,
+                        geometry: LineString::new(vec![to_place.location.into()]),
                     };
                     maneuvers.push(maneuver);
                 }
@@ -481,6 +525,8 @@ impl Leg {
             end_time: system_time_from_millis(otp.end_time),
             geometry,
             mode: otp.mode.into(),
+            distance_meters: otp.distance,
+            duration_seconds: (otp.end_time - otp.start_time) as f64 / 1000.0,
             mode_leg,
         })
     }
@@ -494,7 +540,8 @@ impl Leg {
         to_place: LonLat,
     ) -> Self {
         let geometry =
-            polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION).unwrap();
+            polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION)
+                .expect("valid polyline from valhalla");
         let maneuvers = valhalla
             .maneuvers
             .iter()
@@ -502,50 +549,18 @@ impl Leg {
             .map(|valhalla_maneuver| Maneuver::from_valhalla(valhalla_maneuver, &geometry))
             .collect();
         let leg = NonTransitLeg::new(maneuvers);
-        debug_assert_eq!(Self::VALHALLA_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
         Self {
             start_time,
             end_time,
             from_place: from_place.into(),
             to_place: to_place.into(),
-            geometry: valhalla.shape.clone(),
+            geometry,
             mode: travel_mode,
             mode_leg: ModeLeg::NonTransit(Box::new(leg)),
+            // TODO: verify units here - might be in miles
+            distance_meters: valhalla.summary.length,
+            duration_seconds: valhalla.summary.time,
         }
-    }
-}
-
-// Comma separated list of travel modes
-#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
-struct TravelModes(Vec<TravelMode>);
-
-impl<'de> Deserialize<'de> for TravelModes {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CommaSeparatedVecVisitor;
-
-        impl<'de> Visitor<'de> for CommaSeparatedVecVisitor {
-            type Value = TravelModes;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a comma-separated string")
-            }
-
-            fn visit_str<E>(self, value: &str) -> std::result::Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                let modes = value
-                    .split(',')
-                    .map(|s| TravelMode::deserialize(s.into_deserializer()))
-                    .collect::<std::result::Result<_, _>>()?;
-                Ok(TravelModes(modes))
-            }
-        }
-
-        deserializer.deserialize_str(CommaSeparatedVecVisitor)
     }
 }
 
@@ -559,13 +574,266 @@ impl actix_web::Responder for PlanResponseOk {
     }
 }
 
+#[derive(Debug, Serialize, Clone, PartialEq)]
+struct DirectionsResponseOk {
+    routes: Vec<osrm_api::Route>,
+}
+
+impl actix_web::Responder for DirectionsResponseOk {
+    type Body = actix_web::body::BoxBody;
+
+    fn respond_to(self, _req: &HttpRequest) -> actix_web::HttpResponse {
+        let mut response = HttpResponseBuilder::new(actix_web::http::StatusCode::OK);
+        response.content_type("application/json");
+        response.json(self)
+    }
+}
+
+#[get("/v5/directions")]
+pub async fn get_directions(
+    query: web::Query<PlanQuery>,
+    req: HttpRequest,
+    app_state: web::Data<AppState>,
+) -> std::result::Result<DirectionsResponseOk, PlanResponseErr> {
+    let plan_response_ok = _get_plan(query, req, app_state).await?;
+    Ok(plan_response_ok.into())
+}
+
+pub mod osrm_api {
+    use super::{Itinerary, Leg, Maneuver, ModeLeg};
+    use crate::util::{serialize_point_as_lon_lat_pair, serialize_line_string_as_polyline6};
+    use crate::{DistanceUnit, TravelMode};
+    use geo::{LineString, Point};
+    use serde::Serialize;
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    pub struct Route {
+        /// The distance traveled by the route, in float meters.
+        pub distance: f64,
+
+        /// The estimated travel time, in float number of seconds.
+        pub duration: f64,
+
+        // todo: simplify?
+        /// The entire geometry of the route
+        #[serde(serialize_with="serialize_line_string_as_polyline6")]
+        pub geometry: LineString,
+
+        /// The legs between the given waypoints
+        pub legs: Vec<RouteLeg>,
+    }
+
+    impl From<Itinerary> for Route {
+        fn from(itinerary: Itinerary) -> Self {
+            Route {
+                distance: itinerary.distance_meters(),
+                duration: itinerary.duration,
+                geometry: itinerary.combined_geometry(),
+                legs: itinerary
+                    .legs
+                    .into_iter()
+                    .map(|leg| RouteLeg::from_leg(leg, itinerary.distance_units))
+                    .collect(),
+            }
+        }
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    pub struct RouteLeg {
+        /// The distance traveled by this leg, in float meters.
+        pub distance: f64,
+
+        /// The estimated travel time, in float number of seconds.
+        pub duration: f64,
+
+        /// A short human-readable summary of the route leg
+        pub summary: String,
+
+        /// Objects describing the turn-by-turn instructions of the route leg
+        pub steps: Vec<RouteStep>,
+        // /// Additional details about each coordinate along the route geometry
+        // annotation: Annotation
+    }
+
+    impl RouteLeg {
+        fn from_leg(value: Leg, distance_unit: DistanceUnit) -> Self {
+            let (summary, steps) = match value.mode_leg {
+                ModeLeg::Transit(_) => {
+                    debug_assert!(
+                        false,
+                        "didn't expect to generate navigation for transit leg"
+                    );
+                    ("".to_string(), vec![])
+                }
+                ModeLeg::NonTransit(non_transit_leg) => {
+                    let summary = non_transit_leg.substantial_street_names.join(", ");
+                    let steps = non_transit_leg
+                        .maneuvers
+                        .into_iter()
+                        .map(|maneuver| {
+                            RouteStep::from_maneuver(maneuver, value.mode, distance_unit)
+                        })
+                        .collect();
+                    (summary, steps)
+                }
+            };
+            Self {
+                distance: value.distance_meters,
+                duration: value.duration_seconds,
+                summary,
+                steps,
+            }
+        }
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    pub struct RouteStep {
+        /// The distance traveled by this step, in float meters.
+        pub distance: f64,
+
+        /// The estimated travel time, in float number of seconds.
+        pub duration: f64,
+
+        /// The unsimplified geometry of the route segment.
+        #[serde(serialize_with="serialize_line_string_as_polyline6")]
+        pub geometry: LineString,
+
+        /// The name of the way along which travel proceeds.
+        pub name: String,
+
+        /// A reference number or code for the way. Optionally included, if ref data is available for the given way.
+        pub r#ref: Option<String>,
+
+        /// The pronunciation hint of the way name. Will be undefined if there is no pronunciation hit.
+        pub pronunciation: Option<String>,
+
+        /// The destinations of the way. Will be undefined if there are no destinations.
+        pub destinations: Option<Vec<String>>,
+
+        /// A string signifying the mode of transportation.
+        pub mode: TravelMode,
+
+        /// A `StepManeuver` object representing the maneuver.
+        pub maneuver: StepManeuver,
+
+        /// A list of `Intersection` objects that are passed along the segment, the very first belonging to the `StepManeuver`
+        pub intersections: Option<Vec<Intersection>>,
+    }
+
+    impl RouteStep {
+        fn from_maneuver(
+            value: Maneuver,
+            mode: TravelMode,
+            from_distance_unit: DistanceUnit,
+        ) -> Self {
+            RouteStep {
+                distance: value.distance_meters(from_distance_unit),
+                duration: value.duration_seconds,
+                geometry: value.geometry,
+                name: value
+                    .street_names
+                    .unwrap_or(vec!["".to_string()])
+                    .join(", "),
+                r#ref: None,
+                pronunciation: None,
+                destinations: None,
+                mode,
+                maneuver: StepManeuver {
+                    location: value.start_point.into(),
+                },
+                intersections: None, //vec![],
+            }
+        }
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    pub struct StepManeuver {
+        /// The location of the maneuver
+        #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
+        pub location: Point,
+        // /// The type of maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
+        // r#type: String,
+        // /// A human-readable instruction of how to execute the returned maneuver
+        // instruction: String,
+        // /// The bearing before the turn, in degrees
+        // bearing_before: f64,
+        // /// The bearing after the turn, in degrees
+        // bearing_after: f64,
+        // /// The exit number or name of the way. This field is to indicate the next way or roundabout exit to take
+        // exit: String,
+        // /// The modifier of the maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
+        // modifier: String,
+        // /// The type of the modifier of the maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
+        // modifier_type: String,
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    pub struct Intersection {
+        /// A [longitude, latitude] pair describing the location of the turn.
+        #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
+        pub location: Point,
+
+        /// A list of bearing values that are available at the intersection. The bearings describe all available roads at the intersection.
+        pub bearings: Vec<f64>,
+
+        // /// An array of strings signifying the classes of the road exiting the intersection.
+        // pub classes: Vec<RoadClass>
+
+        /// A list of entry flags, corresponding in a 1:1 relationship to the bearings. A value of true indicates that the respective road could be entered on a valid route.
+        pub entry: Vec<bool>,
+
+        /// The zero-based index into the geometry, relative to the start of the leg it's on. This value can be used to apply the duration annotation that corresponds with the intersection.
+        pub geometry_index: Option<usize>,
+
+        /// The index in the bearings and entry arrays. Used to calculate the bearing before the turn. Namely, the clockwise angle from true north to the direction of travel before the maneuver/passing the intersection. To get the bearing in the direction of driving, the bearing has to be rotated by a value of 180. The value is not supplied for departure maneuvers.
+        pub r#in: Option<usize>,
+
+        /// The index in the bearings and entry arrays. Used to extract the bearing after the turn. Namely, the clockwise angle from true north to the direction of travel after the maneuver/passing the intersection. The value is not supplied for arrival maneuvers.
+        pub out: Option<usize>,
+
+        /// An array of lane objects that represent the available turn lanes at the intersection. If no lane information is available for an intersection, the lanes property will not be present.
+        pub lanes: Vec<Lane>,
+
+        /// The time required, in seconds, to traverse the intersection. Only available on the driving profile.
+        pub duration: Option<f64>,
+
+        // TODO: lots more fields in OSRM
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    pub struct Lane {
+        // TODO: lots more fields in OSRM
+
+    }
+}
+
+impl From<PlanResponseOk> for DirectionsResponseOk {
+    fn from(value: PlanResponseOk) -> Self {
+        let routes = value
+            .plan
+            .itineraries
+            .into_iter()
+            .map(osrm_api::Route::from)
+            .collect();
+        Self { routes }
+    }
+}
+
 #[get("/v5/plan")]
 pub async fn get_plan(
     query: web::Query<PlanQuery>,
     req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
-    let Some(primary_mode) = query.mode.0.first() else {
+    _get_plan(query, req, app_state).await
+}
+
+pub async fn _get_plan(
+    query: web::Query<PlanQuery>,
+    req: HttpRequest,
+    app_state: web::Data<AppState>,
+) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
+    let Some(primary_mode) = query.mode.first() else {
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
@@ -578,7 +846,7 @@ pub async fn get_plan(
     match primary_mode {
         TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
         other => {
-            debug_assert!(query.mode.0.len() == 1, "valhalla only supports one mode");
+            debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
 
             let mode = match other {
                 TravelMode::Transit => unreachable!("handled above"),
@@ -753,9 +1021,8 @@ mod tests {
         // legs
         assert_eq!(first_itinerary.legs.len(), 1);
         let first_leg = &first_itinerary.legs[0];
-        let geometry = decode_polyline(&first_leg.geometry, 6).unwrap();
         assert_relative_eq!(
-            geometry.0[0],
+            first_leg.geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
         );
@@ -799,9 +1066,8 @@ mod tests {
         // legs
         assert_eq!(first_itinerary.legs.len(), 7);
         let first_leg = &first_itinerary.legs[0];
-        let geometry = polyline::decode_polyline(&first_leg.geometry, 6).unwrap();
         assert_relative_eq!(
-            geometry.0[0],
+            first_leg.geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
         );
@@ -1009,7 +1275,7 @@ mod tests {
         {
             "begin_shape_index": 0,
             "cost": 246.056,
-            "end_shape_index": 69,
+            "end_shape_index": 1,
             "highway": true,
             "instruction": "Drive northeast on Fauntleroy Way Southwest.",
             "length": 2.218,
@@ -1068,5 +1334,58 @@ mod tests {
         let plan_error = PlanResponseErr::from(valhalla_error);
         assert_eq!(plan_error.error.status_code, 400);
         assert_eq!(plan_error.error.error_code, 2154);
+    }
+
+    #[test]
+    fn navigation_response_from_valhalla() {
+        let stubbed_response =
+            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
+        let valhalla: valhalla_api::RouteResponse =
+            serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
+
+        let valhalla_response_result = valhalla_api::ValhallaRouteResponseResult::Ok(valhalla);
+        let plan_response =
+            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response_result).unwrap();
+
+        let directions_response = DirectionsResponseOk::from(plan_response);
+        assert_eq!(directions_response.routes.len(), 3);
+
+        let first_route = &directions_response.routes[0];
+        assert_relative_eq!(first_route.distance, 9.148);
+        assert_relative_eq!(first_route.duration, 6488.443);
+        assert_relative_eq!(
+            first_route.geometry.0[0],
+            geo::coord!(x: -122.339216, y: 47.575836)
+        );
+        assert_relative_eq!(
+            first_route.geometry.0.last().unwrap(),
+            &geo::coord!(x: -122.347199, y: 47.651048)
+        );
+
+        let legs = &first_route.legs;
+        assert_eq!(legs.len(), 1);
+        let first_leg = &legs[0];
+
+        assert_eq!(first_leg.distance, 9.148);
+        assert_eq!(first_leg.duration, 6488.443);
+        assert_eq!(
+            first_leg.summary,
+            "Dexter Avenue, East Marginal Way South, Alaskan Way South"
+        );
+        assert_eq!(first_leg.steps.len(), 21);
+
+        let first_step = &first_leg.steps[0];
+        assert_eq!(first_step.distance, 0.019);
+        assert_eq!(first_step.duration, 13.567);
+        assert_eq!(first_step.name, "East Marginal Way South");
+        assert_eq!(first_step.mode, TravelMode::Walk);
+
+        let step_maneuver = &first_step.maneuver;
+        assert_eq!(
+            step_maneuver.location,
+            geo::point!(x: -122.339216, y: 47.575836)
+        );
+        // TODO: step_maneuver stuff
+        // etc...
     }
 }

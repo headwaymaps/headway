@@ -2,7 +2,7 @@ pub mod format;
 
 use geo::{Point, Rect};
 use serde::{
-    ser::{Error, SerializeStruct},
+    ser::{Error, SerializeStruct, SerializeTuple},
     Deserialize, Deserializer, Serializer,
 };
 use std::time::{Duration, SystemTime};
@@ -34,6 +34,27 @@ where
     }
 
     Ok(Point::new(lon, lat))
+}
+pub fn serialize_point_as_lon_lat_pair<S>(point: &Point, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut tuple_serializer = serializer.serialize_tuple(2)?;
+    tuple_serializer.serialize_element(&point.x())?;
+    tuple_serializer.serialize_element(&point.y())?;
+    tuple_serializer.end()
+}
+
+pub fn serialize_line_string_as_polyline6<S>(
+    line_string: &geo::LineString<f64>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let string = polyline::encode_coordinates(line_string.0.iter().copied(), 6)
+        .map_err(S::Error::custom)?;
+    serializer.serialize_str(&string)
 }
 
 pub fn deserialize_duration_from_seconds<'de, D>(deserializer: D) -> Result<Duration, D::Error>
