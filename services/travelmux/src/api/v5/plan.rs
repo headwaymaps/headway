@@ -132,7 +132,6 @@ impl Itinerary {
                     leg_end_time,
                     locations[0],
                     locations[1],
-                    valhalla.units,
                 )
             })
             .collect();
@@ -552,7 +551,6 @@ impl Leg {
         end_time: SystemTime,
         from_place: LonLat,
         to_place: LonLat,
-        distance_unit: DistanceUnit,
     ) -> Self {
         let geometry =
             polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION)
@@ -616,7 +614,6 @@ pub async fn get_directions(
 
 pub mod osrm_api {
     use super::{Itinerary, Leg, Maneuver, ModeLeg};
-    use crate::otp::otp_api::RelativeDirection::Continue;
     use crate::util::{serialize_line_string_as_polyline6, serialize_point_as_lon_lat_pair};
     use crate::valhalla::valhalla_api::ManeuverType;
     use crate::{DistanceUnit, TravelMode};
@@ -750,7 +747,7 @@ pub mod osrm_api {
             mode: TravelMode,
             from_distance_unit: DistanceUnit,
         ) -> Self {
-            let banner_instructions = BannerInstruction::from_maneuver(&value);
+            let banner_instructions = BannerInstruction::from_maneuver(&value, from_distance_unit);
             RouteStep {
                 distance: value.distance_meters(from_distance_unit),
                 duration: value.duration_seconds,
@@ -775,20 +772,23 @@ pub mod osrm_api {
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct BannerInstruction {
-        distance_along_geometry: f64,
-        primary: BannerInstructionContent,
+        pub distance_along_geometry: f64,
+        pub primary: BannerInstructionContent,
         // secondary: Option<BannerInstructionContent>,
         // sub: Option<BannerInstructionContent>,
     }
 
     impl BannerInstruction {
-        fn from_maneuver(value: &Maneuver) -> Option<Vec<Self>> {
-            let text = value.street_names.as_ref().map(|names| names.join(", "));
+        fn from_maneuver(
+            maneuver: &Maneuver,
+            from_distance_unit: DistanceUnit,
+        ) -> Option<Vec<Self>> {
+            let text = maneuver.street_names.as_ref().map(|names| names.join(", "));
 
             let banner_maneuver = (|| {
                 use BannerManeuverModifier::*;
                 use BannerManeuverType::*;
-                let (banner_type, modifier) = match value.r#type {
+                let (banner_type, modifier) = match maneuver.r#type {
                     ManeuverType::None => return None,
                     ManeuverType::Start => (Depart, None),
                     ManeuverType::StartRight => (Depart, Some(Right)),
@@ -840,7 +840,7 @@ pub mod osrm_api {
                     ManeuverType::BuildingEnter => {}
                     ManeuverType::BuildingExit => {}
                      */
-                    _ => todo!("implement manuever type: {:?}", value.r#type),
+                    _ => todo!("implement manuever type: {:?}", maneuver.r#type),
                 };
                 Some(BannerManeuver {
                     r#type: banner_type,
@@ -859,14 +859,14 @@ pub mod osrm_api {
             // };
 
             let primary = BannerInstructionContent {
-                text: value.instruction.clone()?,
+                text: maneuver.instruction.clone()?,
                 components: vec![text_component], // TODO
                 banner_maneuver,
                 degrees: None,
                 driving_side: None,
             };
             let instruction = BannerInstruction {
-                distance_along_geometry: 0.0,
+                distance_along_geometry: maneuver.distance_meters(from_distance_unit),
                 primary,
             };
             Some(vec![instruction])
@@ -877,7 +877,7 @@ pub mod osrm_api {
     // How do audible instructions fit into this?
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "camelCase")]
-    struct BannerInstructionContent {
+    pub struct BannerInstructionContent {
         text: String,
         // components: Vec<BannerInstructionContentComponent>,
         #[serde(flatten)]
@@ -889,7 +889,7 @@ pub mod osrm_api {
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "lowercase")]
-    struct BannerManeuver {
+    pub struct BannerManeuver {
         r#type: BannerManeuverType,
         modifier: Option<BannerManeuverModifier>,
     }
@@ -899,7 +899,7 @@ pub mod osrm_api {
     // but the docs imply they are different.
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "lowercase")]
-    enum BannerManeuverType {
+    pub enum BannerManeuverType {
         Turn,
         Merge,
         Depart,
@@ -1610,6 +1610,13 @@ mod tests {
         assert_eq!(first_step.duration, 13.567);
         assert_eq!(first_step.name, "East Marginal Way South");
         assert_eq!(first_step.mode, TravelMode::Walk);
+
+        let banner_instructions = first_step.banner_instructions.as_ref().unwrap();
+        assert_eq!(banner_instructions.len(), 1);
+        let banner_instruction = &banner_instructions[0];
+        assert_relative_eq!(banner_instruction.distance_along_geometry, 19.0);
+        let primary = &banner_instruction.primary;
+        // TODO: banner content
 
         let step_maneuver = &first_step.maneuver;
         assert_eq!(
