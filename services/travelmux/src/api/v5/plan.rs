@@ -23,6 +23,22 @@ use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
 
+const METERS_PER_MILE: f64 = 1609.34;
+
+fn convert_from_meters(meters: f64, output_units: DistanceUnit) -> f64 {
+    match output_units {
+        DistanceUnit::Kilometers => meters / 1000.0,
+        DistanceUnit::Miles => meters / METERS_PER_MILE,
+    }
+}
+
+fn convert_to_meters(distance: f64, input_units: DistanceUnit) -> f64 {
+    match input_units {
+        DistanceUnit::Kilometers => distance * 1000.0,
+        DistanceUnit::Miles => distance * METERS_PER_MILE,
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanQuery {
@@ -73,8 +89,8 @@ pub struct Itinerary {
 impl Itinerary {
     pub fn distance_meters(&self) -> f64 {
         match self.distance_units {
-            DistanceUnit::Kilometers => self.distance,
-            DistanceUnit::Miles => self.distance * 1609.34,
+            DistanceUnit::Kilometers => self.distance * 1000.0,
+            DistanceUnit::Miles => self.distance * METERS_PER_MILE,
         }
     }
 
@@ -116,6 +132,7 @@ impl Itinerary {
                     leg_end_time,
                     locations[0],
                     locations[1],
+                    valhalla.units,
                 )
             })
             .collect();
@@ -171,8 +188,8 @@ impl Itinerary {
             start_time: system_time_from_millis(itinerary.start_time),
             end_time: system_time_from_millis(itinerary.end_time),
             mode,
-            distance: distance_meters / 1000.0,
-            distance_units: DistanceUnit::Kilometers,
+            distance: convert_from_meters(distance_meters, distance_unit),
+            distance_units: distance_unit,
             bounds: itinerary_bounds,
             legs,
         })
@@ -236,8 +253,8 @@ struct Leg {
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     end_time: SystemTime,
 
-    /// Length of this leg
-    distance_meters: f64,
+    /// Length of this leg, in units of the `distance_unit` of the Itinerary
+    distance: f64,
 
     /// Duration of this leg
     duration_seconds: f64,
@@ -372,11 +389,6 @@ impl Maneuver {
         } else {
             Some(vec![otp.street_name])
         };
-        let localized_distance = match distance_unit {
-            DistanceUnit::Kilometers => otp.distance,
-            // round to the nearest ten-thousandth
-            DistanceUnit::Miles => (otp.distance * 0.621371 * 10_000.0).round() / 10_000.0,
-        };
 
         log::error!("TODO: synthesize geometry for OTP steps");
         let geometry = LineString::new(vec![]);
@@ -385,7 +397,7 @@ impl Maneuver {
             r#type: otp.relative_direction.into(),
             street_names,
             verbal_post_transition_instruction,
-            distance: localized_distance,
+            distance: convert_from_meters(otp.distance, distance_unit),
             duration_seconds: 666.0, // TODO: OTP doesn't provide this at a granular level - only at the Leg level
             start_point: Point::new(otp.lon, otp.lat).into(),
             geometry,
@@ -393,10 +405,7 @@ impl Maneuver {
     }
 
     fn distance_meters(&self, distance_unit: DistanceUnit) -> f64 {
-        match distance_unit {
-            DistanceUnit::Kilometers => self.distance,
-            DistanceUnit::Miles => self.distance * 1609.34,
-        }
+        convert_to_meters(self.distance, distance_unit)
     }
 }
 
@@ -475,6 +484,10 @@ impl Leg {
         self.geometry.bounding_rect()
     }
 
+    fn distance_meters(&self, itinerary_units: DistanceUnit) -> f64 {
+        convert_to_meters(self.distance, itinerary_units)
+    }
+
     fn from_otp(
         otp: &otp_api::Leg,
         is_destination_leg: bool,
@@ -526,7 +539,7 @@ impl Leg {
             end_time: system_time_from_millis(otp.end_time),
             geometry,
             mode: otp.mode.into(),
-            distance_meters: otp.distance,
+            distance: convert_from_meters(otp.distance, distance_unit),
             duration_seconds: (otp.end_time - otp.start_time) as f64 / 1000.0,
             mode_leg,
         })
@@ -539,6 +552,7 @@ impl Leg {
         end_time: SystemTime,
         from_place: LonLat,
         to_place: LonLat,
+        distance_unit: DistanceUnit,
     ) -> Self {
         let geometry =
             polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION)
@@ -558,8 +572,7 @@ impl Leg {
             geometry,
             mode: travel_mode,
             mode_leg: ModeLeg::NonTransit(Box::new(leg)),
-            // TODO: verify units here - might be in miles
-            distance_meters: valhalla.summary.length,
+            distance: valhalla.summary.length,
             duration_seconds: valhalla.summary.time,
         }
     }
@@ -663,6 +676,7 @@ pub mod osrm_api {
 
     impl RouteLeg {
         fn from_leg(value: Leg, distance_unit: DistanceUnit) -> Self {
+            let distance_meters = value.distance_meters(distance_unit);
             let (summary, steps) = match value.mode_leg {
                 ModeLeg::Transit(_) => {
                     debug_assert!(
@@ -684,7 +698,7 @@ pub mod osrm_api {
                 }
             };
             Self {
-                distance: value.distance_meters,
+                distance: distance_meters,
                 duration: value.duration_seconds,
                 summary,
                 steps,
@@ -1276,7 +1290,7 @@ mod tests {
         // itineraries
         let first_itinerary = &itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
-        assert_relative_eq!(first_itinerary.distance, 10.69944);
+        assert_relative_eq!(first_itinerary.distance, 6.648340313420409);
         assert_relative_eq!(first_itinerary.duration, 3273.0);
 
         // legs
@@ -1380,7 +1394,7 @@ mod tests {
             .unwrap();
         let first_maneuver = maneuvers.get(0).unwrap();
         let expected_maneuver = json!({
-            "distance": 11.893,
+            "distance": 0.011893074179477305, // TODO: truncate precision in serializer
             "instruction": "Walk south on East Marginal Way South.",
             "startPoint": {
                 "lat": 47.5758355,
@@ -1553,7 +1567,7 @@ mod tests {
     }
 
     #[test]
-    fn navigation_response_from_valhalla() {
+    fn osrm_style_navigation_response_from_valhalla() {
         let stubbed_response =
             File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
@@ -1567,7 +1581,8 @@ mod tests {
         assert_eq!(directions_response.routes.len(), 3);
 
         let first_route = &directions_response.routes[0];
-        assert_relative_eq!(first_route.distance, 9.148);
+        // distance is always in meters for OSRM responses
+        assert_relative_eq!(first_route.distance, 9148.0);
         assert_relative_eq!(first_route.duration, 6488.443);
         assert_relative_eq!(
             first_route.geometry.0[0],
@@ -1582,7 +1597,7 @@ mod tests {
         assert_eq!(legs.len(), 1);
         let first_leg = &legs[0];
 
-        assert_eq!(first_leg.distance, 9.148);
+        assert_eq!(first_leg.distance, 9148.0);
         assert_eq!(first_leg.duration, 6488.443);
         assert_eq!(
             first_leg.summary,
@@ -1591,7 +1606,7 @@ mod tests {
         assert_eq!(first_leg.steps.len(), 21);
 
         let first_step = &first_leg.steps[0];
-        assert_eq!(first_step.distance, 0.019);
+        assert_eq!(first_step.distance, 19.0);
         assert_eq!(first_step.duration, 13.567);
         assert_eq!(first_step.name, "East Marginal Way South");
         assert_eq!(first_step.mode, TravelMode::Walk);
