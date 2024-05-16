@@ -684,13 +684,29 @@ pub mod osrm_api {
                 }
                 ModeLeg::NonTransit(non_transit_leg) => {
                     let summary = non_transit_leg.substantial_street_names.join(", ");
-                    let steps = non_transit_leg
+                    let mut steps: Vec<_> = non_transit_leg
                         .maneuvers
-                        .into_iter()
-                        .map(|maneuver| {
-                            RouteStep::from_maneuver(maneuver, value.mode, distance_unit)
+                        .windows(2)
+                        .map(|this_and_next| {
+                            let maneuver = this_and_next[0].clone();
+                            let next_maneuver = this_and_next.get(1);
+                            RouteStep::from_maneuver(
+                                maneuver.clone(),
+                                next_maneuver.cloned(),
+                                value.mode,
+                                distance_unit,
+                            )
                         })
                         .collect();
+                    if let Some(final_maneuver) = non_transit_leg.maneuvers.last() {
+                        let final_step = RouteStep::from_maneuver(
+                            final_maneuver.clone(),
+                            None,
+                            value.mode,
+                            distance_unit,
+                        );
+                        steps.push(final_step);
+                    }
                     (summary, steps)
                 }
             };
@@ -743,16 +759,21 @@ pub mod osrm_api {
 
     impl RouteStep {
         fn from_maneuver(
-            value: Maneuver,
+            maneuver: Maneuver,
+            next_maneuver: Option<Maneuver>,
             mode: TravelMode,
             from_distance_unit: DistanceUnit,
         ) -> Self {
-            let banner_instructions = BannerInstruction::from_maneuver(&value, from_distance_unit);
+            let banner_instructions = BannerInstruction::from_maneuver(
+                &maneuver,
+                next_maneuver.as_ref(),
+                from_distance_unit,
+            );
             RouteStep {
-                distance: value.distance_meters(from_distance_unit),
-                duration: value.duration_seconds,
-                geometry: value.geometry,
-                name: value
+                distance: maneuver.distance_meters(from_distance_unit),
+                duration: maneuver.duration_seconds,
+                geometry: maneuver.geometry,
+                name: maneuver
                     .street_names
                     .unwrap_or(vec!["".to_string()])
                     .join(", "),
@@ -761,7 +782,7 @@ pub mod osrm_api {
                 destinations: None,
                 mode,
                 maneuver: StepManeuver {
-                    location: value.start_point.into(),
+                    location: maneuver.start_point.into(),
                 },
                 intersections: None, //vec![],
                 banner_instructions,
@@ -781,9 +802,14 @@ pub mod osrm_api {
     impl BannerInstruction {
         fn from_maneuver(
             maneuver: &Maneuver,
+            next_maneuver: Option<&Maneuver>,
             from_distance_unit: DistanceUnit,
         ) -> Option<Vec<Self>> {
-            let text = maneuver.street_names.as_ref().map(|names| names.join(", "));
+            let text = next_maneuver
+                .unwrap_or(maneuver)
+                .street_names
+                .as_ref()
+                .map(|names| names.join(", "));
 
             let banner_maneuver = (|| {
                 use BannerManeuverModifier::*;
@@ -878,20 +904,20 @@ pub mod osrm_api {
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "camelCase")]
     pub struct BannerInstructionContent {
-        text: String,
+        pub text: String,
         // components: Vec<BannerInstructionContentComponent>,
         #[serde(flatten)]
-        banner_maneuver: Option<BannerManeuver>,
-        degrees: Option<f64>,
-        driving_side: Option<String>,
-        components: Vec<BannerComponent>,
+        pub banner_maneuver: Option<BannerManeuver>,
+        pub degrees: Option<f64>,
+        pub driving_side: Option<String>,
+        pub components: Vec<BannerComponent>,
     }
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "lowercase")]
     pub struct BannerManeuver {
-        r#type: BannerManeuverType,
-        modifier: Option<BannerManeuverModifier>,
+        pub r#type: BannerManeuverType,
+        pub modifier: Option<BannerManeuverModifier>,
     }
 
     // This is for `banner.primary(et. al).type`
@@ -912,7 +938,7 @@ pub mod osrm_api {
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "lowercase")]
-    enum BannerManeuverModifier {
+    pub enum BannerManeuverModifier {
         Uturn,
         #[serde(rename = "sharp right")]
         SharpRight,
@@ -932,7 +958,7 @@ pub mod osrm_api {
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "camelCase", tag = "type")]
     #[non_exhaustive]
-    enum BannerComponent {
+    pub enum BannerComponent {
         Text(VisualInstructionComponent),
         // Icon(VisualInstructionComponent),
         // Delimiter(VisualInstructionComponent),
@@ -944,12 +970,12 @@ pub mod osrm_api {
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "camelCase")]
-    struct LaneInstructionComponent {}
+    pub struct LaneInstructionComponent {}
 
     // Maybe we won't use this? Because it'll need to be implicit in the containing BannerComponent enum variant of
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "lowercase")]
-    enum VisualInstructionComponentType {
+    pub enum VisualInstructionComponentType {
         /// The component separates two other destination components.
         ///
         /// If the two adjacent components are both displayed as images, you can hide this delimiter component.
@@ -1616,7 +1642,8 @@ mod tests {
         let banner_instruction = &banner_instructions[0];
         assert_relative_eq!(banner_instruction.distance_along_geometry, 19.0);
         let primary = &banner_instruction.primary;
-        // TODO: banner content
+        assert_eq!(primary.text, "Walk south on East Marginal Way South.");
+        // TODO: more banner content
 
         let step_maneuver = &first_step.maneuver;
         assert_eq!(
