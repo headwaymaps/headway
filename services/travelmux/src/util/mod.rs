@@ -52,8 +52,8 @@ pub fn serialize_line_string_as_polyline6<S>(
 where
     S: Serializer,
 {
-    let string = polyline::encode_coordinates(line_string.0.iter().copied(), 6)
-        .map_err(S::Error::custom)?;
+    let string =
+        polyline::encode_coordinates(line_string.0.iter().copied(), 6).map_err(S::Error::custom)?;
     serializer.serialize_str(&string)
 }
 

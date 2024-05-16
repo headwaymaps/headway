@@ -355,6 +355,7 @@ impl Maneuver {
         otp: otp_api::Step,
         mode: otp_api::TransitMode,
         distance_unit: DistanceUnit,
+        // leg_geometry: &LineString,
     ) -> Self {
         let instruction = build_instruction(
             mode,
@@ -575,6 +576,7 @@ impl actix_web::Responder for PlanResponseOk {
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
 struct DirectionsResponseOk {
     routes: Vec<osrm_api::Route>,
 }
@@ -601,12 +603,15 @@ pub async fn get_directions(
 
 pub mod osrm_api {
     use super::{Itinerary, Leg, Maneuver, ModeLeg};
-    use crate::util::{serialize_point_as_lon_lat_pair, serialize_line_string_as_polyline6};
+    use crate::otp::otp_api::RelativeDirection::Continue;
+    use crate::util::{serialize_line_string_as_polyline6, serialize_point_as_lon_lat_pair};
+    use crate::valhalla::valhalla_api::ManeuverType;
     use crate::{DistanceUnit, TravelMode};
     use geo::{LineString, Point};
     use serde::Serialize;
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
     pub struct Route {
         /// The distance traveled by the route, in float meters.
         pub distance: f64,
@@ -616,7 +621,7 @@ pub mod osrm_api {
 
         // todo: simplify?
         /// The entire geometry of the route
-        #[serde(serialize_with="serialize_line_string_as_polyline6")]
+        #[serde(serialize_with = "serialize_line_string_as_polyline6")]
         pub geometry: LineString,
 
         /// The legs between the given waypoints
@@ -639,6 +644,7 @@ pub mod osrm_api {
     }
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
     pub struct RouteLeg {
         /// The distance traveled by this leg, in float meters.
         pub distance: f64,
@@ -687,6 +693,7 @@ pub mod osrm_api {
     }
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
     pub struct RouteStep {
         /// The distance traveled by this step, in float meters.
         pub distance: f64,
@@ -695,7 +702,7 @@ pub mod osrm_api {
         pub duration: f64,
 
         /// The unsimplified geometry of the route segment.
-        #[serde(serialize_with="serialize_line_string_as_polyline6")]
+        #[serde(serialize_with = "serialize_line_string_as_polyline6")]
         pub geometry: LineString,
 
         /// The name of the way along which travel proceeds.
@@ -716,6 +723,9 @@ pub mod osrm_api {
         /// A `StepManeuver` object representing the maneuver.
         pub maneuver: StepManeuver,
 
+        /// A list of `BannerInstruction` objects that represent all signs on the step.
+        pub banner_instructions: Option<Vec<BannerInstruction>>,
+
         /// A list of `Intersection` objects that are passed along the segment, the very first belonging to the `StepManeuver`
         pub intersections: Option<Vec<Intersection>>,
     }
@@ -726,6 +736,7 @@ pub mod osrm_api {
             mode: TravelMode,
             from_distance_unit: DistanceUnit,
         ) -> Self {
+            let banner_instructions = BannerInstruction::from_maneuver(&value);
             RouteStep {
                 distance: value.distance_meters(from_distance_unit),
                 duration: value.duration_seconds,
@@ -742,32 +753,239 @@ pub mod osrm_api {
                     location: value.start_point.into(),
                 },
                 intersections: None, //vec![],
+                banner_instructions,
             }
         }
     }
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
+    pub struct BannerInstruction {
+        distance_along_geometry: f64,
+        primary: BannerInstructionContent,
+        // secondary: Option<BannerInstructionContent>,
+        // sub: Option<BannerInstructionContent>,
+    }
+
+    impl BannerInstruction {
+        fn from_maneuver(value: &Maneuver) -> Option<Vec<Self>> {
+            let text = value.street_names.as_ref().map(|names| names.join(", "));
+
+            let banner_maneuver = (|| {
+                use BannerManeuverModifier::*;
+                use BannerManeuverType::*;
+                let (banner_type, modifier) = match value.r#type {
+                    ManeuverType::None => return None,
+                    ManeuverType::Start => (Depart, None),
+                    ManeuverType::StartRight => (Depart, Some(Right)),
+                    ManeuverType::StartLeft => (Depart, Some(Left)),
+                    ManeuverType::Destination => (Arrive, None),
+                    ManeuverType::DestinationRight => (Arrive, Some(Right)),
+                    ManeuverType::DestinationLeft => (Arrive, Some(Left)),
+                    /*
+                    ManeuverType::Becomes => {}
+                    */
+                    ManeuverType::Continue => (Fork, None), // Or maybe just return None?
+                    ManeuverType::SlightRight => (Turn, Some(SlightRight)),
+                    ManeuverType::Right => (Turn, Some(Right)),
+                    ManeuverType::SharpRight => (Turn, Some(SharpRight)),
+                    /*
+                    ManeuverType::UturnRight => {}
+                    ManeuverType::UturnLeft => {}
+                    */
+                    ManeuverType::SharpLeft => (Turn, Some(SharpLeft)),
+                    ManeuverType::Left => (Turn, Some(Left)),
+                    ManeuverType::SlightLeft => (Turn, Some(SlightLeft)),
+                    // REVIEW: Is OffRamp correct here?
+                    ManeuverType::RampStraight => (OffRamp, Some(Straight)),
+                    ManeuverType::RampRight => (OffRamp, Some(Right)),
+                    ManeuverType::RampLeft => (OffRamp, Some(Left)),
+                    ManeuverType::ExitRight => (OffRamp, Some(Right)),
+                    ManeuverType::ExitLeft => (OffRamp, Some(Left)),
+                    ManeuverType::StayStraight => (Fork, None), // Or maybe just return None?
+                    ManeuverType::StayRight => (Fork, Some(Right)),
+                    ManeuverType::StayLeft => (Fork, Some(Left)),
+                    /*
+                    ManeuverType::Merge => {}
+                    ManeuverType::RoundaboutEnter => {}
+                    ManeuverType::RoundaboutExit => {}
+                    ManeuverType::FerryEnter => {}
+                    ManeuverType::FerryExit => {}
+                    ManeuverType::Transit => {}
+                    ManeuverType::TransitTransfer => {}
+                    ManeuverType::TransitRemainOn => {}
+                    ManeuverType::TransitConnectionStart => {}
+                    ManeuverType::TransitConnectionTransfer => {}
+                    ManeuverType::TransitConnectionDestination => {}
+                    ManeuverType::PostTransitConnectionDestination => {}
+                    ManeuverType::MergeRight => {}
+                    ManeuverType::MergeLeft => {}
+                    ManeuverType::ElevatorEnter => {}
+                    ManeuverType::StepsEnter => {}
+                    ManeuverType::EscalatorEnter => {}
+                    ManeuverType::BuildingEnter => {}
+                    ManeuverType::BuildingExit => {}
+                     */
+                    _ => todo!("implement manuever type: {:?}", value.r#type),
+                };
+                Some(BannerManeuver {
+                    r#type: banner_type,
+                    modifier,
+                })
+            })();
+
+            let text_component = BannerComponent::Text(VisualInstructionComponent { text });
+            //     if let Some(banner_maneuver) = banner_maneuver {
+            //         BannerComponent::Text(VisualInstructionComponent {
+            //             text,
+            //         })
+            //     } else {
+            //         panic!("no banner_maneuver")
+            //     }
+            // };
+
+            let primary = BannerInstructionContent {
+                text: value.instruction.clone()?,
+                components: vec![text_component], // TODO
+                banner_maneuver,
+                degrees: None,
+                driving_side: None,
+            };
+            let instruction = BannerInstruction {
+                distance_along_geometry: 0.0,
+                primary,
+            };
+            Some(vec![instruction])
+        }
+    }
+
+    // REVIEW: Rename to VisualInstructionBanner?
+    // How do audible instructions fit into this?
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
+    struct BannerInstructionContent {
+        text: String,
+        // components: Vec<BannerInstructionContentComponent>,
+        #[serde(flatten)]
+        banner_maneuver: Option<BannerManeuver>,
+        degrees: Option<f64>,
+        driving_side: Option<String>,
+        components: Vec<BannerComponent>,
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "lowercase")]
+    struct BannerManeuver {
+        r#type: BannerManeuverType,
+        modifier: Option<BannerManeuverModifier>,
+    }
+
+    // This is for `banner.primary(et. al).type`
+    // There is a lot of overlap between this and `step_maneuver.type`,
+    // but the docs imply they are different.
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "lowercase")]
+    enum BannerManeuverType {
+        Turn,
+        Merge,
+        Depart,
+        Arrive,
+        Fork,
+        #[serde(rename = "off ramp")]
+        OffRamp,
+        RoundAbout,
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "lowercase")]
+    enum BannerManeuverModifier {
+        Uturn,
+        #[serde(rename = "sharp right")]
+        SharpRight,
+        Right,
+        #[serde(rename = "slight right")]
+        SlightRight,
+        Straight,
+        #[serde(rename = "slight left")]
+        SlightLeft,
+        Left,
+        #[serde(rename = "sharp left")]
+        SharpLeft,
+    }
+
+    // REVIEW: Rename to VisualInstruction?
+    // REVIEW: convert to inner enum of Lane or VisualInstructionComponent
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase", tag = "type")]
+    #[non_exhaustive]
+    enum BannerComponent {
+        Text(VisualInstructionComponent),
+        // Icon(VisualInstructionComponent),
+        // Delimiter(VisualInstructionComponent),
+        // #[serde(rename="exit-number")]
+        // ExitNumber(VisualInstructionComponent),
+        // Exit(VisualInstructionComponent),
+        Lane(LaneInstructionComponent),
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
+    struct LaneInstructionComponent {}
+
+    // Maybe we won't use this? Because it'll need to be implicit in the containing BannerComponent enum variant of
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "lowercase")]
+    enum VisualInstructionComponentType {
+        /// The component separates two other destination components.
+        ///
+        /// If the two adjacent components are both displayed as images, you can hide this delimiter component.
+        Delimiter,
+
+        /// The component bears the name of a place or street.
+        Text,
+
+        /// Component contains an image that should be rendered.
+        Image,
+
+        /// The component contains the localized word for "exit".
+        ///
+        /// This component may appear before or after an `.ExitCode` component, depending on the language.
+        Exit,
+
+        /// A component contains an exit number.
+        #[serde(rename = "exit-number")]
+        ExitCode,
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
+    struct VisualInstructionComponent {
+        text: Option<String>,
+    }
+
+    #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
     pub struct StepManeuver {
         /// The location of the maneuver
         #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
         pub location: Point,
         // /// The type of maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
         // r#type: String,
+        // /// The modifier of the maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
+        // modifier: String,
         // /// A human-readable instruction of how to execute the returned maneuver
         // instruction: String,
         // /// The bearing before the turn, in degrees
+        // OSRM expects `bearing_before` to be snake cased.
+        // #[serde(rename_all = "snake_case")]
         // bearing_before: f64,
+        // OSRM expects `bearing_after` to be snake cased.
         // /// The bearing after the turn, in degrees
         // bearing_after: f64,
-        // /// The exit number or name of the way. This field is to indicate the next way or roundabout exit to take
-        // exit: String,
-        // /// The modifier of the maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
-        // modifier: String,
-        // /// The type of the modifier of the maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
-        // modifier_type: String,
     }
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
     pub struct Intersection {
         /// A [longitude, latitude] pair describing the location of the turn.
         #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
@@ -778,7 +996,6 @@ pub mod osrm_api {
 
         // /// An array of strings signifying the classes of the road exiting the intersection.
         // pub classes: Vec<RoadClass>
-
         /// A list of entry flags, corresponding in a 1:1 relationship to the bearings. A value of true indicates that the respective road could be entered on a valid route.
         pub entry: Vec<bool>,
 
@@ -796,14 +1013,13 @@ pub mod osrm_api {
 
         /// The time required, in seconds, to traverse the intersection. Only available on the driving profile.
         pub duration: Option<f64>,
-
         // TODO: lots more fields in OSRM
     }
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
+    #[serde(rename_all = "camelCase")]
     pub struct Lane {
         // TODO: lots more fields in OSRM
-
     }
 }
 
