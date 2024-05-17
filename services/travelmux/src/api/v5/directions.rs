@@ -71,41 +71,41 @@ mod tests {
 
         let first_route = &directions_response.routes[0];
         // distance is always in meters for OSRM responses
-        assert_relative_eq!(first_route.distance, 9148.0);
-        assert_relative_eq!(first_route.duration, 6488.443);
+        assert_relative_eq!(first_route.distance, 9165.05);
+        assert_relative_eq!(first_route.duration, 7505.0);
         assert_relative_eq!(
             first_route.geometry.0[0],
-            geo::coord!(x: -122.339216, y: 47.575836)
+            geo::coord!(x: -122.33922, y: 47.57583)
         );
         assert_relative_eq!(
             first_route.geometry.0.last().unwrap(),
-            &geo::coord!(x: -122.347199, y: 47.651048)
+            &geo::coord!(x:-122.3472, y: 47.65104)
         );
 
         let legs = &first_route.legs;
         assert_eq!(legs.len(), 1);
         let first_leg = &legs[0];
 
-        assert_eq!(first_leg.distance, 9148.0);
-        assert_eq!(first_leg.duration, 6488.443);
+        assert_eq!(first_leg.distance, 9165.05);
+        assert_eq!(first_leg.duration, 7505.0);
         assert_eq!(
             first_leg.summary,
-            "Dexter Avenue, East Marginal Way South, Alaskan Way South"
+            "Aurora Avenue North, East Marginal Way South",
         );
-        assert_eq!(first_leg.steps.len(), 21);
+        assert_eq!(first_leg.steps.len(), 23);
 
         let first_step = &first_leg.steps[0];
-        assert_eq!(first_step.distance, 19.0);
-        assert_eq!(first_step.duration, 13.567);
+        assert_eq!(first_step.distance, 19.15);
+        assert_eq!(first_step.duration, 15.681392900202399);
         assert_eq!(first_step.name, "East Marginal Way South");
         assert_eq!(first_step.mode, TravelMode::Walk);
 
         let banner_instructions = first_step.banner_instructions.as_ref().unwrap();
         assert_eq!(banner_instructions.len(), 1);
         let banner_instruction = &banner_instructions[0];
-        assert_relative_eq!(banner_instruction.distance_along_geometry, 19.0);
+        assert_relative_eq!(banner_instruction.distance_along_geometry, 19.15);
         let primary = &banner_instruction.primary;
-        assert_eq!(primary.text, "Turn right onto the walkway.");
+        assert_eq!(primary.text, "Turn right onto path.");
 
         let Some(osrm_api::BannerComponent::Text(first_component)) = &primary.components.first()
         else {
@@ -116,13 +116,13 @@ mod tests {
         };
         assert_eq!(
             first_component.text,
-            Some("Turn right onto the walkway.".to_string())
+            Some("Turn right onto path.".to_string())
         );
 
         let step_maneuver = &first_step.maneuver;
         assert_eq!(
             step_maneuver.location,
-            geo::point!(x: -122.339216, y: 47.575836)
+            geo::point!(x: -122.3392181, y: 47.5758346)
         );
         // assert_eq!(step_maneuver.r#type, "my type");
         // assert_eq!(step_maneuver.modifier, "my modifier");

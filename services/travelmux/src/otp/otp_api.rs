@@ -87,6 +87,12 @@ pub struct Leg {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
+impl Leg {
+    pub(crate) fn duration_seconds(&self) -> f64 {
+        (self.end_time - self.start_time) as f64 / 1000.0
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Step {

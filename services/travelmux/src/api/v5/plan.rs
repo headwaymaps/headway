@@ -367,14 +367,9 @@ impl Maneuver {
         }
     }
 
-    fn from_otp(
-        otp: otp_api::Step,
-        mode: otp_api::TransitMode,
-        distance_unit: DistanceUnit,
-        // leg_geometry: &LineString,
-    ) -> Self {
+    fn from_otp(otp: otp_api::Step, leg: &otp_api::Leg, distance_unit: DistanceUnit) -> Self {
         let instruction = build_instruction(
-            mode,
+            leg.mode,
             otp.relative_direction,
             otp.absolute_direction,
             &otp.street_name,
@@ -389,6 +384,8 @@ impl Maneuver {
             Some(vec![otp.street_name])
         };
 
+        let duration_seconds = otp.distance / leg.distance * leg.duration_seconds();
+
         log::error!("TODO: synthesize geometry for OTP steps");
         let geometry = LineString::new(vec![]);
         Self {
@@ -397,7 +394,7 @@ impl Maneuver {
             street_names,
             verbal_post_transition_instruction,
             distance: convert_from_meters(otp.distance, distance_unit),
-            duration_seconds: 666.0, // TODO: OTP doesn't provide this at a granular level - only at the Leg level
+            duration_seconds,
             start_point: Point::new(otp.lon, otp.lat).into(),
             geometry,
         }
@@ -505,7 +502,7 @@ impl Leg {
                     .steps
                     .iter()
                     .cloned()
-                    .map(|otp_step| Maneuver::from_otp(otp_step, otp.mode, distance_unit))
+                    .map(|otp_step| Maneuver::from_otp(otp_step, otp, distance_unit))
                     .collect();
 
                 // OTP doesn't include an arrival step like valhalla, so we synthesize one
@@ -539,7 +536,7 @@ impl Leg {
             geometry,
             mode: otp.mode.into(),
             distance: convert_from_meters(otp.distance, distance_unit),
-            duration_seconds: (otp.end_time - otp.start_time) as f64 / 1000.0,
+            duration_seconds: otp.duration_seconds(),
             mode_leg,
         })
     }
