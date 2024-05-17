@@ -805,16 +805,20 @@ pub mod osrm_api {
             next_maneuver: Option<&Maneuver>,
             from_distance_unit: DistanceUnit,
         ) -> Option<Vec<Self>> {
-            let text = next_maneuver
-                .unwrap_or(maneuver)
-                .street_names
-                .as_ref()
-                .map(|names| names.join(", "));
+            let text = if let Some(next_maneuver) = next_maneuver {
+                next_maneuver.street_names
+                    .as_ref()
+                    .map(|names| names.join(", "))
+                    .or(next_maneuver.instruction.clone())
+            } else {
+                assert!(matches!(maneuver.r#type,  ManeuverType::Destination | ManeuverType::DestinationRight | ManeuverType::DestinationLeft));
+                maneuver.instruction.to_owned()
+            };
 
             let banner_maneuver = (|| {
                 use BannerManeuverModifier::*;
                 use BannerManeuverType::*;
-                let (banner_type, modifier) = match maneuver.r#type {
+                let (banner_type, modifier) = match next_maneuver.unwrap_or(maneuver).r#type {
                     ManeuverType::None => return None,
                     ManeuverType::Start => (Depart, None),
                     ManeuverType::StartRight => (Depart, Some(Right)),
@@ -836,10 +840,9 @@ pub mod osrm_api {
                     ManeuverType::SharpLeft => (Turn, Some(SharpLeft)),
                     ManeuverType::Left => (Turn, Some(Left)),
                     ManeuverType::SlightLeft => (Turn, Some(SlightLeft)),
-                    // REVIEW: Is OffRamp correct here?
-                    ManeuverType::RampStraight => (OffRamp, Some(Straight)),
-                    ManeuverType::RampRight => (OffRamp, Some(Right)),
-                    ManeuverType::RampLeft => (OffRamp, Some(Left)),
+                    ManeuverType::RampStraight => (OnRamp, Some(Straight)),
+                    ManeuverType::RampRight => (OnRamp, Some(Right)),
+                    ManeuverType::RampLeft => (OnRamp, Some(Left)),
                     ManeuverType::ExitRight => (OffRamp, Some(Right)),
                     ManeuverType::ExitLeft => (OffRamp, Some(Left)),
                     ManeuverType::StayStraight => (Fork, None), // Or maybe just return None?
@@ -874,7 +877,7 @@ pub mod osrm_api {
                 })
             })();
 
-            let text_component = BannerComponent::Text(VisualInstructionComponent { text });
+            let text_component = BannerComponent::Text(VisualInstructionComponent { text: text.clone() });
             //     if let Some(banner_maneuver) = banner_maneuver {
             //         BannerComponent::Text(VisualInstructionComponent {
             //             text,
@@ -885,7 +888,7 @@ pub mod osrm_api {
             // };
 
             let primary = BannerInstructionContent {
-                text: maneuver.instruction.clone()?,
+                text: text.unwrap_or_default(),
                 components: vec![text_component], // TODO
                 banner_maneuver,
                 degrees: None,
@@ -931,6 +934,8 @@ pub mod osrm_api {
         Depart,
         Arrive,
         Fork,
+        #[serde(rename = "on ramp")]
+        OnRamp,
         #[serde(rename = "off ramp")]
         OffRamp,
         RoundAbout,
@@ -999,8 +1004,8 @@ pub mod osrm_api {
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
     #[serde(rename_all = "camelCase")]
-    struct VisualInstructionComponent {
-        text: Option<String>,
+    pub struct VisualInstructionComponent {
+        pub(crate) text: Option<String>,
     }
 
     #[derive(Debug, Serialize, PartialEq, Clone)]
@@ -1248,6 +1253,7 @@ mod tests {
     use serde_json::{json, Value};
     use std::fs::File;
     use std::io::BufReader;
+    use crate::api::v5::plan::osrm_api::BannerComponent;
 
     #[test]
     fn parse_from_valhalla() {
@@ -1642,14 +1648,20 @@ mod tests {
         let banner_instruction = &banner_instructions[0];
         assert_relative_eq!(banner_instruction.distance_along_geometry, 19.0);
         let primary = &banner_instruction.primary;
-        assert_eq!(primary.text, "Walk south on East Marginal Way South.");
-        // TODO: more banner content
+        assert_eq!(primary.text, "Turn right onto the walkway.");
+
+        let Some(BannerComponent::Text(first_component)) = &primary.components.first() else {
+            panic!("unexpected banner component: {:?}", primary.components.first())
+        };
+        assert_eq!(first_component.text, Some("Turn right onto the walkway.".to_string()));
 
         let step_maneuver = &first_step.maneuver;
         assert_eq!(
             step_maneuver.location,
             geo::point!(x: -122.339216, y: 47.575836)
         );
+        // assert_eq!(step_maneuver.r#type, "my type");
+        // assert_eq!(step_maneuver.modifier, "my modifier");
         // TODO: step_maneuver stuff
         // etc...
     }
