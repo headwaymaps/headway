@@ -10,6 +10,7 @@ use std::time::{Duration, SystemTime};
 use super::error::{PlanResponseErr, PlanResponseOk};
 use super::TravelModes;
 
+use crate::api::v5::haversine_segmenter::HaversineSegmenter;
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::otp_api;
@@ -367,7 +368,12 @@ impl Maneuver {
         }
     }
 
-    fn from_otp(otp: otp_api::Step, leg: &otp_api::Leg, distance_unit: DistanceUnit) -> Self {
+    fn from_otp(
+        otp: otp_api::Step,
+        geometry: LineString,
+        leg: &otp_api::Leg,
+        distance_unit: DistanceUnit,
+    ) -> Self {
         let instruction = build_instruction(
             leg.mode,
             otp.relative_direction,
@@ -385,9 +391,6 @@ impl Maneuver {
         };
 
         let duration_seconds = otp.distance / leg.distance * leg.duration_seconds();
-
-        log::error!("TODO: synthesize geometry for OTP steps");
-        let geometry = LineString::new(vec![]);
         Self {
             instruction,
             r#type: otp.relative_direction.into(),
@@ -494,6 +497,8 @@ impl Leg {
         let from_place: Place = (&otp.from).into();
         let to_place: Place = (&otp.to).into();
 
+        let mut distance_so_far = 0.0;
+        let mut segmenter = HaversineSegmenter::new(geometry.clone());
         let mode_leg = match otp.mode {
             otp_api::TransitMode::Walk
             | otp_api::TransitMode::Bicycle
@@ -502,7 +507,13 @@ impl Leg {
                     .steps
                     .iter()
                     .cloned()
-                    .map(|otp_step| Maneuver::from_otp(otp_step, otp, distance_unit))
+                    .map(|otp_step| {
+                        // compute step geometry by distance along leg geometry
+                        let step_geometry =
+                            segmenter.next_segment(otp_step.distance).expect("TODO");
+                        distance_so_far += otp_step.distance;
+                        Maneuver::from_otp(otp_step, step_geometry, otp, distance_unit)
+                    })
                     .collect();
 
                 // OTP doesn't include an arrival step like valhalla, so we synthesize one

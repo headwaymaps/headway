@@ -240,7 +240,7 @@ impl BannerInstruction {
                 ManeuverType::Merge => {}
                 */
                 ManeuverType::RoundaboutEnter => (RoundaboutEnter, None), // Enter/Exit?
-                ManeuverType::RoundaboutExit => (RoundaboutExit, None), // Enter/Exit?
+                ManeuverType::RoundaboutExit => (RoundaboutExit, None),   // Enter/Exit?
                 /*
                 ManeuverType::FerryEnter => {}
                 ManeuverType::FerryExit => {}
