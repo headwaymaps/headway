@@ -48,25 +48,26 @@ mod tests {
     use super::*;
     use crate::api::v5::error::PlanResponseOk;
     use crate::api::v5::osrm_api;
+    use crate::otp::otp_api;
     use crate::valhalla::valhalla_api;
-    use crate::TravelMode;
+    use crate::{DistanceUnit, TravelMode};
     use approx::assert_relative_eq;
     use std::fs::File;
     use std::io::BufReader;
 
     #[test]
-    fn osrm_style_navigation_response_from_valhalla() {
+    fn directions_from_otp() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
-        let valhalla: valhalla_api::RouteResponse =
+            File::open("tests/fixtures/requests/opentripplanner_walk_plan.json").unwrap();
+
+        let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
 
-        let valhalla_response_result = valhalla_api::ValhallaRouteResponseResult::Ok(valhalla);
         let plan_response =
-            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response_result).unwrap();
+            PlanResponseOk::from_otp(TravelMode::Walk, otp, DistanceUnit::Miles).unwrap();
 
         let directions_response = DirectionsResponseOk::from(plan_response);
-        assert_eq!(directions_response.routes.len(), 3);
+        assert_eq!(directions_response.routes.len(), 1);
 
         let first_route = &directions_response.routes[0];
         // distance is always in meters for OSRM responses
@@ -103,6 +104,81 @@ mod tests {
         assert_eq!(banner_instructions.len(), 1);
         let banner_instruction = &banner_instructions[0];
         assert_relative_eq!(banner_instruction.distance_along_geometry, 19.0);
+        let primary = &banner_instruction.primary;
+        assert_eq!(primary.text, "Turn right onto the walkway.");
+
+        let Some(osrm_api::BannerComponent::Text(first_component)) = &primary.components.first()
+        else {
+            panic!(
+                "unexpected banner component: {:?}",
+                primary.components.first()
+            )
+        };
+        assert_eq!(
+            first_component.text,
+            Some("Turn right onto the walkway.".to_string())
+        );
+
+        let step_maneuver = &first_step.maneuver;
+        assert_eq!(
+            step_maneuver.location,
+            geo::point!(x: -122.339216, y: 47.575836)
+        );
+        // assert_eq!(step_maneuver.r#type, "my type");
+        // assert_eq!(step_maneuver.modifier, "my modifier");
+        // TODO: step_maneuver stuff
+        // etc...
+    }
+
+    #[test]
+    fn directions_from_valhalla() {
+        let stubbed_response =
+            File::open("tests/fixtures/requests/valhalla_pedestrian_route.json").unwrap();
+        let valhalla: valhalla_api::RouteResponse =
+            serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
+
+        let valhalla_response_result = valhalla_api::ValhallaRouteResponseResult::Ok(valhalla);
+        let plan_response =
+            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response_result).unwrap();
+
+        let directions_response = DirectionsResponseOk::from(plan_response);
+        assert_eq!(directions_response.routes.len(), 3);
+
+        let first_route = &directions_response.routes[0];
+        // distance is always in meters for OSRM responses
+        assert_relative_eq!(first_route.distance, 9147.48856);
+        assert_relative_eq!(first_route.duration, 6488.443);
+        assert_relative_eq!(
+            first_route.geometry.0[0],
+            geo::coord!(x: -122.339216, y: 47.575836)
+        );
+        assert_relative_eq!(
+            first_route.geometry.0.last().unwrap(),
+            &geo::coord!(x: -122.347199, y: 47.651048)
+        );
+
+        let legs = &first_route.legs;
+        assert_eq!(legs.len(), 1);
+        let first_leg = &legs[0];
+
+        assert_eq!(first_leg.distance, 9147.48856);
+        assert_eq!(first_leg.duration, 6488.443);
+        assert_eq!(
+            first_leg.summary,
+            "Dexter Avenue, East Marginal Way South, Alaskan Way South"
+        );
+        assert_eq!(first_leg.steps.len(), 21);
+
+        let first_step = &first_leg.steps[0];
+        assert_eq!(first_step.distance, 17.70274);
+        assert_eq!(first_step.duration, 13.567);
+        assert_eq!(first_step.name, "East Marginal Way South");
+        assert_eq!(first_step.mode, TravelMode::Walk);
+
+        let banner_instructions = first_step.banner_instructions.as_ref().unwrap();
+        assert_eq!(banner_instructions.len(), 1);
+        let banner_instruction = &banner_instructions[0];
+        assert_relative_eq!(banner_instruction.distance_along_geometry, 17.70274);
         let primary = &banner_instruction.primary;
         assert_eq!(primary.text, "Turn right onto the walkway.");
 

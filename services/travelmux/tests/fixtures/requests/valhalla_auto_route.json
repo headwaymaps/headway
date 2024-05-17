@@ -1,0 +1,107 @@
+{
+  "trip": {
+    "language": "en-US",
+    "legs": [
+      {
+        "maneuvers": [
+          {
+            "begin_shape_index": 0,
+            "cost": 105.738,
+            "end_shape_index": 21,
+            "highway": true,
+            "instruction": "Drive north on WA 99/SR 99.",
+            "length": 1.094,
+            "street_names": [
+              "WA 99",
+              "SR 99"
+            ],
+            "time": 98.008,
+            "travel_mode": "drive",
+            "travel_type": "car",
+            "type": 1,
+            "verbal_post_transition_instruction": "Continue for 1 mile.",
+            "verbal_pre_transition_instruction": "Drive north on WA 99, SR 99.",
+            "verbal_succinct_transition_instruction": "Drive north."
+          },
+          {
+            "begin_shape_index": 21,
+            "cost": 434.58,
+            "end_shape_index": 133,
+            "highway": true,
+            "instruction": "Keep left to stay on WA 99.",
+            "length": 4.269,
+            "street_names": [
+              "WA 99"
+            ],
+            "time": 372.288,
+            "toll": true,
+            "travel_mode": "drive",
+            "travel_type": "car",
+            "type": 24,
+            "verbal_post_transition_instruction": "Continue for 4 miles.",
+            "verbal_pre_transition_instruction": "Keep left to stay on WA 99.",
+            "verbal_transition_alert_instruction": "Keep left to stay on WA 99."
+          },
+          {
+            "begin_shape_index": 133,
+            "cost": 0.0,
+            "end_shape_index": 133,
+            "instruction": "Your destination is on the right.",
+            "length": 0.0,
+            "time": 0.0,
+            "travel_mode": "drive",
+            "travel_type": "car",
+            "type": 5,
+            "verbal_pre_transition_instruction": "Your destination is on the right.",
+            "verbal_transition_alert_instruction": "Your destination will be on the right."
+          }
+        ],
+        "shape": "ypxvyAt`_jhFev@?kgBEop@g@s~CMqnC@ycAxBmRRkZmAiP_BkK{BkHeCkLkF_ToKmSqNuVyQs[}SoTcL}PyI{pBer@ic@eOmBs@e}@_Zi^{LuMoDwNyC{J}AsO_BuOqAiOk@uR[wQDml@P}Ox@oK~@o`@tE_d@hEgd@~Bsd@t@k{AG}g@bAil@bDec@fEeq@|Jgp@jNi~@lXgs@~Xwz@rb@og@zZqc@~Zgd@~_@csCbeC}i@hc@}h@v^er@`a@u{@la@aw@fYyu@zS}v@nOso@tIue@~Dwu@zCkaADa~@wEgO_CyRiCuY{CqHaBgEuA}CiAwOqIoO_KsCiBaQyJ{JaFiGsCmGaCqGoBuG}AwGkAyGy@{Gg@aIYwCAyMLyNdBcCXeSAkQUe_@o@yGOmKa@oK_@ui@{@uz@e@s{@g@yRGsTGuDA_p@YukBe@cLG_s@Ucu@UaVAoi@CyNAySlA}ItAoGhBoXfLir@fc@eqAlw@iBfAoRzKgAf@y[pPiBt@cl@rVqW`IqvAb_@{OrDwN|E{HzAiHjBkHvCcHr@aHj@eHb@cHZeHPmbI@eND}kB`@",
+        "summary": {
+          "cost": 540.319,
+          "has_ferry": false,
+          "has_highway": true,
+          "has_time_restrictions": false,
+          "has_toll": true,
+          "length": 5.364,
+          "max_lat": 47.651047,
+          "max_lon": -122.3355,
+          "min_lat": 47.575837,
+          "min_lon": -122.34732,
+          "time": 470.296
+        }
+      }
+    ],
+    "locations": [
+      {
+        "lat": 47.575837,
+        "lon": -122.339414,
+        "original_index": 0,
+        "type": "break"
+      },
+      {
+        "lat": 47.651048,
+        "lon": -122.347234,
+        "original_index": 1,
+        "side_of_street": "right",
+        "type": "break"
+      }
+    ],
+    "status": 0,
+    "status_message": "Found route between points",
+    "summary": {
+      "cost": 540.319,
+      "has_ferry": false,
+      "has_highway": true,
+      "has_time_restrictions": false,
+      "has_toll": true,
+      "length": 5.364,
+      "max_lat": 47.651047,
+      "max_lon": -122.3355,
+      "min_lat": 47.575837,
+      "min_lon": -122.34732,
+      "time": 470.296
+    },
+    "units": "miles"
+  }
+}

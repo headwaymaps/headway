@@ -1,0 +1,332 @@
+{
+  "trip": {
+    "language": "en-US",
+    "legs": [
+      {
+        "maneuvers": [
+          {
+            "begin_shape_index": 0,
+            "cost": 15.308,
+            "end_shape_index": 2,
+            "instruction": "Bike south on East Marginal Way South.",
+            "length": 0.016,
+            "street_names": [
+              "East Marginal Way South"
+            ],
+            "time": 7.494,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 2,
+            "verbal_multi_cue": true,
+            "verbal_post_transition_instruction": "Continue for 90 feet.",
+            "verbal_pre_transition_instruction": "Bike south on East Marginal Way South. Then Turn right onto South Hanford Street.",
+            "verbal_succinct_transition_instruction": "Bike south. Then Turn right onto South Hanford Street."
+          },
+          {
+            "begin_shape_index": 2,
+            "cost": 66.207,
+            "end_shape_index": 7,
+            "instruction": "Turn right onto South Hanford Street.",
+            "length": 0.036,
+            "street_names": [
+              "South Hanford Street"
+            ],
+            "time": 17.599,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 10,
+            "verbal_multi_cue": true,
+            "verbal_post_transition_instruction": "Continue for 200 feet.",
+            "verbal_pre_transition_instruction": "Turn right onto South Hanford Street. Then Turn right onto East Marginal Way South.",
+            "verbal_succinct_transition_instruction": "Turn right. Then Turn right onto East Marginal Way South.",
+            "verbal_transition_alert_instruction": "Turn right onto South Hanford Street."
+          },
+          {
+            "begin_shape_index": 7,
+            "cost": 630.508,
+            "end_shape_index": 32,
+            "instruction": "Turn right onto East Marginal Way South.",
+            "length": 1.092,
+            "street_names": [
+              "East Marginal Way South"
+            ],
+            "time": 359.199,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 10,
+            "verbal_post_transition_instruction": "Continue for 1 mile.",
+            "verbal_pre_transition_instruction": "Turn right onto East Marginal Way South.",
+            "verbal_succinct_transition_instruction": "Turn right.",
+            "verbal_transition_alert_instruction": "Turn right onto East Marginal Way South."
+          },
+          {
+            "begin_shape_index": 32,
+            "cost": 11.259,
+            "end_shape_index": 33,
+            "instruction": "Turn left onto the cycleway.",
+            "length": 0.006,
+            "time": 3.1,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 15,
+            "verbal_multi_cue": true,
+            "verbal_post_transition_instruction": "Continue for 40 feet.",
+            "verbal_pre_transition_instruction": "Turn left onto the cycleway. Then Bear right onto Portside Trail.",
+            "verbal_succinct_transition_instruction": "Turn left. Then Bear right onto Portside Trail.",
+            "verbal_transition_alert_instruction": "Turn left onto the cycleway."
+          },
+          {
+            "begin_shape_index": 33,
+            "cost": 285.359,
+            "end_shape_index": 76,
+            "instruction": "Bear right onto Portside Trail.",
+            "length": 0.59,
+            "street_names": [
+              "Portside Trail"
+            ],
+            "time": 199.65,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 9,
+            "verbal_post_transition_instruction": "Continue for a half mile.",
+            "verbal_pre_transition_instruction": "Bear right onto Portside Trail.",
+            "verbal_succinct_transition_instruction": "Bear right.",
+            "verbal_transition_alert_instruction": "Bear right onto Portside Trail."
+          },
+          {
+            "begin_shape_index": 76,
+            "cost": 123.604,
+            "end_shape_index": 97,
+            "instruction": "Continue on the cycleway.",
+            "length": 0.178,
+            "time": 75.55,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 8,
+            "verbal_post_transition_instruction": "Continue for 900 feet.",
+            "verbal_pre_transition_instruction": "Continue on the cycleway.",
+            "verbal_transition_alert_instruction": "Continue on the cycleway."
+          },
+          {
+            "begin_shape_index": 97,
+            "cost": 6.632,
+            "end_shape_index": 98,
+            "instruction": "Continue on Elliott Bay Trail.",
+            "length": 0.001,
+            "street_names": [
+              "Elliott Bay Trail"
+            ],
+            "time": 0.849,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 8,
+            "verbal_multi_cue": true,
+            "verbal_post_transition_instruction": "Continue for less than 10 feet.",
+            "verbal_pre_transition_instruction": "Continue on Elliott Bay Trail. Then Turn right onto the cycleway.",
+            "verbal_transition_alert_instruction": "Continue on Elliott Bay Trail."
+          },
+          {
+            "begin_shape_index": 98,
+            "cost": 30.257,
+            "end_shape_index": 99,
+            "instruction": "Turn right onto the cycleway.",
+            "length": 0.016,
+            "time": 9.4,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 10,
+            "verbal_multi_cue": true,
+            "verbal_post_transition_instruction": "Continue for 90 feet.",
+            "verbal_pre_transition_instruction": "Turn right onto the cycleway. Then Turn left onto Alaskan Way.",
+            "verbal_succinct_transition_instruction": "Turn right. Then Turn left onto Alaskan Way.",
+            "verbal_transition_alert_instruction": "Turn right onto the cycleway."
+          },
+          {
+            "begin_shape_index": 99,
+            "cost": 148.922,
+            "end_shape_index": 105,
+            "instruction": "Turn left onto Alaskan Way.",
+            "length": 0.113,
+            "street_names": [
+              "Alaskan Way"
+            ],
+            "time": 38.55,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 15,
+            "verbal_post_transition_instruction": "Continue for 600 feet.",
+            "verbal_pre_transition_instruction": "Turn left onto Alaskan Way.",
+            "verbal_succinct_transition_instruction": "Turn left.",
+            "verbal_transition_alert_instruction": "Turn left onto Alaskan Way."
+          },
+          {
+            "begin_shape_index": 105,
+            "cost": 54.772,
+            "end_shape_index": 108,
+            "instruction": "Turn right onto Marion Street.",
+            "length": 0.045,
+            "street_names": [
+              "Marion Street"
+            ],
+            "time": 17.6,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 10,
+            "verbal_post_transition_instruction": "Continue for 200 feet.",
+            "verbal_pre_transition_instruction": "Turn right onto Marion Street.",
+            "verbal_succinct_transition_instruction": "Turn right.",
+            "verbal_transition_alert_instruction": "Turn right onto Marion Street."
+          },
+          {
+            "begin_shape_index": 108,
+            "cost": 537.5,
+            "end_shape_index": 156,
+            "instruction": "Turn left onto Western Avenue.",
+            "length": 0.733,
+            "street_names": [
+              "Western Avenue"
+            ],
+            "time": 260.699,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 15,
+            "verbal_post_transition_instruction": "Continue for a half mile.",
+            "verbal_pre_transition_instruction": "Turn left onto Western Avenue.",
+            "verbal_succinct_transition_instruction": "Turn left.",
+            "verbal_transition_alert_instruction": "Turn left onto Western Avenue."
+          },
+          {
+            "begin_shape_index": 156,
+            "cost": 397.137,
+            "end_shape_index": 193,
+            "instruction": "Turn right onto Blanchard Street.",
+            "length": 0.426,
+            "street_names": [
+              "Blanchard Street"
+            ],
+            "time": 196.599,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 10,
+            "verbal_post_transition_instruction": "Continue for a half mile.",
+            "verbal_pre_transition_instruction": "Turn right onto Blanchard Street.",
+            "verbal_succinct_transition_instruction": "Turn right.",
+            "verbal_transition_alert_instruction": "Turn right onto Blanchard Street."
+          },
+          {
+            "begin_shape_index": 193,
+            "cost": 1661.323,
+            "end_shape_index": 387,
+            "instruction": "Turn left onto 7th Avenue.",
+            "length": 2.718,
+            "street_names": [
+              "7th Avenue"
+            ],
+            "time": 956.249,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 15,
+            "verbal_post_transition_instruction": "Continue for 3 miles.",
+            "verbal_pre_transition_instruction": "Turn left onto 7th Avenue.",
+            "verbal_succinct_transition_instruction": "Turn left.",
+            "verbal_transition_alert_instruction": "Turn left onto 7th Avenue."
+          },
+          {
+            "begin_shape_index": 387,
+            "cost": 125.572,
+            "end_shape_index": 398,
+            "instruction": "Make a sharp right onto Fremont Way North.",
+            "length": 0.131,
+            "street_names": [
+              "Fremont Way North"
+            ],
+            "time": 48.4,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 11,
+            "verbal_post_transition_instruction": "Continue for 700 feet.",
+            "verbal_pre_transition_instruction": "Make a sharp right onto Fremont Way North.",
+            "verbal_succinct_transition_instruction": "Make a sharp right.",
+            "verbal_transition_alert_instruction": "Make a sharp right onto Fremont Way North."
+          },
+          {
+            "begin_shape_index": 398,
+            "cost": 134.911,
+            "end_shape_index": 408,
+            "instruction": "Continue on Fremont Way North.",
+            "length": 0.102,
+            "street_names": [
+              "Fremont Way North"
+            ],
+            "time": 33.898,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 8,
+            "verbal_post_transition_instruction": "Continue for 500 feet.",
+            "verbal_pre_transition_instruction": "Continue on Fremont Way North.",
+            "verbal_transition_alert_instruction": "Continue on Fremont Way North."
+          },
+          {
+            "begin_shape_index": 408,
+            "cost": 0.0,
+            "end_shape_index": 408,
+            "instruction": "Your destination is on the left.",
+            "length": 0.0,
+            "time": 0.0,
+            "travel_mode": "bicycle",
+            "travel_type": "hybrid",
+            "type": 6,
+            "verbal_pre_transition_instruction": "Your destination is on the left.",
+            "verbal_transition_alert_instruction": "Your destination will be on the left."
+          }
+        ],
+        "shape": "wpxvyA~w~ihFxIDzBHCdCAvTA|MC~A@tDoIAorD_@k~DnAkNDoxFAke@a@iKq@cG}AuEaCqG}EwMcQiI{K_CmDcAkAqNgPoYcVqIeFaGiD}IaEwcAi_@yLuDaIeCcD_AeYaIyKa@kBnFc@b@aBdBs@d@q@B_AO}@[mAcAgG{FoDyC}Am@qI_CqCgAoImFyXeQ{JmE{T}HwPoDyBa@}RcDeH[yDEeT_BqSe@ch@GqXJm_AkAcU?mIIa~@d@aAKYm@GyBHcDqAEiBAwA?uIJ{A|@yHH{R`@sMFmA@qBB_{@AkAg@aBu@iILuADwFBiFNyALsC\\aDf@oARyEbAmFpByG`DuBtAy@|A{EhEiDzCc@^e@d@aCxB]XEmU}BtAq_@zYyFrFyBlBw_@~\\cFnEsBsG{Mmb@eBmF}BnBsJpIaOrMqFzEuChC_DrC}b@h`@cB|AeCvBqD|Cc^`[cCtBeDzCya@x_@cC|ByBjBwu@zo@oC|BoAfAsEdEil@nh@yEdE[ZwCpC_GnF_O`NyLbL{BrBq@l@yAtA_EpE{KbUcBjDgGvL{Sbb@_LvS}BnBkC~BoCvBwMhKoCrCkAxB_X`h@gAdCoBlC}N|YyWrj@}AtC}AwBiP{TiOmTiCsDyBcD{OkUwNoSoC{DwBqAaAg@KQ{NgV{MgRyCgEkD{E_OmSmIyL}C_F}AsBeAuAaDsEwJeN_CeDcOuSo@w@oDeFcAyAmOiTaN{RqBsC_AuAcDoEoCwDeJeMoNwRs@_AeCiDwBhEkh@vdA{AzC_AnBg@bAiYll@iAzBuAlB_BxAeBdAkBn@oBXoBBcA?mMCeEAcDAeQGqQGmIEqFAwFE_E?wCCuWIme@KsCAyDA{b@EsIA{@?yDAsFA{DA}C?}NBwO?g\\?yC@wDAiL@sF?aUByD?Y?eH@sCAqD?}FDiC?kA?oOQ_CAaCAeGAuEA_BAmD?wCCyi@YgDCuEA{XImQGsCAqCA_H?sAAaj@Iwz@MeVCiSAeBAiD?qe@MeEAaFA}WI_OEiA?qAAoe@M_LEkA?_C?uC?aEAiF?oLA}EA{B?{D@iH@uE@mb@GeECg`AMqFAy@?_QEoC@oCPgANgANmCl@mC~@iClAeD|AkFhCeGvCaUtKs@\\sHtDgb@lSyL`G{CvAcErBsQ~IgKdFkN~Ec`AhTcB^ib@lJwMvCcNlCyIlA_CZiPbAaq@~DeIx@yEj@aALcFvAkDrBi`Ajv@uKvI{BlCqBbC{BjCgD`EsBdDgC`EwEpJwBvG}IpZ{F`TmGrUeOhb@sUdf@cB|BuKxOyEbGwArAw@j@u@f@qCzAgAh@eARwFn@yHXgCD_BBwDH{Yf@eQCgr@AmNAoE?yD?oK?qJ?uJ?gPB{A@gA?yFAcDD_FZaGNU@uLf@kJ^aIZoGXyERsQr@cK`@yFToDNiD?cg@Dsi@BqBAgp@UgDmC}@kBSsBTqF|TmVt]u_@dAiAdBiB~A_BjOsPrDaEpO_PfGoGtAwAdEoE|DgDzDsBxDuA~JcDlIcBjHC",
+        "summary": {
+          "cost": 4229.279,
+          "has_ferry": false,
+          "has_highway": false,
+          "has_time_restrictions": false,
+          "has_toll": false,
+          "length": 6.211,
+          "max_lat": 47.653717,
+          "max_lon": -122.336014,
+          "min_lat": 47.575601,
+          "min_lon": -122.349926,
+          "time": 2224.842
+        }
+      }
+    ],
+    "locations": [
+      {
+        "lat": 47.575837,
+        "lon": -122.339414,
+        "original_index": 0,
+        "side_of_street": "right",
+        "type": "break"
+      },
+      {
+        "lat": 47.651048,
+        "lon": -122.347234,
+        "original_index": 1,
+        "side_of_street": "left",
+        "type": "break"
+      }
+    ],
+    "status": 0,
+    "status_message": "Found route between points",
+    "summary": {
+      "cost": 4229.279,
+      "has_ferry": false,
+      "has_highway": false,
+      "has_time_restrictions": false,
+      "has_toll": false,
+      "length": 6.211,
+      "max_lat": 47.653717,
+      "max_lon": -122.336014,
+      "min_lat": 47.575601,
+      "min_lon": -122.349926,
+      "time": 2224.842
+    },
+    "units": "miles"
+  }
+}

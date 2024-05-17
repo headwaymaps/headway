@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn parse_from_valhalla() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
+            File::open("tests/fixtures/requests/valhalla_pedestrian_route.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
 
@@ -507,7 +507,7 @@ mod tests {
         // itineraries
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Walk);
-        assert_relative_eq!(first_itinerary.distance, 9.148);
+        assert_relative_eq!(first_itinerary.distance, 5.684);
         assert_relative_eq!(first_itinerary.duration, 6488.443);
         assert_relative_eq!(
             first_itinerary.bounds,
@@ -548,22 +548,22 @@ mod tests {
     #[test]
     fn parse_from_otp() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
+            File::open("tests/fixtures/requests/opentripplanner_transit_plan.json").unwrap();
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
         let plan_response = PlanResponseOk::from_otp(TravelMode::Transit, otp).unwrap();
 
         let itineraries = plan_response.plan.itineraries;
-        assert_eq!(itineraries.len(), 5);
+        assert_eq!(itineraries.len(), 6);
 
         // itineraries
         let first_itinerary = &itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
-        assert_relative_eq!(first_itinerary.distance, 10.69944);
-        assert_relative_eq!(first_itinerary.duration, 3273.0);
+        assert_relative_eq!(first_itinerary.distance, 10.15766);
+        assert_relative_eq!(first_itinerary.duration, 2347.0);
 
         // legs
-        assert_eq!(first_itinerary.legs.len(), 7);
+        assert_eq!(first_itinerary.legs.len(), 4);
         let first_leg = &first_itinerary.legs[0];
         let geometry = polyline::decode_polyline(&first_leg.geometry, 6).unwrap();
         assert_relative_eq!(
@@ -589,22 +589,22 @@ mod tests {
         let ModeLeg::NonTransit(maneuvers) = &first_leg.mode_leg else {
             panic!("expected non-transit leg")
         };
-        assert_eq!(maneuvers.len(), 4);
+        assert_eq!(maneuvers.len(), 2);
         assert_eq!(maneuvers[0].r#type, ManeuverType::Start);
         assert_eq!(maneuvers[1].r#type, ManeuverType::Left);
 
-        let fourth_leg = &first_itinerary.legs[3];
-        assert_eq!(fourth_leg.mode, TravelMode::Transit);
-        let ModeLeg::Transit(transit_leg) = &fourth_leg.mode_leg else {
+        let third_leg = &first_itinerary.legs[2];
+        assert_eq!(third_leg.mode, TravelMode::Transit);
+        let ModeLeg::Transit(transit_leg) = &third_leg.mode_leg else {
             panic!("expected transit leg")
         };
-        assert_eq!(transit_leg.route_color, Some("28813F".to_string()));
+        assert_eq!(transit_leg.route_color, None);
     }
 
     #[test]
     fn serialize_response_from_otp() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
+            File::open("tests/fixtures/requests/opentripplanner_transit_plan.json").unwrap();
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
         let plan_response = PlanResponseOk::from_otp(TravelMode::Transit, otp).unwrap();
@@ -635,14 +635,14 @@ mod tests {
             .expect("field missing")
             .as_u64()
             .expect("unexpected type. expected u64");
-        assert_eq!(mode, 1708728373000);
+        assert_eq!(mode, 1715974501000);
 
         let mode = first_leg
             .get("endTime")
             .expect("field missing")
             .as_u64()
             .expect("unexpected type. expected u64");
-        assert_eq!(mode, 1708728745000);
+        assert_eq!(mode, 1715974870000);
 
         assert!(first_leg.get("transitLeg").is_none());
         let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
@@ -655,11 +655,11 @@ mod tests {
         assert_eq!(first_maneuver, &expected_maneuver);
 
         // Verify Transit leg
-        let fourth_leg = legs.get(3).unwrap().as_object().unwrap();
-        let mode = fourth_leg.get("mode").unwrap().as_str().unwrap();
+        let transit_leg = legs.get(1).unwrap().as_object().unwrap();
+        let mode = transit_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "TRANSIT");
-        assert!(fourth_leg.get("maneuvers").is_none());
-        let transit_leg = fourth_leg
+        assert!(transit_leg.get("maneuvers").is_none());
+        let transit_leg = transit_leg
             .get("transitLeg")
             .unwrap()
             .as_object()
@@ -668,19 +668,16 @@ mod tests {
         // Brittle: If the fixtures are updated, these values might change due to time of day or whatever.
         assert_eq!(
             transit_leg.get("agencyName").unwrap().as_str().unwrap(),
-            "Sound Transit"
+            "Metro Transit"
         );
 
-        assert_eq!(
-            transit_leg.get("route").unwrap().as_str().unwrap(),
-            "Northgate - Angle Lake"
-        );
+        assert!(transit_leg.get("route").is_none());
     }
 
     #[test]
     fn serialize_response_from_valhalla() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
+            File::open("tests/fixtures/requests/valhalla_pedestrian_route.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
 
@@ -715,7 +712,7 @@ mod tests {
         let expected_maneuver = json!({
             "type": 2,
             "instruction": "Walk south on East Marginal Way South.",
-            "verbalPostTransitionInstruction": "Continue for 20 meters."
+            "verbalPostTransitionInstruction": "Continue for 60 feet."
         });
         assert_eq!(first_maneuver, &expected_maneuver);
     }
