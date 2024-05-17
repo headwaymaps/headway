@@ -1,3 +1,4 @@
+pub mod directions;
 mod error;
 mod osrm_api;
 pub mod plan;

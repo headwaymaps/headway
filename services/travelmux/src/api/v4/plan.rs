@@ -621,12 +621,12 @@ mod tests {
             .unwrap()
             .as_array()
             .unwrap()
-            .get(0)
+            .first()
             .unwrap();
         let legs = first_itinerary.get("legs").unwrap().as_array().unwrap();
 
         // Verify walking leg
-        let first_leg = legs.get(0).unwrap().as_object().unwrap();
+        let first_leg = legs.first().unwrap().as_object().unwrap();
         let mode = first_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "WALK");
 
@@ -646,7 +646,7 @@ mod tests {
 
         assert!(first_leg.get("transitLeg").is_none());
         let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
-        let first_maneuver = maneuvers.get(0).unwrap();
+        let first_maneuver = maneuvers.first().unwrap();
         let expected_maneuver = json!({
             "type": 1,
             "instruction": null,
@@ -701,17 +701,17 @@ mod tests {
             .unwrap()
             .as_array()
             .unwrap()
-            .get(0)
+            .first()
             .unwrap();
         let legs = first_itinerary.get("legs").unwrap().as_array().unwrap();
 
         // Verify walking leg
-        let first_leg = legs.get(0).unwrap().as_object().unwrap();
+        let first_leg = legs.first().unwrap().as_object().unwrap();
         let mode = first_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "WALK");
         assert!(first_leg.get("transitLeg").is_none());
         let maneuvers = first_leg.get("maneuvers").unwrap().as_array().unwrap();
-        let first_maneuver = maneuvers.get(0).unwrap();
+        let first_maneuver = maneuvers.first().unwrap();
         let expected_maneuver = json!({
             "type": 2,
             "instruction": "Walk south on East Marginal Way South.",
