@@ -238,8 +238,10 @@ impl BannerInstruction {
                 ManeuverType::StayLeft => (Fork, Some(Left)),
                 /*
                 ManeuverType::Merge => {}
-                ManeuverType::RoundaboutEnter => {}
-                ManeuverType::RoundaboutExit => {}
+                */
+                ManeuverType::RoundaboutEnter => (RoundaboutEnter, None), // Enter/Exit?
+                ManeuverType::RoundaboutExit => (RoundaboutExit, None), // Enter/Exit?
+                /*
                 ManeuverType::FerryEnter => {}
                 ManeuverType::FerryExit => {}
                 ManeuverType::Transit => {}
@@ -257,7 +259,7 @@ impl BannerInstruction {
                 ManeuverType::BuildingEnter => {}
                 ManeuverType::BuildingExit => {}
                  */
-                _ => todo!("implement manuever type: {:?}", maneuver.r#type),
+                other => todo!("implement maneuver type: {other:?}"),
             };
             Some(BannerManeuver {
                 r#type: banner_type,
@@ -327,7 +329,10 @@ pub enum BannerManeuverType {
     OnRamp,
     #[serde(rename = "off ramp")]
     OffRamp,
-    RoundAbout,
+    #[serde(rename = "roundabout")]
+    RoundaboutEnter,
+    #[serde(rename = "exit roundabout")]
+    RoundaboutExit,
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
