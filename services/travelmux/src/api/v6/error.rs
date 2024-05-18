@@ -2,7 +2,7 @@ use crate::otp::otp_api;
 use crate::valhalla::valhalla_api;
 use crate::{DistanceUnit, Error, TravelMode};
 use actix_web::HttpResponseBuilder;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use super::{Itinerary, Plan};
 use crate::error::ErrorType;
@@ -32,7 +32,7 @@ pub struct PlanError {
     pub message: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanResponseOk {
     pub(crate) plan: Plan,

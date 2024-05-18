@@ -58,7 +58,7 @@ impl HaversineSegmenter {
 mod test {
     use super::*;
     use approx::assert_relative_eq;
-    use geo::{point, wkt, HaversineDestination};
+    use geo::{point, HaversineLength};
 
     #[test]
     fn test_segmenter() {
@@ -83,7 +83,7 @@ mod test {
 
         // next one should pick up where the last one left off
         let segment_2 = segmenter.next_segment(10_000.0).unwrap();
-        assert_eq!(segment_1.0.last(), segment_2.0.first());
+        assert_eq!(segment_1.0.last().unwrap(), segment_2.0.first().unwrap());
 
         let east_of_berlin = point!(x: 13.482210264987538, y: 52.34640526357316);
         let segment_3 = segmenter.next_segment(paris_to_berlin_distance).unwrap();

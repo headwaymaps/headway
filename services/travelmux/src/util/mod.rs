@@ -1,4 +1,5 @@
 pub mod format;
+pub mod haversine_segmenter;
 
 use geo::{Point, Rect};
 use serde::{

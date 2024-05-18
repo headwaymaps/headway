@@ -3,26 +3,44 @@ use geo::algorithm::BoundingRect;
 use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
 use reqwest::header::{HeaderName, HeaderValue};
-use serde::{de, de::IntoDeserializer, de::Visitor, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
 use std::time::{Duration, SystemTime};
 
 use super::error::{PlanResponseErr, PlanResponseOk};
+use super::TravelModes;
+
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::otp_api;
 use crate::otp::otp_api::{AbsoluteDirection, RelativeDirection};
 use crate::util::format::format_meters;
+use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::{
-    deserialize_point_from_lat_lon, extend_bounds, serialize_rect_to_lng_lat,
-    serialize_system_time_as_millis, system_time_from_millis,
+    deserialize_point_from_lat_lon, extend_bounds, serialize_line_string_as_polyline6,
+    serialize_rect_to_lng_lat, serialize_system_time_as_millis, system_time_from_millis,
 };
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+const METERS_PER_MILE: f64 = 1609.34;
+
+fn convert_from_meters(meters: f64, output_units: DistanceUnit) -> f64 {
+    match output_units {
+        DistanceUnit::Kilometers => meters / 1000.0,
+        DistanceUnit::Miles => meters / METERS_PER_MILE,
+    }
+}
+
+fn convert_to_meters(distance: f64, input_units: DistanceUnit) -> f64 {
+    match input_units {
+        DistanceUnit::Kilometers => distance * 1000.0,
+        DistanceUnit::Miles => distance * METERS_PER_MILE,
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanQuery {
     #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
@@ -40,32 +58,51 @@ pub struct PlanQuery {
     preferred_distance_units: Option<DistanceUnit>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Plan {
     pub(crate) itineraries: Vec<Itinerary>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Itinerary {
     mode: TravelMode,
     /// seconds
-    duration: f64,
+    pub(crate) duration: f64,
     /// unix millis, UTC
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     start_time: SystemTime,
     /// unix millis, UTC
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     end_time: SystemTime,
+    /// Units are in `distance_units`
     distance: f64,
-    distance_units: DistanceUnit,
+    /// FIXME: I think we're returning meters even though distance unit is "Kilometers"
+    /// Probably we should rename DistanceUnit::Kilometers to DistanceUnit::Meters
+    /// This is passed as a parameter though, so it'd be a breaking change.
+    pub(crate) distance_units: DistanceUnit,
     #[serde(serialize_with = "serialize_rect_to_lng_lat")]
     bounds: Rect,
-    legs: Vec<Leg>,
+    pub(crate) legs: Vec<Leg>,
 }
 
 impl Itinerary {
+    pub fn distance_meters(&self) -> f64 {
+        match self.distance_units {
+            DistanceUnit::Kilometers => self.distance * 1000.0,
+            DistanceUnit::Miles => self.distance * METERS_PER_MILE,
+        }
+    }
+
+    pub fn combined_geometry(&self) -> LineString {
+        let mut combined_geometry = LineString::new(vec![]);
+        for leg in &self.legs {
+            combined_geometry.0.extend(&leg.geometry.0);
+        }
+        combined_geometry
+    }
+
     pub fn from_valhalla(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
         let bounds = Rect::new(
             geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
@@ -136,11 +173,11 @@ impl Itinerary {
         let Some(first_leg) = legs_iter.next() else {
             return Err(Error::server("itinerary had no legs"));
         };
-        let Ok(Some(mut itinerary_bounds)) = first_leg.bounding_rect() else {
+        let Some(mut itinerary_bounds) = first_leg.bounding_rect() else {
             return Err(Error::server("first leg has no bounding_rect"));
         };
         for leg in legs_iter {
-            let Ok(Some(leg_bounds)) = leg.bounding_rect() else {
+            let Some(leg_bounds) = leg.bounding_rect() else {
                 return Err(Error::server("leg has no bounding_rect"));
             };
             extend_bounds(&mut itinerary_bounds, &leg_bounds);
@@ -151,8 +188,8 @@ impl Itinerary {
             start_time: system_time_from_millis(itinerary.start_time),
             end_time: system_time_from_millis(itinerary.end_time),
             mode,
-            distance: distance_meters / 1000.0,
-            distance_units: DistanceUnit::Kilometers,
+            distance: convert_from_meters(distance_meters, distance_unit),
+            distance_units: distance_unit,
             bounds: itinerary_bounds,
             legs,
         })
@@ -185,17 +222,18 @@ impl From<valhalla_api::LonLat> for Place {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct Leg {
+pub(crate) struct Leg {
     /// encoded polyline. 1e-6 scale, (lat, lon)
-    geometry: String,
+    #[serde(serialize_with = "serialize_line_string_as_polyline6")]
+    geometry: LineString,
 
     /// Which mode is this leg of the journey?
-    mode: TravelMode,
+    pub(crate) mode: TravelMode,
 
     #[serde(flatten)]
-    mode_leg: ModeLeg,
+    pub(crate) mode_leg: ModeLeg,
 
     /// Beginning of the leg
     from_place: Place,
@@ -214,14 +252,20 @@ struct Leg {
     /// Start time of the leg
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     end_time: SystemTime,
+
+    /// Length of this leg, in units of the `distance_unit` of the Itinerary
+    distance: f64,
+
+    /// Duration of this leg
+    pub(crate) duration_seconds: f64,
 }
 
 // Should we just pass the entire OTP leg?
 type TransitLeg = otp_api::Leg;
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-enum ModeLeg {
+pub(crate) enum ModeLeg {
     // REVIEW: rename? There is a boolean field for OTP called TransitLeg
     #[serde(rename = "transitLeg")]
     Transit(Box<TransitLeg>),
@@ -230,13 +274,13 @@ enum ModeLeg {
     NonTransit(Box<NonTransitLeg>),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-struct NonTransitLeg {
-    maneuvers: Vec<Maneuver>,
+pub struct NonTransitLeg {
+    pub(crate) maneuvers: Vec<Maneuver>,
 
     /// The substantial road names along the route
-    substantial_street_names: Vec<String>,
+    pub(crate) substantial_street_names: Vec<String>,
 }
 
 impl NonTransitLeg {
@@ -282,18 +326,21 @@ impl NonTransitLeg {
 
 // Eventually we might want to coalesce this into something not valhalla specific
 // but for now we only use it for valhalla trips
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Maneuver {
     pub instruction: Option<String>,
     // pub cost: f64,
     // pub begin_shape_index: u64,
     // pub end_shape_index: u64,
+    #[serde(skip_serializing)]
+    pub geometry: LineString,
     // pub highway: Option<bool>,
     /// In units of the `distance_unit` of the trip leg
     pub distance: f64,
     pub street_names: Option<Vec<String>>,
-    // pub time: f64,
+    #[serde(skip_serializing)]
+    pub duration_seconds: f64,
     // pub travel_mode: String,
     // pub travel_type: String,
     pub r#type: ManeuverType,
@@ -305,23 +352,30 @@ pub struct Maneuver {
 
 impl Maneuver {
     fn from_valhalla(valhalla: valhalla_api::Maneuver, leg_geometry: &LineString) -> Self {
+        let coords = leg_geometry.0
+            [valhalla.begin_shape_index as usize..=valhalla.end_shape_index as usize]
+            .to_owned();
+        let geometry = LineString::from(coords);
         Self {
             instruction: Some(valhalla.instruction),
             street_names: valhalla.street_names,
+            duration_seconds: valhalla.time,
             r#type: valhalla.r#type,
             start_point: Point(leg_geometry[valhalla.begin_shape_index as usize]).into(),
             verbal_post_transition_instruction: valhalla.verbal_post_transition_instruction,
             distance: valhalla.length,
+            geometry,
         }
     }
 
     fn from_otp(
         otp: otp_api::Step,
-        mode: otp_api::TransitMode,
+        geometry: LineString,
+        leg: &otp_api::Leg,
         distance_unit: DistanceUnit,
     ) -> Self {
         let instruction = build_instruction(
-            mode,
+            leg.mode,
             otp.relative_direction,
             otp.absolute_direction,
             &otp.street_name,
@@ -335,19 +389,22 @@ impl Maneuver {
         } else {
             Some(vec![otp.street_name])
         };
-        let localized_distance = match distance_unit {
-            DistanceUnit::Kilometers => otp.distance,
-            // round to the nearest ten-thousandth
-            DistanceUnit::Miles => (otp.distance * 0.621371 * 10_000.0).round() / 10_000.0,
-        };
+
+        let duration_seconds = otp.distance / leg.distance * leg.duration_seconds();
         Self {
             instruction,
             r#type: otp.relative_direction.into(),
             street_names,
             verbal_post_transition_instruction,
-            distance: localized_distance,
+            distance: convert_from_meters(otp.distance, distance_unit),
+            duration_seconds,
             start_point: Point::new(otp.lon, otp.lat).into(),
+            geometry,
         }
+    }
+
+    pub(crate) fn distance_meters(&self, distance_unit: DistanceUnit) -> f64 {
+        convert_to_meters(self.distance, distance_unit)
     }
 }
 
@@ -422,13 +479,12 @@ impl Leg {
     const VALHALLA_GEOMETRY_PRECISION: u32 = 6;
     const OTP_GEOMETRY_PRECISION: u32 = 5;
 
-    fn decoded_geometry(&self) -> std::result::Result<LineString, String> {
-        decode_polyline(&self.geometry, Self::GEOMETRY_PRECISION)
+    fn bounding_rect(&self) -> Option<Rect> {
+        self.geometry.bounding_rect()
     }
 
-    fn bounding_rect(&self) -> std::result::Result<Option<Rect>, String> {
-        let line_string = self.decoded_geometry()?;
-        Ok(line_string.bounding_rect())
+    pub(crate) fn distance_meters(&self, itinerary_units: DistanceUnit) -> f64 {
+        convert_to_meters(self.distance, itinerary_units)
     }
 
     fn from_otp(
@@ -437,11 +493,12 @@ impl Leg {
         distance_unit: DistanceUnit,
     ) -> std::result::Result<Self, String> {
         debug_assert_ne!(Self::OTP_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
-        let line = decode_polyline(&otp.leg_geometry.points, Self::OTP_GEOMETRY_PRECISION)?;
-        let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION)?;
+        let geometry = decode_polyline(&otp.leg_geometry.points, Self::OTP_GEOMETRY_PRECISION)?;
         let from_place: Place = (&otp.from).into();
         let to_place: Place = (&otp.to).into();
 
+        let mut distance_so_far = 0.0;
+        let mut segmenter = HaversineSegmenter::new(geometry.clone());
         let mode_leg = match otp.mode {
             otp_api::TransitMode::Walk
             | otp_api::TransitMode::Bicycle
@@ -450,7 +507,13 @@ impl Leg {
                     .steps
                     .iter()
                     .cloned()
-                    .map(|otp_step| Maneuver::from_otp(otp_step, otp.mode, distance_unit))
+                    .map(|otp_step| {
+                        // compute step geometry by distance along leg geometry
+                        let step_geometry =
+                            segmenter.next_segment(otp_step.distance).expect("TODO");
+                        distance_so_far += otp_step.distance;
+                        Maneuver::from_otp(otp_step, step_geometry, otp, distance_unit)
+                    })
                     .collect();
 
                 // OTP doesn't include an arrival step like valhalla, so we synthesize one
@@ -459,9 +522,11 @@ impl Leg {
                         instruction: Some("Arrive at your destination.".to_string()),
                         distance: 0.0,
                         street_names: None,
+                        duration_seconds: 0.0,
                         r#type: ManeuverType::Destination,
                         verbal_post_transition_instruction: None,
                         start_point: to_place.location,
+                        geometry: LineString::new(vec![to_place.location.into()]),
                     };
                     maneuvers.push(maneuver);
                 }
@@ -481,6 +546,8 @@ impl Leg {
             end_time: system_time_from_millis(otp.end_time),
             geometry,
             mode: otp.mode.into(),
+            distance: convert_from_meters(otp.distance, distance_unit),
+            duration_seconds: otp.duration_seconds(),
             mode_leg,
         })
     }
@@ -494,7 +561,8 @@ impl Leg {
         to_place: LonLat,
     ) -> Self {
         let geometry =
-            polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION).unwrap();
+            polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION)
+                .expect("valid polyline from valhalla");
         let maneuvers = valhalla
             .maneuvers
             .iter()
@@ -502,50 +570,17 @@ impl Leg {
             .map(|valhalla_maneuver| Maneuver::from_valhalla(valhalla_maneuver, &geometry))
             .collect();
         let leg = NonTransitLeg::new(maneuvers);
-        debug_assert_eq!(Self::VALHALLA_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
         Self {
             start_time,
             end_time,
             from_place: from_place.into(),
             to_place: to_place.into(),
-            geometry: valhalla.shape.clone(),
+            geometry,
             mode: travel_mode,
             mode_leg: ModeLeg::NonTransit(Box::new(leg)),
+            distance: valhalla.summary.length,
+            duration_seconds: valhalla.summary.time,
         }
-    }
-}
-
-// Comma separated list of travel modes
-#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
-struct TravelModes(Vec<TravelMode>);
-
-impl<'de> Deserialize<'de> for TravelModes {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CommaSeparatedVecVisitor;
-
-        impl<'de> Visitor<'de> for CommaSeparatedVecVisitor {
-            type Value = TravelModes;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a comma-separated string")
-            }
-
-            fn visit_str<E>(self, value: &str) -> std::result::Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                let modes = value
-                    .split(',')
-                    .map(|s| TravelMode::deserialize(s.into_deserializer()))
-                    .collect::<std::result::Result<_, _>>()?;
-                Ok(TravelModes(modes))
-            }
-        }
-
-        deserializer.deserialize_str(CommaSeparatedVecVisitor)
     }
 }
 
@@ -559,13 +594,21 @@ impl actix_web::Responder for PlanResponseOk {
     }
 }
 
-#[get("/v5/plan")]
+#[get("/v6/plan")]
 pub async fn get_plan(
     query: web::Query<PlanQuery>,
     req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
-    let Some(primary_mode) = query.mode.0.first() else {
+    _get_plan(query, req, app_state).await
+}
+
+pub async fn _get_plan(
+    query: web::Query<PlanQuery>,
+    req: HttpRequest,
+    app_state: web::Data<AppState>,
+) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
+    let Some(primary_mode) = query.mode.first() else {
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
@@ -578,7 +621,7 @@ pub async fn get_plan(
     match primary_mode {
         TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
         other => {
-            debug_assert!(query.mode.0.len() == 1, "valhalla only supports one mode");
+            debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
 
             let mode = match other {
                 TravelMode::Transit => unreachable!("handled above"),
@@ -753,9 +796,8 @@ mod tests {
         // legs
         assert_eq!(first_itinerary.legs.len(), 1);
         let first_leg = &first_itinerary.legs[0];
-        let geometry = decode_polyline(&first_leg.geometry, 6).unwrap();
         assert_relative_eq!(
-            geometry.0[0],
+            first_leg.geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
         );
@@ -793,15 +835,14 @@ mod tests {
         // itineraries
         let first_itinerary = &itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
-        assert_relative_eq!(first_itinerary.distance, 10.157660000000002);
+        assert_relative_eq!(first_itinerary.distance, 6.311692992158277);
         assert_relative_eq!(first_itinerary.duration, 2347.0);
 
         // legs
         assert_eq!(first_itinerary.legs.len(), 4);
         let first_leg = &first_itinerary.legs[0];
-        let geometry = polyline::decode_polyline(&first_leg.geometry, 6).unwrap();
         assert_relative_eq!(
-            geometry.0[0],
+            first_leg.geometry.0[0],
             geo::coord!(x: -122.33922, y: 47.57583),
             epsilon = 1e-4
         );
@@ -898,7 +939,7 @@ mod tests {
             .unwrap();
         let first_maneuver = maneuvers.first().unwrap();
         let expected_maneuver = json!({
-            "distance": 11.8993,
+            "distance": 0.0118992879068438, // TODO: truncate precision in serializer
             "instruction": "Walk south on East Marginal Way South.",
             "startPoint": {
                 "lat": 47.5758346,
@@ -1006,7 +1047,7 @@ mod tests {
         {
             "begin_shape_index": 0,
             "cost": 246.056,
-            "end_shape_index": 69,
+            "end_shape_index": 1,
             "highway": true,
             "instruction": "Drive northeast on Fauntleroy Way Southwest.",
             "length": 2.218,

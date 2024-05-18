@@ -5,7 +5,7 @@ use crate::api::AppState;
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use serde::Serialize;
 
-#[get("/v5/directions")]
+#[get("/v6/directions")]
 pub async fn get_directions(
     query: web::Query<PlanQuery>,
     req: HttpRequest,
@@ -45,9 +45,9 @@ impl From<PlanResponseOk> for DirectionsResponseOk {
 
 #[cfg(test)]
 mod tests {
+    use super::osrm_api;
+    use super::PlanResponseOk;
     use super::*;
-    use crate::api::v5::error::PlanResponseOk;
-    use crate::api::v5::osrm_api;
     use crate::otp::otp_api;
     use crate::valhalla::valhalla_api;
     use crate::{DistanceUnit, TravelMode};
