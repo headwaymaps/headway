@@ -631,9 +631,8 @@ travelmux-serve-image:
 ##############################
 
 valhalla-base-image:
-    # The version tag is ignored when sha256 is specified, but I'm leaving it
-    # in to document which "release" our sha pins to.
-    FROM ghcr.io/gis-ops/docker-valhalla/valhalla:3.4.0@sha256:b6f20757c5a9d8bb432b53cb2923af36eb8908486d97fd1fdd114499a6d2a436
+    # Valhalla hasn't tagged a new version in over a year, so we track `latest`.
+    FROM ghcr.io/gis-ops/docker-valhalla/valhalla
 
     USER root
     WORKDIR /tiles
@@ -661,7 +660,7 @@ valhalla-build-polylines:
     ARG --required area
     FROM +valhalla-build --area=${area}
 
-    RUN valhalla_export_edges valhalla.json > /tiles/polylines.0sv
+    RUN valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv
 
     SAVE ARTIFACT /tiles/polylines.0sv
 
