@@ -214,17 +214,13 @@ impl BannerInstruction {
                 ManeuverType::Destination => (Arrive, None),
                 ManeuverType::DestinationRight => (Arrive, Some(Right)),
                 ManeuverType::DestinationLeft => (Arrive, Some(Left)),
-                /*
-                ManeuverType::Becomes => {}
-                */
-                ManeuverType::Continue => (Fork, None), // Or maybe just return None?
+                ManeuverType::Becomes => (NewName, None),
+                ManeuverType::Continue => (Continue, None),
                 ManeuverType::SlightRight => (Turn, Some(SlightRight)),
                 ManeuverType::Right => (Turn, Some(Right)),
                 ManeuverType::SharpRight => (Turn, Some(SharpRight)),
-                /*
-                ManeuverType::UturnRight => {}
-                ManeuverType::UturnLeft => {}
-                */
+                ManeuverType::UturnRight => (Turn, Some(Uturn)),
+                ManeuverType::UturnLeft => (Turn, Some(Uturn)),
                 ManeuverType::SharpLeft => (Turn, Some(SharpLeft)),
                 ManeuverType::Left => (Turn, Some(Left)),
                 ManeuverType::SlightLeft => (Turn, Some(SlightLeft)),
@@ -233,33 +229,28 @@ impl BannerInstruction {
                 ManeuverType::RampLeft => (OnRamp, Some(Left)),
                 ManeuverType::ExitRight => (OffRamp, Some(Right)),
                 ManeuverType::ExitLeft => (OffRamp, Some(Left)),
-                ManeuverType::StayStraight => (Fork, None), // Or maybe just return None?
+                ManeuverType::StayStraight => (Fork, Some(Straight)),
                 ManeuverType::StayRight => (Fork, Some(Right)),
                 ManeuverType::StayLeft => (Fork, Some(Left)),
-                /*
-                ManeuverType::Merge => {}
-                */
-                ManeuverType::RoundaboutEnter => (RoundaboutEnter, None), // Enter/Exit?
-                ManeuverType::RoundaboutExit => (RoundaboutExit, None),   // Enter/Exit?
-                /*
-                ManeuverType::FerryEnter => {}
-                ManeuverType::FerryExit => {}
-                ManeuverType::Transit => {}
-                ManeuverType::TransitTransfer => {}
-                ManeuverType::TransitRemainOn => {}
-                ManeuverType::TransitConnectionStart => {}
-                ManeuverType::TransitConnectionTransfer => {}
-                ManeuverType::TransitConnectionDestination => {}
-                ManeuverType::PostTransitConnectionDestination => {}
-                ManeuverType::MergeRight => {}
-                ManeuverType::MergeLeft => {}
-                ManeuverType::ElevatorEnter => {}
-                ManeuverType::StepsEnter => {}
-                ManeuverType::EscalatorEnter => {}
-                ManeuverType::BuildingEnter => {}
-                ManeuverType::BuildingExit => {}
-                 */
-                other => todo!("implement maneuver type: {other:?}"),
+                ManeuverType::Merge => (Merge, None),
+                ManeuverType::RoundaboutEnter => (RoundaboutEnter, None),
+                ManeuverType::RoundaboutExit => (RoundaboutExit, None),
+                ManeuverType::FerryEnter => (Notification, None),
+                ManeuverType::FerryExit => (Notification, None),
+                ManeuverType::Transit => (Notification, None),
+                ManeuverType::TransitTransfer => (Notification, None),
+                ManeuverType::TransitRemainOn => (Notification, None),
+                ManeuverType::TransitConnectionStart => (Notification, None),
+                ManeuverType::TransitConnectionTransfer => (Notification, None),
+                ManeuverType::TransitConnectionDestination => (Notification, None),
+                ManeuverType::PostTransitConnectionDestination => (Notification, None),
+                ManeuverType::MergeRight => (Merge, Some(Right)),
+                ManeuverType::MergeLeft => (Merge, Some(Left)),
+                ManeuverType::ElevatorEnter => (Notification, None),
+                ManeuverType::StepsEnter => (Notification, None),
+                ManeuverType::EscalatorEnter => (Notification, None),
+                ManeuverType::BuildingEnter => (Notification, None),
+                ManeuverType::BuildingExit => (Notification, None),
             };
             Some(BannerManeuver {
                 r#type: banner_type,
@@ -320,19 +311,65 @@ pub struct BannerManeuver {
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum BannerManeuverType {
+    /// A turn in the direction of the modifier.
     Turn,
+
+    /// The road name changes (after a mandatory turn).
+    #[serde(rename = "new name")]
+    NewName,
+
+    /// Merge onto a street.
     Merge,
+
+    /// Indicates departure from a leg. The modifier value indicates the position of the departure point compared to the current direction of travel.
     Depart,
+
+    /// Indicates arrival to a destination of a leg. The modifier value indicates the position of the arrival point compared to the current direction of travel.
     Arrive,
+
+    /// Keep left or right side at a bifurcation, or left/right/straight at a trifurcation.
     Fork,
+
+    /// Take a ramp to enter a highway.
     #[serde(rename = "on ramp")]
     OnRamp,
+
+    /// Take a ramp to exit a highway.
     #[serde(rename = "off ramp")]
     OffRamp,
+
+    /// Road ends in a T intersection.
+    #[allow(unused)]
+    #[serde(rename = "end of road")]
+    EndOfRoad,
+
+    /// Continue on a street after a turn.
+    Continue,
+
+    /// Traverse roundabout. Has an additional property exit in the route step that contains the exit number. The modifier specifies the direction of entering the roundabout.
     #[serde(rename = "roundabout")]
     RoundaboutEnter,
+
+    /// Indicates the exit maneuver from a roundabout. Will not appear in results unless you supply the roundabout_exits=true query parameter in the request.
     #[serde(rename = "exit roundabout")]
     RoundaboutExit,
+
+    /// A traffic circle. While like a larger version of a roundabout, it does not necessarily follow roundabout rules for right of way. It can offer rotary_name parameters, rotary_pronunciation parameters, or both, located in the route step object. It also contains the exit property.
+    #[allow(unused)]
+    #[serde(rename = "rotary")]
+    RotaryEnter,
+
+    #[allow(unused)]
+    #[serde(rename = "exit rotary")]
+    RotaryExit,
+
+    /// A small roundabout that is treated as an intersection.
+    #[allow(unused)]
+    #[serde(rename = "roundabout turn")]
+    RoundaboutTurn,
+
+    /// Indicates a change of driving conditions, for example changing the mode from driving to ferry.
+    Notification,
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
