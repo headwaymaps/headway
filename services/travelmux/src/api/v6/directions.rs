@@ -124,10 +124,6 @@ mod tests {
             step_maneuver.location,
             geo::point!(x: -122.3392181, y: 47.5758346)
         );
-        // assert_eq!(step_maneuver.r#type, "my type");
-        // assert_eq!(step_maneuver.modifier, "my modifier");
-        // TODO: step_maneuver stuff
-        // etc...
     }
 
     #[test]
@@ -199,9 +195,5 @@ mod tests {
             step_maneuver.location,
             geo::point!(x: -122.339216, y: 47.575836)
         );
-        // assert_eq!(step_maneuver.r#type, "my type");
-        // assert_eq!(step_maneuver.modifier, "my modifier");
-        // TODO: step_maneuver stuff
-        // etc...
     }
 }

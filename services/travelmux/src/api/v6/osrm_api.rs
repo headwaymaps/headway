@@ -1,3 +1,6 @@
+//! "osrm_api" is a bit of a misnomer. It's intended to work with maplibre's  "Directions" library.
+//! which happens to be strongly influenced by OSRM.
+
 use super::plan::{Itinerary, Leg, Maneuver, ModeLeg};
 use crate::util::{serialize_line_string_as_polyline6, serialize_point_as_lon_lat_pair};
 use crate::valhalla::valhalla_api::ManeuverType;
@@ -187,12 +190,12 @@ impl BannerInstruction {
         next_maneuver: Option<&Maneuver>,
         from_distance_unit: DistanceUnit,
     ) -> Option<Vec<Self>> {
-        let text = if let Some(next_maneuver) = next_maneuver {
+        let text_components = if let Some(next_maneuver) = next_maneuver {
             next_maneuver
                 .street_names
                 .as_ref()
-                .map(|names| names.join(", "))
-                .or(next_maneuver.instruction.clone())
+                .cloned()
+                .or(next_maneuver.instruction.as_ref().map(|s| vec![s.clone()]))
         } else {
             assert!(matches!(
                 maneuver.r#type,
@@ -200,7 +203,7 @@ impl BannerInstruction {
                     | ManeuverType::DestinationRight
                     | ManeuverType::DestinationLeft
             ));
-            maneuver.instruction.to_owned()
+            maneuver.instruction.as_ref().map(|s| vec![s.clone()])
         };
 
         let banner_maneuver = (|| {
@@ -258,20 +261,36 @@ impl BannerInstruction {
             })
         })();
 
-        let text_component =
-            BannerComponent::Text(VisualInstructionComponent { text: text.clone() });
-        //     if let Some(banner_maneuver) = banner_maneuver {
-        //         BannerComponent::Text(VisualInstructionComponent {
-        //             text,
-        //         })
-        //     } else {
-        //         panic!("no banner_maneuver")
-        //     }
-        // };
+        let text = text_components.as_ref().map(|t| t.join("/"));
+
+        let components: Vec<BannerComponent> = (|text_components: Option<Vec<String>>| {
+            let text_components = text_components?;
+            let mut text_iter = text_components.into_iter();
+            let first_text = text_iter.next()?;
+
+            let mut output = vec![BannerComponent::Text(VisualInstructionComponent {
+                text: Some(first_text),
+            })];
+            for next_text in text_iter {
+                output.push(BannerComponent::Delimiter(VisualInstructionComponent {
+                    text: Some("/".to_string()),
+                }));
+                output.push(BannerComponent::Text(VisualInstructionComponent {
+                    text: Some(next_text),
+                }));
+            }
+            Some(output)
+        })(text_components)
+        .unwrap_or(
+            // REVIEW: not sure if we need this default or if an empty component list is OK.
+            vec![BannerComponent::Text(VisualInstructionComponent {
+                text: None,
+            })],
+        );
 
         let primary = BannerInstructionContent {
             text: text.unwrap_or_default(),
-            components: vec![text_component], // TODO
+            components,
             banner_maneuver,
             degrees: None,
             driving_side: None,
@@ -397,7 +416,7 @@ pub enum BannerManeuverModifier {
 pub enum BannerComponent {
     Text(VisualInstructionComponent),
     // Icon(VisualInstructionComponent),
-    // Delimiter(VisualInstructionComponent),
+    Delimiter(VisualInstructionComponent),
     // #[serde(rename="exit-number")]
     // ExitNumber(VisualInstructionComponent),
     // Exit(VisualInstructionComponent),

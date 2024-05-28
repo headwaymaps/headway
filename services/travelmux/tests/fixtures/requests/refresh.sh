@@ -23,16 +23,13 @@ fetch_valhalla pedestrian
 fetch_valhalla bicycle
 fetch_valhalla auto # car
 
+realFine="47.575837,-122.339414"
+zeitgeist="47.651048,-122.347234"
+
 function fetch_opentripplanner {
     mode=$1
     output_prefix="opentripplanner_$(echo "$mode" | tr '[:upper:]' '[:lower:]' | sed 's/,/_with_/')"
-
-    start_lat=47.575837
-    start_lon=-122.339414
-    end_lat=47.651048
-    end_lon=-122.347234
-
-    request_url="http://localhost:9002/otp/routers/default/plan?fromPlace=$start_lat,$start_lon&toPlace=$end_lat,$end_lon&mode=${mode}"
+    request_url="http://localhost:9002/otp/routers/default/plan?fromPlace=${realFine}&toPlace=${zeitgeist}&mode=${mode}"
 
     # Make the request and save the output to a file
     curl "$request_url" | jq -S . > "${output_prefix}_plan.json"
