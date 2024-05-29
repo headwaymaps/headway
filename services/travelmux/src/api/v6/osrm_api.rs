@@ -414,42 +414,17 @@ pub enum BannerManeuverModifier {
 #[serde(rename_all = "camelCase", tag = "type")]
 #[non_exhaustive]
 pub enum BannerComponent {
+    /// The component bears the name of a place or street.
     Text(VisualInstructionComponent),
-    // Icon(VisualInstructionComponent),
+
+    /// The component separates two other destination components.
+    ///
+    /// If the two adjacent components are both displayed as images, you can hide this delimiter component.
     Delimiter(VisualInstructionComponent),
     // #[serde(rename="exit-number")]
     // ExitNumber(VisualInstructionComponent),
     // Exit(VisualInstructionComponent),
-    Lane(LaneInstructionComponent),
-}
-
-#[derive(Debug, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct LaneInstructionComponent {}
-
-// Maybe we won't use this? Because it'll need to be implicit in the containing BannerComponent enum variant of
-#[derive(Debug, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum VisualInstructionComponentType {
-    /// The component separates two other destination components.
-    ///
-    /// If the two adjacent components are both displayed as images, you can hide this delimiter component.
-    Delimiter,
-
-    /// The component bears the name of a place or street.
-    Text,
-
-    /// Component contains an image that should be rendered.
-    Image,
-
-    /// The component contains the localized word for "exit".
-    ///
-    /// This component may appear before or after an `.ExitCode` component, depending on the language.
-    Exit,
-
-    /// A component contains an exit number.
-    #[serde(rename = "exit-number")]
-    ExitCode,
+    // Lane(LaneInstructionComponent),
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
