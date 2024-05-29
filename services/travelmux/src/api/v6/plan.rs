@@ -219,14 +219,10 @@ pub(crate) struct Leg {
     /// End of the Leg
     to_place: Place,
 
-    // This is mostly OTP specific. We can synthesize a value from the valhalla response, but we
-    // don't currently use it.
     /// Start time of the leg
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     start_time: SystemTime,
 
-    // This is mostly OTP specific. We can synthesize a value from the valhalla response, but we
-    // don't currently use it.
     /// Start time of the leg
     #[serde(serialize_with = "serialize_system_time_as_millis")]
     end_time: SystemTime,
@@ -238,7 +234,7 @@ pub(crate) struct Leg {
     pub(crate) duration_seconds: f64,
 }
 
-// Should we just pass the entire OTP leg?
+// Currently we just pass the entire OTP leg
 type TransitLeg = otp_api::Leg;
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -421,7 +417,9 @@ fn maneuver_instruction(
                 Some("Depart.".to_string())
             }
         }
-        otp_api::RelativeDirection::HardLeft => Some(format!("Turn left onto {street_name}.")),
+        otp_api::RelativeDirection::HardLeft => {
+            Some(format!("Turn sharp left onto {street_name}."))
+        }
         otp_api::RelativeDirection::Left => Some(format!("Turn left onto {street_name}.")),
         otp_api::RelativeDirection::SlightlyLeft => {
             Some(format!("Turn slightly left onto {street_name}."))
@@ -431,7 +429,9 @@ fn maneuver_instruction(
             Some(format!("Turn slightly right onto {street_name}."))
         }
         otp_api::RelativeDirection::Right => Some(format!("Turn right onto {street_name}.")),
-        otp_api::RelativeDirection::HardRight => Some(format!("Turn right onto {street_name}.")),
+        otp_api::RelativeDirection::HardRight => {
+            Some(format!("Turn sharp right onto {street_name}."))
+        }
         otp_api::RelativeDirection::CircleClockwise
         | otp_api::RelativeDirection::CircleCounterclockwise => {
             Some("Enter the roundabout.".to_string())
@@ -492,8 +492,13 @@ impl Leg {
                     .cloned()
                     .map(|otp_step| {
                         // compute step geometry by distance along leg geometry
-                        let step_geometry =
-                            segmenter.next_segment(otp_step.distance).expect("TODO");
+                        let step_geometry = segmenter
+                            .next_segment(otp_step.distance)
+                            .unwrap_or_else(|| {
+                                log::warn!("no geometry for step");
+                                debug_assert!(false, "no geometry for step");
+                                LineString::new(vec![])
+                            });
                         distance_so_far += otp_step.distance;
                         Maneuver::from_otp(otp_step, step_geometry, otp, distance_unit)
                     })

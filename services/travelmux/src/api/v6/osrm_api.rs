@@ -81,12 +81,7 @@ impl RouteLeg {
                     .map(|this_and_next| {
                         let maneuver = this_and_next[0].clone();
                         let next_maneuver = this_and_next.get(1);
-                        RouteStep::from_maneuver(
-                            maneuver,
-                            next_maneuver,
-                            value.mode,
-                            distance_unit,
-                        )
+                        RouteStep::from_maneuver(maneuver, next_maneuver, value.mode, distance_unit)
                     })
                     .collect();
                 if let Some(final_maneuver) = non_transit_leg.maneuvers.last() {
@@ -155,11 +150,8 @@ impl RouteStep {
         mode: TravelMode,
         from_distance_unit: DistanceUnit,
     ) -> Self {
-        let banner_instructions = VisualInstructionBanner::from_maneuver(
-            &maneuver,
-            next_maneuver,
-            from_distance_unit,
-        );
+        let banner_instructions =
+            VisualInstructionBanner::from_maneuver(&maneuver, next_maneuver, from_distance_unit);
         RouteStep {
             distance: maneuver.distance_meters(from_distance_unit),
             duration: maneuver.duration_seconds,
@@ -168,14 +160,14 @@ impl RouteStep {
                 .street_names
                 .unwrap_or(vec!["".to_string()])
                 .join(", "),
-            r#ref: None,
-            pronunciation: None,
-            destinations: None,
+            r#ref: None,         // TODO
+            pronunciation: None, // TODO
+            destinations: None,  // TODO
             mode,
             maneuver: StepManeuver {
                 location: maneuver.start_point.into(),
             },
-            intersections: None, //vec![],
+            intersections: None, // TODO
             banner_instructions,
         }
     }
@@ -186,8 +178,8 @@ impl RouteStep {
 pub struct VisualInstructionBanner {
     pub distance_along_geometry: f64,
     pub primary: VisualInstruction,
-    // secondary: Option<BannerInstructionContent>,
-    // sub: Option<BannerInstructionContent>,
+    // secondary: Option<BannerInstructionContent>, // TODO
+    // sub: Option<BannerInstructionContent>, // TODO
 }
 
 impl VisualInstructionBanner {
@@ -454,7 +446,7 @@ pub enum BannerComponent {
     /// If the two adjacent components are both displayed as images, you can hide this delimiter component.
     Delimiter(VisualInstructionComponent),
 
-    #[allow(unused)]
+    #[allow(unused)] // TODO
     Lane(LaneIndicationComponent),
 }
 
