@@ -63,9 +63,6 @@ pub struct Itinerary {
     end_time: SystemTime,
     /// Units are in `distance_units`
     distance: f64,
-    /// FIXME: I think we're returning meters even though distance unit is "Kilometers"
-    /// Probably we should rename DistanceUnit::Kilometers to DistanceUnit::Meters
-    /// This is passed as a parameter though, so it'd be a breaking change.
     pub(crate) distance_units: DistanceUnit,
     #[serde(serialize_with = "serialize_rect_to_lng_lat")]
     bounds: Rect,
@@ -451,7 +448,7 @@ fn build_verbal_post_transition_instruction(
     } else {
         Some(format!(
             "Continue for {}.",
-            format_meters(distance, distance_unit)
+            format_meters(distance, distance_unit.measurement_system())
         ))
     }
 }

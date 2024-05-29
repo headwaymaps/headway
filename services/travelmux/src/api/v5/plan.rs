@@ -337,6 +337,10 @@ impl Maneuver {
         };
         let localized_distance = match distance_unit {
             DistanceUnit::Kilometers => otp.distance,
+            DistanceUnit::Meters => {
+                debug_assert!(false, "v5 API doesn't expect Meters as distance_unit. prior to v6, kilometers was used as if it were meters.");
+                otp.distance
+            }
             // round to the nearest ten-thousandth
             DistanceUnit::Miles => (otp.distance * 0.621371 * 10_000.0).round() / 10_000.0,
         };
@@ -412,7 +416,7 @@ fn build_verbal_post_transition_instruction(
     } else {
         Some(format!(
             "Continue for {}.",
-            format_meters(distance, distance_unit)
+            format_meters(distance, distance_unit.measurement_system())
         ))
     }
 }

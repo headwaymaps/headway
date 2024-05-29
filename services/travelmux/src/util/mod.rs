@@ -25,6 +25,7 @@ const METERS_PER_MILE: f64 = 1609.34;
 
 pub fn convert_from_meters(meters: f64, output_units: DistanceUnit) -> f64 {
     match output_units {
+        DistanceUnit::Meters => meters,
         DistanceUnit::Kilometers => meters / 1000.0,
         DistanceUnit::Miles => meters / METERS_PER_MILE,
     }
@@ -32,6 +33,7 @@ pub fn convert_from_meters(meters: f64, output_units: DistanceUnit) -> f64 {
 
 pub fn convert_to_meters(distance: f64, input_units: DistanceUnit) -> f64 {
     match input_units {
+        DistanceUnit::Meters => distance,
         DistanceUnit::Kilometers => distance * 1000.0,
         DistanceUnit::Miles => distance * METERS_PER_MILE,
     }
