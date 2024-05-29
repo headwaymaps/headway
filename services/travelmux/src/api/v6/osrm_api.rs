@@ -141,7 +141,7 @@ pub struct RouteStep {
     pub maneuver: StepManeuver,
 
     /// A list of `BannerInstruction` objects that represent all signs on the step.
-    pub banner_instructions: Option<Vec<BannerInstruction>>,
+    pub banner_instructions: Option<Vec<VisualInstructionBanner>>,
 
     /// A list of `Intersection` objects that are passed along the segment, the very first belonging to the `StepManeuver`
     pub intersections: Option<Vec<Intersection>>,
@@ -154,8 +154,11 @@ impl RouteStep {
         mode: TravelMode,
         from_distance_unit: DistanceUnit,
     ) -> Self {
-        let banner_instructions =
-            BannerInstruction::from_maneuver(&maneuver, next_maneuver.as_ref(), from_distance_unit);
+        let banner_instructions = VisualInstructionBanner::from_maneuver(
+            &maneuver,
+            next_maneuver.as_ref(),
+            from_distance_unit,
+        );
         RouteStep {
             distance: maneuver.distance_meters(from_distance_unit),
             duration: maneuver.duration_seconds,
@@ -179,14 +182,14 @@ impl RouteStep {
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct BannerInstruction {
+pub struct VisualInstructionBanner {
     pub distance_along_geometry: f64,
-    pub primary: BannerInstructionContent,
+    pub primary: VisualInstruction,
     // secondary: Option<BannerInstructionContent>,
     // sub: Option<BannerInstructionContent>,
 }
 
-impl BannerInstruction {
+impl VisualInstructionBanner {
     fn from_maneuver(
         maneuver: &Maneuver,
         next_maneuver: Option<&Maneuver>,
@@ -208,11 +211,15 @@ impl BannerInstruction {
             maneuver.instruction.as_ref().map(|s| vec![s.clone()])
         };
 
-        let banner_maneuver = (|| {
-            use BannerManeuverModifier::*;
-            use BannerManeuverType::*;
-            let (banner_type, modifier) = match next_maneuver.unwrap_or(maneuver).r#type {
-                ManeuverType::None => return None,
+        let (maneuver_type, maneuver_direction): (
+            Option<OSRMManeuverType>,
+            Option<ManeuverDirection>,
+        ) = (|| {
+            use ManeuverDirection::*;
+            use OSRMManeuverType::*;
+            let (maneuver_type, maneuver_direction) = match next_maneuver.unwrap_or(maneuver).r#type
+            {
+                ManeuverType::None => return (None, None),
                 ManeuverType::Start => (Depart, None),
                 ManeuverType::StartRight => (Depart, Some(Right)),
                 ManeuverType::StartLeft => (Depart, Some(Left)),
@@ -257,10 +264,7 @@ impl BannerInstruction {
                 ManeuverType::BuildingEnter => (Notification, None),
                 ManeuverType::BuildingExit => (Notification, None),
             };
-            Some(BannerManeuver {
-                r#type: banner_type,
-                modifier,
-            })
+            (Some(maneuver_type), maneuver_direction)
         })();
 
         let text = text_components.as_ref().map(|t| t.join("/"));
@@ -290,14 +294,15 @@ impl BannerInstruction {
             })],
         );
 
-        let primary = BannerInstructionContent {
+        let primary = VisualInstruction {
             text: text.unwrap_or_default(),
             components,
-            banner_maneuver,
+            maneuver_type,
+            maneuver_direction,
             degrees: None,
             driving_side: None,
         };
-        let instruction = BannerInstruction {
+        let instruction = VisualInstructionBanner {
             distance_along_geometry: maneuver.distance_meters(from_distance_unit),
             primary,
         };
@@ -305,25 +310,18 @@ impl BannerInstruction {
     }
 }
 
-// REVIEW: Rename to VisualInstructionBanner?
 // How do audible instructions fit into this?
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct BannerInstructionContent {
+pub struct VisualInstruction {
     pub text: String,
-    // components: Vec<BannerInstructionContentComponent>,
-    #[serde(flatten)]
-    pub banner_maneuver: Option<BannerManeuver>,
+    #[serde(rename = "type")]
+    pub maneuver_type: Option<OSRMManeuverType>,
+    #[serde(rename = "modifier")]
+    pub maneuver_direction: Option<ManeuverDirection>,
     pub degrees: Option<f64>,
     pub driving_side: Option<String>,
     pub components: Vec<BannerComponent>,
-}
-
-#[derive(Debug, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "lowercase")]
-pub struct BannerManeuver {
-    pub r#type: BannerManeuverType,
-    pub modifier: Option<BannerManeuverModifier>,
 }
 
 // This is for `banner.primary(et. al).type`
@@ -331,18 +329,27 @@ pub struct BannerManeuver {
 // but the docs imply they are different.
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
-pub enum BannerManeuverType {
-    /// A turn in the direction of the modifier.
+pub enum OSRMManeuverType {
+    /// The step requires the user to turn.
+    ///
+    /// The maneuver direction indicates the direction in which the user must turn relative to the current direction of travel.
+    /// The exit index indicates the number of intersections, large or small, from the previous maneuver up to and including the intersection at which the user must turn.
     Turn,
 
-    /// The road name changes (after a mandatory turn).
+    /// The step requires the user to continue on the current road as it changes names.
+    ///
+    /// The step’s name contains the road’s new name. To get the road’s old name, use the previous step’s name.
     #[serde(rename = "new name")]
     NewName,
 
-    /// Merge onto a street.
+    /// The step requires the user to merge onto another road.
+    ///
+    /// The maneuver direction indicates the side from which the other road approaches the intersection relative to the user.
     Merge,
 
-    /// Indicates departure from a leg. The modifier value indicates the position of the departure point compared to the current direction of travel.
+    /// The step requires the user to depart from a waypoint.
+    ///
+    /// If the waypoint is some distance away from the nearest road, the maneuver direction indicates the direction the user must turn upon reaching the road.
     Depart,
 
     /// Indicates arrival to a destination of a leg. The modifier value indicates the position of the arrival point compared to the current direction of travel.
@@ -351,18 +358,31 @@ pub enum BannerManeuverType {
     /// Keep left or right side at a bifurcation, or left/right/straight at a trifurcation.
     Fork,
 
-    /// Take a ramp to enter a highway.
+    /// The step requires the user to take a entrance ramp (slip road) onto a highway.
     #[serde(rename = "on ramp")]
     OnRamp,
 
-    /// Take a ramp to exit a highway.
+    /// The step requires the user to take an exit ramp (slip road) off a highway.
+    ///
+    /// The maneuver direction indicates the side of the highway from which the user must exit.
+    /// The exit index indicates the number of highway exits from the previous maneuver up to and including the exit that the user must take.
     #[serde(rename = "off ramp")]
     OffRamp,
 
-    /// Road ends in a T intersection.
+    /// The step requires the user to turn at either a T-shaped three-way intersection or a sharp bend in the road where the road also changes names.
+    ///
+    /// This maneuver type is called out separately so that the user may be able to proceed more confidently, without fear of having overshot the turn. If this distinction is unimportant to you, you may treat the maneuver as an ordinary `turn`.
     #[allow(unused)]
     #[serde(rename = "end of road")]
     EndOfRoad,
+
+    /// The step requires the user to get into a specific lane in order to continue along the current road.
+    /// The maneuver direction is set to `straightAhead`. Each of the first intersection’s usable approach lanes also has an indication of `straightAhead`. A maneuver in a different direction would instead have a maneuver type of `turn`.
+    //
+    /// This maneuver type is called out separately so that the application can present the user with lane guidance based on the first element in the `intersections` property. If lane guidance is unimportant to you, you may treat the maneuver as an ordinary `continue` or ignore it.
+    #[serde(rename = "use lane")]
+    #[allow(unused)]
+    UseLane,
 
     /// Continue on a street after a turn.
     Continue,
@@ -384,18 +404,28 @@ pub enum BannerManeuverType {
     #[serde(rename = "exit rotary")]
     RotaryExit,
 
-    /// A small roundabout that is treated as an intersection.
+    /// The step requires the user to enter and exit a roundabout (traffic circle or rotary) that is compact enough to constitute a single intersection.
+    ///
+    ///  The step’s name is the name of the road to take after exiting the roundabout.
+    /// This maneuver type is called out separately because the user may perceive the roundabout as an ordinary intersection with an island in the middle.
+    /// If this distinction is unimportant to you, you may treat the maneuver as either an ordinary `turn` or as a `takeRoundabout`.
     #[allow(unused)]
     #[serde(rename = "roundabout turn")]
     RoundaboutTurn,
 
-    /// Indicates a change of driving conditions, for example changing the mode from driving to ferry.
+    /// The step requires the user to respond to a change in travel conditions.
+    ///
+    /// This maneuver type may occur for example when driving directions require the user to board a ferry, or when cycling directions require the user to dismount.
+    /// The step’s transport type and instructions contains important contextual details that should be presented to the user at the maneuver location.
+    ///
+    /// Similar changes can occur simultaneously with other maneuvers, such as when the road changes its name at the site of a movable bridge.
+    /// In such cases, `notification` is suppressed in favor of another maneuver type.
     Notification,
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
-pub enum BannerManeuverModifier {
+pub enum ManeuverDirection {
     Uturn,
     #[serde(rename = "sharp right")]
     SharpRight,
@@ -410,8 +440,10 @@ pub enum BannerManeuverModifier {
     SharpLeft,
 }
 
-// REVIEW: Rename to VisualInstruction?
-// REVIEW: convert to inner enum of Lane or VisualInstructionComponent
+//`BannerComponent` is kind of a corollary to ComponentRepresentable protocol from maplibre which
+// has a `type: VisualInstructionComponentType` field, whereas here we have a variant for each type,
+// with the associated value of the VisualInstructionComponent.
+// Plus we have enum variant for the other implementors of ComponentRepresentable
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 #[non_exhaustive]
@@ -423,11 +455,13 @@ pub enum BannerComponent {
     ///
     /// If the two adjacent components are both displayed as images, you can hide this delimiter component.
     Delimiter(VisualInstructionComponent),
-    // #[serde(rename="exit-number")]
-    // ExitNumber(VisualInstructionComponent),
-    // Exit(VisualInstructionComponent),
-    // Lane(LaneInstructionComponent),
+
+    #[allow(unused)]
+    Lane(LaneIndicationComponent),
 }
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub struct LaneIndicationComponent {}
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
