@@ -2,7 +2,9 @@
 //! which happens to be strongly influenced by OSRM.
 
 use super::plan::{Itinerary, Leg, Maneuver, ModeLeg};
-use crate::util::{serialize_line_string_as_polyline6, serialize_point_as_lon_lat_pair};
+use crate::util::serde_util::{
+    serialize_line_string_as_polyline6, serialize_point_as_lon_lat_pair,
+};
 use crate::valhalla::valhalla_api::ManeuverType;
 use crate::{DistanceUnit, TravelMode};
 use geo::{LineString, Point};

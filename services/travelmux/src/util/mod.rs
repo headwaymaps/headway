@@ -1,116 +1,38 @@
 pub mod format;
 pub mod haversine_segmenter;
+pub(crate) mod serde_util;
 
-use geo::{Point, Rect};
-use serde::{
-    ser::{Error, SerializeStruct, SerializeTuple},
-    Deserialize, Deserializer, Serializer,
-};
+use crate::DistanceUnit;
 use std::time::{Duration, SystemTime};
 
-pub fn deserialize_point_from_lat_lon<'de, D>(deserializer: D) -> Result<Point, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-
-    let s: String = Deserialize::deserialize(deserializer)?;
-    use std::str::FromStr;
-    let mut iter = s.split(',').map(f64::from_str);
-
-    let Some(lat_res) = iter.next() else {
-        return Err(D::Error::custom("missing lat"));
-    };
-    let lat = lat_res.map_err(|e| D::Error::custom(format!("invalid lat: {e}")))?;
-
-    let Some(lon_res) = iter.next() else {
-        return Err(D::Error::custom("missing lon"));
-    };
-    let lon = lon_res.map_err(|e| D::Error::custom(format!("invalid lon: {e}")))?;
-
-    if let Some(next) = iter.next() {
-        return Err(D::Error::custom(format!(
-            "found an extra param in lat,lon,???: {next:?}"
-        )));
-    }
-
-    Ok(Point::new(lon, lat))
-}
-pub fn serialize_point_as_lon_lat_pair<S>(point: &Point, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let mut tuple_serializer = serializer.serialize_tuple(2)?;
-    tuple_serializer.serialize_element(&point.x())?;
-    tuple_serializer.serialize_element(&point.y())?;
-    tuple_serializer.end()
-}
-
-pub fn serialize_line_string_as_polyline6<S>(
-    line_string: &geo::LineString<f64>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let string =
-        polyline::encode_coordinates(line_string.0.iter().copied(), 6).map_err(S::Error::custom)?;
-    serializer.serialize_str(&string)
-}
-
-pub fn deserialize_duration_from_seconds<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let seconds = u64::deserialize(deserializer)?;
-    Ok(Duration::from_secs(seconds))
-}
-
-pub fn serialize_duration_as_seconds<S>(
-    duration: &Duration,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_u64(duration.as_secs())
-}
-
-pub fn extend_bounds(bounds: &mut Rect, extension: &Rect) {
+pub fn extend_bounds(bounds: &mut geo::Rect, extension: &geo::Rect) {
     let min_x = f64::min(bounds.min().x, extension.min().x);
     let min_y = f64::min(bounds.min().y, extension.min().y);
     let max_x = f64::max(bounds.max().x, extension.max().x);
     let max_y = f64::max(bounds.max().y, extension.max().y);
-    let mut new_bounds = Rect::new(
+    let mut new_bounds = geo::Rect::new(
         geo::coord! { x: min_x, y: min_y},
         geo::coord! { x: max_x, y: max_y },
     );
     std::mem::swap(bounds, &mut new_bounds);
 }
 
-pub fn serialize_rect_to_lng_lat<S: Serializer>(
-    rect: &Rect,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let mut struct_serializer = serializer.serialize_struct("BBox", 2)?;
-    struct_serializer.serialize_field("min", &[rect.min().x, rect.min().y])?;
-    struct_serializer.serialize_field("max", &[rect.max().x, rect.max().y])?;
-    struct_serializer.end()
-}
-
-pub fn serialize_system_time_as_millis<S>(
-    time: &SystemTime,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let since_epoch = time
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|_e| S::Error::custom("time is before epoch"))?;
-    serializer.serialize_u64(since_epoch.as_millis() as u64)
-}
-
 pub fn system_time_from_millis(millis: u64) -> SystemTime {
     std::time::UNIX_EPOCH + Duration::from_millis(millis)
+}
+
+const METERS_PER_MILE: f64 = 1609.34;
+
+pub fn convert_from_meters(meters: f64, output_units: DistanceUnit) -> f64 {
+    match output_units {
+        DistanceUnit::Kilometers => meters / 1000.0,
+        DistanceUnit::Miles => meters / METERS_PER_MILE,
+    }
+}
+
+pub fn convert_to_meters(distance: f64, input_units: DistanceUnit) -> f64 {
+    match input_units {
+        DistanceUnit::Kilometers => distance * 1000.0,
+        DistanceUnit::Miles => distance * METERS_PER_MILE,
+    }
 }

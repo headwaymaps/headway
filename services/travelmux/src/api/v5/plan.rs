@@ -14,10 +14,10 @@ use crate::error::ErrorType;
 use crate::otp::otp_api;
 use crate::otp::otp_api::{AbsoluteDirection, RelativeDirection};
 use crate::util::format::format_meters;
-use crate::util::{
-    deserialize_point_from_lat_lon, extend_bounds, serialize_rect_to_lng_lat,
-    serialize_system_time_as_millis, system_time_from_millis,
+use crate::util::serde_util::{
+    deserialize_point_from_lat_lon, serialize_rect_to_lng_lat, serialize_system_time_as_millis,
 };
+use crate::util::{extend_bounds, system_time_from_millis};
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};

@@ -16,29 +16,14 @@ use crate::otp::otp_api;
 use crate::otp::otp_api::{AbsoluteDirection, RelativeDirection};
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
-use crate::util::{
-    deserialize_point_from_lat_lon, extend_bounds, serialize_line_string_as_polyline6,
-    serialize_rect_to_lng_lat, serialize_system_time_as_millis, system_time_from_millis,
+use crate::util::serde_util::{
+    deserialize_point_from_lat_lon, serialize_line_string_as_polyline6, serialize_rect_to_lng_lat,
+    serialize_system_time_as_millis,
 };
+use crate::util::{convert_from_meters, convert_to_meters, extend_bounds, system_time_from_millis};
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
-
-const METERS_PER_MILE: f64 = 1609.34;
-
-fn convert_from_meters(meters: f64, output_units: DistanceUnit) -> f64 {
-    match output_units {
-        DistanceUnit::Kilometers => meters / 1000.0,
-        DistanceUnit::Miles => meters / METERS_PER_MILE,
-    }
-}
-
-fn convert_to_meters(distance: f64, input_units: DistanceUnit) -> f64 {
-    match input_units {
-        DistanceUnit::Kilometers => distance * 1000.0,
-        DistanceUnit::Miles => distance * METERS_PER_MILE,
-    }
-}
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -89,10 +74,7 @@ pub struct Itinerary {
 
 impl Itinerary {
     pub fn distance_meters(&self) -> f64 {
-        match self.distance_units {
-            DistanceUnit::Kilometers => self.distance * 1000.0,
-            DistanceUnit::Miles => self.distance * METERS_PER_MILE,
-        }
+        convert_to_meters(self.distance, self.distance_units)
     }
 
     pub fn combined_geometry(&self) -> LineString {
