@@ -82,8 +82,8 @@ impl RouteLeg {
                         let maneuver = this_and_next[0].clone();
                         let next_maneuver = this_and_next.get(1);
                         RouteStep::from_maneuver(
-                            maneuver.clone(),
-                            next_maneuver.cloned(),
+                            maneuver,
+                            next_maneuver,
                             value.mode,
                             distance_unit,
                         )
@@ -151,13 +151,13 @@ pub struct RouteStep {
 impl RouteStep {
     fn from_maneuver(
         maneuver: Maneuver,
-        next_maneuver: Option<Maneuver>,
+        next_maneuver: Option<&Maneuver>,
         mode: TravelMode,
         from_distance_unit: DistanceUnit,
     ) -> Self {
         let banner_instructions = VisualInstructionBanner::from_maneuver(
             &maneuver,
-            next_maneuver.as_ref(),
+            next_maneuver,
             from_distance_unit,
         );
         RouteStep {
