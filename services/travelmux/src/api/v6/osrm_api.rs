@@ -1,5 +1,5 @@
 //! "osrm_api" is a bit of a misnomer. It's intended to work with maplibre's  "Directions" library.
-//! which happens to be strongly influenced by OSRM.
+//! which is strongly influenced by OSRM.
 
 use super::plan::{Itinerary, Leg, Maneuver, ModeLeg};
 use crate::util::serde_util::{
@@ -10,6 +10,7 @@ use crate::{DistanceUnit, TravelMode};
 use geo::{LineString, Point};
 use serde::Serialize;
 
+/// The route between waypoints.
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Route {
@@ -19,7 +20,7 @@ pub struct Route {
     /// The estimated travel time, in float number of seconds.
     pub duration: f64,
 
-    // todo: simplify?
+    // TODO: simplify?
     /// The entire geometry of the route
     #[serde(serialize_with = "serialize_line_string_as_polyline6")]
     pub geometry: LineString,
@@ -310,7 +311,6 @@ impl VisualInstructionBanner {
     }
 }
 
-// How do audible instructions fit into this?
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualInstruction {
@@ -324,9 +324,6 @@ pub struct VisualInstruction {
     pub components: Vec<BannerComponent>,
 }
 
-// This is for `banner.primary(et. al).type`
-// There is a lot of overlap between this and `step_maneuver.type`,
-// but the docs imply they are different.
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum OSRMManeuverType {
@@ -440,10 +437,11 @@ pub enum ManeuverDirection {
     SharpLeft,
 }
 
-//`BannerComponent` is kind of a corollary to ComponentRepresentable protocol from maplibre which
-// has a `type: VisualInstructionComponentType` field, whereas here we have a variant for each type,
-// with the associated value of the VisualInstructionComponent.
-// Plus we have enum variant for the other implementors of ComponentRepresentable
+/// `BannerComponent` is kind of a corollary to maplibre-navigation-ios's `ComponentRepresentable`
+/// protocol, which has a `type: VisualInstructionComponentType` field. Here however, we have a
+/// variant for each `type` with the associated value of the `VisualInstructionComponent`.
+/// Plus we have enum variant for the other implementors of `ComponentRepresentable`
+/// (really, that's only `Lane`, so far)
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 #[non_exhaustive]

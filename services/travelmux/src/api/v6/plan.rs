@@ -13,7 +13,6 @@ use super::TravelModes;
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::otp_api;
-use crate::otp::otp_api::{AbsoluteDirection, RelativeDirection};
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
@@ -245,7 +244,6 @@ type TransitLeg = otp_api::Leg;
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum ModeLeg {
-    // REVIEW: rename? There is a boolean field for OTP called TransitLeg
     #[serde(rename = "transitLeg")]
     Transit(Box<TransitLeg>),
 
@@ -303,8 +301,9 @@ impl NonTransitLeg {
     }
 }
 
-// Eventually we might want to coalesce this into something not valhalla specific
-// but for now we only use it for valhalla trips
+/// One action taken by the user - like a turn or taking an exit.
+/// This was originally based on the schema of a valhall_api::Maneuver, but it can be built from
+/// either OTP or Valhalla data.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Maneuver {
@@ -353,7 +352,7 @@ impl Maneuver {
         leg: &otp_api::Leg,
         distance_unit: DistanceUnit,
     ) -> Self {
-        let instruction = build_instruction(
+        let instruction = maneuver_instruction(
             leg.mode,
             otp.relative_direction,
             otp.absolute_direction,
@@ -387,27 +386,29 @@ impl Maneuver {
     }
 }
 
+/// Returns the natural language description of the maneuver.
 // We could do so much better. Look at Valhalla's Odin.
 //
 // e.g. take context of previous maneuver. "Bear right to stay on Main Street"
-fn build_instruction(
+// TODO: localize
+fn maneuver_instruction(
     mode: otp_api::TransitMode,
     maneuver_type: otp_api::RelativeDirection,
     absolute_direction: Option<otp_api::AbsoluteDirection>,
     street_name: &str,
 ) -> Option<String> {
     match maneuver_type {
-        RelativeDirection::Depart => {
+        otp_api::RelativeDirection::Depart => {
             if let Some(absolute_direction) = absolute_direction {
                 let direction = match absolute_direction {
-                    AbsoluteDirection::North => "north",
-                    AbsoluteDirection::Northeast => "northeast",
-                    AbsoluteDirection::East => "east",
-                    AbsoluteDirection::Southeast => "southeast",
-                    AbsoluteDirection::South => "south",
-                    AbsoluteDirection::Southwest => "southwest",
-                    AbsoluteDirection::West => "west",
-                    AbsoluteDirection::Northwest => "northwest",
+                    otp_api::AbsoluteDirection::North => "north",
+                    otp_api::AbsoluteDirection::Northeast => "northeast",
+                    otp_api::AbsoluteDirection::East => "east",
+                    otp_api::AbsoluteDirection::Southeast => "southeast",
+                    otp_api::AbsoluteDirection::South => "south",
+                    otp_api::AbsoluteDirection::Southwest => "southwest",
+                    otp_api::AbsoluteDirection::West => "west",
+                    otp_api::AbsoluteDirection::Northwest => "northwest",
                 };
                 let mode = match mode {
                     otp_api::TransitMode::Walk => "Walk",
@@ -420,20 +421,23 @@ fn build_instruction(
                 Some("Depart.".to_string())
             }
         }
-        RelativeDirection::HardLeft => Some(format!("Turn left onto {street_name}.")),
-        RelativeDirection::Left => Some(format!("Turn left onto {street_name}.")),
-        RelativeDirection::SlightlyLeft => Some(format!("Turn slightly left onto {street_name}.")),
-        RelativeDirection::Continue => Some(format!("Continue onto {street_name}.")),
-        RelativeDirection::SlightlyRight => {
+        otp_api::RelativeDirection::HardLeft => Some(format!("Turn left onto {street_name}.")),
+        otp_api::RelativeDirection::Left => Some(format!("Turn left onto {street_name}.")),
+        otp_api::RelativeDirection::SlightlyLeft => {
+            Some(format!("Turn slightly left onto {street_name}."))
+        }
+        otp_api::RelativeDirection::Continue => Some(format!("Continue onto {street_name}.")),
+        otp_api::RelativeDirection::SlightlyRight => {
             Some(format!("Turn slightly right onto {street_name}."))
         }
-        RelativeDirection::Right => Some(format!("Turn right onto {street_name}.")),
-        RelativeDirection::HardRight => Some(format!("Turn right onto {street_name}.")),
-        RelativeDirection::CircleClockwise | RelativeDirection::CircleCounterclockwise => {
+        otp_api::RelativeDirection::Right => Some(format!("Turn right onto {street_name}.")),
+        otp_api::RelativeDirection::HardRight => Some(format!("Turn right onto {street_name}.")),
+        otp_api::RelativeDirection::CircleClockwise
+        | otp_api::RelativeDirection::CircleCounterclockwise => {
             Some("Enter the roundabout.".to_string())
         }
-        RelativeDirection::Elevator => Some("Enter the elevator.".to_string()),
-        RelativeDirection::UturnLeft | RelativeDirection::UturnRight => {
+        otp_api::RelativeDirection::Elevator => Some("Enter the elevator.".to_string()),
+        otp_api::RelativeDirection::UturnLeft | otp_api::RelativeDirection::UturnRight => {
             Some("Make a U-turn.".to_string())
         }
     }

@@ -5,6 +5,7 @@ use crate::api::AppState;
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use serde::Serialize;
 
+/// Returns directions between locations in the format of the OSRM-ish API used by maplibre-directions.
 #[get("/v6/directions")]
 pub async fn get_directions(
     query: web::Query<PlanQuery>,
