@@ -5,6 +5,7 @@ use super::plan::{Itinerary, Leg, Maneuver, ModeLeg};
 use crate::util::serde_util::{
     serialize_line_string_as_polyline6, serialize_point_as_lon_lat_pair,
 };
+use crate::util::{bearing_at_end, bearing_at_start};
 use crate::valhalla::valhalla_api::ManeuverType;
 use crate::{DistanceUnit, TravelMode};
 use geo::{LineString, Point};
@@ -75,17 +76,45 @@ impl RouteLeg {
             }
             ModeLeg::NonTransit(non_transit_leg) => {
                 let summary = non_transit_leg.substantial_street_names.join(", ");
-                let mut steps: Vec<_> = non_transit_leg
-                    .maneuvers
-                    .windows(2)
-                    .map(|this_and_next| {
-                        let maneuver = this_and_next[0].clone();
-                        let next_maneuver = this_and_next.get(1);
-                        RouteStep::from_maneuver(maneuver, next_maneuver, value.mode, distance_unit)
-                    })
-                    .collect();
+
+                debug_assert!(non_transit_leg.maneuvers.len() >= 2);
+                let mut steps = Vec::with_capacity(non_transit_leg.maneuvers.len());
+                if let Some(first_maneuver) = non_transit_leg.maneuvers.first() {
+                    let first_step = RouteStep::from_maneuver(
+                        None,
+                        first_maneuver.clone(),
+                        non_transit_leg.maneuvers.get(1),
+                        value.mode,
+                        distance_unit,
+                    );
+                    steps.push(first_step);
+                }
+
+                let middle_steps = non_transit_leg.maneuvers.windows(3).map(|maneuvers| {
+                    let prev_maneuver = &maneuvers[0];
+                    let maneuver = maneuvers[1].clone();
+                    let next_maneuver = &maneuvers[2];
+
+                    RouteStep::from_maneuver(
+                        Some(prev_maneuver),
+                        maneuver,
+                        Some(next_maneuver),
+                        value.mode,
+                        distance_unit,
+                    )
+                });
+                steps.extend(middle_steps);
+
                 if let Some(final_maneuver) = non_transit_leg.maneuvers.last() {
+                    let prev_maneuver = if non_transit_leg.maneuvers.len() < 2 {
+                        None
+                    } else {
+                        non_transit_leg
+                            .maneuvers
+                            .get(non_transit_leg.maneuvers.len() - 2)
+                    };
                     let final_step = RouteStep::from_maneuver(
+                        prev_maneuver,
                         final_maneuver.clone(),
                         None,
                         value.mode,
@@ -134,7 +163,7 @@ pub struct RouteStep {
     pub mode: TravelMode,
 
     /// A `StepManeuver` object representing the maneuver.
-    pub maneuver: StepManeuver,
+    pub maneuver: RouteStepManeuver,
 
     /// A list of `BannerInstruction` objects that represent all signs on the step.
     pub banner_instructions: Option<Vec<VisualInstructionBanner>>,
@@ -145,6 +174,7 @@ pub struct RouteStep {
 
 impl RouteStep {
     fn from_maneuver(
+        prev_maneuver: Option<&Maneuver>,
         maneuver: Maneuver,
         next_maneuver: Option<&Maneuver>,
         mode: TravelMode,
@@ -152,6 +182,12 @@ impl RouteStep {
     ) -> Self {
         let banner_instructions =
             VisualInstructionBanner::from_maneuver(&maneuver, next_maneuver, from_distance_unit);
+
+        let bearing_after = bearing_at_start(&maneuver.geometry).unwrap_or(0);
+        let bearing_before = prev_maneuver
+            .and_then(|prev_maneuver| bearing_at_end(&prev_maneuver.geometry))
+            .unwrap_or(bearing_after);
+
         RouteStep {
             distance: maneuver.distance_meters(from_distance_unit),
             duration: maneuver.duration_seconds,
@@ -164,8 +200,10 @@ impl RouteStep {
             pronunciation: None, // TODO
             destinations: None,  // TODO
             mode,
-            maneuver: StepManeuver {
+            maneuver: RouteStepManeuver {
                 location: maneuver.start_point.into(),
+                bearing_before,
+                bearing_after,
             },
             intersections: None, // TODO
             banner_instructions,
@@ -461,23 +499,23 @@ pub struct VisualInstructionComponent {
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct StepManeuver {
+pub struct RouteStepManeuver {
     /// The location of the maneuver
     #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
     pub location: Point,
     // /// The type of maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
-    // r#type: String,
+    // r#type: ManeuverType,
     // /// The modifier of the maneuver. new identifiers might be introduced without changing the API, so best practice is to gracefully handle any new values
-    // modifier: String,
+    // modifier: ManeuverDirection,
     // /// A human-readable instruction of how to execute the returned maneuver
     // instruction: String,
-    // /// The bearing before the turn, in degrees
-    // OSRM expects `bearing_before` to be snake cased.
-    // #[serde(rename_all = "snake_case")]
-    // bearing_before: f64,
-    // OSRM expects `bearing_after` to be snake cased.
-    // /// The bearing after the turn, in degrees
-    // bearing_after: f64,
+    /// The bearing before the turn, in degrees
+    #[serde(rename = "bearing_before")] // OSRM expects `bearing_before` to be snake cased.
+    bearing_before: u16,
+
+    /// The bearing after the turn, in degrees
+    #[serde(rename = "bearing_after")] // OSRM expects `bearing_after` to be snake cased.
+    bearing_after: u16,
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]

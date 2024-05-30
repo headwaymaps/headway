@@ -751,7 +751,9 @@ async fn otp_plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util::{bearing_at_end, bearing_at_start};
     use approx::assert_relative_eq;
+    use geo::wkt;
     use serde_json::{json, Value};
     use std::fs::File;
     use std::io::BufReader;
@@ -1094,5 +1096,17 @@ mod tests {
         let plan_error = PlanResponseErr::from(valhalla_error);
         assert_eq!(plan_error.error.status_code, 400);
         assert_eq!(plan_error.error.error_code, 2154);
+    }
+
+    #[test]
+    fn maneuver_bearing() {
+        let a = wkt!(LINESTRING(0. 0.,1. 0.,1. 1.));
+        let b = wkt!(LINESTRING(1. 1., 0. 1., 0. 0.));
+
+        assert_eq!(90, bearing_at_start(&a).unwrap());
+        assert_eq!(0, bearing_at_end(&a).unwrap());
+
+        assert_eq!(270, bearing_at_start(&b).unwrap());
+        assert_eq!(180, bearing_at_end(&b).unwrap());
     }
 }
