@@ -1,6 +1,6 @@
 use crate::otp::otp_api;
 use crate::DistanceUnit;
-use geo::Point;
+use geo::{Coord, Point};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::HashMap;
@@ -86,7 +86,6 @@ pub struct Leg {
     pub summary: Summary,
     pub maneuvers: Vec<Maneuver>,
     pub shape: String,
-    // pub length: f64,
     // pub steps: Vec<Step>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
@@ -187,6 +186,12 @@ impl From<Point> for LonLat {
 impl From<LonLat> for Point {
     fn from(value: LonLat) -> Self {
         geo::point!(x: value.lon, y: value.lat)
+    }
+}
+
+impl From<LonLat> for Coord {
+    fn from(value: LonLat) -> Self {
+        geo::coord!(x: value.lon, y: value.lat)
     }
 }
 

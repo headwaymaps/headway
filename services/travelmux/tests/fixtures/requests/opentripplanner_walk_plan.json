@@ -1,0 +1,388 @@
+{
+  "debugOutput": {
+    "directStreetRouterTime": 160311692,
+    "filteringTime": 16741306,
+    "precalculationTime": 130127,
+    "renderingTime": 13512812,
+    "totalTime": 212795218,
+    "transitRouterTime": 21627150,
+    "transitRouterTimes": {
+      "accessEgressTime": 0,
+      "itineraryCreationTime": 0,
+      "raptorSearchTime": 0,
+      "tripPatternFilterTime": 0
+    }
+  },
+  "elevationMetadata": {
+    "ellipsoidToGeoidDifference": -19.263942171473552,
+    "geoidElevation": false
+  },
+  "plan": {
+    "date": 1715974434146,
+    "from": {
+      "lat": 47.575837,
+      "lon": -122.339414,
+      "name": "Origin",
+      "vertexType": "NORMAL"
+    },
+    "itineraries": [
+      {
+        "arrivedAtDestinationWithRentedBicycle": false,
+        "duration": 7505,
+        "elevationGained": 0.0,
+        "elevationLost": 0.0,
+        "endTime": 1715981939000,
+        "fare": {
+          "details": {},
+          "fare": {}
+        },
+        "generalizedCost": 14164,
+        "legs": [
+          {
+            "agencyTimeZoneOffset": -25200000,
+            "arrivalDelay": 0,
+            "departureDelay": 0,
+            "distance": 9165.05,
+            "duration": 7505.0,
+            "endTime": 1715981939000,
+            "from": {
+              "departure": 1715974434000,
+              "lat": 47.575837,
+              "lon": -122.339414,
+              "name": "Origin",
+              "vertexType": "NORMAL"
+            },
+            "generalizedCost": 14164,
+            "interlineWithPreviousLeg": false,
+            "legGeometry": {
+              "length": 380,
+              "points": "}ckaHbkuiV`@@?J?~@ADANG\\AFEB?@AN}PCcRFq@@}W?{BCe@EYGUM[Um@y@a@g@KQEGq@w@uAiAa@UYQa@Q{EgBuAy@a@I[EUE]GGE?GSA]Eg@IyAc@YIkAWe@SeA_@y@QKC_AO[ASAcAGaACaCAqA@mEGgA?_@?iEBGAAC?K?QG?I?I?a@@GD_@?_ABm@?G?K@_EAGCIFS?MAW?g@BMBOFKBA@KHg@XM@c@`@A?CCCBILEFEFKLCDEDkAbACDA@c@ZIFoAfAMHQLEDGDGFGPCDuAlAC@QPQNSPwApA]XCBmAfA[X]XEDEDKHy@t@_@\\SNIH}@v@sAhA]\\YXORY^[b@ADW`@EFK[O]MNMRa@^sAlAIFGNEDSPQNON_@^k@l@i@j@WXUT_A`AWXQ\\_@t@m@jAA@GLS^CFININIOQXOV{@dAIJODs@x@EGKLKLC@EDEBCAKHUL]JEFKBGBOFCBC?E?GDMJIJADCAMTw@gAGJGPABo@pAIN]H]BWAG?CE]n@ACKKKMCCCCo@}@s@aA@AEGGGKM??CEAAs@aAm@_AAACEKMKQCCA?AAo@}@o@_AACCCCCEIMQAACAAAo@}@m@{@AC?ECACEMOEGCEC?aBaCABCEKOIMCEA@C?ACk@}@o@aA?C?EC@KCCACC}@?E?A@?DCAKCKCC@CAw@?y@?a@?o@AA@C?MAI?C@AAmAAwB?A@ACM?G?EFCEqA?G?Y?{@?S?A?C?M?K?A?AAA?gBAuA?C@CAIAM?I?AB@@?rA?bB_@?g@E_@CW?u@AuADM?wBCCA?EC@G?I?CCAFC@qACAX[Ag@Cg@CgCC_ECcFE[?eA?Q?{CC{ICi@?gDAkDAiA?gC?q@AcAFa@H[HqAh@cDrBeGrDIF_Ah@EB{Av@KDoChAmA^wGfBu@Pq@TUSO@k@PEDG@M@{@HyADw@@oCBiB@oa@A"
+            },
+            "mode": "WALK",
+            "pathway": false,
+            "realTime": false,
+            "rentedBike": false,
+            "route": "",
+            "startTime": 1715974434000,
+            "steps": [
+              {
+                "absoluteDirection": "SOUTH",
+                "area": false,
+                "bogusName": false,
+                "distance": 19.15,
+                "elevation": "",
+                "lat": 47.5758346,
+                "lon": -122.3392181,
+                "relativeDirection": "DEPART",
+                "stayOn": false,
+                "streetName": "East Marginal Way South",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "WEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 62.82,
+                "elevation": "",
+                "lat": 47.5756624,
+                "lon": -122.3392227,
+                "relativeDirection": "RIGHT",
+                "stayOn": false,
+                "streetName": "path",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": false,
+                "distance": 1198.9,
+                "elevation": "",
+                "lat": 47.5757783,
+                "lon": -122.3400157,
+                "relativeDirection": "RIGHT",
+                "stayOn": false,
+                "streetName": "East Marginal Way South",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": false,
+                "distance": 414.27,
+                "elevation": "",
+                "lat": 47.58656,
+                "lon": -122.3400253,
+                "relativeDirection": "CONTINUE",
+                "stayOn": false,
+                "streetName": "Alaskan Way South",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHEAST",
+                "area": false,
+                "bogusName": true,
+                "distance": 286.33,
+                "elevation": "",
+                "lat": 47.589876,
+                "lon": -122.3376963,
+                "relativeDirection": "CONTINUE",
+                "stayOn": false,
+                "streetName": "Marginal Way Cycle Route",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": false,
+                "distance": 659.69,
+                "elevation": "",
+                "lat": 47.592328,
+                "lon": -122.3367458,
+                "relativeDirection": "CONTINUE",
+                "stayOn": false,
+                "streetName": "Portside Trail",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": false,
+                "distance": 129.47,
+                "elevation": "",
+                "lat": 47.5981133,
+                "lon": -122.3360192,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "Portside Trail",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": true,
+                "distance": 111.29,
+                "elevation": "",
+                "lat": 47.5992728,
+                "lon": -122.3360808,
+                "relativeDirection": "CONTINUE",
+                "stayOn": false,
+                "streetName": "Marginal Way Cycle Route",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHWEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 156.24,
+                "elevation": "",
+                "lat": 47.6002712,
+                "lon": -122.3360595,
+                "relativeDirection": "SLIGHTLY_LEFT",
+                "stayOn": true,
+                "streetName": "sidewalk",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHWEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 1253.45,
+                "elevation": "",
+                "lat": 47.6015907,
+                "lon": -122.3365504,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "path",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHEAST",
+                "area": false,
+                "bogusName": true,
+                "distance": 8.17,
+                "elevation": "",
+                "lat": 47.6107169,
+                "lon": -122.3455955,
+                "relativeDirection": "RIGHT",
+                "stayOn": true,
+                "streetName": "path",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHWEST",
+                "area": false,
+                "bogusName": false,
+                "distance": 120.75,
+                "elevation": "",
+                "lat": 47.610769,
+                "lon": -122.3455186,
+                "relativeDirection": "LEFT",
+                "stayOn": false,
+                "streetName": "Elliott Way",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHEAST",
+                "area": false,
+                "bogusName": true,
+                "distance": 4.47,
+                "elevation": "",
+                "lat": 47.6116213,
+                "lon": -122.346496,
+                "relativeDirection": "RIGHT",
+                "stayOn": false,
+                "streetName": "path",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHWEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 124.31,
+                "elevation": "",
+                "lat": 47.6116517,
+                "lon": -122.3464569,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "bike path",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": true,
+                "distance": 53.96,
+                "elevation": "",
+                "lat": 47.6126463,
+                "lon": -122.3471407,
+                "relativeDirection": "RIGHT",
+                "stayOn": true,
+                "streetName": "sidewalk",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHWEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 120.37,
+                "elevation": "",
+                "lat": 47.6130108,
+                "lon": -122.3468803,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "alley",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHWEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 1218.05,
+                "elevation": "",
+                "lat": 47.6138772,
+                "lon": -122.3475726,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "sidewalk",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHWEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 365.79,
+                "elevation": "",
+                "lat": 47.6233135,
+                "lon": -122.3425506,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "sidewalk",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "WEST",
+                "area": false,
+                "bogusName": true,
+                "distance": 9.21,
+                "elevation": "",
+                "lat": 47.6259112,
+                "lon": -122.3434396,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "service road",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": false,
+                "distance": 1915.66,
+                "elevation": "",
+                "lat": 47.6259225,
+                "lon": -122.3435614,
+                "relativeDirection": "RIGHT",
+                "stayOn": false,
+                "streetName": "Aurora Avenue North",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTHEAST",
+                "area": false,
+                "bogusName": true,
+                "distance": 14.02,
+                "elevation": "",
+                "lat": 47.642699,
+                "lon": -122.3470338,
+                "relativeDirection": "RIGHT",
+                "stayOn": false,
+                "streetName": "service road",
+                "walkingBike": false
+              },
+              {
+                "absoluteDirection": "NORTH",
+                "area": false,
+                "bogusName": true,
+                "distance": 918.7,
+                "elevation": "",
+                "lat": 47.6428041,
+                "lon": -122.3469305,
+                "relativeDirection": "LEFT",
+                "stayOn": true,
+                "streetName": "sidewalk",
+                "walkingBike": false
+              }
+            ],
+            "to": {
+              "arrival": 1715981939000,
+              "lat": 47.651048,
+              "lon": -122.347234,
+              "name": "Destination",
+              "vertexType": "NORMAL"
+            },
+            "transitLeg": false,
+            "walkingBike": false
+          }
+        ],
+        "startTime": 1715974434000,
+        "tooSloped": false,
+        "transfers": 0,
+        "transitTime": 0,
+        "waitingTime": 0,
+        "walkDistance": 9165.05,
+        "walkLimitExceeded": false,
+        "walkTime": 7505
+      }
+    ],
+    "to": {
+      "lat": 47.651048,
+      "lon": -122.347234,
+      "name": "Destination",
+      "vertexType": "NORMAL"
+    }
+  },
+  "requestParameters": {
+    "fromPlace": "47.575837,-122.339414",
+    "mode": "WALK",
+    "toPlace": "47.651048,-122.347234"
+  }
+}

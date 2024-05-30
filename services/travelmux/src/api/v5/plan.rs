@@ -14,10 +14,10 @@ use crate::error::ErrorType;
 use crate::otp::otp_api;
 use crate::otp::otp_api::{AbsoluteDirection, RelativeDirection};
 use crate::util::format::format_meters;
-use crate::util::{
-    deserialize_point_from_lat_lon, extend_bounds, serialize_rect_to_lng_lat,
-    serialize_system_time_as_millis, system_time_from_millis,
+use crate::util::serde_util::{
+    deserialize_point_from_lat_lon, serialize_rect_to_lng_lat, serialize_system_time_as_millis,
 };
+use crate::util::{extend_bounds, system_time_from_millis};
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
@@ -337,6 +337,10 @@ impl Maneuver {
         };
         let localized_distance = match distance_unit {
             DistanceUnit::Kilometers => otp.distance,
+            DistanceUnit::Meters => {
+                debug_assert!(false, "v5 API doesn't expect Meters as distance_unit. prior to v6, kilometers was used as if it were meters.");
+                otp.distance
+            }
             // round to the nearest ten-thousandth
             DistanceUnit::Miles => (otp.distance * 0.621371 * 10_000.0).round() / 10_000.0,
         };
@@ -412,7 +416,7 @@ fn build_verbal_post_transition_instruction(
     } else {
         Some(format!(
             "Continue for {}.",
-            format_meters(distance, distance_unit)
+            format_meters(distance, distance_unit.measurement_system())
         ))
     }
 }
@@ -728,7 +732,7 @@ mod tests {
     #[test]
     fn parse_from_valhalla() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
+            File::open("tests/fixtures/requests/valhalla_pedestrian_route.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
 
@@ -740,7 +744,7 @@ mod tests {
         // itineraries
         let first_itinerary = &plan_response.plan.itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Walk);
-        assert_relative_eq!(first_itinerary.distance, 9.148);
+        assert_relative_eq!(first_itinerary.distance, 5.684);
         assert_relative_eq!(first_itinerary.duration, 6488.443);
         assert_relative_eq!(
             first_itinerary.bounds,
@@ -781,23 +785,23 @@ mod tests {
     #[test]
     fn parse_from_otp() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
+            File::open("tests/fixtures/requests/opentripplanner_transit_plan.json").unwrap();
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
         let plan_response =
             PlanResponseOk::from_otp(TravelMode::Transit, otp, DistanceUnit::Miles).unwrap();
 
         let itineraries = plan_response.plan.itineraries;
-        assert_eq!(itineraries.len(), 5);
+        assert_eq!(itineraries.len(), 6);
 
         // itineraries
         let first_itinerary = &itineraries[0];
         assert_eq!(first_itinerary.mode, TravelMode::Transit);
-        assert_relative_eq!(first_itinerary.distance, 10.69944);
-        assert_relative_eq!(first_itinerary.duration, 3273.0);
+        assert_relative_eq!(first_itinerary.distance, 10.157660000000002);
+        assert_relative_eq!(first_itinerary.duration, 2347.0);
 
         // legs
-        assert_eq!(first_itinerary.legs.len(), 7);
+        assert_eq!(first_itinerary.legs.len(), 4);
         let first_leg = &first_itinerary.legs[0];
         let geometry = polyline::decode_polyline(&first_leg.geometry, 6).unwrap();
         assert_relative_eq!(
@@ -824,22 +828,22 @@ mod tests {
             panic!("expected non-transit leg")
         };
         let maneuvers = &non_transit_leg.maneuvers;
-        assert_eq!(maneuvers.len(), 4);
+        assert_eq!(maneuvers.len(), 2);
         assert_eq!(maneuvers[0].r#type, ManeuverType::Start);
         assert_eq!(maneuvers[1].r#type, ManeuverType::Left);
 
-        let fourth_leg = &first_itinerary.legs[3];
-        assert_eq!(fourth_leg.mode, TravelMode::Transit);
-        let ModeLeg::Transit(transit_leg) = &fourth_leg.mode_leg else {
+        let transit_leg = &first_itinerary.legs[2];
+        assert_eq!(transit_leg.mode, TravelMode::Transit);
+        let ModeLeg::Transit(transit_leg) = &transit_leg.mode_leg else {
             panic!("expected transit leg")
         };
-        assert_eq!(transit_leg.route_color, Some("28813F".to_string()));
+        assert!(transit_leg.route_color.is_none());
     }
 
     #[test]
     fn serialize_response_from_otp() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/opentripplanner_plan_transit.json").unwrap();
+            File::open("tests/fixtures/requests/opentripplanner_transit_plan.json").unwrap();
         let otp: otp_api::PlanResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
         let plan_response =
@@ -857,12 +861,12 @@ mod tests {
             .unwrap()
             .as_array()
             .unwrap()
-            .get(0)
+            .first()
             .unwrap();
         let legs = first_itinerary.get("legs").unwrap().as_array().unwrap();
 
         // Verify walking leg
-        let first_leg = legs.get(0).unwrap().as_object().unwrap();
+        let first_leg = legs.first().unwrap().as_object().unwrap();
         let mode = first_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "WALK");
 
@@ -871,14 +875,14 @@ mod tests {
             .expect("field missing")
             .as_u64()
             .expect("unexpected type. expected u64");
-        assert_eq!(mode, 1708728373000);
+        assert_eq!(mode, 1715974501000);
 
         let mode = first_leg
             .get("endTime")
             .expect("field missing")
             .as_u64()
             .expect("unexpected type. expected u64");
-        assert_eq!(mode, 1708728745000);
+        assert_eq!(mode, 1715974870000);
 
         assert!(first_leg.get("transitLeg").is_none());
         let non_transit_leg = first_leg.get("nonTransitLeg").unwrap().as_object().unwrap();
@@ -896,13 +900,13 @@ mod tests {
             .unwrap()
             .as_array()
             .unwrap();
-        let first_maneuver = maneuvers.get(0).unwrap();
+        let first_maneuver = maneuvers.first().unwrap();
         let expected_maneuver = json!({
-            "distance": 11.893,
+            "distance": 11.8993,
             "instruction": "Walk south on East Marginal Way South.",
             "startPoint": {
-                "lat": 47.5758355,
-                "lon": -122.3392164
+                "lat": 47.5758346,
+                "lon": -122.3392181
             },
             "streetNames": ["East Marginal Way South"],
             "type": 1,
@@ -911,11 +915,11 @@ mod tests {
         assert_eq!(first_maneuver, &expected_maneuver);
 
         // Verify Transit leg
-        let fourth_leg = legs.get(3).unwrap().as_object().unwrap();
-        let mode = fourth_leg.get("mode").unwrap().as_str().unwrap();
+        let transit_leg = legs.get(2).unwrap().as_object().unwrap();
+        let mode = transit_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "TRANSIT");
-        assert!(fourth_leg.get("maneuvers").is_none());
-        let transit_leg = fourth_leg
+        assert!(transit_leg.get("maneuvers").is_none());
+        let transit_leg = transit_leg
             .get("transitLeg")
             .unwrap()
             .as_object()
@@ -924,19 +928,16 @@ mod tests {
         // Brittle: If the fixtures are updated, these values might change due to time of day or whatever.
         assert_eq!(
             transit_leg.get("agencyName").unwrap().as_str().unwrap(),
-            "Sound Transit"
+            "Metro Transit"
         );
 
-        assert_eq!(
-            transit_leg.get("route").unwrap().as_str().unwrap(),
-            "Northgate - Angle Lake"
-        );
+        assert!(transit_leg.get("route").is_none());
     }
 
     #[test]
     fn serialize_response_from_valhalla() {
         let stubbed_response =
-            File::open("tests/fixtures/requests/valhalla_route_walk.json").unwrap();
+            File::open("tests/fixtures/requests/valhalla_pedestrian_route.json").unwrap();
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
 
@@ -957,12 +958,12 @@ mod tests {
             .unwrap()
             .as_array()
             .unwrap()
-            .get(0)
+            .first()
             .unwrap();
         let legs = first_itinerary.get("legs").unwrap().as_array().unwrap();
 
         // Verify walking leg
-        let first_leg = legs.get(0).unwrap().as_object().unwrap();
+        let first_leg = legs.first().unwrap().as_object().unwrap();
         let mode = first_leg.get("mode").unwrap().as_str().unwrap();
         assert_eq!(mode, "WALK");
         assert!(first_leg.get("transitLeg").is_none());
@@ -987,12 +988,12 @@ mod tests {
             .unwrap()
             .as_array()
             .unwrap();
-        let first_maneuver = maneuvers.get(0).unwrap();
+        let first_maneuver = maneuvers.first().unwrap();
         let expected_maneuver = json!({
             "type": 2,
             "instruction": "Walk south on East Marginal Way South.",
-            "verbalPostTransitionInstruction": "Continue for 20 meters.",
-            "distance": 0.019,
+            "verbalPostTransitionInstruction": "Continue for 60 feet.",
+            "distance": 0.011,
             "startPoint": {
                 "lat": 47.575836,
                 "lon": -122.339216
