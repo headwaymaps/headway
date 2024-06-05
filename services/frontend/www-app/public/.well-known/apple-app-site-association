@@ -1,0 +1,27 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [ "CSBZ6R9U39.earth.maps.maps-earth" ],
+        "components": [
+          {
+            "/": "",
+            "comment": "Show the root / home screen."
+          },
+          {
+            "/": "/",
+            "comment": "Show the root / home screen."
+          },
+          {
+            "/": "/place/?*",
+            "comment": "Show the details of a specific place."
+          },
+          {
+            "/": "/directions/?*",
+            "comment": "Show the details of a specific place."
+          },
+        ]
+      }
+    ]
+  }
+}
