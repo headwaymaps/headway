@@ -11,7 +11,7 @@ build:
     # bbike.org
     ARG --required area
 
-    # `countries is uses by whosonfirst dataset.
+    # `countries` is used by whosonfirst dataset.
     # If left blank we try to guess the country based on the area argument.
     # Use the special value `ALL` when doing a planet build.
     ARG countries
@@ -38,10 +38,16 @@ save:
         BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
     END
     BUILD +save-valhalla --area=${area}
+    BUILD +save-pelias --area=${area} --countries=${countries}
+    BUILD +save-tileserver-terrain
+
+save-pelias:
+    FROM +save-base
+    ARG --required area
+    ARG countries
     BUILD +save-elasticsearch --area=${area} --countries=${countries}
     BUILD +save-placeholder --area=${area} --countries=${countries}
     BUILD +save-pelias-config --area=${area} --countries=${countries}
-    BUILD +save-tileserver-terrain
 
 save-polylines:
     FROM +save-base
