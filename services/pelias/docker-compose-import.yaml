@@ -9,7 +9,7 @@ services:
     depends_on:
       - pelias_elasticsearch
   pelias_whosonfirst:
-    image: pelias/whosonfirst:master
+    image: ghcr.io/michaelkirk-pelias/whosonfirst:log-error-specifics
     container_name: pelias_whosonfirst
     volumes:
       - "./pelias.json:/code/pelias.json"
