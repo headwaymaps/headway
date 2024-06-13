@@ -168,6 +168,9 @@ pub struct RouteStep {
     /// A list of `BannerInstruction` objects that represent all signs on the step.
     pub banner_instructions: Option<Vec<VisualInstructionBanner>>,
 
+    /// A list of `VoiceInstruction` objects that represent all voice instructions along the step.
+    pub voice_instructions: Option<Vec<VoiceInstruction>>,
+
     /// A list of `Intersection` objects that are passed along the segment, the very first belonging to the `StepManeuver`
     pub intersections: Option<Vec<Intersection>>,
 }
@@ -182,6 +185,19 @@ impl RouteStep {
     ) -> Self {
         let banner_instructions =
             VisualInstructionBanner::from_maneuver(&maneuver, next_maneuver, from_distance_unit);
+        let voice_instructions = banner_instructions.as_ref().map(|banners| {
+            banners
+                .iter()
+                .map(|banner| VoiceInstruction {
+                    distance_along_geometry: banner.distance_along_geometry,
+                    announcement: banner.primary.text.clone(),
+                    ssml_announcement: format!(
+                        "<speech>{text}</speech>",
+                        text = banner.primary.text
+                    ),
+                })
+                .collect::<Vec<_>>()
+        });
 
         let bearing_after = bearing_at_start(&maneuver.geometry).unwrap_or(0);
         let bearing_before = prev_maneuver
@@ -207,6 +223,7 @@ impl RouteStep {
             },
             intersections: None, // TODO
             banner_instructions,
+            voice_instructions, // TODO
         }
     }
 }
@@ -352,6 +369,26 @@ pub struct VisualInstruction {
     pub degrees: Option<f64>,
     pub driving_side: Option<String>,
     pub components: Vec<BannerComponent>,
+}
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceInstruction {
+    /// A distance along the associated `RouteStep` at which to read the instruction aloud.
+    ///
+    /// The distance is measured in meters from the beginning of the associated step.
+    pub distance_along_geometry: f64,
+
+    /// A plain-text representation of the speech-optimized instruction.
+    ///
+    /// This representation is appropriate for speech synthesizers that lack support for the [Speech Synthesis Markup Language](https://en.wikipedia.org/wiki/Speech_Synthesis_Markup_Language) (SSML), such as `AVSpeechSynthesizer`. For speech synthesizers that support SSML, use the `ssmlText` property instead.
+    pub announcement: String,
+
+    // REVIEW: should the be Optional? MaplibreDirections currently requires it, but that seems weird.
+    /// A formatted representation of the speech-optimized instruction.
+    ///
+    /// This representation is appropriate for speech synthesizers that support the [Speech Synthesis Markup Language](https://en.wikipedia.org/wiki/Speech_Synthesis_Markup_Language) (SSML), such as [Amazon Polly](https://aws.amazon.com/polly/). Numbers and names are marked up to ensure correct pronunciation. For speech synthesizers that lack SSML support, use the `text` property instead.
+    pub ssml_announcement: String,
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
