@@ -15,16 +15,22 @@
   <q-item-label caption v-if="active">
     {{ itinerary.walkingDistanceFormatted }}
   </q-item-label>
-  <div v-if="formattedRealTimeUntilStart() !== undefined">
-    <!-- FIXME: this isn't *always* realtime, we shouldn't imply that it is -->
-    <q-icon name="rss_feed" style="margin-right: 4px" />
+  <div v-if="formattedDurationUntilStart() !== undefined">
+    <q-icon
+      v-if="firstTransitLegIsRealTime()"
+      name="rss_feed"
+      style="margin-right: 4px"
+    />
     <span class="real-time-departure-time">
-      {{ formattedRealTimeUntilStart() }}&nbsp;
+      {{ formattedDurationUntilStart() }}&nbsp;
     </span>
-    <span class="real-time-departure-location">
+    <span
+      v-if="firstTransitLegDepartureLocation()"
+      class="real-time-departure-location"
+    >
       {{
         $t('departs_at_$location', {
-          location: 'John & 5th',
+          location: firstTransitLegDepartureLocation(),
         })
       }}
     </span>
@@ -77,7 +83,13 @@ export default defineComponent({
     };
   },
   methods: {
-    formattedRealTimeUntilStart(): string | undefined {
+    firstTransitLegIsRealTime(): boolean {
+      return this.itinerary.firstTransitLeg?.realTime ?? false;
+    },
+    firstTransitLegDepartureLocation(): string | undefined {
+      return this.itinerary.firstTransitLeg?.departureLocationName;
+    },
+    formattedDurationUntilStart(): string | undefined {
       let startTime = this.itinerary.firstTransitLeg?.startTime;
       if (!startTime) {
         return undefined;

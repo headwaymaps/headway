@@ -238,6 +238,10 @@ export class ItineraryLeg {
     return this.raw.realTime;
   }
 
+  get departureLocationName(): string | undefined {
+    return this.raw.from?.name;
+  }
+
   get alerts(): LegAlert[] {
     return this.raw.alerts?.map((a) => new LegAlert(a)) || [];
   }

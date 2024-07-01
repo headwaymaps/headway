@@ -83,6 +83,9 @@ pub struct Leg {
     /// What time the leg starts, in millis since Unix epoch (UTC)
     pub end_time: u64,
 
+    /// Whether there is real-time data about this Leg
+    pub real_time: bool,
+
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
