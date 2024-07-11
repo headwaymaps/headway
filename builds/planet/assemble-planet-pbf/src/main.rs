@@ -183,8 +183,11 @@ mod distribution {
                 Ok(child) => child,
                 Err(err) => {
                     if let std::io::ErrorKind::NotFound = err.kind() {
-                        eprintln!("aria2c is missing. Install aria2c and try again.");
+                        eprintln!("aria2c is missing. Install aria2c and try again: `apt install aria2c`");
+                    } else {
+                        eprintln!("err running aria2c: {err:?}");
                     }
+
                     return Err(err.into());
                 }
             };
@@ -266,7 +269,7 @@ mod osmio {
             Ok(child) => child,
             Err(err) => {
                 if let std::io::ErrorKind::NotFound = err.kind() {
-                    eprintln!("osmium is missing. Install osmium and try again.");
+                    eprintln!("osmium is missing. Install osmium and try again: `apt install osmium-tool`");
                 }
                 return Err(err.into());
             }
