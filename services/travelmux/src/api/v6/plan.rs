@@ -1,3 +1,4 @@
+use actix_web::web::{Data, Query};
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use geo::algorithm::BoundingRect;
 use geo::geometry::{LineString, Point, Rect};
@@ -609,65 +610,22 @@ pub async fn _get_plan(
     match primary_mode {
         TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
         other => {
-            debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
-
-            let mode = match other {
-                TravelMode::Transit => unreachable!("handled above"),
-                TravelMode::Bicycle => valhalla_api::ModeCosting::Bicycle,
-                TravelMode::Car => valhalla_api::ModeCosting::Auto,
-                TravelMode::Walk => valhalla_api::ModeCosting::Pedestrian,
-            };
-
-            // route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}
-            let router_url = app_state.valhalla_router().plan_url(
-                query.from_place,
-                query.to_place,
-                mode,
-                query.num_itineraries,
-                distance_units,
-            )?;
-            let valhalla_response: reqwest::Response =
-                reqwest::get(router_url).await.map_err(|e| {
-                    log::error!("error while fetching from valhalla service: {e}");
-                    PlanResponseErr::from(Error::server(e))
-                })?;
-            if !valhalla_response.status().is_success() {
-                log::warn!(
-                    "upstream HTTP Error from valhalla service: {}",
-                    valhalla_response.status()
-                )
-            }
-
-            let mut response = HttpResponseBuilder::new(valhalla_response.status());
-            debug_assert_eq!(
-                valhalla_response
-                    .headers()
-                    .get(HeaderName::from_static("content-type")),
-                Some(&HeaderValue::from_str("application/json;charset=utf-8").unwrap())
-            );
-            response.content_type("application/json;charset=utf-8");
-
-            let valhalla_route_response: valhalla_api::ValhallaRouteResponseResult =
-                valhalla_response.json().await.map_err(|e| {
-                    log::error!("error while parsing valhalla response: {e}");
-                    PlanResponseErr::from(Error::server(e))
-                })?;
-
-            let mut plan_response =
-                PlanResponseOk::from_valhalla(*primary_mode, valhalla_route_response)?;
-
             if primary_mode == &TravelMode::Bicycle || primary_mode == &TravelMode::Walk {
                 match otp_plan(&query, req, &app_state, primary_mode).await {
-                    Ok(mut otp_response) => {
+                    Ok(otp_response) => {
                         debug_assert_eq!(
                             1,
                             otp_response.plan.itineraries.len(),
                             "expected exactly one itinerary from OTP"
                         );
-                        if let Some(otp_itinerary) = otp_response.plan.itineraries.pop() {
-                            log::debug!("adding OTP itinerary to valhalla response");
-                            plan_response.plan.itineraries.insert(0, otp_itinerary);
-                        }
+                        // Prefer OTP response when available - anecdotally, it tends to be higher quality than Valhalla routes for
+                        // walking and cycling.
+                        //
+                        // We could combine the results and return them all, but I seemingly never want the valhalla directions when OTP are available.
+                        //
+                        // Plus, when re-routing, the navigation SDK tries to do route-matching so that the "most similar" route
+                        // will be applied. The end result is that you sometimes end up on the valhalla route, which IME is typically worse.
+                        return Ok(otp_response);
                     }
                     Err(e) => {
                         // match error_code to raw value of ErrorType enum
@@ -677,7 +635,7 @@ pub async fn _get_plan(
                             }
                             other => {
                                 debug_assert!(other.is_ok(), "unexpected error code: {e:?}");
-                                // We're mixing with results from Valhalla anyway, so dont' surface this error
+                                // We're mixing with results from Valhalla anyway, so don't surface this error
                                 // to the user. Likely we just don't support this area.
                                 log::error!("OTP failed to plan {primary_mode:?} route: {e}");
                             }
@@ -685,10 +643,65 @@ pub async fn _get_plan(
                     }
                 }
             }
-
-            Ok(plan_response)
+            Ok(valhalla_plan(&query, &app_state, primary_mode, distance_units, other).await?)
         }
     }
+}
+
+async fn valhalla_plan(
+    query: &Query<PlanQuery>,
+    app_state: &Data<AppState>,
+    primary_mode: &TravelMode,
+    distance_units: DistanceUnit,
+    other: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
+
+    let mode = match other {
+        TravelMode::Transit => unreachable!("handled above"),
+        TravelMode::Bicycle => valhalla_api::ModeCosting::Bicycle,
+        TravelMode::Car => valhalla_api::ModeCosting::Auto,
+        TravelMode::Walk => valhalla_api::ModeCosting::Pedestrian,
+    };
+
+    // route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}
+    let router_url = app_state.valhalla_router().plan_url(
+        query.from_place,
+        query.to_place,
+        mode,
+        query.num_itineraries,
+        distance_units,
+    )?;
+    let valhalla_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
+        log::error!("error while fetching from valhalla service: {e}");
+        PlanResponseErr::from(Error::server(e))
+    })?;
+    if !valhalla_response.status().is_success() {
+        log::warn!(
+            "upstream HTTP Error from valhalla service: {}",
+            valhalla_response.status()
+        )
+    }
+
+    let mut response = HttpResponseBuilder::new(valhalla_response.status());
+    debug_assert_eq!(
+        valhalla_response
+            .headers()
+            .get(HeaderName::from_static("content-type")),
+        Some(&HeaderValue::from_str("application/json;charset=utf-8").unwrap())
+    );
+    response.content_type("application/json;charset=utf-8");
+
+    let valhalla_route_response: valhalla_api::ValhallaRouteResponseResult =
+        valhalla_response.json().await.map_err(|e| {
+            log::error!("error while parsing valhalla response: {e}");
+            PlanResponseErr::from(Error::server(e))
+        })?;
+
+    Ok(PlanResponseOk::from_valhalla(
+        *primary_mode,
+        valhalla_route_response,
+    )?)
 }
 
 async fn otp_plan(
