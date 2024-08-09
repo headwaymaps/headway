@@ -20,6 +20,7 @@ import { getBaseMap } from 'src/components/BaseMap.vue';
 import { placeDisplayName } from 'src/i18n/utils';
 import PlaceCard from 'src/components/PlaceCard.vue';
 import { defineComponent } from 'vue';
+import { RouteLocation } from 'vue-router';
 import SearchBox from 'src/components/SearchBox.vue';
 import Place, { PlaceStorage } from 'src/models/Place';
 import Markers from 'src/utils/Markers';
@@ -67,7 +68,11 @@ export default defineComponent({
       }
     },
   },
-  beforeRouteUpdate: async function (to, from, next) {
+  beforeRouteUpdate: async function (
+    to: RouteLocation,
+    from: RouteLocation,
+    next: () => void,
+  ) {
     const placeId = to.params.placeId as string;
     let place = await PlaceStorage.fetchFromSerializedId(placeId);
     if (place) {

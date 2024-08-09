@@ -21,13 +21,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
+import { QItemProps } from 'quasar';
 
 export default defineComponent({
   name: 'TripListItem',
   props: {
     active: Boolean,
-    clickHandler: Function,
+    clickHandler: Function as PropType<QItemProps['onClick']>,
     durationFormatted: String,
     distanceFormatted: String,
   },
