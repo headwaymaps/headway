@@ -91,7 +91,7 @@ save-gtfs:
     ARG output_prefix=$(basename $transit_feeds .gtfs_feeds.csv)
 
     COPY (+gtfs-build/gtfs --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /gtfs
-    RUN tar --zstd -cf /gtfs.tar.zst -C /gtfs .
+    RUN tar --use-compress-program="zstd -T0" -cf /gtfs.tar.zst -C /gtfs .
     # This isn't used at runtime, but it might be useful to archive the input
     SAVE ARTIFACT /gtfs.tar.zst AS LOCAL ./data/${area}-${output_prefix}-${cache_key}.gtfs.tar.zst
 
@@ -135,7 +135,7 @@ save-otp:
                                --otp_build_config=${otp_build_config} \
     ) /graph.obj
 
-    RUN zstd /graph.obj
+    RUN zstd -T0 /graph.obj
     SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${output_name}-${cache_key}.graph.obj.zst
 
 save-mbtiles:
@@ -148,7 +148,7 @@ save-valhalla:
     FROM +save-base
     ARG --required area
     COPY (+valhalla-build/tiles --area=${area}) /valhalla
-    RUN tar --zstd -cf /valhalla.tar.zst -C /valhalla .
+    RUN tar --use-compress-program="zstd -T0" -cf /valhalla.tar.zst -C /valhalla .
     SAVE ARTIFACT /valhalla.tar.zst AS LOCAL ./data/${area}.valhalla.tar.zst
 
 save-elasticsearch:
@@ -156,7 +156,7 @@ save-elasticsearch:
     ARG --required area
     ARG countries
     COPY (+pelias-import/elasticsearch --area=${area} --countries=${countries}) /elasticsearch
-    RUN tar --zstd -cf /elasticsearch.tar.zst -C /elasticsearch .
+    RUN tar --use-compress-program="zstd -T0" -cf /elasticsearch.tar.zst -C /elasticsearch .
     SAVE ARTIFACT /elasticsearch.tar.zst AS LOCAL ./data/${area}.elasticsearch.tar.zst
 
 save-placeholder:
@@ -164,7 +164,7 @@ save-placeholder:
     ARG --required area
     ARG countries
     COPY (+pelias-prepare-placeholder/placeholder --countries=${countries}) /placeholder
-    RUN tar --zstd -cf /placeholder.tar.zst -C /placeholder .
+    RUN tar --use-compress-program="zstd -T0" -cf /placeholder.tar.zst -C /placeholder .
     SAVE ARTIFACT /placeholder.tar.zst AS LOCAL ./data/${area}.placeholder.tar.zst
 
 save-pelias-config:
