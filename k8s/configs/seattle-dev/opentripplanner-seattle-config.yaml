@@ -6,7 +6,6 @@ data:
   graph-url: https://data.example.com/dev/seattle-latest/Seattle.graph.obj.zst
   router-config-json: |
     {
-      "configVersion": "2023-05-24",
       "updaters": [
         {
           "feedId": "headway-1330",
