@@ -35,7 +35,7 @@ save:
     BUILD +save-mbtiles --area=${area}
     IF [ ! -z "${transit_feeds}" ]
         BUILD +save-gtfs --area=${area} --transit_feeds=${transit_feeds}
-        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
+        BUILD +save-otp-graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
     END
     BUILD +save-valhalla --area=${area}
     BUILD +save-pelias --area=${area} --countries=${countries}
@@ -98,14 +98,15 @@ save-gtfs:
 save-otp-zones:
     FROM +save-base
     ARG --required area
+    # List of filenames. Each file corresponds to an OTP graph to output. Each row in each file references a GTFS feeds input to that OTP graph.
     ARG --required transit_zones
     ARG otp_build_config
     FOR transit_feeds IN $transit_zones
-        BUILD +save-otp --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=1 --otp_build_config=${otp_build_config}
+        BUILD +save-otp-graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=1 --otp_build_config=${otp_build_config}
         BUILD +save-otp-router-config --transit_feeds=${transit_feeds}
     END
 
-save-otp:
+save-otp-graph:
     FROM +save-base
     ARG --required area
     ARG --required transit_feeds
@@ -128,7 +129,7 @@ save-otp:
     COPY +cache-buster/todays_date .
     ARG cache_key=$(cat todays_date)
 
-    COPY (+otp-build/graph.obj --area=${area} \
+    COPY (+otp-build-graph/graph.obj --area=${area} \
                                --clip_to_gtfs=${clip_to_gtfs} \
                                --transit_feeds=${transit_feeds} \
                                --cache_key=${cache_key} \
@@ -517,7 +518,7 @@ otp-base:
 
     RUN mkdir /var/opentripplanner
 
-otp-build:
+otp-build-graph:
     FROM +otp-base
 
     ARG --required area
