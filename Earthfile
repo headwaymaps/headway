@@ -543,19 +543,53 @@ otp-build-graph:
         COPY "${otp_build_config}" /var/opentripplanner/build-config.json
     END
 
+    # Note: This bounds all directions to the extent of the transit feeds, so e.g. you can't get OTP
+    # bike routing anywhere outside the bounds of the transit feeds. This should usually be fine, but it'd
+    # be nice to handle the case where someone wants biking outside of their transit graph bbox.
+    COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache_key=${cache_key}) bbox.txt
+    ARG gtfs_bbox=$(cat bbox.txt)
+
     IF [ -n "$clip_to_gtfs" ]
-        COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache_key=${cache_key}) bbox.txt
-        ARG clip_bbox=$(cat bbox.txt)
-        COPY (+extract/data.osm.pbf --area=${area} --clip_bbox=${clip_bbox}) /var/opentripplanner
+        COPY (+extract/data.osm.pbf --area=${area} --clip_bbox=${gtfs_bbox}) /var/opentripplanner
     ELSE
         COPY (+extract/data.osm.pbf --area=${area}) /var/opentripplanner
     END
+
+    COPY (+elevation/elevation-tifs --bbox=${gtfs_bbox}) /var/opentripplanner
 
     COPY (+gtfs-build/gtfs --transit_feeds=${transit_feeds} --cache_key=${cache_key}) /var/opentripplanner
 
     RUN --entrypoint -- --build --save
 
     SAVE ARTIFACT /var/opentripplanner/graph.obj /graph.obj
+
+download-elevation:
+    FROM +valhalla-base-image
+
+    # e.g. '-122.462 47.394 -122.005 47.831'
+    # Note: this is the bbox format we use everywhere, but we need to convert it to the comma separated one that valhalla uses
+    ARG --required bbox
+
+    ARG valhalla_bbox=$(echo ${bbox} | sed 's/ /,/g')
+    RUN valhalla_build_elevation --outdir elevation-hgts --from-bbox=${valhalla_bbox}
+
+    SAVE ARTIFACT elevation-hgts
+
+elevation:
+    FROM debian:bookworm-slim
+    ARG --required bbox
+
+    RUN apt-get update \
+        && apt-get install -y --no-install-recommends gdal-bin \
+        && rm -rf /var/lib/apt/lists/*
+
+    COPY services/otp/dem-hgt-to-tif .
+
+    COPY (+download-elevation/elevation-hgts --bbox=${bbox}) elevation-hgts/
+
+    RUN ./dem-hgt-to-tif elevation-hgts elevation-tifs
+
+    SAVE ARTIFACT elevation-tifs
 
 otp-init-image:
     FROM +downloader-base

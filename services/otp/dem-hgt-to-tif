@@ -1,0 +1,22 @@
+#!/bin/bash -ex
+
+HGT_DIR=$1
+if [ -z "$HGT_DIR" ]; then
+    echo "Missing param for input directory of .hgt files"
+    exit 1
+fi
+
+TIF_DIR=$2
+if [ -z "$TIF_DIR" ]; then
+    echo "Missing param for output directory of .tif files"
+    exit 1
+fi
+
+mkdir "$TIF_DIR"
+
+find "$HGT_DIR" -type f | while read -r file; do
+    gunzip "$file"
+    BASENAME=$(basename "$file")
+    TIF_NAME="${BASENAME%.*.*}.tif"
+    gdal_translate "${file%.*}" "${TIF_DIR}/${TIF_NAME}"
+done
