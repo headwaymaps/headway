@@ -386,6 +386,9 @@ cache-buster:
     RUN --no-cache echo $(date +%Y-%m-%d) > todays_date
     SAVE ARTIFACT todays_date
 
+# Get a list of all gtfs feeds that intersect with the given area
+# Feeds are sourced from The Mobility Database Catalogs
+# https://github.com/MobilityData/mobility-database-catalogs
 gtfs-enumerate:
     FROM +gtfs-base
 
