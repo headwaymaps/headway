@@ -25,10 +25,12 @@ impl AppState {
         })?;
 
         // TODO: Separate inserting an endpoint from (periodically) fetching its routers
-        self.otp_cluster.insert_endpoint(url).await.map_err(|err| {
-            log::error!("error while inserting endpoint {endpoint:?}");
-            err
-        })?;
+        self.otp_cluster
+            .insert_endpoint(url)
+            .await
+            .inspect_err(|err| {
+                log::error!("error while inserting endpoint {endpoint:?}, {err}");
+            })?;
         log::info!("added endpoint: {endpoint}");
         Ok(())
     }
