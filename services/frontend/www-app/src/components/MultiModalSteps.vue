@@ -2,10 +2,10 @@
   <q-list>
     <q-item
       v-for="step in steps"
-      v-bind:key="JSON.stringify(step)"
+      :key="JSON.stringify(step)"
       :style="step.isDestination ? 'padding-bottom: 20px;' : ''"
       :clickable="!step.isMovement"
-      v-on:click="clickedStep(step)"
+      @click="clickedStep(step)"
     >
       <q-item-section
         :top="step.isMovement"
@@ -23,16 +23,16 @@
       </q-item-section>
       <q-item-section class="col-1">
         <div
+          v-if="!step.isDestination"
           :class="step.timelineClasses"
           style="text-align: center"
-          v-if="!step.isDestination"
         >
           {{ step.timeline }}
         </div>
         <div
+          v-if="step.isDestination"
           :class="step.timelineClasses"
           style="text-align: center"
-          v-if="step.isDestination"
         >
           <svg display="block" height="41px" width="27px" viewBox="0 0 27 41">
             <g fill-rule="nonzero">
@@ -75,52 +75,6 @@
   </q-list>
 </template>
 
-<style lang="scss">
-.timeline-edge {
-  position: relative;
-  width: 100%;
-  height: calc(100% + 20px);
-  left: calc(50% - 6px);
-  margin-top: -10px;
-  margin-bottom: -10px;
-}
-
-.timeline-edge-WALK {
-  border-left: dashed $walkColor 6px;
-}
-
-.timeline-edge:not(.timeline-edge-WALK) {
-  border-left: solid $transitColor 6px;
-}
-
-.timeline-node {
-  position: relative;
-  width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  left: calc(50% - 11px);
-  border: solid #888 3px;
-}
-
-.timeline-node.timeline-origin {
-  border-color: black;
-}
-
-.timeline-node.timeline-destination {
-  border: none;
-  left: calc(50% - 15px);
-}
-
-.timeline-time-mode.timeline-destination,
-.timeline-description.timeline-destination {
-  margin-top: 26px;
-}
-
-.timeline-wait-time {
-  opacity: 0.6;
-}
-</style>
-
 <script lang="ts">
 import Itinerary, { ItineraryLeg } from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
@@ -131,6 +85,12 @@ import Trip from 'src/models/Trip';
 
 export default defineComponent({
   name: 'MultiModalSteps',
+  props: {
+    trip: {
+      type: Object as PropType<Trip>,
+      required: true,
+    },
+  },
   data(): { steps: Step[]; itinerary: Itinerary } {
     // this cast is safe because we know that the trip is a transit trip
     const itinerary = this.trip.transitItinerary() as Itinerary;
@@ -139,12 +99,6 @@ export default defineComponent({
       steps: buildSteps(itinerary),
       itinerary,
     };
-  },
-  props: {
-    trip: {
-      type: Object as PropType<Trip>,
-      required: true,
-    },
   },
   methods: {
     formatTime,
@@ -191,7 +145,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
     waitTime: 0,
   };
 
-  let steps = [originStep];
+  const steps = [originStep];
 
   pairwiseForEach(itinerary.legs, (prevLeg, currentLeg) => {
     let waitTime = 0;
@@ -240,3 +194,49 @@ function buildSteps(itinerary: Itinerary): Step[] {
   return steps;
 }
 </script>
+
+<style lang="scss">
+.timeline-edge {
+  position: relative;
+  width: 100%;
+  height: calc(100% + 20px);
+  left: calc(50% - 6px);
+  margin-top: -10px;
+  margin-bottom: -10px;
+}
+
+.timeline-edge-WALK {
+  border-left: dashed $walkColor 6px;
+}
+
+.timeline-edge:not(.timeline-edge-WALK) {
+  border-left: solid $transitColor 6px;
+}
+
+.timeline-node {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  left: calc(50% - 11px);
+  border: solid #888 3px;
+}
+
+.timeline-node.timeline-origin {
+  border-color: black;
+}
+
+.timeline-node.timeline-destination {
+  border: none;
+  left: calc(50% - 15px);
+}
+
+.timeline-time-mode.timeline-destination,
+.timeline-description.timeline-destination {
+  margin-top: 26px;
+}
+
+.timeline-wait-time {
+  opacity: 0.6;
+}
+</style>

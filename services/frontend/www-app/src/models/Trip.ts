@@ -49,7 +49,7 @@ export default class Trip {
     return names.join(i18n.global.t('punctuation_list_seperator'));
   }
 
-  get distanceFormatted(): string | undefined {
+  get distanceFormatted(): string {
     return formatDistance(
       this.raw.distance,
       this.innerDistanceUnits,

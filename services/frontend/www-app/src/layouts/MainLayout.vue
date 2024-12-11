@@ -5,6 +5,25 @@
   </div>
 </template>
 
+<script lang="ts">
+import { defineComponent } from 'vue';
+import BaseMap from 'src/components/BaseMap.vue';
+
+export default defineComponent({
+  name: 'MainLayout',
+  components: { BaseMap },
+  props: {
+    appClass: {
+      type: String,
+      default: undefined,
+    },
+  },
+  mounted() {
+    this.$q.screen.setSizes({ md: 800 });
+  },
+});
+</script>
+
 <style lang="scss">
 body.mobile {
   .app-container {
@@ -113,19 +132,3 @@ body.mobile {
   }
 }
 </style>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import BaseMap from 'src/components/BaseMap.vue';
-
-export default defineComponent({
-  name: 'MainLayout',
-  props: {
-    appClass: String,
-  },
-  components: { BaseMap },
-  mounted() {
-    this.$q.screen.setSizes({ md: 800 });
-  },
-});
-</script>

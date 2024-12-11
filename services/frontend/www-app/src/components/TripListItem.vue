@@ -4,7 +4,7 @@
     :clickable="!$props.active"
     active-class="list-item--selected"
     :active="$props.active"
-    v-on:click="$props.clickHandler"
+    @click="$props.clickHandler"
   >
     <q-item-section class="col-9" top>
       <slot />
@@ -28,9 +28,18 @@ export default defineComponent({
   name: 'TripListItem',
   props: {
     active: Boolean,
-    clickHandler: Function as PropType<QItemProps['onClick']>,
-    durationFormatted: String,
-    distanceFormatted: String,
+    clickHandler: {
+      type: Function as PropType<QItemProps['onClick']>,
+      default: () => {},
+    },
+    durationFormatted: {
+      type: String,
+      required: true,
+    },
+    distanceFormatted: {
+      type: String,
+      required: true,
+    },
   },
 });
 </script>

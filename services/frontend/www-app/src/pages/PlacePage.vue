@@ -2,8 +2,8 @@
   <div class="top-card">
     <search-box
       :initial-place="place"
-      v-on:did-select-place="searchBoxDidSelectPlace"
-      v-on:did-submit-search="
+      @did-select-place="searchBoxDidSelectPlace"
+      @did-submit-search="
         (searchText) =>
           $router.push(`/search/${encodeURIComponent(searchText)}`)
       "
@@ -11,7 +11,7 @@
   </div>
 
   <div class="bottom-card">
-    <place-card :place="place" v-if="place" />
+    <place-card v-if="place" :place="place" />
   </div>
 </template>
 
@@ -41,13 +41,28 @@ function renderOnMap(place: Place) {
 
 export default defineComponent({
   name: 'PlacePage',
+  components: { PlaceCard, SearchBox },
+  beforeRouteUpdate: async function (
+    to: RouteLocation,
+    from: RouteLocation,
+    next: () => void,
+  ) {
+    const placeId = to.params.placeId as string;
+    const place = await PlaceStorage.fetchFromSerializedId(placeId);
+    if (place) {
+      this.place = place;
+    } else {
+      console.warn(`unable to find Place with id: ${placeId}`);
+    }
+
+    next();
+  },
   props: {
     placeId: {
       type: String,
       required: true,
     },
   },
-  components: { PlaceCard, SearchBox },
   data: function (): { place?: Place } {
     return {
       place: undefined,
@@ -58,6 +73,15 @@ export default defineComponent({
       renderOnMap(newValue);
     },
   },
+  mounted: async function () {
+    const placeId = this.$props.placeId as string;
+    const place = await PlaceStorage.fetchFromSerializedId(placeId);
+    if (place) {
+      this.place = place;
+    } else {
+      console.warn(`unable to find Place with id: ${placeId}`);
+    }
+  },
   methods: {
     placeDisplayName,
     searchBoxDidSelectPlace(place?: Place) {
@@ -67,30 +91,6 @@ export default defineComponent({
         this.$router.push('/');
       }
     },
-  },
-  beforeRouteUpdate: async function (
-    to: RouteLocation,
-    from: RouteLocation,
-    next: () => void,
-  ) {
-    const placeId = to.params.placeId as string;
-    let place = await PlaceStorage.fetchFromSerializedId(placeId);
-    if (place) {
-      this.place = place;
-    } else {
-      console.warn(`unable to find Place with id: ${placeId}`);
-    }
-
-    next();
-  },
-  mounted: async function () {
-    const placeId = this.$props.placeId as string;
-    let place = await PlaceStorage.fetchFromSerializedId(placeId);
-    if (place) {
-      this.place = place;
-    } else {
-      console.warn(`unable to find Place with id: ${placeId}`);
-    }
   },
 });
 </script>

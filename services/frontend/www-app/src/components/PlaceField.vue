@@ -5,9 +5,9 @@
       <slot />
     </q-item-label>
     <q-btn
+      v-if="copyText"
       class="col-1"
       icon="content_copy"
-      v-if="copyText"
       unelevated
       :ripple="false"
       size="sm"
@@ -30,7 +30,10 @@ export default defineComponent({
       type: String,
       required: true,
     },
-    copyText: String,
+    copyText: {
+      type: String,
+      default: undefined,
+    },
   },
   methods: {
     copyToClipboard(text: string): void {

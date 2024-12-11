@@ -2,14 +2,14 @@
   <div class="top-card">
     <search-box
       :initial-input-text="searchText"
-      v-on:did-select-place="searchBoxDidSelectPlace"
-      v-on:did-submit-search="searchBoxDidSubmitSearch"
+      @did-select-place="searchBoxDidSelectPlace"
+      @did-submit-search="searchBoxDidSubmitSearch"
     />
   </div>
 
-  <div class="bottom-card" ref="bottomCard">
+  <div ref="bottomCard" class="bottom-card">
     <q-linear-progress v-if="isLoading" indeterminate />
-    <div class="selected-place-card" v-if="selectedPlace">
+    <div v-if="selectedPlace" class="selected-place-card">
       <place-card
         :place="selectedPlace"
         :did-press-close="
@@ -20,27 +20,27 @@
         "
       />
     </div>
-    <q-list class="search-results" v-if="$q.screen.gt.sm || !selectedPlace">
+    <q-list v-if="$q.screen.gt.sm || !selectedPlace" class="search-results">
       <search-list-item
         v-for="place in searchResults?.places"
-        v-bind:key="place.id.serialized()"
+        :id="`search-list-item-${place.id.serialized()}`"
+        :key="place.id.serialized()"
         :place="place"
         :active="place == selectedPlace"
         clickable
-        :id="`search-list-item-${place.id.serialized()}`"
-        v-on:mouseenter="didHoverSearchListItem(place)"
-        v-on:mouseleave="didHoverSearchListItem(undefined)"
-        v-on:click="didClickSearchListItem(place)"
+        @mouseenter="didHoverSearchListItem(place)"
+        @mouseleave="didHoverSearchListItem(undefined)"
+        @click="didClickSearchListItem(place)"
       />
       <q-item
-        class="list-item"
         v-if="searchResults?.places.length === 0 && !isLoading"
+        class="list-item"
       >
         <q-item-section>
           <q-item-label>
             {{ $t('search_results_not_found_header') }}
           </q-item-label>
-          <!-- eslint-disable vue/no-v-text-v-html-on-component -->
+          <!-- eslint-disable vue/no-v-html vue/no-v-text-v-html-on-component -->
           <q-item-label
             class="text-weight-light"
             v-html="
@@ -50,29 +50,12 @@
               })
             "
           />
-          <!-- eslint-enable vue/no-v-text-v-html-on-component -->
+          <!-- eslint-enable vue/no-v-html vue/no-v-text-v-html-on-component -->
         </q-item-section>
       </q-item>
     </q-list>
   </div>
 </template>
-
-<style lang="scss">
-.selected-place-card {
-  @media screen and (min-width: 800px) {
-    // on "desktop" layout
-    position: absolute;
-    z-index: 1;
-    left: var(--left-panel-width);
-    margin-top: 16px;
-    margin-left: 16px;
-    border-radius: 4px;
-    width: var(--left-panel-width);
-    box-shadow: 0px 0px 5px #00000088;
-    background-color: white;
-  }
-}
-</style>
 
 <script lang="ts">
 import { baseMapPromise, getBaseMap } from 'src/components/BaseMap.vue';
@@ -90,6 +73,7 @@ type SearchResults = { places: Place[]; bbox: LngLatBoundsLike | undefined };
 
 export default defineComponent({
   name: 'SearchPage',
+  components: { PlaceCard, SearchBox, SearchListItem },
   props: {
     searchText: {
       type: String,
@@ -109,7 +93,14 @@ export default defineComponent({
       isLoading: false,
     };
   },
-  components: { PlaceCard, SearchBox, SearchListItem },
+  mounted(): void {
+    this.updateSearch(this.searchText);
+  },
+  async unmounted(): Promise<void> {
+    const map = await baseMapPromise;
+    this.searchResults = undefined;
+    map.removeAllMarkers();
+  },
   methods: {
     searchBoxDidSubmitSearch(searchText: string): void {
       this.updateSearch(searchText);
@@ -126,7 +117,7 @@ export default defineComponent({
     didClickSearchListItem(place: Place): void {
       this.selectedPlace = place;
       this.renderPlacesOnMap();
-      let map = getBaseMap();
+      const map = getBaseMap();
       if (!map) {
         console.error('map was unexpectedly nil');
         return;
@@ -139,12 +130,12 @@ export default defineComponent({
         return;
       }
 
-      let bottomCard: HTMLElement = this.$refs.bottomCard as HTMLElement;
+      const bottomCard: HTMLElement = this.$refs.bottomCard as HTMLElement;
       if (this.$q.screen.gt.sm) {
         // This abuses the fact that the "selected place card" is the same
         // width as the bottomCard. We could use $refs.selectedPlaceCard,
         // but it might not be visible to measure yet.
-        let xOffset = bottomCard.offsetWidth;
+        const xOffset = bottomCard.offsetWidth;
         if (place.bbox) {
           options = { offset: [xOffset / 4, 0] };
         } else {
@@ -192,14 +183,14 @@ export default defineComponent({
         return;
       }
 
-      let map = await baseMapPromise;
+      const map = await baseMapPromise;
 
       let focus = undefined;
       if (map.getZoom() > 6) {
         focus = map.getCenter();
       }
 
-      let places: Place[] = [];
+      const places: Place[] = [];
       let bbox: LngLatBoundsLike | undefined = undefined;
 
       try {
@@ -233,8 +224,8 @@ export default defineComponent({
             console.error('feature was missing gid');
             continue;
           }
-          let gid = feature.properties.gid;
-          let id = PlaceId.gid(gid);
+          const gid = feature.properties.gid;
+          const id = PlaceId.gid(gid);
           places.push(Place.fromFeature(id, feature));
         }
       } catch (e) {
@@ -246,7 +237,7 @@ export default defineComponent({
       this.boundMapToSearchResults();
     },
     async boundMapToSearchResults() {
-      let map = await baseMapPromise;
+      const map = await baseMapPromise;
       if (this.searchResults?.bbox) {
         map.fitBounds(this.searchResults.bbox);
       }
@@ -280,13 +271,22 @@ export default defineComponent({
       }
     },
   },
-  mounted(): void {
-    this.updateSearch(this.searchText);
-  },
-  async unmounted(): Promise<void> {
-    const map = await baseMapPromise;
-    this.searchResults = undefined;
-    map.removeAllMarkers();
-  },
 });
 </script>
+
+<style lang="scss">
+.selected-place-card {
+  @media screen and (min-width: 800px) {
+    // on "desktop" layout
+    position: absolute;
+    z-index: 1;
+    left: var(--left-panel-width);
+    margin-top: 16px;
+    margin-left: 16px;
+    border-radius: 4px;
+    width: var(--left-panel-width);
+    box-shadow: 0px 0px 5px #00000088;
+    background-color: white;
+  }
+}
+</style>
