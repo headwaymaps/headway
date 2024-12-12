@@ -3,7 +3,7 @@
     <div
       style="display: flex; flex-direction: row; gap: 16px; align-items: center"
     >
-      <q-btn round icon="arrow_back" v-on:click="() => goToAlternates()" />
+      <q-btn round icon="arrow_back" @click="() => goToAlternates()" />
       <div style="display: flex; flex-direction: column; gap: 8px; flex: 1">
         <search-box
           :hint="$t('search.from')"
@@ -21,17 +21,9 @@
     </div>
   </div>
   <div class="bottom-card steps-page-bottom-card">
-    <component v-if="trip" :is="componentForMode(trip.mode)" :trip="trip" />
+    <component :is="componentForMode(trip.mode)" v-if="trip" :trip="trip" />
   </div>
 </template>
-
-<style lang="scss">
-.steps-page-bottom-card {
-  @media screen and (max-width: 799px) {
-    max-height: calc(100% - 350px);
-  }
-}
-</style>
 
 <script lang="ts">
 import { getBaseMap } from 'src/components/BaseMap.vue';
@@ -49,6 +41,7 @@ import TransitQuery from 'src/models/TransitQuery';
 
 export default defineComponent({
   name: 'StepsPage',
+  components: { SearchBox },
   props: {
     mode: {
       type: String as () => TravelMode,
@@ -67,7 +60,21 @@ export default defineComponent({
       required: true,
     },
   },
-  components: { SearchBox },
+  setup: function () {
+    const toPlace: Ref<Place | undefined> = ref(undefined);
+    const fromPlace: Ref<Place | undefined> = ref(undefined);
+
+    const route = useRoute();
+    const transitQuery: Ref<TransitQuery> = ref(
+      TransitQuery.parseFromQuery(route.query),
+    );
+
+    return {
+      toPlace,
+      fromPlace,
+      transitQuery,
+    };
+  },
   data: function (): {
     trip?: Trip;
     tripMarkers: string[];
@@ -76,6 +83,49 @@ export default defineComponent({
       trip: undefined,
       tripMarkers: [],
     };
+  },
+  mounted: async function () {
+    this.toPlace = await PlaceStorage.fetchFromSerializedId(
+      this.$props.to as string,
+    );
+    this.fromPlace = await PlaceStorage.fetchFromSerializedId(
+      this.$props.from as string,
+    );
+    await this.rewriteUrl();
+
+    const map = getBaseMap();
+    if (!map) {
+      console.error('map was not set');
+      return;
+    }
+
+    setTimeout(() => {
+      const map = getBaseMap();
+      if (!map) {
+        console.error('map was not set');
+        return;
+      }
+      if (!this.trip) {
+        console.error('trip was not set');
+        return;
+      }
+      map.fitBounds(this.trip.bounds);
+    });
+
+    map.removeMarkersExcept(this.tripMarkers);
+    if (this.fromPlace) {
+      map.pushMarker(
+        'source_marker',
+        Markers.tripStart().setLngLat(this.fromPlace.point),
+      );
+    }
+
+    if (this.toPlace) {
+      map.pushMarker(
+        'destination_marker',
+        Markers.tripEnd().setLngLat(this.toPlace.point),
+      );
+    }
   },
   methods: {
     componentForMode(mode: TravelMode): Component {
@@ -92,13 +142,13 @@ export default defineComponent({
     goToAlternates() {
       const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
       const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
-      let path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
-      let query = this.transitQuery.searchQuery();
+      const path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
+      const query = this.transitQuery.searchQuery();
       this.$router.push({ path, query });
     },
 
     rewriteUrl: async function () {
-      let map = getBaseMap();
+      const map = getBaseMap();
       if (!map) {
         console.error('map was not set');
         return;
@@ -127,8 +177,8 @@ export default defineComponent({
           return;
         }
 
-        let trips = result.value;
-        let idx = parseInt(this.tripIdx);
+        const trips = result.value;
+        const idx = parseInt(this.tripIdx);
         const trip = trips[idx];
         console.assert(trip);
         this.$data.trip = trip;
@@ -150,7 +200,7 @@ export default defineComponent({
 
       // TODO: add a map.filterLayers((layerName: string) => boolean) method so
       // we can keep the layer we need and remove the others based on a prefix/regex/w.e.
-      let layerIds = [];
+      const layerIds = [];
       for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
         const leg = trip.legs[legIdx];
 
@@ -161,7 +211,7 @@ export default defineComponent({
           map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(true));
         }
 
-        let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
+        const transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
         if (
           legIdx > 0 &&
           !this.tripMarkers.includes(transferLayerId.toString())
@@ -178,63 +228,13 @@ export default defineComponent({
       map.removeLayersExcept(layerIds);
     },
   },
-  mounted: async function () {
-    this.toPlace = await PlaceStorage.fetchFromSerializedId(
-      this.$props.to as string,
-    );
-    this.fromPlace = await PlaceStorage.fetchFromSerializedId(
-      this.$props.from as string,
-    );
-    await this.rewriteUrl();
-
-    let map = getBaseMap();
-    if (!map) {
-      console.error('map was not set');
-      return;
-    }
-
-    setTimeout(() => {
-      let map = getBaseMap();
-      if (!map) {
-        console.error('map was not set');
-        return;
-      }
-      if (!this.trip) {
-        console.error('trip was not set');
-        return;
-      }
-      map.fitBounds(this.trip.bounds);
-    });
-
-    map.removeMarkersExcept(this.tripMarkers);
-    if (this.fromPlace) {
-      map.pushMarker(
-        'source_marker',
-        Markers.tripStart().setLngLat(this.fromPlace.point),
-      );
-    }
-
-    if (this.toPlace) {
-      map.pushMarker(
-        'destination_marker',
-        Markers.tripEnd().setLngLat(this.toPlace.point),
-      );
-    }
-  },
-  setup: function () {
-    const toPlace: Ref<Place | undefined> = ref(undefined);
-    const fromPlace: Ref<Place | undefined> = ref(undefined);
-
-    const route = useRoute();
-    const transitQuery: Ref<TransitQuery> = ref(
-      TransitQuery.parseFromQuery(route.query),
-    );
-
-    return {
-      toPlace,
-      fromPlace,
-      transitQuery,
-    };
-  },
 });
 </script>
+
+<style lang="scss">
+.steps-page-bottom-card {
+  @media screen and (max-width: 799px) {
+    max-height: calc(100% - 350px);
+  }
+}
+</style>

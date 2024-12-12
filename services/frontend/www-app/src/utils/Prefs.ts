@@ -30,7 +30,7 @@ export default class Prefs {
     let value;
     try {
       value = JSON.parse(json);
-    } catch (e) {
+    } catch {
       console.warn('invalid json stored for map zoom:', json);
       return null;
     }
@@ -69,7 +69,7 @@ export default class Prefs {
     let value;
     try {
       value = JSON.parse(json);
-    } catch (e) {
+    } catch {
       console.warn('invalid json stored for map center:', json);
       return null;
     }

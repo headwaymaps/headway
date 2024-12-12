@@ -10,7 +10,7 @@
         unelevated
         :ripple="false"
         :icon="backIcon()"
-        @click="() => didPressClose!()"
+        @click="() => didPressClose?.()"
       />
     </div>
   </q-card-section>
@@ -37,8 +37,8 @@
         flat
         size="sm"
         :ripple="false"
-        @click="didToggleShowMoreOpeningHours"
         style="margin-left: 8px"
+        @click="didToggleShowMoreOpeningHours"
       >
         {{
           showMoreOpeningHours
@@ -77,15 +77,6 @@
     </div>
   </q-card-section>
 </template>
-<style lang="scss">
-// mobile layout
-@media screen and (max-width: 799px) {
-  .title-bar {
-    flex-direction: row-reverse;
-  }
-}
-</style>
-
 <script lang="ts">
 import { i18n } from 'src/i18n/lang';
 import Place from 'src/models/Place';
@@ -99,14 +90,23 @@ import TravelModeBar from './TravelModeBar.vue';
 
 export default defineComponent({
   name: 'PlaceCard',
-  emits: ['close'],
+  components: {
+    OpeningHoursStatus,
+    OpeningHoursTable,
+    PlaceField,
+    TravelModeBar,
+  },
   props: {
     place: {
       type: Place,
       required: true,
     },
-    didPressClose: Function,
+    didPressClose: {
+      type: Function,
+      default: undefined,
+    },
   },
+  emits: ['close'],
   data(): {
     rightNow: Date;
     showEditPanel: boolean;
@@ -121,23 +121,6 @@ export default defineComponent({
       showEditPanel: false,
       showMoreOpeningHours: false,
     };
-  },
-  methods: {
-    backIcon(): string {
-      if (this.$q.screen.gt.sm) {
-        return 'close';
-      } else if (this.$q.platform.is.mac || this.$q.platform.is.ios) {
-        return 'arrow_back_ios';
-      } else {
-        return 'arrow_back';
-      }
-    },
-    didToggleEdit(): void {
-      this.showEditPanel = !this.showEditPanel;
-    },
-    didToggleShowMoreOpeningHours() {
-      this.showMoreOpeningHours = !this.showMoreOpeningHours;
-    },
   },
   computed: {
     primaryName(): string {
@@ -191,11 +174,31 @@ export default defineComponent({
       }
     },
   },
-  components: {
-    OpeningHoursStatus,
-    OpeningHoursTable,
-    PlaceField,
-    TravelModeBar,
+  methods: {
+    backIcon(): string {
+      if (this.$q.screen.gt.sm) {
+        return 'close';
+      } else if (this.$q.platform.is.mac || this.$q.platform.is.ios) {
+        return 'arrow_back_ios';
+      } else {
+        return 'arrow_back';
+      }
+    },
+    didToggleEdit(): void {
+      this.showEditPanel = !this.showEditPanel;
+    },
+    didToggleShowMoreOpeningHours() {
+      this.showMoreOpeningHours = !this.showMoreOpeningHours;
+    },
   },
 });
 </script>
+
+<style lang="scss">
+// mobile layout
+@media screen and (max-width: 799px) {
+  .title-bar {
+    flex-direction: row-reverse;
+  }
+}
+</style>

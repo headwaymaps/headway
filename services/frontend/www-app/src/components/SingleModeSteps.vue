@@ -1,12 +1,12 @@
 <template>
   <q-list>
     <q-item
+      v-for="maneuver in nonTransitLeg.maneuvers"
+      :key="JSON.stringify(maneuver)"
       class="maneuver"
       active-class="bg-blue-1"
-      v-for="maneuver in nonTransitLeg.maneuvers"
       clickable
-      v-on:click="clickedManeuver(maneuver)"
-      v-bind:key="JSON.stringify(maneuver)"
+      @click="clickedManeuver(maneuver)"
     >
       <q-item-section avatar>
         <q-icon :name="valhallaTypeToIcon(maneuver.type)" />
@@ -22,14 +22,6 @@
     </q-item>
   </q-list>
 </template>
-
-<style lang="scss">
-.maneuver {
-  padding-top: 10px;
-  padding-bottom: 10px;
-  border-bottom: solid 1px #ddd;
-}
-</style>
 
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
@@ -66,3 +58,11 @@ export default defineComponent({
   },
 });
 </script>
+
+<style lang="scss">
+.maneuver {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom: solid 1px #ddd;
+}
+</style>

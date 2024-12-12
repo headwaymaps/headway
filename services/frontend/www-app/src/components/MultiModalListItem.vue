@@ -3,7 +3,7 @@
     {{ itinerary.startStopTimesFormatted }}
   </q-item-label>
   <q-item-label>
-    <span v-for="(leg, idx) in itinerary.legs" v-bind:key="JSON.stringify(leg)">
+    <span v-for="(leg, idx) in itinerary.legs" :key="JSON.stringify(leg)">
       <span v-if="idx > 0"> → </span>
       {{ leg.shortName }}
       <sup v-if="leg.alerts.length > 0"><q-icon name="warning" /></sup>
@@ -12,7 +12,7 @@
       /></sup>
     </span>
   </q-item-label>
-  <q-item-label caption v-if="active">
+  <q-item-label v-if="active" caption>
     {{ itinerary.walkingDistanceFormatted }}
   </q-item-label>
   <div v-if="formattedDurationUntilStart() !== undefined">
@@ -35,25 +35,12 @@
       }}
     </span>
   </div>
-  <ul class="alert-list" :hidden="!active" v-if="itinerary.hasAlerts">
-    <li v-for="alert in itinerary.alerts" v-bind:key="JSON.stringify(alert)">
+  <ul v-if="itinerary.hasAlerts" class="alert-list" :hidden="!active">
+    <li v-for="alert in itinerary.alerts" :key="JSON.stringify(alert)">
       ⚠️ {{ alert.headerText }}
     </li>
   </ul>
 </template>
-<style lang="scss">
-.alert-list {
-  list-style: none;
-  padding: 0;
-}
-.real-time-departure-location {
-  opacity: 0.8;
-}
-.real-time-departure-time {
-  font-weight: 500;
-}
-</style>
-
 <script lang="ts">
 import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
@@ -90,11 +77,11 @@ export default defineComponent({
       return this.itinerary.firstTransitLeg?.departureLocationName;
     },
     formattedDurationUntilStart(): string | undefined {
-      let startTime = this.itinerary.firstTransitLeg?.startTime;
+      const startTime = this.itinerary.firstTransitLeg?.startTime;
       if (!startTime) {
         return undefined;
       }
-      let timeUntilStart = startTime - this.nowTime;
+      const timeUntilStart = startTime - this.nowTime;
       if (timeUntilStart < 0) {
         return i18n.global.t('departs_$timeDuration_since_now', {
           timeDuration: formatDuration(-timeUntilStart / 1000),
@@ -108,3 +95,16 @@ export default defineComponent({
   },
 });
 </script>
+
+<style lang="scss">
+.alert-list {
+  list-style: none;
+  padding: 0;
+}
+.real-time-departure-location {
+  opacity: 0.8;
+}
+.real-time-departure-time {
+  font-weight: 500;
+}
+</style>

@@ -1,8 +1,8 @@
 <template>
   <div class="travel-mode-bar">
     <q-btn
-      icon="directions_bus"
       v-if="transitRoutingEnabled"
+      icon="directions_bus"
       unelevated
       rounded
       :ripple="false"
@@ -48,12 +48,6 @@
   </div>
 </template>
 
-<style lang="scss">
-.travel-mode-bar a:not(:last-child) {
-  margin-right: 8px;
-}
-</style>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { TravelMode } from 'src/utils/models';
@@ -63,22 +57,37 @@ import Place from 'src/models/Place';
 export default defineComponent({
   name: 'TravelModeBar',
   props: {
-    currentMode: String as () => TravelMode,
-    fromPlace: Place,
-    toPlace: Place,
+    currentMode: {
+      type: String as () => TravelMode,
+      default: undefined,
+    },
+    fromPlace: {
+      type: Place,
+      default: undefined,
+    },
+    toPlace: {
+      type: Place,
+      default: undefined,
+    },
+  },
+  setup: function () {
+    return { transitRoutingEnabled: Config.transitRoutingEnabled };
   },
   data: () => ({
     TravelMode,
   }),
-  setup: function () {
-    return { transitRoutingEnabled: Config.transitRoutingEnabled };
-  },
   methods: {
     linkPath(mode: string): string {
-      let f = (place?: Place): string => place?.urlEncodedId() ?? '_';
+      const f = (place?: Place): string => place?.urlEncodedId() ?? '_';
 
       return `/directions/${mode}/${f(this.toPlace)}/${f(this.fromPlace)}`;
     },
   },
 });
 </script>
+
+<style lang="scss">
+.travel-mode-bar a:not(:last-child) {
+  margin-right: 8px;
+}
+</style>

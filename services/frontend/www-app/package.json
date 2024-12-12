@@ -6,13 +6,13 @@
   "author": "Ellen Poe <ellen@ellenhp.me>",
   "private": true,
   "scripts": {
-    "lint": "NODE_ENV=production eslint --ext .js,.ts,.vue ./",
+    "lint": "NODE_ENV=production eslint ./",
     "format-check": "prettier --check \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "fmt": "yarn format",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "jest",
     "build": "yarn tsc",
-    "tsc": "vue-tsc --noEmit --skipLibCheck",
+    "tsc": "tsc --noEmit --skipLibCheck",
     "dev": "quasar dev"
   },
   "dependencies": {
@@ -27,26 +27,25 @@
     "vue-router": "^4.2.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.16.0",
     "@quasar/app-vite": "^1.7.3",
     "@quasar/quasar-app-extension-testing": "^2.0.4",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.14.202",
     "@types/node": "^20.11.16",
-    "@typescript-eslint/eslint-plugin": "^6.20.0",
-    "@typescript-eslint/parser": "^7.4.0",
     "autoprefixer": "^10.4.17",
     "babel-jest": "^29.7.0",
-    "eslint": "^8.56.0",
+    "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-vue": "^9.21.1",
     "jest": "^29.7.0",
     "prettier": "^3.2.4",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.3.3",
-    "vue-tsc": "^2.0.7"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
   },
   "engines": {
-    "node": "^20 || ^18",
+    "node": "^23 || ^22 || ^20",
     "npm": ">= 6.13.4",
     "yarn": ">= 1.21.1"
   },

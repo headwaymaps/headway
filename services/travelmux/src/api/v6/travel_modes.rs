@@ -25,7 +25,7 @@ impl<'de> Deserialize<'de> for TravelModes {
     {
         struct CommaSeparatedVecVisitor;
 
-        impl<'de> Visitor<'de> for CommaSeparatedVecVisitor {
+        impl Visitor<'_> for CommaSeparatedVecVisitor {
             type Value = TravelModes;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

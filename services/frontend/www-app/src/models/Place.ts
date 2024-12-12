@@ -33,7 +33,6 @@ export class PlaceId {
     if (this.location) {
       return `${this.location.lng},${this.location.lat}`;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return this.gid!;
     }
   }
@@ -48,7 +47,7 @@ export class PlaceId {
   }
 
   public static deserialize(serialized: string): PlaceId {
-    if (/([0-9\.-]+,[0-9\.-]+)/.test(serialized)) {
+    if (/([0-9.-]+,[0-9.-]+)/.test(serialized)) {
       const lngLat = serialized.split(',');
       const location = new LngLat(parseFloat(lngLat[0]), parseFloat(lngLat[1]));
       return PlaceId.location(location);

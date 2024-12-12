@@ -12,7 +12,7 @@
     />
   </div>
   <div class="bottom-card">
-    <div class="search-error" v-if="error">
+    <div v-if="error" class="search-error">
       <p>
         {{ errorText(error) }}
       </p>
@@ -27,13 +27,13 @@
     <q-list v-if="trips.length > 0">
       <trip-list-item
         v-for="trip in trips"
+        :key="JSON.stringify(trip)"
         :click-handler="
           /* why is this cast necessary? */ () => clickTrip(trip as Trip)
         "
         :active="$data.activeTrip === trip"
         :duration-formatted="trip.durationFormatted"
         :distance-formatted="trip.distanceFormatted"
-        v-bind:key="JSON.stringify(trip)"
       >
         <component
           :is="componentForMode(trip.mode)"
@@ -48,7 +48,7 @@
             icon="directions"
             :label="$t('route_picker_show_route_details_btn')"
             size="sm"
-            v-on:click="
+            @click="
               /* why is this cast necessary? */ showTripSteps(trip as Trip)
             "
           />
@@ -57,12 +57,6 @@
     </q-list>
   </div>
 </template>
-<style lang="scss">
-.search-error {
-  padding: 16px;
-}
-</style>
-
 <script lang="ts">
 import { getBaseMap } from 'src/components/BaseMap.vue';
 import { Component, defineComponent, Ref, ref } from 'vue';
@@ -85,13 +79,35 @@ import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 
 export default defineComponent({
   name: 'AlternatesPage',
+  components: { TripListItem, TripSearch },
   props: {
     mode: {
       type: String as () => TravelMode,
       required: true,
     },
-    to: String,
-    from: String,
+    to: {
+      type: String,
+      default: '_',
+    },
+    from: {
+      type: String,
+      default: '_',
+    },
+  },
+  setup: function () {
+    const toPlace: Ref<Place | undefined> = ref(undefined);
+    const fromPlace: Ref<Place | undefined> = ref(undefined);
+
+    const route = useRoute();
+    const transitQuery: Ref<TransitQuery> = ref(
+      TransitQuery.parseFromQuery(route.query),
+    );
+
+    return {
+      toPlace,
+      fromPlace,
+      transitQuery,
+    };
   },
   data(): {
     trips: Trip[];
@@ -110,7 +126,24 @@ export default defineComponent({
       TravelMode: TravelMode,
     };
   },
-  components: { TripListItem, TripSearch },
+  watch: {
+    mode: async function (): Promise<void> {
+      await this.updateTrips();
+    },
+  },
+  mounted: async function () {
+    if (this.to != '_') {
+      this.toPlace = await PlaceStorage.fetchFromSerializedId(
+        this.to as string,
+      );
+    }
+    if (this.from != '_') {
+      this.fromPlace = await PlaceStorage.fetchFromSerializedId(
+        this.from as string,
+      );
+    }
+    await this.rewriteUrl();
+  },
   methods: {
     errorText(error: TripFetchError): string {
       switch (error.errorCode) {
@@ -142,7 +175,7 @@ export default defineComponent({
     },
     clickTrip(trip: Trip) {
       this.$data.activeTrip = trip;
-      let index = this.$data.trips.indexOf(trip);
+      const index = this.$data.trips.indexOf(trip);
       if (index !== -1) {
         this.renderTrips(index);
       }
@@ -156,12 +189,12 @@ export default defineComponent({
       this.rewriteUrl();
     },
     showTripSteps(trip: Trip) {
-      let index = this.$data.trips.indexOf(trip);
+      const index = this.$data.trips.indexOf(trip);
       if (index !== -1 && this.to && this.from) {
-        let path = `/directions/${this.mode}/${encodeURIComponent(
+        const path = `/directions/${this.mode}/${encodeURIComponent(
           this.to,
         )}/${encodeURIComponent(this.from)}/${index}`;
-        let query = this.transitQuery.searchQuery();
+        const query = this.transitQuery.searchQuery();
         this.$router.push({ path, query });
       }
     },
@@ -184,14 +217,14 @@ export default defineComponent({
       const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
       const toEncoded = this.toPlace?.urlEncodedId() ?? '_';
 
-      let path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
+      const path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
 
-      let query = this.transitQuery.searchQuery();
+      const query = this.transitQuery.searchQuery();
       this.$router.push({ path, query });
       await this.updateTrips();
     },
     async updateTrips(): Promise<void> {
-      let map = getBaseMap();
+      const map = getBaseMap();
       if (!map) {
         console.error('map was not set');
         return;
@@ -278,10 +311,10 @@ export default defineComponent({
             continue;
           }
 
-          let layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
+          const layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
           map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(false));
           if (legIdx > 0) {
-            let transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
+            const transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
             map.pushMarker(
               transferLayerId.toString(),
               Markers.transfer().setLngLat(leg.start),
@@ -314,38 +347,11 @@ export default defineComponent({
       getBaseMap()?.fitBounds(selectedTrip.bounds);
     },
   },
-  watch: {
-    mode: async function (): Promise<void> {
-      await this.updateTrips();
-    },
-  },
-  mounted: async function () {
-    if (this.to != '_') {
-      this.toPlace = await PlaceStorage.fetchFromSerializedId(
-        this.to as string,
-      );
-    }
-    if (this.from != '_') {
-      this.fromPlace = await PlaceStorage.fetchFromSerializedId(
-        this.from as string,
-      );
-    }
-    await this.rewriteUrl();
-  },
-  setup: function () {
-    const toPlace: Ref<Place | undefined> = ref(undefined);
-    const fromPlace: Ref<Place | undefined> = ref(undefined);
-
-    const route = useRoute();
-    const transitQuery: Ref<TransitQuery> = ref(
-      TransitQuery.parseFromQuery(route.query),
-    );
-
-    return {
-      toPlace,
-      fromPlace,
-      transitQuery,
-    };
-  },
 });
 </script>
+
+<style lang="scss">
+.search-error {
+  padding: 16px;
+}
+</style>

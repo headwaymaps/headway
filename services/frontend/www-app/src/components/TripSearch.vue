@@ -6,7 +6,7 @@
         :style="{ flex: 1 }"
         :initial-place="fromPlace"
         :tabindex="1"
-        v-on:did-select-place="didSelectFromPlace"
+        @did-select-place="didSelectFromPlace"
       />
       <q-btn
         size="12px"
@@ -15,7 +15,7 @@
         round
         color="primary"
         icon="gps_fixed"
-        v-on:click="didClickFromGps"
+        @click="didClickFromGps"
       />
     </div>
     <div style="margin-top: 16px; display: flex">
@@ -24,7 +24,7 @@
         :style="{ flex: 1 }"
         :initial-place="toPlace"
         :tabindex="2"
-        v-on:did-select-place="didSelectToPlace"
+        @did-select-place="didSelectToPlace"
       />
       <q-btn
         size="12px"
@@ -33,7 +33,7 @@
         round
         color="primary"
         icon="swap_vert"
-        v-on:click="didClickSwap"
+        @click="didClickSwap"
       />
     </div>
     <travel-mode-bar
@@ -108,14 +108,15 @@ import env from 'src/utils/env';
 
 export default defineComponent({
   name: 'TripSearch',
+  components: { SearchBox, TravelModeBar },
   props: {
     fromPlace: {
       type: Place,
-      required: false,
+      default: undefined,
     },
     toPlace: {
       type: Place,
-      required: false,
+      default: undefined,
     },
     currentMode: { type: String as () => TravelMode, required: true },
     didSelectFromPlace: {
@@ -180,7 +181,6 @@ export default defineComponent({
       this.searchDidChange(this.$data);
     },
   },
-  components: { SearchBox, TravelModeBar },
   methods: {
     isTransit(): boolean {
       return this.currentMode == TravelMode.Transit;
@@ -211,11 +211,11 @@ export default defineComponent({
 
       env.geolocation.getCurrentPosition(
         (position: GeolocationPosition) => {
-          let lngLat = new LngLat(
+          const lngLat = new LngLat(
             position.coords.longitude,
             position.coords.latitude,
           );
-          let place = Place.bareLocation(lngLat);
+          const place = Place.bareLocation(lngLat);
           place.name = this.$t('my_location');
           this.didSelectFromPlace(place);
         },

@@ -2,21 +2,21 @@
   <table>
     <tr
       v-for="dayRange in openingHours.weeklyRanges()"
-      v-bind:key="JSON.stringify(dayRange)"
+      :key="JSON.stringify(dayRange)"
     >
       <td>{{ dayRange.day }}</td>
       <td>
-        <ul class="opening-hours" v-if="dayRange.intervals.length > 0">
+        <ul v-if="dayRange.intervals.length > 0" class="opening-hours">
           <li
             v-for="interval in dayRange.intervals"
-            v-bind:key="JSON.stringify(interval)"
+            :key="JSON.stringify(interval)"
           >
             {{ formatTimeTruncatingEmptyMinutes(interval[0]) }}
             -
             {{ formatTimeTruncatingEmptyMinutes(interval[1]) }}
           </li>
         </ul>
-        <ul class="opening-hours" v-else>
+        <ul v-else class="opening-hours">
           <li>
             {{ $t('opening_hours_is_closed') }}
           </li>
@@ -25,19 +25,6 @@
     </tr>
   </table>
 </template>
-
-<style lang="scss">
-ul.opening-hours {
-  margin-block-start: 2px;
-  margin-block-end: 2px;
-  list-style: none;
-}
-
-// bold "today"
-tr:first-child {
-  font-weight: bold;
-}
-</style>
 
 <script lang="ts">
 import OpeningHours from 'src/models/OpeningHours';
@@ -57,3 +44,16 @@ export default defineComponent({
   },
 });
 </script>
+
+<style lang="scss">
+ul.opening-hours {
+  margin-block-start: 2px;
+  margin-block-end: 2px;
+  list-style: none;
+}
+
+// bold "today"
+tr:first-child {
+  font-weight: bold;
+}
+</style>

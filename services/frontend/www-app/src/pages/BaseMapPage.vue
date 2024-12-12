@@ -2,8 +2,8 @@
   <div class="top-card">
     <search-box
       :tabindex="1"
-      v-on:did-select-place="searchBoxDidSelectPlace"
-      v-on:did-submit-search="
+      @did-select-place="searchBoxDidSelectPlace"
+      @did-submit-search="
         (searchText) =>
           $router.push(`/search/${encodeURIComponent(searchText)}`)
       "
@@ -43,6 +43,37 @@
     </search-box>
   </div>
 </template>
+
+<script lang="ts">
+import { getBaseMap } from 'src/components/BaseMap.vue';
+import SearchBox from 'src/components/SearchBox.vue';
+import Place from 'src/models/Place';
+import Config from 'src/utils/Config';
+import { defineComponent } from 'vue';
+
+export default defineComponent({
+  name: 'BaseMapPage',
+  components: { SearchBox },
+  data: function (): {
+    aboutUrl?: string;
+    aboutLinkText?: string;
+    contactUrl?: string;
+    contactLinkText?: string;
+  } {
+    return Config.shared;
+  },
+  mounted: function () {
+    getBaseMap()?.removeAllMarkers();
+  },
+  methods: {
+    searchBoxDidSelectPlace(place?: Place) {
+      if (place) {
+        this.$router.push(`/place/${place.urlEncodedId()}`);
+      }
+    },
+  },
+});
+</script>
 
 <style lang="scss">
 // override some styles from the default layout.
@@ -92,34 +123,3 @@
   }
 }
 </style>
-
-<script lang="ts">
-import { getBaseMap } from 'src/components/BaseMap.vue';
-import SearchBox from 'src/components/SearchBox.vue';
-import Place from 'src/models/Place';
-import Config from 'src/utils/Config';
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-  name: 'BaseMapPage',
-  components: { SearchBox },
-  methods: {
-    searchBoxDidSelectPlace(place?: Place) {
-      if (place) {
-        this.$router.push(`/place/${place.urlEncodedId()}`);
-      }
-    },
-  },
-  data: function (): {
-    aboutUrl?: string;
-    aboutLinkText?: string;
-    contactUrl?: string;
-    contactLinkText?: string;
-  } {
-    return Config.shared;
-  },
-  mounted: function () {
-    getBaseMap()?.removeAllMarkers();
-  },
-});
-</script>
