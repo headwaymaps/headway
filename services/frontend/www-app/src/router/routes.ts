@@ -72,17 +72,6 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
-  // DEPRECATED ROUTE: will remove eventually
-  {
-    path: '/multimodal/:to/:from',
-    redirect: (route) => {
-      return {
-        path: `/directions/transit/${encodeURIComponent(
-          route.params.to.toString(),
-        )}/${encodeURIComponent(route.params.from.toString())}`,
-      };
-    },
-  },
 
   // Always leave this as last one,
   // but you can also remove it

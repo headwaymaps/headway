@@ -88,8 +88,8 @@ export class TripLeg {
   }
 
   get start(): LngLat {
-    const lngLat = this.geometry.coordinates[0];
-    return new LngLat(lngLat[0], lngLat[1]);
+    const lngLat = this.geometry.coordinates[0]!;
+    return new LngLat(lngLat[0]!, lngLat[1]!);
   }
 
   get mode(): TravelMode {

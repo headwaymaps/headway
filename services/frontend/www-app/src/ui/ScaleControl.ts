@@ -16,7 +16,7 @@ const defaultOptions: ScaleOptions = {
 };
 
 export default class ScaleControl implements IControl {
-  _map?: Map;
+  _map?: Map | undefined;
   containerEl: HTMLElement;
   rulerEl: HTMLElement;
   textEl: HTMLElement;
@@ -119,7 +119,7 @@ export default class ScaleControl implements IControl {
     // When I try to measure somewhat acurately, I pan the area I want to measure
     // near to the ruler. So, I think the most reasonable thing is to make sure
     // that the ruler is to scale with the land directly beneath it.
-    const rulerBounds = this.rulerEl.getClientRects()[0];
+    const rulerBounds = this.rulerEl.getClientRects()[0]!;
     const y = rulerBounds.y;
     const left = map.unproject([0, y]);
     const right = map.unproject([maxWidth, y]);

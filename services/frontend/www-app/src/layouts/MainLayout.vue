@@ -56,6 +56,7 @@ body.mobile {
 
 .top-card {
   border-bottom: solid #ccc 1px;
+  padding: 16px;
   @media screen and (max-width: 799px) {
     order: 1;
 
@@ -69,7 +70,6 @@ body.mobile {
     order: 1;
     width: var(--left-panel-width);
   }
-  padding: 16px;
 }
 
 .bottom-card {
