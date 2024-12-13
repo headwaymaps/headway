@@ -31,7 +31,8 @@ export default class Route {
     mode: TravelMode,
     distanceUnits: DistanceUnits,
   ): Route {
-    const viaRoads = substantialRoadNames(route.legs[0].maneuvers, 3);
+    console.assert(route.legs.length > 0, 'missing legs');
+    const viaRoads = substantialRoadNames(route.legs[0]!.maneuvers, 3);
     return new Route({
       mode,
       valhallaRoute: route,
@@ -55,7 +56,8 @@ function substantialRoadNames(
     cumulativeRoadLength += length;
     if (maneuver.street_names) {
       const name = maneuver.street_names[0];
-      roadLengths.push({ name, length });
+      console.assert(name, 'missing street name');
+      roadLengths.push({ name: name!, length });
     }
   }
   roadLengths.sort((a, b) => b.length - a.length).slice(0, limit);
@@ -67,7 +69,8 @@ function substantialRoadNames(
   );
 
   if (substantialRoads.length == 0) {
-    substantialRoads = [roadLengths[0]];
+    console.assert(roadLengths.length > 0);
+    substantialRoads = [roadLengths[0]!];
   }
 
   return substantialRoads.map((r) => r.name);

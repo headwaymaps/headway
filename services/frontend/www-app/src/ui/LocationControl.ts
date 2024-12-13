@@ -24,9 +24,9 @@ export default class LocationControl extends Evented implements IControl {
   currentRotation = 0;
   compassMarker: Marker;
 
-  mostRecentPosition?: LngLat;
+  mostRecentPosition?: LngLat | undefined;
   mostRecentCompassHeading?: number;
-  map?: Map;
+  map?: Map | undefined;
 
   constructor(options: GeolocateControlOptions) {
     super();

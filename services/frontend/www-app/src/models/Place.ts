@@ -6,19 +6,17 @@ import OSMID from './OSMID';
 /// PlaceId can be either a LngLat or a gid (but not both).
 type GID = string;
 export class PlaceId {
-  public readonly location?: LngLat;
-  public readonly gid?: GID;
+  public readonly location?: LngLat | undefined;
+  public readonly gid?: GID | undefined;
 
   constructor(location?: LngLat, gid?: GID) {
-    if (location && gid) {
-      throw new Error('PlaceId cannot have both location and gid');
-    }
-    if (!location && !gid) {
+    if (location) {
+      this.location = location;
+    } else if (gid) {
+      this.gid = gid;
+    } else {
       throw new Error('PlaceId requires either location or gid');
     }
-
-    this.location = location;
-    this.gid = gid;
   }
 
   static location(location: LngLat): PlaceId {
@@ -49,7 +47,11 @@ export class PlaceId {
   public static deserialize(serialized: string): PlaceId {
     if (/([0-9.-]+,[0-9.-]+)/.test(serialized)) {
       const lngLat = serialized.split(',');
-      const location = new LngLat(parseFloat(lngLat[0]), parseFloat(lngLat[1]));
+      console.assert!(lngLat.length == 2, 'unexpected length', lngLat);
+      const location = new LngLat(
+        parseFloat(lngLat[0]!),
+        parseFloat(lngLat[1]!),
+      );
       return PlaceId.location(location);
     } else {
       return PlaceId.gid(serialized);
@@ -156,13 +158,13 @@ type PlaceProperties = {
 export default class Place {
   id: PlaceId;
   point: LngLat;
-  bbox?: LngLatBounds;
-  countryCode?: string;
-  public address?: string | null;
-  name?: string;
-  public phone?: string;
-  public website?: string;
-  public openingHours?: string;
+  bbox?: LngLatBounds | undefined;
+  countryCode?: string | undefined;
+  public address?: string | null | undefined;
+  name?: string | undefined;
+  public phone?: string | undefined;
+  public website?: string | undefined;
+  public openingHours?: string | undefined;
 
   constructor(
     id: PlaceId,
@@ -192,7 +194,7 @@ export default class Place {
     const [lng, lat] = geometry.coordinates;
     console.assert(lng, 'missing lng');
     console.assert(lat, 'missing lat');
-    const location = new LngLat(lng, lat);
+    const location = new LngLat(lng!, lat!);
 
     let bbox;
     if (feature.bbox?.length == 4) {

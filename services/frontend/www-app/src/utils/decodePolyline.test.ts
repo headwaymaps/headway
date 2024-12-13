@@ -8,11 +8,11 @@ test('decode', () => {
   const result = decodePolyline(input, 6);
 
   expect(result.length).toBe(350);
-  const firstCoord = result[0];
-  expect(firstCoord[0]).toBeCloseTo(-122.339216);
-  expect(firstCoord[1]).toBeCloseTo(47.575836);
+  const firstCoord = result[0]!;
+  expect(firstCoord[0]!).toBeCloseTo(-122.339216);
+  expect(firstCoord[1]!).toBeCloseTo(47.575836);
 
-  const lastCoord = result[349];
-  expect(lastCoord[0]).toBeCloseTo(-122.347199);
-  expect(lastCoord[1]).toBeCloseTo(47.651048);
+  const lastCoord = result[349]!;
+  expect(lastCoord[0]!).toBeCloseTo(-122.347199);
+  expect(lastCoord[1]!).toBeCloseTo(47.651048);
 });

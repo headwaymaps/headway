@@ -8,11 +8,11 @@
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js
 
-const { configure } = require('quasar/wrappers');
+import { defineConfig } from '#q-app/wrappers';
 
 const HEADWAY_HOST = 'https://maps.earth';
 
-module.exports = configure(function (/* ctx */) {
+export default defineConfig((/* ctx */) => {
   return {
     eslint: {
       // fix: true,
@@ -55,6 +55,12 @@ module.exports = configure(function (/* ctx */) {
         node: 'node16',
       },
 
+      typescript: {
+        strict: true,
+        vueShim: true,
+        // extendsTsConfig (tsConfig) {}
+      },
+
       vueRouterMode: 'history', // available values: 'hash', 'history'
       // Dev: Use this where we don't have mod_rewrite, otherwise refreshing page with path 404's
       // vueRouterMode: 'hash',
@@ -77,22 +83,20 @@ module.exports = configure(function (/* ctx */) {
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
 
-      chainWebpack: (chain) => {
-        chain.module
-          .rule('i18n-resource')
-          .test(/\.(json5?|ya?ml)$/)
-          .include.add(path.resolve(__dirname, './src/i18n'))
-          .end()
-          .type('javascript/auto')
-          .use('i18n-resource')
-          .loader('@intlify/vue-i18n-loader');
-        chain.module
-          .rule('i18n')
-          .resourceQuery(/blockType=i18n/)
-          .type('javascript/auto')
-          .use('i18n')
-          .loader('@intlify/vue-i18n-loader');
-      },
+      vitePlugins: [
+        [
+          'vite-plugin-checker',
+          {
+            vueTsc: true,
+            eslint: {
+              lintCommand:
+                'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
+              useFlatConfig: true,
+            },
+          },
+          { server: false },
+        ],
+      ],
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer

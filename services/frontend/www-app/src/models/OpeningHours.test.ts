@@ -39,7 +39,7 @@ test('weeklyRanges', () => {
 
   for (const dayInterval of ranges) {
     expect(dayInterval.intervals.length).toBe(1);
-    const interval = dayInterval.intervals[0];
+    const interval = dayInterval.intervals[0]!;
     switch (dayInterval.day) {
       case 'Sun':
       case 'Mon':
