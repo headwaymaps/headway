@@ -1,0 +1,109 @@
+#!/bin/bash -e
+#
+function usage() {
+  cat << EOF
+Link latest transit files in web root
+usage: $0 <build-dir>
+examples:
+    $0 builds/planet
+
+Use a version prefix other than what's in bin/_headway_version.sh
+    HEADWAY_DATA_TAG=dev $0 builds/seattle
+EOF
+}
+
+if [ ! $# -eq 1 ]; then
+  usage
+  exit 1
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+source "${REPO_ROOT}/.env"
+
+# stash env vars in local before they get clobbered by _headway_version.sh
+local_data_tag=$HEADWAY_DATA_TAG
+source "${REPO_ROOT}/bin/_headway_version.sh"
+
+if [ ! -z "$HEADWAY_TAG" ]; then
+  HEADWAY_DATA_TAG="$HEADWAY_TAG"
+fi
+
+export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
+
+BUILD_DIR=$1
+DEPLOYMENT_ENV_FILE="${BUILD_DIR}/env.sh"
+if [ ! -f "$DEPLOYMENT_ENV_FILE" ]; then
+    echo "missing file ${DEPLOYMENT_ENV_FILE}"
+    exit 1
+fi
+source "$DEPLOYMENT_ENV_FILE"
+
+DATA_ROOT="${REPO_ROOT}/data"
+OUTPUT_ROOT="/pool1/www/data.maps.earth"
+
+snake_to_upper_camel() {
+    local input="$1"
+    local result=""
+
+    # Split the input string by underscores
+    IFS='_' read -ra words <<< "$input"
+
+    # Capitalize the first letter of each word and remove underscores
+    for word in "${words[@]}"; do
+        # Capitalize the first letter of the word
+        capitalized=$(tr '[:lower:]' '[:upper:]' <<< "${word:0:1}")
+        # Remove the first letter and append to the result
+        result+="$capitalized${word:1}"
+    done
+
+    echo "$result"
+}
+
+
+transit_cities_duped() {
+    # Iterate over the files (check for `-` to exclude the final symlinks)
+    find . -name \*graph.obj.zst -type f | while read file; do
+        local regex=".*-([a-zA-Z_]+)-([0-9]{4}-[0-9]{2}-[0-9]{2}).graph.obj.zst$"
+        if [[ $file =~ $regex ]]; then
+            city_name="${BASH_REMATCH[1]}"
+            echo $city_name
+        else
+            echo "unexpected graph name: $file" >&2
+            exit 1
+        fi
+    done
+}
+
+all_transit_graphs() {
+    local city=$1
+    if [ -z "$city" ]; then
+        echo "city was blank"
+        exit 1
+    fi
+    ls *$city*.graph.obj.zst
+}
+
+most_recent_transit_graph() {
+    all_transit_graphs $1 | sort | tail -n 1
+}
+
+main() {
+    cd "${OUTPUT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+    echo "PWD: $(pwd)"
+
+    local cities=$(transit_cities_duped | uniq)
+    for city in $cities; do
+        echo city "$city"
+        echo all graphs: $(all_transit_graphs "$city")
+
+        local most_recent=$(most_recent_transit_graph "$city")
+        echo most recent graph: $(most_recent_transit_graph "$city")
+
+        local link_name=$(snake_to_upper_camel "$city").graph.obj.zst
+        echo link_name: $link_name
+
+        ln -sf "$most_recent" "$link_name"
+    done
+}
+
+main
