@@ -2,24 +2,39 @@
 
 function usage() {
   cat << EOF
-usage: $0 <build-dir>
+Copy deployment artifacts to asset host
+usage: $0 <build-dir> [ --host remote.host.com ]
 examples:
-    $0 planet
-    $0 seattle
+    # Copy to asset root on this host
+    $0 builds/planet
+    # Copy to asset root on remote host
+    $0 builds/planet --host maps-data.local
 
 Use an upload prefix other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev $0 planet
-    HEADWAY_DATA_TAG=dev $0 seattle
+    HEADWAY_DATA_TAG=dev $0 builds/seattle
 EOF
 }
 
-if [ ! $# -eq 1 ]; then
+if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
   usage
   exit 1
+fi
+BUILD_DIR=$1
+
+HOST=""
+if [ "$#" -eq 3 ]; then
+    if [ "$2" != "--host" ]; then
+        usage
+    fi
+    HOST=$3
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${REPO_ROOT}/data"
+
+DATA_ROOT="${REPO_ROOT}/data"
+
+OUTPUT_DIR="/pool1/www/data.maps.earth"
 
 upload_pids=()
 function kill_uploads() {
@@ -32,25 +47,29 @@ function kill_uploads() {
 trap kill_uploads EXIT
 
 function upload() {
-  INPUT_GLOB=$1
-  OUTPUT_PREFIX=$2
+  local input_glob=$1
+  local output_prefix=$2
 
-  INPUT_PATH_GLOB="${DATA_ROOT}/${INPUT_GLOB}"
-  if ! ls $INPUT_PATH_GLOB 1> /dev/null 2>&1; then
-    echo "target file doesn't exist: '${INPUT_PATH_GLOB}'"
+  local input_path_glob="${DATA_ROOT}/${input_glob}"
+  if ! ls $input_path_glob 1> /dev/null 2>&1; then
+    echo "target file doesn't exist: '${input_path_glob}'"
     exit 1
   fi
 
-  for INPUT_PATH in $INPUT_PATH_GLOB; do
-    RESOURCE="${OUTPUT_PREFIX}/$(basename "$INPUT_PATH")"
-    BUCKET=$HEADWAY_S3_BUCKET
-    # I'm seeing much faster uploads with the openstack swift client vs the aws cli
-    # Plus, my host seems to be pretty flaky with large uploads via the `aws s3` cli.
-    #
-    # Note you'll need to be authenticated to run this.
-    #   e.g. (source ~/openrc.sh && bin/publish-data)
-    echo "Uploading ${INPUT_PATH} -> s3://${BUCKET}/${RESOURCE}"
-    swift upload --segment-size=5G --skip-identical "$BUCKET" "$INPUT_PATH" --object-name="$RESOURCE" & upload_pids+=($!)
+  for input_path in $input_path_glob; do
+    local resource="${output_prefix}/$(basename "$input_path")"
+    local output_path="${OUTPUT_DIR}/${resource}"
+
+    set -o nounset
+    if [ -z "$HOST" ]; then
+        echo "Copying ${input_path} -> ${output_path}"
+        mkdir -p "$(dirname $output_path)"
+        cp "$input_path" "$output_path"
+    else
+        echo "Sycning ${input_path} -> ${HOST}:${output_path}"
+        ssh "$HOST" mkdir -p "$(dirname $output_path)"
+        rsync -av --progress -e ssh "$input_path" "${HOST}:${output_path}"
+    fi
   done
 }
 
@@ -66,7 +85,7 @@ fi
 
 export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
 
-DEPLOYMENT_ENV_FILE="${REPO_ROOT}/builds/$1/env.sh"
+DEPLOYMENT_ENV_FILE="${BUILD_DIR}/env.sh"
 if [ ! -f "$DEPLOYMENT_ENV_FILE" ]; then
     echo "missing file ${DEPLOYMENT_ENV_FILE}"
     exit 1
@@ -101,3 +120,6 @@ for pid in ${upload_pids[*]}; do
 done
 
 echo "Return codes: ${rets[*]}"
+
+# Todo: just do it automatically
+echo "Do you want to 'bin/link-latest-transit ${BUILD_DIR}' next?"
