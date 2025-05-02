@@ -73,12 +73,14 @@ export default class Area {
     if (this.isPlanetBuild) {
       const openaddresses = {
         datapath: "/data/openaddresses",
+        token: process.env.OPEN_ADDRESSES_API_TOKEN
       };
       importsConfig["openaddresses"] = openaddresses;
     } else if (this.openaddressesFiles.length > 0) {
       const openaddresses = {
         datapath: "/data/openaddresses",
         files: this.openaddressesFiles,
+        token: process.env.OPEN_ADDRESSES_API_TOKEN
       };
       importsConfig["openaddresses"] = openaddresses;
     }
