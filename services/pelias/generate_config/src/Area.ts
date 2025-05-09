@@ -73,6 +73,7 @@ export default class Area {
     if (this.isPlanetBuild) {
       const openaddresses = {
         datapath: "/data/openaddresses",
+        dataHost: "https://data.example.com/openaddresses",
       };
       importsConfig["openaddresses"] = openaddresses;
     } else if (this.openaddressesFiles.length > 0) {
