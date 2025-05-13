@@ -517,7 +517,7 @@ gtfs-build:
 ##############################
 
 otp-base:
-    FROM opentripplanner/opentripplanner:2.5.0
+    FROM opentripplanner/opentripplanner:2.7.0
 
     RUN mkdir /var/opentripplanner
 
@@ -616,7 +616,7 @@ otp-serve-image:
 
     # used for healthcheck
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends netcat \
+        && apt-get install -y --no-install-recommends netcat-openbsd \
         && rm -rf /var/lib/apt/lists/*
 
     HEALTHCHECK --interval=5s --start-period=120s \

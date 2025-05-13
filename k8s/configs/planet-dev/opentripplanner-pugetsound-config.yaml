@@ -3,20 +3,26 @@ kind: ConfigMap
 metadata:
   name: otp-pugetsound-config
 data:
-  graph-url: https://data.example.com/0.9.0/maps-earth-planet-v1.55/PugetSound.graph.obj.zst
+  graph-url: https://data.example.com/0.9.0/maps-earth-planet-v1.250421/PugetSound.graph.obj.zst
+  otp-config-json: |
+    {
+        "otpFeatures" : {
+            "LegacyRestApi": true
+        }
+    }
   router-config-json: |
     {
       "updaters": [
         {
           "feedId": "headway-1080",
           "type": "stop-time-updater",
-          "frequencySec": 60,
+          "frequency": "60s",
           "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
         },
         {
           "feedId": "headway-1080",
           "type": "real-time-alerts",
-          "frequencySec": 300,
+          "frequency": "300s",
           "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
         }
       ]
