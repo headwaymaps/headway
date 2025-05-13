@@ -45,8 +45,8 @@ pub fn convert_to_meters(distance: f64, input_units: DistanceUnit) -> f64 {
 pub(crate) fn bearing_between(start: Option<Coord>, end: Option<Coord>) -> Option<u16> {
     let start = Point(start?);
     let end = Point(end?);
-    use geo::HaversineBearing;
-    let bearing = start.haversine_bearing(end);
+    use geo::{Bearing, Haversine};
+    let bearing = Haversine.bearing(start, end);
     debug_assert!(bearing >= -180.0);
     Some((bearing.round() + 360.0) as u16 % 360)
 }

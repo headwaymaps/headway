@@ -1,13 +1,3 @@
-use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
-use geo::algorithm::BoundingRect;
-use geo::geometry::{LineString, Point, Rect};
-use polyline::decode_polyline;
-use reqwest::header::{HeaderName, HeaderValue};
-use serde::{de, de::IntoDeserializer, de::Visitor, Deserialize, Deserializer, Serialize};
-use std::collections::HashMap;
-use std::fmt;
-use std::time::{Duration, SystemTime};
-
 use super::error::{PlanResponseErr, PlanResponseOk};
 use crate::api::AppState;
 use crate::error::ErrorType;
@@ -21,6 +11,16 @@ use crate::util::{extend_bounds, system_time_from_millis};
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
+use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
+use geo::algorithm::BoundingRect;
+use geo::geometry::{LineString, Point, Rect};
+use polyline::decode_polyline;
+use polyline::errors::PolylineError;
+use reqwest::header::{HeaderName, HeaderValue};
+use serde::{de, de::IntoDeserializer, de::Visitor, Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
+use std::fmt;
+use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -426,11 +426,11 @@ impl Leg {
     const VALHALLA_GEOMETRY_PRECISION: u32 = 6;
     const OTP_GEOMETRY_PRECISION: u32 = 5;
 
-    fn decoded_geometry(&self) -> std::result::Result<LineString, String> {
+    fn decoded_geometry(&self) -> std::result::Result<LineString, PolylineError> {
         decode_polyline(&self.geometry, Self::GEOMETRY_PRECISION)
     }
 
-    fn bounding_rect(&self) -> std::result::Result<Option<Rect>, String> {
+    fn bounding_rect(&self) -> std::result::Result<Option<Rect>, PolylineError> {
         let line_string = self.decoded_geometry()?;
         Ok(line_string.bounding_rect())
     }
@@ -439,7 +439,7 @@ impl Leg {
         otp: &otp_api::Leg,
         is_destination_leg: bool,
         distance_unit: DistanceUnit,
-    ) -> std::result::Result<Self, String> {
+    ) -> std::result::Result<Self, PolylineError> {
         debug_assert_ne!(Self::OTP_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
         let line = decode_polyline(&otp.leg_geometry.points, Self::OTP_GEOMETRY_PRECISION)?;
         let geometry = polyline::encode_coordinates(line, Self::GEOMETRY_PRECISION)?;
@@ -611,7 +611,13 @@ pub async fn get_plan(
                 )
             }
 
-            let mut response = HttpResponseBuilder::new(valhalla_response.status());
+            let mut response = HttpResponseBuilder::new(
+                valhalla_response
+                    .status()
+                    .as_u16()
+                    .try_into()
+                    .expect("valid status code"),
+            );
             debug_assert_eq!(
                 valhalla_response
                     .headers()
@@ -699,7 +705,13 @@ async fn otp_plan(
         )
     }
 
-    let mut response = HttpResponseBuilder::new(otp_response.status());
+    let mut response = HttpResponseBuilder::new(
+        otp_response
+            .status()
+            .as_u16()
+            .try_into()
+            .expect("valid status code"),
+    );
     debug_assert_eq!(
         otp_response
             .headers()
