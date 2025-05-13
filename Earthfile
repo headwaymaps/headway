@@ -517,7 +517,7 @@ gtfs-build:
 ##############################
 
 otp-base:
-    FROM opentripplanner/opentripplanner:2.5.0
+    FROM opentripplanner/opentripplanner:2.7.0
 
     RUN mkdir /var/opentripplanner
 
@@ -605,6 +605,8 @@ otp-init-image:
 
 otp-serve-image:
     FROM +otp-base
+
+    COPY ./services/otp/otp-config.json /var/opentripplanner/otp-config.json
 
     EXPOSE 8000
     ENV PORT 8000
