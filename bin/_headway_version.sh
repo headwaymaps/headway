@@ -3,7 +3,7 @@
 # 1. Map data, like tiles for rendering and routing and the geocoding database.
 # 2. Containers that run services which use that map data.
 #
-# Theses things will change as the software evolves, and how these changes get
+# These things will change as the software evolves, and how these changes get
 # deployed depends on the particular changes.
 #
 # This file attempts to track when breaking changes occur. Something like
@@ -21,9 +21,13 @@
 # A bump in the DATA tag pretty much always implies a bump in the CONTAINER
 # tag, but not necessarily vice-versa.
 
-export HEADWAY_DATA_TAG=0.9.0
+export HEADWAY_DATA_TAG=0.10.0
 
 # # Schema change Log
+#
+# ## DATA v0.10.0, CONTAINER v0.12.0
+#
+# BREAKING DATA/CONTAINER: Updated OTP to 2.7.0
 #
 # ## DATA v0.9.0, CONTAINER v0.11.0
 #

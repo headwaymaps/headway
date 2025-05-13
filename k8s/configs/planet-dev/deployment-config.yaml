@@ -11,12 +11,12 @@ data:
   www-about-link-text: "About maps.earth"
   www-contact-url: "mailto:info@maps.earth?subject=Hello,%20Earth"
   www-contact-link-text: "Contact Us"
-  terrain-source-url: https://data.example.com/0.9.0/terrain.mbtiles
-  landcover-source-url: https://data.example.com/0.9.0/landcover.mbtiles
-  areamap-source-url: https://data.example.com/0.9.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.mbtiles
-  valhalla-artifact-url: https://data.example.com/0.9.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.valhalla.tar.zst
-  placeholder-artifact-url: https://data.example.com/0.9.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.placeholder.tar.zst
-  elasticsearch-artifact-url: https://data.example.com/0.9.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.elasticsearch.tar.zst
+  terrain-source-url: https://data.example.com/0.10.0/terrain.mbtiles
+  landcover-source-url: https://data.example.com/0.10.0/landcover.mbtiles
+  areamap-source-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.mbtiles
+  valhalla-artifact-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.valhalla.tar.zst
+  placeholder-artifact-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.placeholder.tar.zst
+  elasticsearch-artifact-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250421/maps-earth-planet-v1.250421.elasticsearch.tar.zst
   pelias-config-json: |
     {
       "logger": {
