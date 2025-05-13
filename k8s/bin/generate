@@ -102,11 +102,14 @@ $(indent4 < "$router_config_file")"
         export OTP_ROUTER_CONFIG_JSON_YAML='""'
     fi
 
+    export OTP_CONFIG_JSON_YAML="|
+$(indent4 < "$REPO_ROOT/services/otp/otp-config.json")"
+
     for file in _template/opentripplanner*.tpl; do
-        output=$(basename $file | sed 's/\.tpl$//' | sed "s/AREA/${TRANSIT_AREA}/")
-        render_template $file $output
+        output=$(basename "$file" | sed 's/\.tpl$//' | sed "s/AREA/${TRANSIT_AREA}/")
+        render_template "$file" "$output"
     done
-    echo $OTP_ENDPOINT_NAME
+    echo "$OTP_ENDPOINT_NAME"
 }
 
 if [[ "$HEADWAY_ENABLE_TRANSIT_ROUTING" != 0 ]]; then

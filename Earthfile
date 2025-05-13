@@ -606,8 +606,6 @@ otp-init-image:
 otp-serve-image:
     FROM +otp-base
 
-    COPY ./services/otp/otp-config.json /var/opentripplanner/otp-config.json
-
     EXPOSE 8000
     ENV PORT 8000
 
