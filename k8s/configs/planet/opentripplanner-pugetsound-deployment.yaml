@@ -25,6 +25,11 @@ spec:
                 configMapKeyRef:
                   name: otp-pugetsound-config
                   key: graph-url
+            - name: OTP_CONFIG_JSON
+              valueFrom:
+                configMapKeyRef:
+                  name: otp-pugetsound-config
+                  key: otp-config-json
             - name: OTP_ROUTER_CONFIG_JSON
               valueFrom:
                 configMapKeyRef:
