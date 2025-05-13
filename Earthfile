@@ -618,7 +618,7 @@ otp-serve-image:
 
     # used for healthcheck
     RUN apt-get update \
-        && apt-get install -y --no-install-recommends netcat \
+        && apt-get install -y --no-install-recommends netcat-openbsd \
         && rm -rf /var/lib/apt/lists/*
 
     HEALTHCHECK --interval=5s --start-period=120s \
