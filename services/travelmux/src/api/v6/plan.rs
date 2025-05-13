@@ -1,15 +1,15 @@
+use super::error::{PlanResponseErr, PlanResponseOk};
+use super::TravelModes;
 use actix_web::web::{Data, Query};
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use geo::algorithm::BoundingRect;
 use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
+use polyline::errors::PolylineError;
 use reqwest::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
-
-use super::error::{PlanResponseErr, PlanResponseOk};
-use super::TravelModes;
 
 use crate::api::AppState;
 use crate::error::ErrorType;
@@ -475,7 +475,7 @@ impl Leg {
         otp: &otp_api::Leg,
         is_destination_leg: bool,
         distance_unit: DistanceUnit,
-    ) -> std::result::Result<Self, String> {
+    ) -> std::result::Result<Self, PolylineError> {
         debug_assert_ne!(Self::OTP_GEOMETRY_PRECISION, Self::GEOMETRY_PRECISION);
         let geometry = decode_polyline(&otp.leg_geometry.points, Self::OTP_GEOMETRY_PRECISION)?;
         let from_place: Place = (&otp.from).into();
@@ -683,7 +683,13 @@ async fn valhalla_plan(
         )
     }
 
-    let mut response = HttpResponseBuilder::new(valhalla_response.status());
+    let mut response = HttpResponseBuilder::new(
+        valhalla_response
+            .status()
+            .as_u16()
+            .try_into()
+            .expect("valid status code"),
+    );
     debug_assert_eq!(
         valhalla_response
             .headers()
@@ -739,7 +745,13 @@ async fn otp_plan(
         )
     }
 
-    let mut response = HttpResponseBuilder::new(otp_response.status());
+    let mut response = HttpResponseBuilder::new(
+        otp_response
+            .status()
+            .as_u16()
+            .try_into()
+            .expect("valid status code"),
+    );
     debug_assert_eq!(
         otp_response
             .headers()
