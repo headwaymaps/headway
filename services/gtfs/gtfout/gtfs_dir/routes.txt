@@ -1,0 +1,3 @@
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color,route_text_color
+3162,121,"PR","Pink Route",Pink Route,3,,FF47C8,FFFFFF
+3163,121,"NohAir","NOHO to Airport",NOHO to Airport,3,,FF6905,FFFFFF

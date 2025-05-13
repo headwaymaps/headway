@@ -1,0 +1,2 @@
+feed_publisher_name,feed_publisher_url,feed_lang,default_lang,feed_start_date,feed_end_date,feed_version,feed_contact_email,feed_contact_url
+GMV Syncromatics,https://gmvsyncromatics.com,en-US,en-US,20240114,,"1/12/2024",support@gmvsync.com,https://gmvsyncromatics.com/contact

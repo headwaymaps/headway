@@ -1,0 +1,2 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone,agency_fare_url,agency_email
+121,"Burbank Bus",http://www.burbankbus.org/,America/Los_Angeles,en-US,818-246-4258,http://www.burbankbus.org/services/fares,Contact@BurbankBus.org
