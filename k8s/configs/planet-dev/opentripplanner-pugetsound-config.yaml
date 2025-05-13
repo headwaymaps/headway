@@ -10,13 +10,13 @@ data:
         {
           "feedId": "headway-1080",
           "type": "stop-time-updater",
-          "frequencySec": 60,
+          "frequency": "60s",
           "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
         },
         {
           "feedId": "headway-1080",
           "type": "real-time-alerts",
-          "frequencySec": 300,
+          "frequency": "300s",
           "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
         }
       ]
