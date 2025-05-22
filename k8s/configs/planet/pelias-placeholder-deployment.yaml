@@ -42,9 +42,9 @@ spec:
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
           resources:
             limits:
-              memory: 200Mi
+              memory: 400Mi
             requests:
-              memory: 100Mi
+              memory: 200Mi
       containers:
         - name: main
           image: pelias/placeholder:latest
@@ -62,9 +62,9 @@ spec:
               value: "4100"
           resources:
             limits:
-              memory: 500Mi
+              memory: 1000Mi
             requests:
-              memory: 200Mi
+              memory: 400Mi
           livenessProbe:
             httpGet:
               path: /demo/

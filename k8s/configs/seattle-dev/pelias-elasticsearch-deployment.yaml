@@ -58,9 +58,9 @@ spec:
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
           resources:
             limits:
-              memory: 100Mi
+              memory: 400Mi
             requests:
-              memory: 100Mi
+              memory: 200Mi
       containers:
         - name: main
           image: pelias/elasticsearch:8.12.2-beta

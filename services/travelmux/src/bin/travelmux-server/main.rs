@@ -48,7 +48,6 @@ async fn main() -> Result<()> {
         App::new()
             .wrap(Logger::default())
             .app_data(web::Data::new(app_state.clone()))
-            .service(api::v4::plan::get_plan)
             .service(api::v5::plan::get_plan)
             .service(api::v6::plan::get_plan)
             .service(api::v6::directions::get_directions)
