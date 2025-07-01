@@ -729,10 +729,7 @@ async fn otp_plan(
     // if we end up building this manually rather than passing it through, we'll need to be sure
     // to handle the bike+bus case
     router_url.set_query(Some(req.query_string()));
-    log::debug!(
-        "found matching router. Forwarding request to: {}",
-        router_url
-    );
+    log::debug!("found matching router. Forwarding request to: {router_url}",);
 
     let otp_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
         log::error!("error while fetching from otp service: {e}");

@@ -21,7 +21,7 @@ serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.91"
 serde_repr = "0.1.18"
 url = "2.4.0"
-wkt = "0.13.0"
+wkt = "0.14.0"
 
 [dev-dependencies]
 reqwest = { version = "0.12.15", features = ["json", "stream", "blocking"] }
