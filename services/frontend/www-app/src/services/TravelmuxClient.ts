@@ -39,6 +39,8 @@ export interface TravelmuxManeuver {
   instruction?: string;
   verbalPostTransitionInstruction?: string;
   startPoint: LngLatLike;
+  bearingBefore: number;
+  bearingAfter: number;
   // same as valhalla's maneuver type
   type: number;
 }

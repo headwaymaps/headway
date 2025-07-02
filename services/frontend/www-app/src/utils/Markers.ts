@@ -26,4 +26,23 @@ export default {
   tripEnd: (): Marker => {
     return new Marker({ color: '#111111' });
   },
+  maneuver: (icon: string, rotation: number = 0): Marker => {
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <div style="
+        background: #2196f3;
+        border: 2px solid #1976d2;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: rotate(${rotation}deg);
+      ">
+        <i class="material-icons" style="font-size: 14px; color: white;">${icon}</i>
+      </div>
+    `;
+    return new Marker({ element });
+  },
 };

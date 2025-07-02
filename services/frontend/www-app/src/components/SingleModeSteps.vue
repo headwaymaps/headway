@@ -4,7 +4,8 @@
       v-for="maneuver in nonTransitLeg.maneuvers"
       :key="JSON.stringify(maneuver)"
       class="maneuver"
-      active-class="bg-blue-1"
+      active-class="list-item--selected"
+      :active="selectedManeuver === maneuver"
       clickable
       @click="clickedManeuver(maneuver)"
     >
@@ -29,6 +30,7 @@ import { valhallaTypeToIcon } from 'src/services/ValhallaAPI';
 import { getBaseMap } from './BaseMap.vue';
 import Trip from 'src/models/Trip';
 import { NonTransitLeg, TravelmuxManeuver } from 'src/services/TravelmuxClient';
+import Markers from 'src/utils/Markers';
 
 export default defineComponent({
   name: 'SingleModeSteps',
@@ -39,6 +41,7 @@ export default defineComponent({
     },
   },
   data(): {
+    selectedManeuver: TravelmuxManeuver | undefined;
     geometry: GeoJSON.LineString;
     nonTransitLeg: NonTransitLeg;
   } {
@@ -46,14 +49,25 @@ export default defineComponent({
     const nonTransitLeg = this.trip.legs[0]?.raw.nonTransitLeg as NonTransitLeg;
     console.assert(nonTransitLeg);
     return {
+      selectedManeuver: undefined,
       nonTransitLeg,
-      geometry: this.trip.legs[0].geometry,
+      geometry: this.trip.legs[0]!.geometry,
     };
   },
   methods: {
     valhallaTypeToIcon,
     clickedManeuver: function (maneuver: TravelmuxManeuver) {
-      getBaseMap()?.flyTo(maneuver.startPoint, { zoom: 16 });
+      this.selectedManeuver = maneuver;
+      const baseMap = getBaseMap();
+      if (baseMap) {
+        baseMap.flyTo(maneuver.startPoint, { zoom: 16 });
+
+        // Add a marker for the maneuver location
+        const icon = valhallaTypeToIcon(maneuver.type);
+        const marker = Markers.maneuver(icon, maneuver.bearingBefore || 0);
+        marker.setLngLat(maneuver.startPoint);
+        baseMap.pushMarker('selected-maneuver', marker);
+      }
     },
   },
 });

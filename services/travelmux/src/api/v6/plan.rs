@@ -20,7 +20,10 @@ use crate::util::serde_util::{
     deserialize_point_from_lat_lon, serialize_line_string_as_polyline6, serialize_rect_to_lng_lat,
     serialize_system_time_as_millis,
 };
-use crate::util::{convert_from_meters, convert_to_meters, extend_bounds, system_time_from_millis};
+use crate::util::{
+    bearing_at_end, bearing_at_start, convert_from_meters, convert_to_meters, extend_bounds,
+    system_time_from_millis,
+};
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
@@ -321,16 +324,28 @@ pub struct Maneuver {
     pub r#type: ManeuverType,
     pub verbal_post_transition_instruction: Option<String>,
     pub start_point: LonLat,
+    pub bearing_before: u16,
+    pub bearing_after: u16,
     // pub verbal_pre_transition_instruction: Option<String>,
     // pub verbal_succinct_transition_instruction: Option<String>,
 }
 
 impl Maneuver {
-    fn from_valhalla(valhalla: valhalla_api::Maneuver, leg_geometry: &LineString) -> Self {
+    fn from_valhalla(
+        valhalla: valhalla_api::Maneuver,
+        leg_geometry: &LineString,
+        prev_maneuver_geometry: Option<&LineString>,
+    ) -> Self {
         let coords = leg_geometry.0
             [valhalla.begin_shape_index as usize..=valhalla.end_shape_index as usize]
             .to_owned();
         let geometry = LineString::from(coords);
+
+        let bearing_after = bearing_at_start(&geometry).unwrap_or(0);
+        let bearing_before = prev_maneuver_geometry
+            .and_then(bearing_at_end)
+            .unwrap_or(bearing_after);
+
         Self {
             instruction: Some(valhalla.instruction),
             street_names: valhalla.street_names,
@@ -339,6 +354,8 @@ impl Maneuver {
             start_point: Point(leg_geometry[valhalla.begin_shape_index as usize]).into(),
             verbal_post_transition_instruction: valhalla.verbal_post_transition_instruction,
             distance: valhalla.length,
+            bearing_before,
+            bearing_after,
             geometry,
         }
     }
@@ -346,6 +363,7 @@ impl Maneuver {
     fn from_otp(
         otp: otp_api::Step,
         geometry: LineString,
+        prev_geometry: Option<&LineString>,
         leg: &otp_api::Leg,
         distance_unit: DistanceUnit,
     ) -> Self {
@@ -364,6 +382,10 @@ impl Maneuver {
         } else {
             Some(vec![otp.street_name])
         };
+        let bearing_after = bearing_at_start(&geometry).unwrap_or(0);
+        let bearing_before = prev_geometry
+            .and_then(bearing_at_end)
+            .unwrap_or(bearing_after);
 
         let duration_seconds = otp.distance / leg.distance * leg.duration_seconds();
         Self {
@@ -374,6 +396,8 @@ impl Maneuver {
             distance: convert_from_meters(otp.distance, distance_unit),
             duration_seconds,
             start_point: Point::new(otp.lon, otp.lat).into(),
+            bearing_before,
+            bearing_after,
             geometry,
         }
     }
@@ -481,32 +505,41 @@ impl Leg {
         let from_place: Place = (&otp.from).into();
         let to_place: Place = (&otp.to).into();
 
-        let mut distance_so_far = 0.0;
         let mut segmenter = HaversineSegmenter::new(geometry.clone());
         let mode_leg = match otp.mode {
             otp_api::TransitMode::Walk
             | otp_api::TransitMode::Bicycle
             | otp_api::TransitMode::Car => {
-                let mut maneuvers: Vec<_> = otp
-                    .steps
-                    .iter()
-                    .cloned()
-                    .map(|otp_step| {
-                        // compute step geometry by distance along leg geometry
-                        let step_geometry = segmenter
+                let mut maneuvers = Vec::with_capacity(otp.steps.len() + 1);
+                for otp_step in otp.steps.iter().cloned() {
+                    let step_geometry =
+                        segmenter
                             .next_segment(otp_step.distance)
                             .unwrap_or_else(|| {
                                 log::warn!("no geometry for step");
                                 debug_assert!(false, "no geometry for step");
                                 LineString::new(vec![])
                             });
-                        distance_so_far += otp_step.distance;
-                        Maneuver::from_otp(otp_step, step_geometry, otp, distance_unit)
-                    })
-                    .collect();
+                    let prev_step_geometry = maneuvers
+                        .last()
+                        .map(|prev_manuever: &Maneuver| &prev_manuever.geometry);
+                    let next = Maneuver::from_otp(
+                        otp_step,
+                        step_geometry,
+                        prev_step_geometry,
+                        otp,
+                        distance_unit,
+                    );
+                    maneuvers.push(next);
+                }
 
                 // OTP doesn't include an arrival step like valhalla, so we synthesize one
                 if is_destination_leg {
+                    let bearing_after = bearing_at_end(&geometry).unwrap_or(0);
+                    let bearing_before = maneuvers
+                        .last()
+                        .and_then(|maneuver| bearing_at_end(&maneuver.geometry))
+                        .unwrap_or(bearing_after);
                     let maneuver = Maneuver {
                         instruction: Some("Arrive at your destination.".to_string()),
                         distance: 0.0,
@@ -516,6 +549,8 @@ impl Leg {
                         verbal_post_transition_instruction: None,
                         start_point: to_place.location,
                         geometry: LineString::new(vec![to_place.location.into()]),
+                        bearing_before,
+                        bearing_after,
                     };
                     maneuvers.push(maneuver);
                 }
@@ -549,15 +584,19 @@ impl Leg {
         from_place: LonLat,
         to_place: LonLat,
     ) -> Self {
-        let geometry =
-            polyline::decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION)
-                .expect("valid polyline from valhalla");
-        let maneuvers = valhalla
-            .maneuvers
-            .iter()
-            .cloned()
-            .map(|valhalla_maneuver| Maneuver::from_valhalla(valhalla_maneuver, &geometry))
-            .collect();
+        let geometry = decode_polyline(&valhalla.shape, Self::VALHALLA_GEOMETRY_PRECISION)
+            .expect("valid polyline from valhalla");
+
+        let mut maneuvers: Vec<Maneuver> = Vec::with_capacity(valhalla.maneuvers.len());
+        for valhalla_maneuver in valhalla.maneuvers.iter().cloned() {
+            let prev_maneuver_geometry = maneuvers
+                .last()
+                .map(|prev_maneuver| &prev_maneuver.geometry);
+            let maneuver =
+                Maneuver::from_valhalla(valhalla_maneuver, &geometry, prev_maneuver_geometry);
+            maneuvers.push(maneuver);
+        }
+
         let leg = NonTransitLeg::new(maneuvers);
         Self {
             start_time,
@@ -951,6 +990,8 @@ mod tests {
             .unwrap();
         let first_maneuver = maneuvers.first().unwrap();
         let expected_maneuver = json!({
+            "bearingAfter": 182,
+            "bearingBefore": 182,
             "distance": 0.0118992879068438, // TODO: truncate precision in serializer
             "instruction": "Walk south on East Marginal Way South.",
             "startPoint": {
@@ -1039,6 +1080,8 @@ mod tests {
             .unwrap();
         let first_maneuver = maneuvers.first().unwrap();
         let expected_maneuver = json!({
+            "bearingAfter": 180,
+            "bearingBefore": 180,
             "type": 2,
             "instruction": "Walk south on East Marginal Way South.",
             "verbalPostTransitionInstruction": "Continue for 60 feet.",
@@ -1083,19 +1126,18 @@ mod tests {
         );
 
         // fake geometry
-        let geometry = LineString::from(vec![
-            geo::coord!(x: -122.398, y: 47.564),
-            geo::coord!(x: -122.396, y: 47.566),
-        ]);
-        let maneuver = Maneuver::from_valhalla(valhalla_maneuver, &geometry);
+        let leg_geometry = wkt!(LINESTRING(-122.398 47.564,-122.396 47.566));
+        let maneuver = Maneuver::from_valhalla(valhalla_maneuver, &leg_geometry, None);
         let actual = serde_json::to_string(&maneuver).unwrap();
         // parse the JSON string back into an Object Value
         let actual_object: Value = serde_json::from_str(&actual).unwrap();
 
         let expected_object = serde_json::json!({
+            "bearingAfter": 34,
+            "bearingBefore": 34,
+            "distance": 2.218,
             "instruction": "Drive northeast on Fauntleroy Way Southwest.",
             "type": 2,
-            "distance": 2.218,
             "startPoint": { "lon": -122.398, "lat": 47.564},
             "streetNames": ["Fauntleroy Way Southwest"],
             "verbalPostTransitionInstruction": "Continue for 2 miles.",
