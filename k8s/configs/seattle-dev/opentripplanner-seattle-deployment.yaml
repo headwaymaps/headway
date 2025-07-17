@@ -46,7 +46,7 @@ spec:
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory
-              value: "-Xmx4G"
+              value: "-Xmx5G"
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -56,7 +56,7 @@ spec:
           resources:
             limits:
               # keep this in sync to be just above env.JAVA_OPTS.-Xmx
-              memory: 4.25Gi
+              memory: 5.25Gi
             requests:
               memory: 500Mi
           livenessProbe:
