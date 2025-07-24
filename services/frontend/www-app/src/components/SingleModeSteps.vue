@@ -65,6 +65,7 @@ export default defineComponent({
         // Add a marker for the maneuver location
         const icon = valhallaTypeToIcon(maneuver.type);
         const marker = Markers.maneuver(icon, maneuver.bearingBefore || 0);
+        marker.setRotationAlignment('map');
         marker.setLngLat(maneuver.startPoint);
         baseMap.pushMarker('selected-maneuver', marker);
       }
