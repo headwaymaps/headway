@@ -6,7 +6,7 @@
 
 #[cfg(feature = "integration-tests")]
 mod integration_tests {
-    static SERVER_ROOT: &str = "http://localhost:8000/v2";
+    static SERVER_ROOT: &str = "http://localhost:8000/v6";
 
     #[test]
     fn get_transit_plan() {
@@ -18,14 +18,11 @@ mod integration_tests {
             panic!("status was: {status}, body: {body}");
         }
         let body = response.json::<serde_json::Value>().unwrap();
-        // print!("{}", serde_json::to_string_pretty(&body).unwrap());
-        // FRAGILE: the number of itineraries might change
-        assert_eq!(
-            body["_otp"]["plan"]["itineraries"]
+        assert!(
+            1 < body["_otp"]["plan"]["itineraries"]
                 .as_array()
                 .unwrap()
-                .len(),
-            3
+                .len()
         );
         assert!(body["_valhalla"].is_null());
     }
@@ -42,7 +39,7 @@ mod integration_tests {
     }
 
     #[test]
-    fn get_walk_plan() {
+    fn get_local_walk_plan() {
         let url = format!("{SERVER_ROOT}/plan?fromPlace=47.575837%2C-122.339414&toPlace=47.651048%2C-122.347234&numItineraries=2&mode=WALK");
         let response = reqwest::blocking::get(url).unwrap();
         let status = response.status();
@@ -51,9 +48,41 @@ mod integration_tests {
             panic!("status was: {status}, body: {body}");
         }
         let body = response.json::<serde_json::Value>().unwrap();
-        // print!("{}", serde_json::to_string_pretty(&body).unwrap());
-        // FRAGILE: the number of itineraries might change
-        assert_eq!(body["_valhalla"]["alternates"].as_array().unwrap().len(), 2);
+
+        // Walking uses OTP where available
+        assert_eq!(
+            1,
+            body["_otp"]["plan"]["itineraries"]
+                .as_array()
+                .unwrap()
+                .len()
+        );
+        assert!(body["_valhalla"].is_null());
+    }
+
+    #[test]
+    fn get_distant_walk_plan() {
+        let url = format!("{SERVER_ROOT}/plan?fromPlace=0.1%2C0.1&toPlace=0.101%2C0.101&numItineraries=2&mode=WALK");
+        let response = reqwest::blocking::get(url).unwrap();
+
+        // Request will fail as there's no route on null island
+        let body = response.json::<serde_json::Value>().unwrap();
+
+        // But in any case, it should be handled by valhalla, not OTP since it's out of bounds of our OTP node
         assert!(body["_otp"].is_null());
+        assert!(!body["_valhalla"].is_null());
+    }
+
+    #[test]
+    fn elevation_test() {
+        let url = format!("{SERVER_ROOT}/plan?fromPlace=0.1%2C0.1&toPlace=0.101%2C0.101&numItineraries=2&mode=WALK");
+        let response = reqwest::blocking::get(url).unwrap();
+
+        // Request will fail as there's no route on null island
+        let body = response.json::<serde_json::Value>().unwrap();
+
+        // But in any case, it should be handled by valhalla, not OTP since it's out of bounds of our OTP node
+        assert!(body["_otp"].is_null());
+        assert!(!body["_valhalla"].is_null());
     }
 }

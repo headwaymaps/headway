@@ -1,19 +1,24 @@
+use crate::elevation::ElevationService;
 use crate::{otp::OtpCluster, valhalla::ValhallaRouter, Error, Result};
+use std::path::PathBuf;
 use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     otp_cluster: OtpCluster,
     valhalla_router: ValhallaRouter,
+    elevation: ElevationService,
 }
 
 impl AppState {
-    pub fn new(valhalla_endpoint: Url) -> Self {
+    pub fn new(valhalla_endpoint: Url, tif_dir: PathBuf) -> Self {
         log::info!("new AppState with valhalla_endpoint: {valhalla_endpoint:?}");
         let valhalla_router = ValhallaRouter::new(valhalla_endpoint);
+        debug_assert!(std::fs::exists(&tif_dir).unwrap());
         Self {
             valhalla_router,
             otp_cluster: OtpCluster::default(),
+            elevation: ElevationService::new(tif_dir),
         }
     }
 
@@ -41,5 +46,9 @@ impl AppState {
 
     pub fn valhalla_router(&self) -> &ValhallaRouter {
         &self.valhalla_router
+    }
+
+    pub fn elevation(&self) -> &ElevationService {
+        &self.elevation
     }
 }

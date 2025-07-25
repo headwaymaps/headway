@@ -14,12 +14,14 @@ actix-web = "4.5.1"
 env_logger = "0.11.0"
 geo = "0.30.0"
 geojson = "0.24.0"
+georaster = "0.2.0"
 log = "0.4.17"
 polyline = "0.11.0"
 reqwest = { version = "0.12.15", features = ["json", "stream"] }
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.91"
 serde_repr = "0.1.18"
+thiserror = "2.0.12"
 url = "2.4.0"
 wkt = "0.14.0"
 

@@ -28,13 +28,28 @@ services:
       - "8000"
     networks:
       - tileserver_frontend
+  travelmux-init:
+    image: ghcr.io/headwaymaps/travelmux-init:latest
+    env_file: .env
+    environment:
+      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elevation-tifs.tar.zst
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "travelmux_data:/data/:rw"
   travelmux:
     image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
     env_file: .env
+    environment:
+      ELEVATION_TIFS_DIR: /data/elevation-tifs
+    depends_on:
+      travelmux-init:
+        condition: service_completed_successfully
     networks:
       - travel_frontend
       - valhalla_backend
+    volumes:
+      - "travelmux_data:/data/:ro"
     command: ["http://valhalla:8002"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
@@ -192,4 +207,5 @@ volumes:
   pelias_elasticsearch_data:
   tileserver_data:
   valhalla_data:
+  travelmux_data:
   frontend_data:

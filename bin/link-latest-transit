@@ -74,6 +74,19 @@ transit_cities_duped() {
     done
 }
 
+elevation_duped() {
+    for file in $(all_elevation_files); do
+        local regex="\./(.+)-([0-9]{4}-[0-9]{2}-[0-9]{2}).elevation-tifs.tar.zst$"
+        if [[ $file =~ $regex ]]; then
+            archive_name="${BASH_REMATCH[1]}"
+            echo $archive_name
+        else
+            echo "unexpected elevation name: $file" >&2
+            exit 1
+        fi
+    done
+}
+
 all_transit_graphs() {
     local city=$1
     if [ -z "$city" ]; then
@@ -87,22 +100,56 @@ most_recent_transit_graph() {
     all_transit_graphs $1 | sort | tail -n 1
 }
 
+all_elevation_files() {
+    find . -name \*elevation-tifs.tar.zst -type f
+}
+
+most_recent_elevation_file() {
+    all_elevation_files | sort | tail -n 1
+}
+
+indent() {
+    local spaces="${1:-2}"
+    local prefix=$(printf "%*s" "$spaces" "")
+    sed "s/^/$prefix/"
+ }
+
 main() {
     cd "${OUTPUT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
     echo "PWD: $(pwd)"
 
-    local cities=$(transit_cities_duped | uniq)
-    for city in $cities; do
-        echo city "$city"
-        echo all graphs: $(all_transit_graphs "$city")
+    # Handle transit graphs
+    local transit_cities=$(transit_cities_duped | uniq)
+    for city in $transit_cities; do
+        echo "Transit city: $city"
+        printf "all graphs:\n$(all_transit_graphs "$city" | indent)\n" | indent
 
         local most_recent=$(most_recent_transit_graph "$city")
-        echo most recent graph: $(most_recent_transit_graph "$city")
+        echo "most recent graph: $most_recent" | indent
 
         local link_name=$(snake_to_upper_camel "$city").graph.obj.zst
-        echo link_name: $link_name
+        echo "link_name: $link_name" | indent
 
         ln -sf "$most_recent" "$link_name"
+    done
+
+    # Handle elevation files
+    local elevation_archives=$(elevation_duped | uniq)
+    for archive in $elevation_archives; do
+        echo "Elevation archive: $archive"
+        printf "all elevation files:\n$(all_elevation_files | indent)\n" | indent
+
+        local most_recent_elevation=$(most_recent_elevation_file)
+        if [ -n "$most_recent_elevation" ]; then
+            echo "most recent elevation: $most_recent_elevation" | indent
+
+            local elevation_link_name="${archive}.elevation-tifs.tar.zst"
+            echo "elevation link_name: $elevation_link_name" | indent
+
+            ln -sf "$most_recent_elevation" "$elevation_link_name"
+        else
+            echo "no elevation files found for $archive" | indent
+        fi
     done
 }
 
