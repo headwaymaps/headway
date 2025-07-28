@@ -12,6 +12,7 @@ examples:
 
 Use an upload prefix other than what's in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev $0 builds/seattle
+    HEADWAY_DATA_TAG=dev $0 builds/seattle --host maps-data.local
 EOF
 }
 
@@ -122,4 +123,9 @@ done
 echo "Return codes: ${rets[*]}"
 
 # Todo: just do it automatically
+
+if [ ! -z "$local_data_tag" ]; then
+echo "Do you want to 'HEADWAY_DATA_TAG=${local_data_tag} bin/link-latest-transit ${BUILD_DIR}' next?"
+else
 echo "Do you want to 'bin/link-latest-transit ${BUILD_DIR}' next?"
+fi
