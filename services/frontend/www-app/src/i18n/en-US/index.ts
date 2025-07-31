@@ -59,6 +59,7 @@ export default {
     kilometers: 'km',
     miles: 'mi',
     meters: 'm',
+    feet: 'ft',
   },
   walk_distance: '{preformattedDistance} walk total',
   bike_distance: '{preformattedDistance} bike total',

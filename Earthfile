@@ -36,6 +36,7 @@ save:
     IF [ ! -z "${transit_feeds}" ]
         BUILD +save-gtfs --area=${area} --transit_feeds=${transit_feeds}
         BUILD +save-otp-graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
+        BUILD +save-transit-elevations -graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
     END
     BUILD +save-valhalla --area=${area}
     BUILD +save-pelias --area=${area} --countries=${countries}
@@ -71,6 +72,7 @@ save-transit-zones:
     ARG otp_build_config
     BUILD +save-gtfs-zones --area=${area} --transit_zones=${transit_zones}
     BUILD +save-otp-zones --area=${area} --transit_zones=${transit_zones} --otp_build_config=${otp_build_config}
+    BUILD +save-transit-elevations -graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
 
 save-gtfs-zones:
     FROM +save-base
@@ -139,6 +141,32 @@ save-otp-graph:
     RUN zstd -T0 /graph.obj
     SAVE ARTIFACT /graph.obj.zst AS LOCAL ./data/${output_name}-${cache_key}.graph.obj.zst
 
+save-transit-elevations:
+    FROM +save-base
+    ARG --required area
+    # List of filenames. Each file corresponds to an OTP graph to output. Each row in each file references a GTFS feeds input to that OTP graph.
+    ARG --required transit_zones
+
+    LET transit_zone=$(basename $transit_feeds .gtfs_feeds.csv)
+
+    COPY +cache-buster/todays_date .
+    LET cache_key=$(cat todays_date)
+    LET output_name="${area}-${cache_key}"
+
+    LET gtfs_bbox=""
+    FOR transit_feeds IN $transit_zones
+        # Get the bbox used for this OTP graph
+        COPY (+gtfs-compute-bbox/bbox.txt --transit_feeds=${transit_feeds} --cache_key=${cache_key}) bbox.txt
+        SET gtfs_bbox=$(cat bbox.txt)
+
+        # Save elevation TIFs corresponding to the OTP graph
+        COPY (+elevation/elevation-tifs --bbox=${gtfs_bbox}) elevation-tifs/
+    END
+
+    RUN tar --use-compress-program="zstd -T0" -cf /elevation-tifs.tar.zst -C /elevation-tifs .
+
+    SAVE ARTIFACT /elevation-tifs.tar.zst AS LOCAL ./data/${output_name}.elevation-tifs.tar.zst
+
 save-mbtiles:
     FROM +save-base
     ARG --required area
@@ -192,6 +220,7 @@ images:
     BUILD +valhalla-serve-image --tags=${tags}
     BUILD +web-serve-image --tags=${tags} --branding=${branding}
     BUILD +tileserver-serve-image --tags=${tags}
+    BUILD +travelmux-init-image --tags=${tags}
     BUILD +otp-init-image --tags=${tags}
     BUILD +valhalla-init-image --tags=${tags}
     BUILD +web-init-image --tags=${tags}
@@ -590,6 +619,10 @@ elevation:
 
     COPY (+download-elevation/elevation-hgts --bbox=${bbox}) elevation-hgts/
 
+    # TODO: use compression to cut the size in about 1/2. Travelmux can handle
+    # compressed TIFs. Presumably OTP can too, but I'm already seeing some
+    # errors in the OTP build about elevation, which I'd like to resolve before
+    # muddying the waters here.
     RUN ./dem-hgt-to-tif elevation-hgts elevation-tifs
 
     SAVE ARTIFACT elevation-tifs
@@ -646,6 +679,15 @@ build-travelmux:
     COPY ./services/travelmux .
     RUN cargo build --release
     SAVE ARTIFACT target/release/travelmux-server /travelmux-server
+
+travelmux-init-image:
+    FROM +downloader-base
+    COPY ./services/travelmux/init.sh /app/init.sh
+    CMD ["/app/init.sh"]
+    ARG --required tags
+    FOR tag IN ${tags}
+        SAVE IMAGE --push ghcr.io/headwaymaps/travelmux-init:${tag}
+    END
 
 travelmux-serve-image:
     FROM debian:bookworm-slim

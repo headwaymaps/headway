@@ -93,7 +93,31 @@ export enum TravelmuxMode {
   Transit = 'TRANSIT',
 }
 
+export interface ElevationResponse {
+  sampledGeometry: string;
+  elevation: number[];
+  totalClimbMeters: number;
+  totalFallMeters: number;
+}
+
 export class TravelmuxClient {
+  public static async fetchElevation(
+    path: string,
+  ): Promise<Result<ElevationResponse, Error>> {
+    const params = new URLSearchParams({ path });
+    const response = await fetch(`/travelmux/v6/elevation?${params}`);
+
+    if (response.ok) {
+      const elevationData: ElevationResponse = await response.json();
+      return Ok(elevationData);
+    } else {
+      const error = new Error(
+        `Failed to fetch elevation: ${response.statusText}`,
+      );
+      return Err(error);
+    }
+  }
+
   public static async fetchPlans(
     from: LngLat,
     to: LngLat,

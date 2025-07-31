@@ -483,7 +483,7 @@ fn build_verbal_post_transition_instruction(
 }
 
 impl Leg {
-    const GEOMETRY_PRECISION: u32 = 6;
+    pub(crate) const GEOMETRY_PRECISION: u32 = 6;
     const VALHALLA_GEOMETRY_PRECISION: u32 = 6;
     const OTP_GEOMETRY_PRECISION: u32 = 5;
 

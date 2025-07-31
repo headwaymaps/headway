@@ -140,6 +140,36 @@ export function formatDistance(
     outputUnits == DistanceUnits.Miles
   ) {
     distance = inputDistance * 0.0006213727366;
+  } else if (
+    inputUnits == DistanceUnits.Meters &&
+    outputUnits == DistanceUnits.Feet
+  ) {
+    distance = inputDistance * 3.28084;
+  } else if (
+    inputUnits == DistanceUnits.Feet &&
+    outputUnits == DistanceUnits.Meters
+  ) {
+    distance = inputDistance * 0.3048;
+  } else if (
+    inputUnits == DistanceUnits.Feet &&
+    outputUnits == DistanceUnits.Miles
+  ) {
+    distance = inputDistance * 0.000189394;
+  } else if (
+    inputUnits == DistanceUnits.Miles &&
+    outputUnits == DistanceUnits.Feet
+  ) {
+    distance = inputDistance * 5280;
+  } else if (
+    inputUnits == DistanceUnits.Feet &&
+    outputUnits == DistanceUnits.Kilometers
+  ) {
+    distance = inputDistance * 0.0003048;
+  } else if (
+    inputUnits == DistanceUnits.Kilometers &&
+    outputUnits == DistanceUnits.Feet
+  ) {
+    distance = inputDistance * 3280.84;
   } else {
     console.assert(
       false,
@@ -155,8 +185,20 @@ export function formatDistance(
     return `${rounded} ${i18n.global.t('shortened_distances.meters')}`;
   } else if (outputUnits == DistanceUnits.Miles) {
     return `${rounded} ${i18n.global.t('shortened_distances.miles')}`;
+  } else if (outputUnits == DistanceUnits.Feet) {
+    return `${rounded} ${i18n.global.t('shortened_distances.feet')}`;
   } else {
     console.assert(`unhandled output units: ${outputUnits}`);
     return `${rounded}`;
   }
+}
+
+/**
+ * Convert distance units to appropriate elevation units
+ * Miles -> Feet, everything else -> Meters
+ */
+export function getElevationUnits(distanceUnits: DistanceUnits): DistanceUnits {
+  return distanceUnits === DistanceUnits.Miles
+    ? DistanceUnits.Feet
+    : DistanceUnits.Meters;
 }

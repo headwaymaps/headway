@@ -137,6 +137,7 @@ export enum DistanceUnits {
   Miles = 'miles',
   Kilometers = 'kilometers',
   Meters = 'meters',
+  Feet = 'feet',
 }
 
 export enum TravelMode {

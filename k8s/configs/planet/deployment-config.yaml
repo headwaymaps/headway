@@ -17,6 +17,7 @@ data:
   valhalla-artifact-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250623/maps-earth-planet-v1.250623.valhalla.tar.zst
   placeholder-artifact-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250623/maps-earth-planet-v1.250623.placeholder.tar.zst
   elasticsearch-artifact-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250623/maps-earth-planet-v1.250623.elasticsearch.tar.zst
+  elevation-artifact-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250623/maps-earth-planet-v1.250623.elevation-tifs.tar.zst
   pelias-config-json: |
     {
       "logger": {

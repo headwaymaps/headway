@@ -1,4 +1,3 @@
-version: "3"
 services:
   tileserver-init:
     image: ghcr.io/headwaymaps/tileserver-init:latest
@@ -33,6 +32,12 @@ services:
     env_file: .env
     environment:
       OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.zst
+      OTP_CONFIG_JSON: |
+        {
+          "otpFeatures": {
+            "LegacyRestApi": true
+          }
+        }
     volumes:
       - "./data/:/bootstrap/:ro"
       - "opentripplanner_data:/data/:rw"
@@ -49,17 +54,31 @@ services:
       - otp_backend
     # ports:
     #   - "9002:8000"
+  travelmux-init:
+    image: ghcr.io/headwaymaps/travelmux-init:latest
+    env_file: .env
+    environment:
+      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elevation-tifs.tar.zst
+    volumes:
+      - "./data/:/bootstrap/:ro"
+      - "travelmux_data:/data/:rw"
   travelmux:
     image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
     env_file: .env
+    environment:
+      ELEVATION_TIFS_DIR: /data/elevation-tifs
     depends_on:
       opentripplanner:
         condition: service_healthy
+      travelmux-init:
+        condition: service_completed_successfully
     networks:
       - travel_frontend
       - otp_backend
       - valhalla_backend
+    volumes:
+      - "travelmux_data:/data/:ro"
     command: ["http://valhalla:8002", "http://opentripplanner:8000/otp/routers"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
@@ -221,4 +240,5 @@ volumes:
   tileserver_data:
   opentripplanner_data:
   valhalla_data:
+  travelmux_data:
   frontend_data:
