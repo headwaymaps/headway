@@ -4,6 +4,3 @@ set -ex
     && (cd services/pelias/generate_config && yarn upgrade) \
     && (cd services/travelmux && cargo update) \
     && (cd services/gtfs/gtfout && cargo update)
-
-# fails on macos
-cd services/tileserver/assets && npm update
