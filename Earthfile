@@ -782,50 +782,29 @@ valhalla-serve-image:
 # tileserver-gl-light
 ##############################
 
-tileserver-build:
-    FROM node:20-slim
+tileserver-assets:
+    FROM rust:bookworm
 
-    COPY ./services/tileserver/assets/build_glyphs.js \
-        ./services/tileserver/assets/build_sprites.js \
-        ./services/tileserver/assets/package.json \
-        ./services/tileserver/assets/package-lock.json \
-        ./services/tileserver/assets/*.ttf \
-        /app/
+    # Install dependencies for font processing
+    RUN apt-get update && apt-get install -y libfreetype6-dev && rm -rf /var/lib/apt/lists/*
 
+    # Install Rust tools for sprite and font generation
+    RUN cargo install spreet build_pbf_glyphs
+
+    COPY ./services/tileserver/assets/*.ttf /app/
+    COPY ./services/tileserver/assets/build_fonts.sh /app/
+    COPY ./services/tileserver/assets/build_sprites.sh /app/
     WORKDIR /app
-    RUN npm install
     RUN mkdir -p /app/sprites/
     COPY ./services/tileserver/assets/sprites/*.svg /app/sprites/
 
     RUN mkdir /output
-    RUN useradd -s /bin/bash fontnik
-    RUN chown fontnik /output
 
-    USER fontnik
+    RUN ./build_fonts.sh /output/fonts
+    SAVE ARTIFACT /output/fonts /fonts
 
-    # Output fonts
-    ENV FONTS_DIR=/output/fonts
-    RUN mkdir "$FONTS_DIR"
-
-    RUN mkdir "${FONTS_DIR}/Roboto Regular"
-    RUN node build_glyphs Roboto-Regular.ttf "${FONTS_DIR}/Roboto Regular"
-
-    RUN mkdir "${FONTS_DIR}/Roboto Medium"
-    RUN node build_glyphs Roboto-Medium.ttf "${FONTS_DIR}/Roboto Medium"
-
-    RUN mkdir "${FONTS_DIR}/Roboto Condensed Italic"
-    RUN node build_glyphs Roboto-Condensed-Italic.ttf "${FONTS_DIR}/Roboto Condensed Italic"
-
-    SAVE ARTIFACT "$FONTS_DIR" /fonts
-
-    # Output sprite
-    ENV SPRITE_DIR=/output/sprites
-    RUN mkdir "$SPRITE_DIR"
-
-    RUN node build_sprites "${SPRITE_DIR}/sprite" /app/sprites
-    RUN node build_sprites --retina "${SPRITE_DIR}/sprite@2x" /app/sprites
-
-    SAVE ARTIFACT "$SPRITE_DIR"  /sprites
+    RUN ./build_sprites.sh /app/sprites /output/sprites
+    SAVE ARTIFACT /output/sprites /sprites
 
 tileserver-init-image:
     FROM +downloader-base
@@ -855,8 +834,8 @@ tileserver-serve-image:
     USER node
 
     COPY ./services/tileserver/styles/basic /app/styles/basic
-    COPY (+tileserver-build/sprites) /app/sprites
-    COPY (+tileserver-build/fonts) /app/fonts
+    COPY (+tileserver-assets/sprites) /app/sprites
+    COPY (+tileserver-assets/fonts) /app/fonts
 
     COPY ./services/tileserver/templates /templates/
     COPY ./services/tileserver/configure_run.sh /app/

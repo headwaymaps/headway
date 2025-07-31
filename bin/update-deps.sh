@@ -6,4 +6,4 @@ set -ex
     && (cd services/gtfs/gtfout && cargo update)
 
 # fails on macos
-# cd services/tileserver/assets && npm update
+cd services/tileserver/assets && npm update
