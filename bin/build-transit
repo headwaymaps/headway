@@ -1,6 +1,4 @@
-#!/bin/bash -i
-
-set -e
+#!/bin/bash -ex
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
@@ -17,6 +15,8 @@ EOS
 fi
 shift
 
+set -o nounset
+
 if [ ! -d "$CONFIG_DIR" ]; then
     cat <<EOS
 Config dir "$CONFIG_DIR" doesn't exist
@@ -24,19 +24,15 @@ EOS
     exit 1
 fi
 
-set -o nounset
-
-EARTHLY_ARGS=${@:1}
+source "${CONFIG_DIR}/env.sh"
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 
-source "${CONFIG_DIR}/env.sh"
-
-TRANSIT_ZONES=$(ls ${TRANSIT_CONFIG_DIR}/*.gtfs_feeds.csv)
-
-OTP_BUILD_CONFIG="${TRANSIT_CONFIG_DIR}/build-config.json"
-if [ ! -f "$OTP_BUILD_CONFIG" ]; then
-    OTP_BUILD_CONFIG=""
+USE_LOCAL_PBF=""
+INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
+if [[ -f $INPUT_PBF ]]; then
+    USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-earthly ${EARTHLY_ARGS} +save-transit-zones --area="$HEADWAY_AREA" --transit_zones="$TRANSIT_ZONES" --otp_build_config="$OTP_BUILD_CONFIG"
+dagger --interactive -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"
+

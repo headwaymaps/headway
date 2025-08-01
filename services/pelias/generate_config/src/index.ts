@@ -5,12 +5,12 @@ import Area from "./Area";
 export type PeliasConfig = any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 export function generate(
-  input: string,
+  areasDBInput: string,
   areaName: string,
   countries: string[],
 ): PeliasConfig {
   const area = (() => {
-    for (const record of parse(input, { columns: true })) {
+    for (const record of parse(areasDBInput, { columns: true })) {
       const area = Area.fromRecord(record);
       if (area.name != areaName) {
         continue;
@@ -21,6 +21,8 @@ export function generate(
       }
       return area;
     }
+
+    // No matching area found, return a default one with just the name and countries
     return new Area(areaName, countries, []);
   })();
 

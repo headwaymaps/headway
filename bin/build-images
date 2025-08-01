@@ -1,0 +1,120 @@
+#!/bin/bash -e
+set -o pipefail
+
+# Default values
+PUBLISH=false
+TAGS="dev"
+BRANDING=""
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --publish)
+      PUBLISH=true
+      shift
+      ;;
+    --tags)
+      TAGS="$2"
+      shift 2 ;;
+    --branding)
+      BRANDING="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: $0 [--publish] [--tags TAGS] [--branding BRAND]"
+      echo ""
+      echo "Options:"
+      echo "  --publish      Publish images to registry (default: export to local docker)"
+      echo "  --tags TAGS    Comma-separated image tags (default: latest)"
+      echo "  --branding B   Branding for web container (default: none)"
+      echo ""
+      echo "Examples:"
+      echo "  $0                                      # Export latest to local docker"
+      echo "  $0 --tags dev                           # Export dev tag to local docker"
+      echo "  $0 --tags \"latest,v1.0.0\"               # Export multiple tags to local docker"
+      echo "  $0 --publish --tags latest              # Publish latest to registry"
+      echo "  $0 --publish --tags \"latest,v1.0.0\" --branding maps.earth"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+  esac
+done
+
+function build_image() {
+  local build_function=$1
+  if [ -z "$build_function" ]; then
+    echo "missing 'build_function' arg"
+    exit 1
+  fi
+  local container=$2
+  if [ -z "$container" ]; then
+    echo "missing 'container' arg"
+    exit 1
+  fi
+  local tag=$3
+  if [ -z "$tag" ]; then
+    echo "missing 'tag' arg"
+    exit 1
+  fi
+
+  local image_ref="ghcr.io/headwaymaps/${container}:${tag}"
+
+  if [ "$PUBLISH" = true ]; then
+    echo "Publishing ${image_ref}..."
+    dagger -c "${build_function} | publish \"${image_ref}\""
+  else
+    echo "Exporting ${image_ref} to local docker..."
+    dagger --interactive -c "${build_function} | export-image \"${image_ref}\""
+  fi
+}
+
+function build_image_tags() {
+    local tags_input=$1
+    if [ -z "$tags_input" ]; then
+        echo "missing required 'tags' argument"
+        exit 1
+    fi
+
+    # Determine web branding parameter
+    local web_branding_param=""
+    if [ -n "$BRANDING" ]; then
+        web_branding_param="--branding=$BRANDING"
+    fi
+
+    # Convert comma/space separated tags to array
+    IFS=', ' read -ra tag_array <<< "$tags_input"
+
+    for tag in "${tag_array[@]}"; do
+        # Skip empty tags
+        if [ -z "$tag" ]; then
+            continue
+        fi
+
+        echo "Processing tag: $tag"
+
+        build_image "otp-init-container" "opentripplanner-init" "$tag"
+        build_image "otp-serve-container" "opentripplanner" "$tag"
+        build_image "pelias-init-container" "pelias-init" "$tag"
+        build_image "travelmux-init-container" "travelmux-init" "$tag"
+        build_image "travelmux-serve-container" "travelmux" "$tag"
+        build_image "tileserver-serve-container" "tileserver" "$tag"
+        build_image "tileserver-init-container" "tileserver-init" "$tag"
+        build_image "valhalla-init-container" "valhalla-init" "$tag"
+        build_image "valhalla-serve-container" "valhalla" "$tag"
+        build_image "web-serve-container ${web_branding_param}" "headway" "$tag"
+        build_image "web-init-container" "headway-init" "$tag"
+    done
+}
+
+echo "Mode: $([ "$PUBLISH" = true ] && echo "Publish" || echo "Export")"
+echo "Tags: $TAGS"
+if [ -n "$BRANDING" ]; then
+    echo "Branding: $BRANDING"
+fi
+
+build_image_tags "$TAGS"
+
+echo "Done!"

@@ -10,6 +10,8 @@
 
 set -e
 
+(cd dagger && go fmt)
+
 (cd services/frontend/www-app &&
   yarn fmt &&
   yarn lint &&
