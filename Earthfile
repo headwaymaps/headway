@@ -17,7 +17,7 @@ build:
     ARG countries
 
     # tag for created docker containers
-    ARG tags="dev"
+    ARG tags="latest"
 
     # Run +gtfs-enumerate to build an appropriate input for transit_feeds.
     # If omitted, you cannot enable transit routing.
@@ -213,7 +213,7 @@ save-tileserver-terrain:
 
 images:
     FROM debian:bookworm-slim
-    ARG tags="dev"
+    ARG tags="latest"
     ARG branding
     BUILD +travelmux-serve-image --tags=${tags}
     BUILD +otp-serve-image --tags=${tags}
@@ -782,50 +782,30 @@ valhalla-serve-image:
 # tileserver-gl-light
 ##############################
 
-tileserver-build:
-    FROM node:20-slim
+tileserver-assets:
+    FROM rust:bookworm
 
-    COPY ./services/tileserver/assets/build_glyphs.js \
-        ./services/tileserver/assets/build_sprites.js \
-        ./services/tileserver/assets/package.json \
-        ./services/tileserver/assets/package-lock.json \
-        ./services/tileserver/assets/*.ttf \
-        /app/
+    # Install dependencies for font processing
+    RUN apt-get update && apt-get install -y libfreetype6-dev && rm -rf /var/lib/apt/lists/*
+
+    # Install Rust tools for sprite and font generation
+    RUN cargo install spreet build_pbf_glyphs
 
     WORKDIR /app
-    RUN npm install
-    RUN mkdir -p /app/sprites/
-    COPY ./services/tileserver/assets/sprites/*.svg /app/sprites/
 
     RUN mkdir /output
-    RUN useradd -s /bin/bash fontnik
-    RUN chown fontnik /output
 
-    USER fontnik
+    # Fonts
+    COPY ./services/tileserver/assets/fonts /app/fonts
+    RUN build_pbf_glyphs /app/fonts /output/fonts
+    SAVE ARTIFACT /output/fonts /fonts
 
-    # Output fonts
-    ENV FONTS_DIR=/output/fonts
-    RUN mkdir "$FONTS_DIR"
-
-    RUN mkdir "${FONTS_DIR}/Roboto Regular"
-    RUN node build_glyphs Roboto-Regular.ttf "${FONTS_DIR}/Roboto Regular"
-
-    RUN mkdir "${FONTS_DIR}/Roboto Medium"
-    RUN node build_glyphs Roboto-Medium.ttf "${FONTS_DIR}/Roboto Medium"
-
-    RUN mkdir "${FONTS_DIR}/Roboto Condensed Italic"
-    RUN node build_glyphs Roboto-Condensed-Italic.ttf "${FONTS_DIR}/Roboto Condensed Italic"
-
-    SAVE ARTIFACT "$FONTS_DIR" /fonts
-
-    # Output sprite
-    ENV SPRITE_DIR=/output/sprites
-    RUN mkdir "$SPRITE_DIR"
-
-    RUN node build_sprites "${SPRITE_DIR}/sprite" /app/sprites
-    RUN node build_sprites --retina "${SPRITE_DIR}/sprite@2x" /app/sprites
-
-    SAVE ARTIFACT "$SPRITE_DIR"  /sprites
+    # Sprites
+    COPY ./services/tileserver/assets/sprites /app/sprites/
+    RUN mkdir -p /output/sprites
+    RUN spreet /app/sprites /output/sprites/sprite
+    RUN spreet --retina /app/sprites /output/sprites/sprite@2x
+    SAVE ARTIFACT /output/sprites /sprites
 
 tileserver-init-image:
     FROM +downloader-base
@@ -855,8 +835,8 @@ tileserver-serve-image:
     USER node
 
     COPY ./services/tileserver/styles/basic /app/styles/basic
-    COPY (+tileserver-build/sprites) /app/sprites
-    COPY (+tileserver-build/fonts) /app/fonts
+    COPY (+tileserver-assets/sprites) /app/sprites
+    COPY (+tileserver-assets/fonts) /app/fonts
 
     COPY ./services/tileserver/templates /templates/
     COPY ./services/tileserver/configure_run.sh /app/
