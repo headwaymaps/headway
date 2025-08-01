@@ -204,12 +204,10 @@ save-pelias-config:
     SAVE ARTIFACT /pelias.json AS LOCAL ./data/${area}.pelias.json
 
 save-tileserver-terrain:
-    FROM +downloader-base
-    ARG asset_root=https://github.com/headwaymaps/headway-data/raw/main/tiles/
-    RUN wget -nv ${asset_root}/terrain.mbtiles
-    SAVE ARTIFACT terrain.mbtiles AS LOCAL ./data/terrain.mbtiles
-    RUN wget -nv ${asset_root}/landcover.mbtiles
-    SAVE ARTIFACT landcover.mbtiles AS LOCAL ./data/landcover.mbtiles
+    FROM debian:bookworm-slim
+    COPY (+dagger/export --call "tileserver-terrain") terrain
+    SAVE ARTIFACT terrain/terrain.mbtiles AS LOCAL ./data/terrain.mbtiles
+    SAVE ARTIFACT terrain/landcover.mbtiles AS LOCAL ./data/landcover.mbtiles
 
 images:
     FROM debian:bookworm-slim
@@ -904,6 +902,24 @@ web-serve-image:
 ##############################
 # Generic base images
 ##############################
+
+dagger:
+    FROM earthly/dind:alpine
+    RUN apk update \
+        && apk upgrade \
+        && apk add curl
+    RUN curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=/usr/local/bin sh
+    # Cache slow dagger/docker setup before doing any cmds
+    WITH DOCKER --pull registry.dagger.io/engine:v0.18.14
+        RUN dagger version
+    END
+    COPY --dir dagger .
+    COPY dagger.json .
+    ARG --required call
+    WITH DOCKER --pull registry.dagger.io/engine:v0.18.14
+        RUN dagger -c "${call} | export export"
+    END
+    SAVE ARTIFACT export
 
 downloader-base:
     FROM debian:bookworm-slim
