@@ -17,7 +17,7 @@ build:
     ARG countries
 
     # tag for created docker containers
-    ARG tags="dev"
+    ARG tags="latest"
 
     # Run +gtfs-enumerate to build an appropriate input for transit_feeds.
     # If omitted, you cannot enable transit routing.
@@ -213,7 +213,7 @@ save-tileserver-terrain:
 
 images:
     FROM debian:bookworm-slim
-    ARG tags="dev"
+    ARG tags="latest"
     ARG branding
     BUILD +travelmux-serve-image --tags=${tags}
     BUILD +otp-serve-image --tags=${tags}
