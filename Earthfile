@@ -781,28 +781,12 @@ valhalla-serve-image:
 ##############################
 
 tileserver-assets:
-    FROM rust:bookworm
-
-    # Install dependencies for font processing
-    RUN apt-get update && apt-get install -y libfreetype6-dev && rm -rf /var/lib/apt/lists/*
-
-    # Install Rust tools for sprite and font generation
-    RUN cargo install spreet build_pbf_glyphs
-
-    WORKDIR /app
-
-    RUN mkdir /output
-
-    # Fonts
-    COPY ./services/tileserver/assets/fonts /app/fonts
-    RUN build_pbf_glyphs /app/fonts /output/fonts
+    FROM debian:bookworm-slim
+    # This doesn't work because it needs files from the localhost
+    # Which aren't in the dagger container... I could copy more things
+    # Around but that seems like a lot of work.
+    COPY (+dagger/export --call "tileserver-assets") /output
     SAVE ARTIFACT /output/fonts /fonts
-
-    # Sprites
-    COPY ./services/tileserver/assets/sprites /app/sprites/
-    RUN mkdir -p /output/sprites
-    RUN spreet /app/sprites /output/sprites/sprite
-    RUN spreet --retina /app/sprites /output/sprites/sprite@2x
     SAVE ARTIFACT /output/sprites /sprites
 
 tileserver-init-image:

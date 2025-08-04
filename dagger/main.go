@@ -53,6 +53,35 @@ func (m *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, err
     return container.Directory("/data"), nil
 }
 
+// Build assets for the tileserver
+func (m *Headway) TileserverAssets(ctx context.Context, 
+    // +defaultPath="./services/tileserver/assets" 
+    assetsDir *dagger.Directory) (*dagger.Directory, error) {
+    container := dag.Container().
+        From("rust:bookworm")
+
+    container = WithAptPackages(container, "libfreetype6-dev").
+    WithMountedDirectory("/app/assets", assetsDir).
+    WithExec([]string{"cargo", "install", "spreet", "build_pbf_glyphs"}).
+
+    // FONTS
+    WithWorkdir("/app/assets/fonts").
+    WithExec([]string{"build_pbf_glyphs", "./", "/output/fonts"}).
+
+    // SPRITES
+    WithExec([]string{"mkdir", "-p", "/output/sprites"}).
+    WithWorkdir("/app/assets/sprites").
+    WithExec([]string{"spreet", "./", "/output/sprites/sprite"}).
+    WithExec([]string{"spreet", "--retina", "./", "/output/sprites/sprite@2x"})
+
+    return container.Directory("/output"), nil
+}
+
+/**
+* Helpers
+*/
+
+// Returns a container with the specified apt packages installed
 func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Container {
     if len(packages) == 0 {
         return container
