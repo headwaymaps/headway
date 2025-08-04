@@ -23,30 +23,11 @@ import (
 
 type Headway struct{}
 
-// Returns a container that echoes whatever string argument is provided
-func (m *Headway) ContainerEcho(stringArg string) *dagger.Container {
-    return dag.Container().From("alpine:latest").WithExec([]string{"echo", stringArg})
-}
-
-// Returns lines that match a pattern in the files of the provided Directory
-func (m *Headway) GrepDir(ctx context.Context, directoryArg *dagger.Directory, pattern string) (string, error) {
-    return dag.Container().
-        From("alpine:latest").
-        WithMountedDirectory("/mnt", directoryArg).
-        WithWorkdir("/mnt").
-        WithExec([]string{"grep", "-R", pattern, "."}).
-        Stdout(ctx)
-}
-
 // Downloads terrain tiles from headway-data repository
 func (m *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, error) {
     assetRoot := "https://github.com/headwaymaps/headway-data/raw/main/tiles/"
 
-    container := dag.Container().
-        From("debian:bookworm-slim")
-
-    container = WithAptPackages(container, "wget", "ca-certificates", "zstd").
-        WithWorkdir("/data").
+    container := downloadContainer().
         WithExec([]string{"wget", "-nv", assetRoot + "terrain.mbtiles"}).
         WithExec([]string{"wget", "-nv", assetRoot + "landcover.mbtiles"})
 
@@ -77,9 +58,40 @@ func (m *Headway) TileserverAssets(ctx context.Context,
     return container.Directory("/output"), nil
 }
 
+// Build tileserver init container image
+func (m *Headway) TileserverInitImage(ctx context.Context,
+    // +defaultPath="./services/tileserver"
+    serviceDir *dagger.Directory,
+    tags []string,
+) ([]string, error) {
+    container := downloadContainer().
+        WithFile("/app/init.sh", serviceDir.File("init.sh")).
+        WithDefaultArgs([]string{"/app/init.sh"})
+
+    var publishedImages []string
+    for _, tag := range tags {
+        imageRef := "gghcr.io/headwaymaps/tileserver-init:" + tag
+        addr, err := container.Publish(ctx, imageRef)
+        if err != nil {
+            return nil, err
+        }
+        publishedImages = append(publishedImages, addr)
+    }
+
+    return publishedImages, nil
+}
+
 /**
 * Helpers
 */
+
+func downloadContainer() *dagger.Container {
+    container := dag.Container().
+        From("debian:bookworm-slim").
+        WithWorkdir("/data")
+    container = WithAptPackages(container, "wget", "ca-certificates", "zstd")
+    return container
+}
 
 // Returns a container with the specified apt packages installed
 func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Container {
