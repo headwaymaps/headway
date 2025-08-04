@@ -62,28 +62,41 @@ func (m *Headway) TileserverAssets(ctx context.Context,
 func (m *Headway) TileserverInitImage(ctx context.Context,
     // +defaultPath="./services/tileserver"
     serviceDir *dagger.Directory,
-    tags []string,
-) ([]string, error) {
-    container := downloadContainer().
+) *dagger.Container {
+    return downloadContainer().
         WithFile("/app/init.sh", serviceDir.File("init.sh")).
         WithDefaultArgs([]string{"/app/init.sh"})
+}
 
-    var publishedImages []string
-    for _, tag := range tags {
-        imageRef := "gghcr.io/headwaymaps/tileserver-init:" + tag
-        addr, err := container.Publish(ctx, imageRef)
-        if err != nil {
-            return nil, err
-        }
-        publishedImages = append(publishedImages, addr)
-    }
-
-    return publishedImages, nil
+// FIXME: ExportImage doesn't work.  (but dagger shell: export-image does work!)
+func (m *Headway) ExportTileserverInitImage(ctx context.Context,
+    // +defaultPath="./services/tileserver"
+    serviceDir *dagger.Directory,
+    tags []string,
+) error {
+    container := m.TileserverInitImage(ctx, serviceDir)
+    return m.ExportContainerImage(ctx, container, "tileserver-init", tags)
 }
 
 /**
 * Helpers
 */
+
+
+// Export the given container 
+func (m *Headway) ExportContainerImage(ctx context.Context,
+    container *dagger.Container,
+    imageName string,
+    tags []string,
+) error {
+    for _, tag := range tags {
+        err := container.ExportImage(ctx, "gghcr.io/headwaymaps/" + imageName + ":" + tag)
+        if err != nil {
+            return fmt.Errorf("failed to export image with tag %s: %w", tag, err)
+        }
+    }
+    return nil
+}
 
 func downloadContainer() *dagger.Container {
     container := dag.Container().
