@@ -88,11 +88,11 @@ function upload() {
     set -o nounset
     if [ -z "$HOST" ]; then
         echo "Copying ${input_path} -> ${output_path}"
-        mkdir -p "$(dirname $output_path)"
+        mkdir -p "$(dirname "$output_path")"
         cp "$input_path" "$output_path"
     else
-        echo "Sycning ${input_path} -> ${HOST}:${output_path}"
-        ssh "$HOST" mkdir -p "$(dirname $output_path)"
+        echo "Syncing ${input_path} -> ${HOST}:${output_path}"
+        ssh "$HOST" mkdir -p "$(dirname '$output_path')"
         rsync -av --progress -e ssh "$input_path" "${HOST}:${output_path}"
     fi
   done
@@ -151,13 +151,13 @@ echo "Return codes: ${rets[*]}"
 # Run link-latest-transit if requested
 if [ "$LINK_LATEST_TRANSIT" = true ]; then
     echo "Linking latest transit files..."
-    
+
     # Build command arguments
     cmd_args=("$BUILD_DIR")
     if [ ! -z "$HOST" ]; then
         cmd_args+=(--host "$HOST")
     fi
-    
+
     # Execute with custom data tag if provided
     ${local_data_tag:+HEADWAY_DATA_TAG="$local_data_tag"} "${REPO_ROOT}/bin/link-latest-transit" "${cmd_args[@]}"
 fi

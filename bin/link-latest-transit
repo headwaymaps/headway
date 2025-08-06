@@ -121,11 +121,11 @@ all_transit_graphs() {
 }
 
 most_recent_transit_graph() {
-    all_transit_graphs $1 | sort | tail -n 1
+    all_transit_graphs "$1" | sort | tail -n 1
 }
 
 all_elevation_files() {
-    find . -name \*elevation-tifs.tar.zst -type f
+    find . -name '*elevation-tifs.tar.zst' -type f
 }
 
 most_recent_elevation_file() {
@@ -158,23 +158,21 @@ main() {
 link_files_locally() {
 
     # Handle transit graphs
-    local transit_cities=$(transit_cities_duped | uniq)
-    for city in $transit_cities; do
+    for city in $(transit_cities_duped | uniq); do
         echo "Transit city: $city"
         printf "all graphs:\n$(all_transit_graphs "$city" | indent)\n" | indent
 
         local most_recent=$(most_recent_transit_graph "$city")
         echo "most recent graph: $most_recent" | indent
 
-        local link_name=$(snake_to_upper_camel "$city").graph.obj.zst
+        local link_name="$(snake_to_upper_camel "$city").graph.obj.zst"
         echo "link_name: $link_name" | indent
 
         ln -sf "$most_recent" "$link_name"
     done
 
     # Handle elevation files
-    local elevation_archives=$(elevation_duped | uniq)
-    for archive in $elevation_archives; do
+    for archive in $(elevation_duped | uniq); do
         echo "Elevation archive: $archive"
         printf "all elevation files:\n$(all_elevation_files | indent)\n" | indent
 
