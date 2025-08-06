@@ -64,7 +64,7 @@ OUTPUT_DIR="/pool1/www/data.maps.earth"
 upload_pids=()
 function kill_uploads() {
   echo "Killing any in-progress uploads before exiting"
-  for pid in ${upload_pids[*]}; do
+  for pid in "${upload_pids[@]}"; do
     kill "${pid[*]}"
   done
 }
@@ -82,7 +82,8 @@ function upload() {
   fi
 
   for input_path in $input_path_glob; do
-    local resource="${output_prefix}/$(basename "$input_path")"
+    local resource
+    resource="${output_prefix}/$(basename "$input_path")"
     local output_path="${OUTPUT_DIR}/${resource}"
 
     set -o nounset
@@ -92,7 +93,7 @@ function upload() {
         cp "$input_path" "$output_path"
     else
         echo "Syncing ${input_path} -> ${HOST}:${output_path}"
-        ssh "$HOST" mkdir -p "$(dirname '$output_path')"
+        ssh "$HOST" "mkdir -p \"$(dirname \"$output_path\")\""
         rsync -av --progress -e ssh "$input_path" "${HOST}:${output_path}"
     fi
   done
@@ -136,10 +137,10 @@ upload terrain.mbtiles "${HEADWAY_DATA_TAG}"
 upload landcover.mbtiles "${HEADWAY_DATA_TAG}"
 
 rets=()
-for pid in ${upload_pids[*]}; do
-  wait $pid
+for pid in "${upload_pids[@]}"; do
+  wait "$pid"
   status=$?
-  rets+=($status)
+  rets+=("$status")
   if [ ! $status ]; then
     echo "error in upload"
     exit $status

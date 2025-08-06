@@ -62,7 +62,6 @@ if [ ! -f "$DEPLOYMENT_ENV_FILE" ]; then
 fi
 source "$DEPLOYMENT_ENV_FILE"
 
-DATA_ROOT="${REPO_ROOT}/data"
 OUTPUT_ROOT="/pool1/www/data.maps.earth"
 
 snake_to_upper_camel() {
@@ -86,11 +85,11 @@ snake_to_upper_camel() {
 
 transit_cities_duped() {
     # Iterate over the files (check for `-` to exclude the final symlinks)
-    find . -name \*graph.obj.zst -type f | while read file; do
+    find . -name '*graph.obj.zst' -type f | while read -r file; do
         local regex=".*-([a-zA-Z_]+)-([0-9]{4}-[0-9]{2}-[0-9]{2}).graph.obj.zst$"
         if [[ $file =~ $regex ]]; then
             city_name="${BASH_REMATCH[1]}"
-            echo $city_name
+            echo "$city_name"
         else
             echo "unexpected graph name: $file" >&2
             exit 1
@@ -103,7 +102,7 @@ elevation_duped() {
         local regex="\./(.+)-([0-9]{4}-[0-9]{2}-[0-9]{2}).elevation-tifs.tar.zst$"
         if [[ $file =~ $regex ]]; then
             archive_name="${BASH_REMATCH[1]}"
-            echo $archive_name
+            echo "$archive_name"
         else
             echo "unexpected elevation name: $file" >&2
             exit 1
@@ -117,7 +116,7 @@ all_transit_graphs() {
         echo "city was blank"
         exit 1
     fi
-    ls *$city*.graph.obj.zst
+    ls ./*"$city"*.graph.obj.zst
 }
 
 most_recent_transit_graph() {
@@ -134,7 +133,8 @@ most_recent_elevation_file() {
 
 indent() {
     local spaces="${1:-2}"
-    local prefix=$(printf "%*s" "$spaces" "")
+    local prefix
+    prefix=$(printf "%*s" "$spaces" "")
     sed "s/^/$prefix/"
  }
 
@@ -160,12 +160,14 @@ link_files_locally() {
     # Handle transit graphs
     for city in $(transit_cities_duped | uniq); do
         echo "Transit city: $city"
-        printf "all graphs:\n$(all_transit_graphs "$city" | indent)\n" | indent
+        printf "all graphs:\\n%s\\n" "$(all_transit_graphs "$city" | indent)" | indent
 
-        local most_recent=$(most_recent_transit_graph "$city")
+        local most_recent
+        most_recent=$(most_recent_transit_graph "$city")
         echo "most recent graph: $most_recent" | indent
 
-        local link_name="$(snake_to_upper_camel "$city").graph.obj.zst"
+        local link_name
+        link_name="$(snake_to_upper_camel "$city").graph.obj.zst"
         echo "link_name: $link_name" | indent
 
         ln -sf "$most_recent" "$link_name"
@@ -174,9 +176,10 @@ link_files_locally() {
     # Handle elevation files
     for archive in $(elevation_duped | uniq); do
         echo "Elevation archive: $archive"
-        printf "all elevation files:\n$(all_elevation_files | indent)\n" | indent
+        printf "all elevation files:\\n%s\\n" "$(all_elevation_files | indent)" | indent
 
-        local most_recent_elevation=$(most_recent_elevation_file)
+        local most_recent_elevation
+        most_recent_elevation=$(most_recent_elevation_file)
         if [ -n "$most_recent_elevation" ]; then
             echo "most recent elevation: $most_recent_elevation" | indent
 
