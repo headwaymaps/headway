@@ -3,19 +3,45 @@
 function usage() {
   cat << EOF
 Link latest transit files in web root
-usage: $0 <build-dir>
+usage: $0 <build-dir> [ --host remote.host.com ]
 examples:
     $0 builds/planet
+    $0 builds/planet --host maps-data.local
 
 Use a version prefix other than what's in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev $0 builds/seattle
+    HEADWAY_DATA_TAG=dev $0 builds/seattle --host maps-data.local
 EOF
 }
 
-if [ ! $# -eq 1 ]; then
+if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
   usage
   exit 1
 fi
+
+BUILD_DIR=$1
+HOST=""
+
+# Parse arguments
+shift
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --host)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --host requires a hostname argument"
+        usage
+        exit 1
+      fi
+      HOST="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 source "${REPO_ROOT}/.env"
@@ -29,8 +55,6 @@ if [ ! -z "$HEADWAY_TAG" ]; then
 fi
 
 export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
-
-BUILD_DIR=$1
 DEPLOYMENT_ENV_FILE="${BUILD_DIR}/env.sh"
 if [ ! -f "$DEPLOYMENT_ENV_FILE" ]; then
     echo "missing file ${DEPLOYMENT_ENV_FILE}"
@@ -115,8 +139,23 @@ indent() {
  }
 
 main() {
-    cd "${OUTPUT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-    echo "PWD: $(pwd)"
+    local target_dir="${OUTPUT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+    
+    if [ -z "$HOST" ]; then
+        # Local execution
+        cd "$target_dir"
+        echo "PWD: $(pwd)"
+        link_files_locally
+    else
+        # Remote execution
+        echo "Linking files on remote host: $HOST"
+        echo "Remote directory: $target_dir"
+        # Execute this script on remote host by piping it through ssh
+        ssh "$HOST" env HEADWAY_DATA_TAG="$HEADWAY_DATA_TAG" bash -s "$BUILD_DIR" < "$0"
+    fi
+}
+
+link_files_locally() {
 
     # Handle transit graphs
     local transit_cities=$(transit_cities_duped | uniq)
