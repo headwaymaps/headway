@@ -158,10 +158,6 @@ if [ "$LINK_LATEST_TRANSIT" = true ]; then
         cmd_args+=(--host "$HOST")
     fi
     
-    # Execute with or without custom data tag
-    if [ ! -z "$local_data_tag" ]; then
-        HEADWAY_DATA_TAG="$local_data_tag" "${REPO_ROOT}/bin/link-latest-transit" "${cmd_args[@]}"
-    else
-        "${REPO_ROOT}/bin/link-latest-transit" "${cmd_args[@]}"
-    fi
+    # Execute with custom data tag if provided
+    ${local_data_tag:+HEADWAY_DATA_TAG="$local_data_tag"} "${REPO_ROOT}/bin/link-latest-transit" "${cmd_args[@]}"
 fi
