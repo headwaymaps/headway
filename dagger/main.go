@@ -265,6 +265,17 @@ func (m *OSMExport) Mbtiles(ctx context.Context,
 	return container.File("/data/output.mbtiles"), nil
 }
 
+// Builds Valhalla routing tiles
+func (m *OSMExport) ValhallaTiles(ctx context.Context) *dagger.Directory {
+	container := valhallaBaseContainer().
+		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite > valhalla.json"}).
+		WithExec([]string{"sh", "-c", "valhalla_build_timezones > /tiles/timezones.sqlite"}).
+		WithMountedFile("/data/osm/data.osm.pbf", m.File).
+		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
+
+	return container.Directory("/tiles")
+}
+
 // Returns a container with the specified apt packages installed
 func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Container {
 	if len(packages) == 0 {
