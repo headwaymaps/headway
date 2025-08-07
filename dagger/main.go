@@ -106,6 +106,55 @@ func downloadContainer() *dagger.Container {
     return container
 }
 
+// Generates today's date for cache busting purposes
+func (m *Headway) CacheBuster(ctx context.Context) (string, error) {
+    container := dag.Container().
+        From("debian:bookworm-slim").
+        WithExec([]string{"date", "+%Y-%m-%d"})
+
+    return container.Stdout(ctx)
+}
+
+// Extracts bounding box for a given area from bboxes.csv
+func (m *Headway) Bbox(ctx context.Context,
+    // Area name to look up (must exist in bboxes.csv)
+    area string,
+    // +defaultPath="./services/gtfs/bboxes.csv"
+    bboxesFile *dagger.File) (string, error) {
+    
+    container := dag.Container().
+        From("debian:bookworm-slim").
+        WithMountedFile("/bboxes.csv", bboxesFile).
+        WithExec([]string{"sh", "-c", fmt.Sprintf("test $(grep '%s:' /bboxes.csv | wc -l) -eq 1", area)}).
+        WithExec([]string{"sh", "-c", fmt.Sprintf("grep '%s:' /bboxes.csv | cut -d':' -f2", area)})
+
+    return container.Stdout(ctx)
+}
+
+// Downloads GTFS mobility database CSV
+func (m *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
+    container := downloadContainer().
+        WithExec([]string{"wget", "-O", "mobilitydb.csv", "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media"})
+
+    return container.File("/data/mobilitydb.csv")
+}
+
+// Builds Rust GTFS processing tools
+// I'm not yet sure how exporting will work in situ. Something akin to:
+//   dagger -c 'gtfout | file assume-bikes-allowed | export ./assume-bikes-allowed'
+func (m *Headway) Gtfout(ctx context.Context,
+    // +defaultPath="./services/gtfs/gtfout"
+    sourceDir *dagger.Directory) *dagger.Directory {
+    
+    container := dag.Container().
+        From("rust:bookworm").
+        WithMountedDirectory("/gtfout", sourceDir).
+        WithWorkdir("/gtfout").
+        WithExec([]string{"cargo", "build", "--release"})
+
+    return container.Directory("/gtfout/target/release")
+}
+
 // Returns a container with the specified apt packages installed
 func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Container {
     if len(packages) == 0 {
