@@ -21,7 +21,12 @@ import (
 	"strings"
 )
 
-type Headway struct{}
+type Headway struct{
+
+}
+type Bbox struct{
+    Value string
+}
 
 // Downloads terrain tiles from headway-data repository
 func (m *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, error) {
@@ -106,6 +111,15 @@ func downloadContainer() *dagger.Container {
     return container
 }
 
+func valhallaBaseContainer() *dagger.Container {
+    return dag.Container().
+        From("ghcr.io/gis-ops/docker-valhalla/valhalla").
+        WithUser("root").
+        WithWorkdir("/tiles").
+        WithExec([]string{"chown", "valhalla", "/tiles"}).
+        WithUser("valhalla")
+}
+
 // Generates today's date for cache busting purposes
 func (m *Headway) CacheBuster(ctx context.Context) (string, error) {
     container := dag.Container().
@@ -120,7 +134,7 @@ func (m *Headway) Bbox(ctx context.Context,
     // Area name to look up (must exist in bboxes.csv)
     area string,
     // +defaultPath="./services/gtfs/bboxes.csv"
-    bboxesFile *dagger.File) (string, error) {
+    bboxesFile *dagger.File) (Bbox, error) {
     
     container := dag.Container().
         From("debian:bookworm-slim").
@@ -128,7 +142,11 @@ func (m *Headway) Bbox(ctx context.Context,
         WithExec([]string{"sh", "-c", fmt.Sprintf("test $(grep '%s:' /bboxes.csv | wc -l) -eq 1", area)}).
         WithExec([]string{"sh", "-c", fmt.Sprintf("grep '%s:' /bboxes.csv | cut -d':' -f2", area)})
 
-    return container.Stdout(ctx)
+    bboxStr, err := container.Stdout(ctx)
+    if err != nil {
+        return Bbox{}, fmt.Errorf("failed to get bbox for area %s: %w", area, err)
+    }
+    return Bbox{Value: bboxStr}, nil
 }
 
 // Downloads GTFS mobility database CSV
@@ -153,6 +171,37 @@ func (m *Headway) Gtfout(ctx context.Context,
         WithExec([]string{"cargo", "build", "--release"})
 
     return container.Directory("/gtfout/target/release")
+}
+
+// Downloads elevation data for a given bounding box
+func (m *Bbox) DownloadElevation(ctx context.Context) *dagger.Directory {
+    
+    // Convert space-separated bbox to comma-separated format for valhalla
+    valhallaBbox := strings.ReplaceAll(m.Value, " ", ",")
+    
+    container := valhallaBaseContainer().
+        WithExec([]string{"valhalla_build_elevation", "--outdir", "elevation-hgts", "--from-bbox=" + valhallaBbox})
+
+    return container.Directory("/tiles/elevation-hgts")
+}
+
+// Converts elevation HGT files to TIF format
+func (m *Bbox) Elevation(ctx context.Context,
+    // +defaultPath="./services/otp/dem-hgt-to-tif"
+    demScript *dagger.File) *dagger.Directory {
+    
+    elevationHgts := m.DownloadElevation(ctx)
+    
+    container := dag.Container().
+        From("debian:bookworm-slim")
+    
+    container = WithAptPackages(container, "gdal-bin").
+        WithMountedFile("/dem-hgt-to-tif", demScript).
+        WithExec([]string{"chmod", "+x", "/dem-hgt-to-tif"}).
+        WithMountedDirectory("/elevation-hgts", elevationHgts).
+        WithExec([]string{"/dem-hgt-to-tif", "/elevation-hgts", "/elevation-tifs"})
+
+    return container.Directory("/elevation-tifs")
 }
 
 // Returns a container with the specified apt packages installed
