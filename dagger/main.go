@@ -26,6 +26,10 @@ type Headway struct {
 type Bbox struct {
 	Value string
 }
+type OSMExport struct {
+	// PBF file
+	File *dagger.File
+}
 
 // Downloads terrain tiles from headway-data repository
 func (m *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, error) {
@@ -128,7 +132,7 @@ func (m *Headway) CacheBuster(ctx context.Context) (string, error) {
 }
 
 // Extracts bounding box for a given area from bboxes.csv
-func (m *Headway) Bbox(ctx context.Context,
+func (m *Headway) BBox(ctx context.Context,
 	// Area name to look up (must exist in bboxes.csv)
 	area string,
 	// +defaultPath="./services/gtfs/bboxes.csv"
@@ -201,6 +205,29 @@ func (m *Bbox) Elevation(ctx context.Context,
 		WithExec([]string{"/dem-hgt-to-tif", "/elevation-hgts", "/elevation-tifs"})
 
 	return container.Directory("/elevation-tifs")
+}
+
+// Downloads OSM extract from bbike
+func (m *Headway) DownloadPBF(ctx context.Context,
+	// Area name (e.g. "Seattle")
+	area string) *OSMExport {
+
+	downloadUrl := fmt.Sprintf("https://download.bbbike.org/osm/bbbike/%s/%s.osm.pbf", area, area)
+	container := downloadContainer().WithExec([]string{"wget", "-nv", "-U", "headway/1.0", "-O", "data.osm.pbf", downloadUrl})
+
+	return &OSMExport{
+		File: container.File("/data/data.osm.pbf"),
+	}
+}
+
+// Mounts a local OSM PBF file
+func (m *Headway) LocalPBF(ctx context.Context,
+	// Local OSM PBF file to mount
+	pbfFile *dagger.File) *OSMExport {
+
+	return &OSMExport{
+		File: pbfFile,
+	}
 }
 
 // Returns a container with the specified apt packages installed
