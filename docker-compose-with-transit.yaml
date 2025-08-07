@@ -1,6 +1,6 @@
 services:
   tileserver-init:
-    image: ghcr.io/headwaymaps/tileserver-init:latest
+    image: ghcr.io/headwaymaps/tileserver-init:dagger-latest
     env_file: .env
     environment:
       AREAMAP_ARTIFACT_DEST: /data/${HEADWAY_AREA}.mbtiles
@@ -13,7 +13,7 @@ services:
       - "./data/:/bootstrap/:ro"
       - "tileserver_data:/data/:rw"
   tileserver:
-    image: ghcr.io/headwaymaps/tileserver:latest
+    image: ghcr.io/headwaymaps/tileserver:dagger-latest
     restart: always
     env_file: .env
     environment:

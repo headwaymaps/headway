@@ -44,26 +44,25 @@ func (m *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, err
 
 // Build assets for the tileserver
 func (m *Headway) TileserverAssets(ctx context.Context,
-	// +defaultPath="./services/tileserver/assets"
-	assetsDir *dagger.Directory) (*dagger.Directory, error) {
+	// +defaultPath="./services/tileserver"
+	serviceDir *dagger.Directory) *dagger.Directory {
 	container := dag.Container().
 		From("rust:bookworm")
 
+	assetsDir := serviceDir.Directory("assets")
 	container = WithAptPackages(container, "libfreetype6-dev").
-		WithMountedDirectory("/app/assets", assetsDir).
+		WithMountedDirectory("/app/assets/", assetsDir).
 		WithExec([]string{"cargo", "install", "spreet", "build_pbf_glyphs"}).
 
 		// FONTS
-		WithWorkdir("/app/assets/fonts").
-		WithExec([]string{"build_pbf_glyphs", "./", "/output/fonts"}).
+		WithExec([]string{"build_pbf_glyphs", "/app/assets/fonts", "/output/fonts"}).
 
 		// SPRITES
 		WithExec([]string{"mkdir", "-p", "/output/sprites"}).
-		WithWorkdir("/app/assets/sprites").
-		WithExec([]string{"spreet", "./", "/output/sprites/sprite"}).
-		WithExec([]string{"spreet", "--retina", "./", "/output/sprites/sprite@2x"})
+		WithExec([]string{"spreet", "/app/assets/sprites", "/output/sprites/sprite"}).
+		WithExec([]string{"spreet", "--retina", "/app/assets/sprites", "/output/sprites/sprite@2x"})
 
-	return container.Directory("/output"), nil
+	return container.Directory("/output")
 }
 
 // Build tileserver init container image
@@ -74,6 +73,29 @@ func (m *Headway) TileserverInitImage(ctx context.Context,
 	return downloadContainer().
 		WithFile("/app/init.sh", serviceDir.File("init.sh")).
 		WithDefaultArgs([]string{"/app/init.sh"})
+}
+
+func (m *Headway) TileserverServeImage(ctx context.Context,
+	// +defaultPath="./services/tileserver"
+	serviceDir *dagger.Directory,
+) *dagger.Container {
+	container := dag.Container().
+		From("node:20-slim").
+		WithExec([]string{"npm", "install", "-g", "tileserver-gl-light"})
+
+	builtAssets := m.TileserverAssets(ctx, serviceDir)
+
+	container = container.WithExec([]string{"mkdir", "-p", "/app/styles"}).
+		WithExec([]string{"chown", "-R", "node", "/app"}).
+		WithDirectory("/app/fonts", builtAssets.Directory("fonts")).
+		WithDirectory("/app/sprites", builtAssets.Directory("sprites")).
+		WithDirectory("/app/styles/basic", serviceDir.Directory("styles/basic")).
+		WithDirectory("/templates/", serviceDir.Directory("templates")).
+		WithFile("/app/configure_run.sh", serviceDir.File("configure_run.sh")).
+		WithEnvVariable("HEADWAY_PUBLIC_URL", "http://127.0.0.1:8080").
+		WithDefaultArgs([]string{"/app/configure_run.sh"})
+
+	return container
 }
 
 // FIXME: ExportImage doesn't work.  (but dagger shell: export-image does work!)
