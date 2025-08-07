@@ -200,7 +200,6 @@ func (m *Bbox) Elevation(ctx context.Context,
 
 	container = WithAptPackages(container, "gdal-bin").
 		WithMountedFile("/dem-hgt-to-tif", demScript).
-		WithExec([]string{"chmod", "+x", "/dem-hgt-to-tif"}).
 		WithMountedDirectory("/elevation-hgts", elevationHgts).
 		WithExec([]string{"/dem-hgt-to-tif", "/elevation-hgts", "/elevation-tifs"})
 
@@ -228,6 +227,42 @@ func (m *Headway) LocalPBF(ctx context.Context,
 	return &OSMExport{
 		File: pbfFile,
 	}
+}
+
+// Builds mbtiles using Planetiler
+func (m *OSMExport) Mbtiles(ctx context.Context,
+	// +optional
+	// Whether this is a planet-scale build (affects memory settings)
+	isPlanetBuild bool,
+	// +defaultPath="./services/tilebuilder/percent-of-available-memory"
+	memoryScript *dagger.File) (*dagger.File, error) {
+
+	container := dag.Container().
+		From("ghcr.io/onthegomap/planetiler:0.7.0").
+		WithExec([]string{"mkdir", "-p", "/data/sources"}).
+		WithExec([]string{"sh", "-c", "curl --no-progress-meter https://data.maps.earth/planetiler_fixtures/sources.tar | tar -x --directory /data/sources"}).
+		WithMountedFile("/data/data.osm.pbf", m.File)
+
+	entrypoint, err := container.Entrypoint(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get entrypoint: %w", err)
+	}
+
+	if isPlanetBuild {
+		container = container.WithExec(append(entrypoint,
+			"--osm_path=/data/data.osm.pbf",
+			"--force",
+			"--bounds=planet",
+			"--nodemap-type=array",
+			"--storage=mmap",
+			"-Xmx$(/percent-of-available-memory 75)",
+			"-XX:MaxHeapFreeRatio=40",
+		))
+	} else {
+		container = container.WithExec(append(entrypoint, "--osm_path=/data/data.osm.pbf", "--force"))
+	}
+
+	return container.File("/data/output.mbtiles"), nil
 }
 
 // Returns a container with the specified apt packages installed

@@ -365,16 +365,6 @@ planetiler-build-mbtiles:
     ARG --required area
     COPY (+extract/data.osm.pbf --area=${area}) /data/
 
-    # Instead of a docker-in-docker thing here, we could extend from the planetiler base image,
-    # but the Entrypoint feels a little strange to hardcode since it's not a typical binary.
-    # Presumably this is some automated java+docker build thing.
-    # "Entrypoint": [
-    #     "java",
-    #     "-cp",
-    #     "@/app/jib-classpath-file",
-    #     "com.onthegomap.planetiler.Main"
-    # ],
-
     COPY ./services/tilebuilder/percent-of-available-memory .
 
     IF [ "$is_planet_build" = "false" ]
