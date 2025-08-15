@@ -73,7 +73,7 @@ func (h *Headway) Build(ctx context.Context,
 	// END
 
 	// BUILD +save-valhalla --area=${area}
-	valhalla := h.OSMExport.ValhallaTiles()
+	valhalla := h.ValhallaTiles()
 	output = output.WithFile(h.Area+".valhalla.tar.zst", compressDir(valhalla))
 
 	// BUILD +save-pelias --area=${area} --countries=${countries}
@@ -100,15 +100,13 @@ func (h *Headway) Build(ctx context.Context,
 	return output, nil
 }
 
-func compressDir(dir *dagger.Directory) *dagger.File {
-	container := WithAptPackages(dag.Container().From("debian:bookworm-slim"), "zip", "zstd").
-		WithDirectory("/workspace", dag.Directory()).
-		WithWorkdir("/workspace").
-		WithMountedDirectory("/workspace/input", dir).
-		WithExec([]string{"tar", "--use-compress-program=zstd", "-T0", "-cf", "output.tar.zst", "-C", "input", "."})
+/*
+func (h *Headway) BuildTransit(ctx context.Context,
+	// +defaultPath="./services"
+	servicesDir *dagger.Directory) (*dagger.Directory, error) {
 
-	return container.File("output.tar.zst")
 }
+*/
 
 /**
  * TileServer
@@ -191,33 +189,45 @@ func (h *Headway) ExportTileserverInitImage(ctx context.Context,
 	return h.ExportContainerImage(ctx, container, "tileserver-init", tags)
 }
 
-func (h *Headway) TestDind(ctx context.Context) string {
-	tmp := dag.CacheVolume("temp")
-	ctr := dag.
-		Container().
-		From("index.docker.io/docker:24.0-dind").
-		WithMountedCache("/temp", tmp).
-		WithMountedCache("/var/lib/docker", dag.CacheVolume("dind-lib-docker")).
-		WithoutEntrypoint().
-		WithExposedPort(2375)
+// Builds mbtiles using Planetiler
+func (h *Headway) Mbtiles(ctx context.Context,
+	// +optional
+	// Whether this is a planet-scale build (affects memory settings)
+	isPlanetBuild bool,
+	// +defaultPath="./services/tilebuilder"
+	serviceDir *dagger.Directory) (*dagger.File, error) {
 
-	out, _ := dag.Container().From("docker:cli").
-		WithServiceBinding("docker", ctr.AsService(dagger.ContainerAsServiceOpts{
-			Args: []string{
-				"dockerd",
-				"--host=tcp://0.0.0.0:2375",
-				"--host=unix:///var/run/docker.sock",
-				"--tls=false",
-			},
-			InsecureRootCapabilities: true,
-		})).
-		WithEnvVariable("DOCKER_HOST", "tcp://docker:2375").
-		WithMountedCache("/temp", tmp).
-		WithNewFile("foo.txt", "Hello").
-		WithExec([]string{"cp", "foo.txt", "/temp/foo.txt"}).
-		WithExec([]string{"docker", "run", "-v", "/temp/foo.txt:/foo.txt", "alpine", "cat", "/foo.txt"}).
-		Stdout(ctx)
-	return out
+	if h.OSMExport == nil || h.OSMExport.File == nil {
+		panic("Headway.OSMExport.File must be set to build mbtiles")
+	}
+
+	// memoryScript := serviceDir.File("percent-of-available-memory")
+	container := dag.Container().
+		From("ghcr.io/onthegomap/planetiler:0.7.0").
+		WithExec([]string{"mkdir", "-p", "/data/sources"}).
+		WithExec([]string{"sh", "-c", "curl --no-progress-meter https://data.maps.earth/planetiler_fixtures/sources.tar | tar -x --directory /data/sources"}).
+		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
+
+	entrypoint, err := container.Entrypoint(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get entrypoint: %w", err)
+	}
+
+	if isPlanetBuild {
+		container = container.WithExec(append(entrypoint,
+			"--osm_path=/data/data.osm.pbf",
+			"--force",
+			"--bounds=planet",
+			"--nodemap-type=array",
+			"--storage=mmap",
+			"-Xmx$(/percent-of-available-memory 75)",
+			"-XX:MaxHeapFreeRatio=40",
+		))
+	} else {
+		container = container.WithExec(append(entrypoint, "--osm_path=/data/data.osm.pbf", "--force"))
+	}
+
+	return container.File("/data/output.mbtiles"), nil
 }
 
 /**
@@ -274,6 +284,7 @@ func (p *Pelias) PeliasDownloadOpenAddresses() *dagger.Directory {
 
 func (p *Pelias) PeliasPreparePlaceholder(ctx context.Context) *dagger.Directory {
 	container := p.PeliasContainerFrom("pelias/placeholder:master").
+		WithMountedDirectory("/data/whosonfirst", p.PeliasDownloadWhosOnFirst()).
 		WithExec([]string{"bash", "-c", "./cmd/extract.sh && ./cmd/build.sh"})
 	return container.Directory("/data/placeholder")
 }
@@ -332,6 +343,10 @@ func (p *PeliasImporter) PeliasImportOpenAddresses() *dagger.Container {
 }
 
 func (p *PeliasImporter) PeliasImportOpenStreetMap() *dagger.Container {
+	if p.Pelias.Headway.OSMExport == nil || p.Pelias.Headway.OSMExport.File == nil {
+		panic("PeliasImporter: Headway.OSMExport.File must be set to import OpenStreetMap data")
+	}
+
 	return p.PeliasImporterContainerFrom("pelias/openstreetmap:master").
 		WithMountedFile("/data/openstreetmap/data.osm.pbf", p.Pelias.Headway.OSMExport.File).
 		// OpenStreetMap import also uses WhosOnFirst data
@@ -341,7 +356,7 @@ func (p *PeliasImporter) PeliasImportOpenStreetMap() *dagger.Container {
 
 func (p *PeliasImporter) PeliasImportPolylines() *dagger.Container {
 	return p.PeliasImporterContainerFrom("pelias/polylines:master").
-		WithMountedFile("/data/polylines/extract.0sv", p.Pelias.Headway.OSMExport.ValhallaPolylines()).
+		WithMountedFile("/data/polylines/extract.0sv", p.Pelias.Headway.ValhallaPolylines()).
 		// Polylines import also uses WhosOnFirst data
 		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst()).
 		WithExec([]string{"./bin/start"})
@@ -397,38 +412,8 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
 }
 
 /**
- * Helpers
+ * Valhalla
  */
-
-// Export the given container
-func (h *Headway) ExportContainerImage(ctx context.Context,
-	container *dagger.Container,
-	imageName string,
-	tags []string,
-) error {
-	for _, tag := range tags {
-		err := container.ExportImage(ctx, "gghcr.io/headwaymaps/"+imageName+":"+tag)
-		if err != nil {
-			return fmt.Errorf("failed to export image with tag %s: %w", tag, err)
-		}
-	}
-	return nil
-}
-
-func downloadContainer() *dagger.Container {
-	container := dag.Container().
-		From("debian:bookworm-slim").
-		WithWorkdir("/data")
-	container = WithAptPackages(container, "wget", "ca-certificates", "zstd")
-	return container
-}
-
-func downloadFile(url string) *dagger.File {
-    container := downloadContainer().
-        WithExec([]string{"wget", "-nv", "-U", "headway/1.0", "-O", "/data/file", url})
-    return container.File("/data/file")
-}
-
 func valhallaBaseContainer() *dagger.Container {
 	return dag.Container().
 		From("ghcr.io/gis-ops/docker-valhalla/valhalla").
@@ -444,16 +429,37 @@ func valhallaBuildContainer() *dagger.Container {
 		WithExec([]string{"sh", "-c", "valhalla_build_timezones > /tiles/timezones.sqlite"})
 }
 
+// Builds Valhalla routing tiles
+func (h *Headway) ValhallaTiles() *dagger.Directory {
+	if h.OSMExport == nil || h.OSMExport.File == nil {
+		panic("Headway.OSMExport.File must be set to build Valhalla tiles")
+	}
+
+	container := valhallaBuildContainer().
+		WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
+		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
+
+	return container.Directory("/tiles")
+}
+
+func (h *Headway) ValhallaPolylines() *dagger.File {
+	container := valhallaBuildContainer().
+		WithMountedDirectory("/tiles", h.ValhallaTiles()).
+		WithExec([]string{"sh", "-c", "valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv"})
+
+	return container.File("/tiles/polylines.0sv")
+}
+
 // Extracts bounding box for a given area from bboxes.csv
 func (h *Headway) BBox(ctx context.Context,
 	// +defaultPath="./services/gtfs/bboxes.csv"
 	bboxesFile *dagger.File) (*Bbox, error) {
 
 	// Area name to look up (must exist in bboxes.csv)
-    area := h.Area
-    if area == "" {
-        return nil, fmt.Errorf("Area is required to get bounding box")
-    }
+	area := h.Area
+	if area == "" {
+		return nil, fmt.Errorf("Area is required to get bounding box")
+	}
 
 	container := dag.Container().
 		From("debian:bookworm-slim").
@@ -520,7 +526,11 @@ func (m *Bbox) Elevation(ctx context.Context,
 	return container.Directory("/elevation-tifs")
 }
 
-// Mounts a local OSM PBF file
+/**
+ * OSM PBF
+ */
+
+// Downloads OSM extract from bbike
 func (h *Headway) DownloadPBF(
 	// Area name (e.g. "Seattle")
 	area string) *OSMExport {
@@ -528,7 +538,7 @@ func (h *Headway) DownloadPBF(
 	downloadUrl := fmt.Sprintf("https://download.bbbike.org/osm/bbbike/%s/%s.osm.pbf", area, area)
 	pbf := downloadFile(downloadUrl)
 
-	return &OSMExport{File: pbf }
+	return &OSMExport{File: pbf}
 }
 
 // Mounts a local OSM PBF file
@@ -558,58 +568,39 @@ func (h *Headway) WithLocalPBF(
 	return h
 }
 
-// Builds mbtiles using Planetiler
-func (m *OSMExport) Mbtiles(ctx context.Context,
-	// +optional
-	// Whether this is a planet-scale build (affects memory settings)
-	isPlanetBuild bool,
-	// +defaultPath="./services/tilebuilder"
-	serviceDir *dagger.Directory) (*dagger.File, error) {
+/**
+ * Helpers
+ */
 
-	// memoryScript := serviceDir.File("percent-of-available-memory")
+// Export the given container
+func (h *Headway) ExportContainerImage(ctx context.Context,
+	container *dagger.Container,
+	imageName string,
+	tags []string,
+) error {
+	// CURRENTLY NOT WORKING
+	// Maybe I need to mount my local docker socket?
+	for _, tag := range tags {
+		err := container.ExportImage(ctx, "ghcr.io/headwaymaps/"+imageName+":"+tag)
+		if err != nil {
+			return fmt.Errorf("failed to export image with tag %s: %w", tag, err)
+		}
+	}
+	return nil
+}
+
+func downloadContainer() *dagger.Container {
 	container := dag.Container().
-		From("ghcr.io/onthegomap/planetiler:0.7.0").
-		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"sh", "-c", "curl --no-progress-meter https://data.maps.earth/planetiler_fixtures/sources.tar | tar -x --directory /data/sources"}).
-		WithMountedFile("/data/data.osm.pbf", m.File)
-
-	entrypoint, err := container.Entrypoint(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get entrypoint: %w", err)
-	}
-
-	if isPlanetBuild {
-		container = container.WithExec(append(entrypoint,
-			"--osm_path=/data/data.osm.pbf",
-			"--force",
-			"--bounds=planet",
-			"--nodemap-type=array",
-			"--storage=mmap",
-			"-Xmx$(/percent-of-available-memory 75)",
-			"-XX:MaxHeapFreeRatio=40",
-		))
-	} else {
-		container = container.WithExec(append(entrypoint, "--osm_path=/data/data.osm.pbf", "--force"))
-	}
-
-	return container.File("/data/output.mbtiles"), nil
+		From("debian:bookworm-slim").
+		WithWorkdir("/data")
+	container = WithAptPackages(container, "wget", "ca-certificates", "zstd")
+	return container
 }
 
-// Builds Valhalla routing tiles
-func (m *OSMExport) ValhallaTiles() *dagger.Directory {
-	container := valhallaBuildContainer().
-		WithMountedFile("/data/osm/data.osm.pbf", m.File).
-		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
-
-	return container.Directory("/tiles")
-}
-
-func (m *OSMExport) ValhallaPolylines() *dagger.File {
-	container := valhallaBuildContainer().
-		WithMountedDirectory("/tiles", m.ValhallaTiles()).
-		WithExec([]string{"sh", "-c", "valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv"})
-
-	return container.File("/tiles/polylines.0sv")
+func downloadFile(url string) *dagger.File {
+	container := downloadContainer().
+		WithExec([]string{"wget", "-nv", "-U", "headway/1.0", "-O", "/data/file", url})
+	return container.File("/data/file")
 }
 
 // Returns a container with the specified apt packages installed
@@ -623,4 +614,18 @@ func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Co
 	cmd := fmt.Sprintf("apt-get update && apt-get install -y --no-install-recommends %s && rm -rf /var/lib/apt/lists/*", pkgList)
 
 	return container.WithExec([]string{"sh", "-c", cmd})
+}
+
+func compressDir(dir *dagger.Directory) *dagger.File {
+	container := WithAptPackages(dag.Container().From("debian:bookworm-slim"), "zip", "zstd").
+		WithDirectory("/workspace", dag.Directory()).
+		WithWorkdir("/workspace").
+		WithMountedDirectory("/workspace/input", dir).
+		WithExec([]string{"sh", "-c", "tar --use-compress-program='zstd -T0' -cf output.tar.zst -C input ."})
+
+	return container.File("output.tar.zst")
+}
+
+func (h *Headway) TestCompression(ctx context.Context, dir *dagger.Directory) *dagger.File {
+	return compressDir(dir)
 }
