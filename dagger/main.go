@@ -23,6 +23,7 @@ import (
 )
 
 type Headway struct {
+	Area      string
 	OSMExport *OSMExport
 }
 
@@ -33,6 +34,80 @@ type Bbox struct {
 type OSMExport struct {
 	// PBF file
 	File *dagger.File
+}
+
+func (h *Headway) WithArea(ctx context.Context, area string) *Headway {
+	h.Area = area
+	return h
+}
+
+/**
+ * Full build
+ */
+func (h *Headway) Build(ctx context.Context,
+	// +defaultPath="./services"
+	servicesDir *dagger.Directory) (*dagger.Directory, error) {
+
+	if h.Area == "" {
+		return nil, fmt.Errorf("Area is required")
+	}
+
+	output := dag.Directory()
+
+	// BUILD +save-extract --area=${area}
+	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
+
+	// BUILD +save-mbtiles --area=${area}
+	mbtiles, err := h.OSMExport.Mbtiles(ctx, false, servicesDir.Directory("tilebuilder"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build mbtiles: %w", err)
+	}
+	// area.mbtils
+	output = output.WithFile(h.Area+".mbtiles", mbtiles)
+
+	// TODO
+	// IF [ ! -z "${transit_feeds}" ]
+	// BUILD +save-gtfs --area=${area} --transit_feeds=${transit_feeds}
+	// BUILD +save-otp-graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
+	// BUILD +save-transit-elevations -graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
+	// END
+
+	// BUILD +save-valhalla --area=${area}
+	valhalla := h.OSMExport.ValhallaTiles()
+	output = output.WithFile(h.Area+".valhalla.tar.zst", compressDir(valhalla))
+
+	// BUILD +save-pelias --area=${area} --countries=${countries}
+	//     BUILD +save-pelias-config --area=${area} --countries=${countries}
+	pelias := h.PeliasConfig(ctx, h.Area, []string{}, servicesDir.Directory("pelias"))
+	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
+
+	//     BUILD +save-elasticsearch --area=${area} --countries=${countries}
+	elasticSearch := pelias.PeliasElasticsearchData(ctx)
+	output = output.WithFile(h.Area+".elasticsearch.tar.zst", compressDir(elasticSearch))
+
+	//     BUILD +save-placeholder --area=${area} --countries=${countries}
+	placeholder := pelias.PeliasPreparePlaceholder(ctx)
+	output = output.WithFile(h.Area+".placeholder.tar.zst", compressDir(placeholder))
+
+	// BUILD +save-tileserver-terrain
+	terrain, err := h.TileserverTerrain(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
+	}
+	output = output.WithFile("terrain.mbtiles", terrain.File("terrain.mbtiles"))
+	output = output.WithFile("landcover.mbtiles", terrain.File("landcover.mbtiles"))
+
+	return output, nil
+}
+
+func compressDir(dir *dagger.Directory) *dagger.File {
+	container := WithAptPackages(dag.Container().From("debian:bookworm-slim"), "zip", "zstd").
+		WithDirectory("/workspace", dag.Directory()).
+		WithWorkdir("/workspace").
+		WithMountedDirectory("/workspace/input", dir).
+		WithExec([]string{"tar", "--use-compress-program=zstd", "-T0", "-cf", "output.tar.zst", "-C", "input", "."})
+
+	return container.File("output.tar.zst")
 }
 
 /**
@@ -197,22 +272,17 @@ func (p *Pelias) PeliasDownloadOpenAddresses() *dagger.Directory {
 	return container.Directory("/data/openaddresses")
 }
 
+func (p *Pelias) PeliasPreparePlaceholder(ctx context.Context) *dagger.Directory {
+	container := p.PeliasContainerFrom("pelias/placeholder:master").
+		WithExec([]string{"bash", "-c", "./cmd/extract.sh && ./cmd/build.sh"})
+	return container.Directory("/data/placeholder")
+}
+
 type PeliasImporter struct {
 	Pelias               *Pelias
 	ElasticsearchCache   *dagger.CacheVolume
 	ElasticsearchService *dagger.Service
 }
-
-/*
-func (p *Pelias) PeliasPreparePlaceholder(ctx context.Context) *Pelias {
-	p = p.PeliasWhosOnFirst(ctx)
-	container := p.PeliasContainerFrom(ctx, "pelias/placeholder:master").
-		WithExec([]string{"bash", "-c", "./cmd/extract.sh && ./cmd/build.sh"})
-	p.DataDir = container.Directory("/data")
-	container.Terminal()
-	return p
-}
-*/
 
 func (p *Pelias) PeliasImporter() *PeliasImporter {
 	cacheBuster := time.Now().UnixNano()
@@ -277,7 +347,7 @@ func (p *PeliasImporter) PeliasImportPolylines() *dagger.Container {
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *Pelias) PeliasImport(ctx context.Context) *dagger.Directory {
+func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory {
 	err := error(nil)
 
 	importer := p.PeliasImporter()
@@ -353,6 +423,12 @@ func downloadContainer() *dagger.Container {
 	return container
 }
 
+func downloadFile(url string) *dagger.File {
+    container := downloadContainer().
+        WithExec([]string{"wget", "-nv", "-U", "headway/1.0", "-O", "/data/file", url})
+    return container.File("/data/file")
+}
+
 func valhallaBaseContainer() *dagger.Container {
 	return dag.Container().
 		From("ghcr.io/gis-ops/docker-valhalla/valhalla").
@@ -370,10 +446,14 @@ func valhallaBuildContainer() *dagger.Container {
 
 // Extracts bounding box for a given area from bboxes.csv
 func (h *Headway) BBox(ctx context.Context,
-	// Area name to look up (must exist in bboxes.csv)
-	area string,
 	// +defaultPath="./services/gtfs/bboxes.csv"
-	bboxesFile *dagger.File) (Bbox, error) {
+	bboxesFile *dagger.File) (*Bbox, error) {
+
+	// Area name to look up (must exist in bboxes.csv)
+    area := h.Area
+    if area == "" {
+        return nil, fmt.Errorf("Area is required to get bounding box")
+    }
 
 	container := dag.Container().
 		From("debian:bookworm-slim").
@@ -383,17 +463,14 @@ func (h *Headway) BBox(ctx context.Context,
 
 	bboxStr, err := container.Stdout(ctx)
 	if err != nil {
-		return Bbox{}, fmt.Errorf("failed to get bbox for area %s: %w", area, err)
+		return nil, fmt.Errorf("failed to get bbox for area %s: %w", area, err)
 	}
-	return Bbox{Value: bboxStr}, nil
+	return &Bbox{Value: bboxStr}, nil
 }
 
 // Downloads GTFS mobility database CSV
 func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
-	container := downloadContainer().
-		WithExec([]string{"wget", "-O", "mobilitydb.csv", "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media"})
-
-	return container.File("/data/mobilitydb.csv")
+	return downloadFile("https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media")
 }
 
 // Builds Rust GTFS processing tools
@@ -449,9 +526,9 @@ func (h *Headway) DownloadPBF(
 	area string) *OSMExport {
 
 	downloadUrl := fmt.Sprintf("https://download.bbbike.org/osm/bbbike/%s/%s.osm.pbf", area, area)
-	container := downloadContainer().WithExec([]string{"wget", "-nv", "-U", "headway/1.0", "-O", "data.osm.pbf", downloadUrl})
+	pbf := downloadFile(downloadUrl)
 
-	return &OSMExport{File: container.File("/data/data.osm.pbf")}
+	return &OSMExport{File: pbf }
 }
 
 // Mounts a local OSM PBF file
@@ -486,9 +563,10 @@ func (m *OSMExport) Mbtiles(ctx context.Context,
 	// +optional
 	// Whether this is a planet-scale build (affects memory settings)
 	isPlanetBuild bool,
-	// +defaultPath="./services/tilebuilder/percent-of-available-memory"
-	memoryScript *dagger.File) (*dagger.File, error) {
+	// +defaultPath="./services/tilebuilder"
+	serviceDir *dagger.Directory) (*dagger.File, error) {
 
+	// memoryScript := serviceDir.File("percent-of-available-memory")
 	container := dag.Container().
 		From("ghcr.io/onthegomap/planetiler:0.7.0").
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
@@ -528,7 +606,6 @@ func (m *OSMExport) ValhallaTiles() *dagger.Directory {
 
 func (m *OSMExport) ValhallaPolylines() *dagger.File {
 	container := valhallaBuildContainer().
-		// TODO: probably I need to mount the tiles?
 		WithMountedDirectory("/tiles", m.ValhallaTiles()).
 		WithExec([]string{"sh", "-c", "valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv"})
 
@@ -538,6 +615,7 @@ func (m *OSMExport) ValhallaPolylines() *dagger.File {
 // Returns a container with the specified apt packages installed
 func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Container {
 	if len(packages) == 0 {
+		println("WithAptPackages: no packages specified, returning original container")
 		return container
 	}
 
