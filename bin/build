@@ -45,6 +45,18 @@ if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
     "${CONFIG_DIR}/prebuild.sh"
 fi
 
-with_log earthly $EARTHLY_ARGS -P +build --area="$HEADWAY_AREA" --countries="$HEADWAY_COUNTRIES" --is_planet_build="$HEADWAY_IS_PLANET_BUILD"
+INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
+if [[ $HEADWAY_DOWNLOAD_AREA_PBF ]]; then
+    dagger -c "download-pbf ${HEADWAY_AREA} | file | export ${INPUT_PBF}"
+fi
+
+if [[ ! -f "${INPUT_PBF}" ]]; then
+    echo "Missing input pbf ${INPUT_PBF}"
+    exit 1
+fi
+
+# TODO: is-planet-build
+dagger -c "with-area ${HEADWAY_AREA} | with-local-pbf $INPUT_PBF | build | export data/$HEADWAY_AREA"
+
 bin/build-transit "$CONFIG_DIR" $EARTHLY_ARGS
 

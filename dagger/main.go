@@ -58,7 +58,7 @@ func (h *Headway) Build(ctx context.Context,
 	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
 
 	// BUILD +save-mbtiles --area=${area}
-	mbtiles, err := h.OSMExport.Mbtiles(ctx, false, servicesDir.Directory("tilebuilder"))
+	mbtiles, err := h.Mbtiles(ctx, false, servicesDir.Directory("tilebuilder"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build mbtiles: %w", err)
 	}
@@ -100,6 +100,7 @@ func (h *Headway) Build(ctx context.Context,
 	return output, nil
 }
 
+// TODO!
 /*
 func (h *Headway) BuildTransit(ctx context.Context,
 	// +defaultPath="./services"

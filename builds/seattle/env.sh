@@ -1,4 +1,5 @@
 export HEADWAY_AREA=Seattle
+export HEADWAY_DOWNLOAD_AREA_PBF=1
 export HEADWAY_AREA_TAG=seattle-latest
 export HEADWAY_PUBLIC_URL=https://seattle.maps.earth
 export HEADWAY_SERVICE_PORT=30401
