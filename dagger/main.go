@@ -18,17 +18,52 @@ import (
 	"context"
 	"dagger/headway/internal/dagger"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type Headway struct {
-	Area      string
-	OSMExport *OSMExport
+	Area        string
+	OSMExport   *OSMExport
+	ServicesDir *dagger.Directory
 }
 
 type Bbox struct {
-	Value string
+	Left   float64
+	Bottom float64
+	Right  float64
+	Top    float64
+}
+
+func (b *Bbox) CommaSeparated() string {
+	return fmt.Sprintf("%f,%f,%f,%f", b.Left, b.Bottom, b.Right, b.Top)
+}
+
+func ParseBboxStr(bboxStr string) (*Bbox, error) {
+	parts := strings.Fields(strings.TrimSpace(bboxStr))
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("invalid bbox format")
+	}
+	left, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse left: %w", err)
+	}
+	bottom, err := strconv.ParseFloat(parts[1], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse bottom: %w", err)
+	}
+	right, err := strconv.ParseFloat(parts[2], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse right: %w", err)
+	}
+	top, err := strconv.ParseFloat(parts[3], 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse top: %w", err)
+	}
+
+	result := Bbox{Left: left, Bottom: bottom, Right: right, Top: top}
+	return &result, nil
 }
 
 type OSMExport struct {
@@ -36,9 +71,30 @@ type OSMExport struct {
 	File *dagger.File
 }
 
-func (h *Headway) WithArea(ctx context.Context, area string) *Headway {
+// Downloads OSM extract from bbike
+func (h *Headway) New(
+	// Area name (e.g. "Seattle")
+	area string,
+
+	// Local OSM PBF file to mount, if missing will download based on area
+	// +defaultPath=""
+	localPbf *dagger.File,
+
+	// +defaultPath="./services"
+	servicesDir *dagger.Directory) *Headway {
 	h.Area = area
+	h.ServicesDir = servicesDir
+	if localPbf == nil {
+		h.OSMExport = h.DownloadPBF(area)
+	} else {
+		h.OSMExport = h.LocalPBF(localPbf)
+	}
+
 	return h
+}
+
+func (h *Headway) ServiceDir(subDirectory string) *dagger.Directory {
+	return h.ServicesDir.Directory(subDirectory)
 }
 
 /**
@@ -100,14 +156,186 @@ func (h *Headway) Build(ctx context.Context,
 	return output, nil
 }
 
-// TODO!
-/*
 func (h *Headway) BuildTransit(ctx context.Context,
-	// +defaultPath="./services"
-	servicesDir *dagger.Directory) (*dagger.Directory, error) {
+	transitConfigDir *dagger.Directory) (*dagger.Directory, error) {
 
+	output := dag.Directory()
+
+	transitFeedsDir := transitConfigDir.Directory("gtfs-feeds")
+
+	otpBuildConfig := (*dagger.File)(nil)
+	otpConfigExists, err := transitFeedsDir.Exists(ctx, "otp-build-config.json")
+	if err != nil {
+		panic(fmt.Errorf("failed to check if otp-build-config.json exists: %w", err))
+	}
+	if otpConfigExists {
+		otpBuildConfig = transitConfigDir.File("otp-build-config.json")
+	}
+	elevations := dag.Directory()
+	// TODO: ARG otp_build_config
+	transitFeedsFiles, err := transitFeedsDir.Entries(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get entries in transit feeds dir: %w", err))
+	}
+	for _, entry := range transitFeedsFiles {
+		transitFeedsFile := transitFeedsDir.File(entry)
+		zone := h.TransitZone(ctx, transitFeedsFile)
+		if otpBuildConfig != nil {
+			zone.WithOtpBuildConfig(ctx, otpBuildConfig)
+		}
+		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx))
+		output = output.WithFile(fmt.Sprintf("%s.gtfs.tar.zst", zone.Name(ctx)), compressDir(zone.GTFSDir))
+		// TODO: make an arg or config or something... or just always clip?
+		// Any harm besides slowing things down a little?
+		// In practice it seems pretty quick compared to the subsequent work done with the output,
+		// so maybe it's not worth complicating things here.
+		clipToGtfs := true
+		otpGraph := zone.OtpGraph(ctx, clipToGtfs)
+		output = output.WithFile(fmt.Sprintf("%s.graph.obj.zst", zone.Name(ctx)), compressFile(otpGraph))
+		elevations = elevations.WithDirectory("./", zone.Elevations(ctx))
+		// TODO: What is the `-graph` about?
+		// BUILD +save-transit-elevations -graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
+	}
+	output = output.WithDirectory("elevations", elevations)
+
+	return output, nil
 }
-*/
+
+type TransitZone struct {
+	Headway        *Headway
+	CacheKey       string
+	TransitFeeds   *dagger.File
+	GTFSDir        *dagger.Directory
+	OSMExport      *OSMExport
+	OTPBuildConfig *dagger.File
+}
+
+func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File) *TransitZone {
+	cacheKey := time.Now().Format("2006-01-02")
+	return &TransitZone{
+		Headway:      h,
+		CacheKey:     cacheKey,
+		TransitFeeds: transitFeeds,
+	}
+}
+
+func (t *TransitZone) ZoneName(ctx context.Context) string {
+	fileName, err := t.TransitFeeds.Name(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get transit feeds name: %w", err))
+	}
+	return strings.TrimSuffix(fileName, ".gtfs_feeds.csv")
+}
+
+func (t *TransitZone) WithOtpBuildConfig(ctx context.Context, otpBuildConfig *dagger.File) *TransitZone {
+	t.OTPBuildConfig = otpBuildConfig
+	return t
+}
+
+func (t *TransitZone) Name(ctx context.Context) string {
+	return fmt.Sprintf("%s-%s-%s", t.Headway.Area, t.ZoneName(ctx), t.CacheKey)
+}
+
+func (t *TransitZone) ClippedOsmExport(ctx context.Context) *OSMExport {
+	bbox, err := t.BBox(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get bbox: %w", err))
+	}
+
+	return t.Headway.OSMExport.Clip(ctx, bbox)
+}
+
+func (t *TransitZone) OtpGraph(ctx context.Context, clipToGtfs bool) *dagger.File {
+
+	// FROM +save-base
+	// ARG --required area
+	// ARG --required transit_feeds
+	// ARG --required clip_to_gtfs
+	// ARG otp_build_config
+
+	// # When working with a very large (e.g. planet sized) osm.pbf, we can't support
+	// # transit for the entire thing, but we can support smaller transit zones within the
+	// # planet.
+	// # We extract a bbox'd area of the input osm.pbf around the actual transit
+	// # zone for OTP to have any chance of fitting into memory.
+	// ARG transit_zone=$(basename $transit_feeds .gtfs_feeds.csv)
+	// IF [ -n "$clip_to_gtfs" ]
+	//     ARG output_name="${area}-${transit_zone}"
+	// ELSE
+	//     ARG clip_to_gtfs=0
+	//     ARG output_name="${transit_zone}"
+	// END
+	osmExport := t.Headway.OSMExport
+	if clipToGtfs {
+		osmExport = t.ClippedOsmExport(ctx)
+	}
+
+	// COPY +cache-buster/todays_date .
+	// ARG cache_key=$(cat todays_date)
+
+	// COPY (+otp-build-graph/graph.obj --area=${area} \
+	//                            --clip_to_gtfs=${clip_to_gtfs} \
+	//                            --transit_feeds=${transit_feeds} \
+	//                            --cache_key=${cache_key} \
+	//                            --otp_build_config=${otp_build_config} \
+	// ) /graph.obj
+
+	if t.GTFSDir == nil {
+		panic("TransitZone.GTFSDir must be set to build OTP graph, call `WithGTFSDir` first")
+	}
+
+	container := dag.Container().
+		From("opentripplanner/opentripplanner:2.7.0").
+		WithExec([]string{"mkdir", "/var/opentripplanner"}).
+		WithWorkdir("/var/opentripplanner")
+
+	if t.OTPBuildConfig != nil {
+		container = container.WithMountedFile("/var/opentripplanner/otp-build-config.json", t.OTPBuildConfig)
+	}
+
+	elevationTifs := t.Elevations(ctx)
+
+	container = container.
+		WithMountedFile("/var/opentripplanner/data.osm.pbf", osmExport.File).
+		WithMountedDirectory("/var/opentripplanner", t.GTFSDir).
+		WithDirectory("/var/opentripplanner", elevationTifs)
+
+	return container.
+		WithExec([]string{"--build", "--save"}, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
+		File("/var/opentripplanner/graph.obj")
+}
+
+func (o *OSMExport) Clip(ctx context.Context, bbox *Bbox) *OSMExport {
+	container := WithAptPackages(slimContainer(), "osmium-tool").
+		WithExec([]string{"mkdir", "-p", "/app"}).
+		WithMountedFile("/app/data.osm.pbf", o.File).
+		WithExec([]string{"osmium", "extract", "--bbox", bbox.CommaSeparated(), "--output", "/app/clipped.osm.pbf", "/app/data.osm.pbf"})
+
+	return &OSMExport{File: container.File("/app/clipped.osm.pbf")}
+}
+
+func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory) *TransitZone {
+	t.GTFSDir = gtfsDir
+	return t
+}
+
+func (t *TransitZone) BuildGtfsDir(ctx context.Context) *dagger.Directory {
+	servicesDir := t.Headway.ServicesDir.Directory("gtfs")
+
+	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")
+
+	container := dag.Container().
+		From("python:3")
+	return WithAptPackages(container, "zip").
+		WithExec([]string{"pip", "install", "requests"}).
+		WithMountedDirectory("/app", servicesDir).
+		WithWorkdir("/app").
+		WithMountedFile("/usr/local/bin/assume-bikes-allowed", assumeBikesAllowed).
+		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds).
+		WithExec([]string{"sh", "-c", "./download_gtfs_feeds.py --output=downloaded < gtfs_feeds.csv"}).
+		WithExec([]string{"sh", "-c", "./build_gtfs.sh --input downloaded --output ./output"}).
+		Directory("./output")
+}
 
 /**
  * TileServer
@@ -452,9 +680,8 @@ func (h *Headway) ValhallaPolylines() *dagger.File {
 }
 
 // Extracts bounding box for a given area from bboxes.csv
-func (h *Headway) BBox(ctx context.Context,
-	// +defaultPath="./services/gtfs/bboxes.csv"
-	bboxesFile *dagger.File) (*Bbox, error) {
+func (h *Headway) BBox(ctx context.Context) (*Bbox, error) {
+	bboxesFile := h.ServiceDir("gtfs").File("bboxes.csv")
 
 	// Area name to look up (must exist in bboxes.csv)
 	area := h.Area
@@ -472,7 +699,26 @@ func (h *Headway) BBox(ctx context.Context,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get bbox for area %s: %w", area, err)
 	}
-	return &Bbox{Value: bboxStr}, nil
+	return ParseBboxStr(bboxStr)
+}
+
+func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
+	container := dag.Container().
+		From("debian:bookworm-slim")
+	container = WithAptPackages(container, "unzip").
+		WithMountedFile("/usr/local/bin/gtfs-bbox", t.Headway.Gtfout(ctx).File("gtfs-bbox")).
+		WithExec([]string{"mkdir", "-p", "/app"}).
+		WithExec([]string{"mkdir", "-p", "/app/gtfs"}).
+		WithWorkdir("/app").
+		WithMountedDirectory("/app/gtfs_zips", t.GTFSDir).
+		WithExec([]string{"sh", "-c", "cd gtfs_zips && ls *.zip | while read zip_file; do unzip -d ../gtfs/$(basename $zip_file .zip) $zip_file; done"}).
+		WithExec([]string{"sh", "-c", "gtfs-bbox gtfs/*"})
+
+	bboxStr, err := container.Stdout(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bbox for transit zone %s: %w", t.Name(ctx), err)
+	}
+	return ParseBboxStr(bboxStr)
 }
 
 // Downloads GTFS mobility database CSV
@@ -484,10 +730,8 @@ func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
 // I'm not yet sure how exporting will work in situ. Something akin to:
 //
 //	dagger -c 'gtfout | file assume-bikes-allowed | export ./assume-bikes-allowed'
-func (h *Headway) Gtfout(ctx context.Context,
-	// +defaultPath="./services/gtfs/gtfout"
-	sourceDir *dagger.Directory) *dagger.Directory {
-
+func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
+	sourceDir := h.ServicesDir.Directory("gtfs/gtfout")
 	container := dag.Container().
 		From("rust:bookworm").
 		WithMountedDirectory("/gtfout", sourceDir).
@@ -497,28 +741,32 @@ func (h *Headway) Gtfout(ctx context.Context,
 	return container.Directory("/gtfout/target/release")
 }
 
-// Downloads elevation data for a given bounding box
-func (m *Bbox) DownloadElevation(ctx context.Context) *dagger.Directory {
-
-	// Convert space-separated bbox to comma-separated format for valhalla
-	valhallaBbox := strings.ReplaceAll(m.Value, " ", ",")
-
-	container := valhallaBaseContainer().
-		WithExec([]string{"valhalla_build_elevation", "--outdir", "elevation-hgts", "--from-bbox=" + valhallaBbox})
-
-	return container.Directory("/tiles/elevation-hgts")
+// Converts elevation HGT files to TIF format
+func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {
+	bbox, err := t.BBox(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get bounding box: %w", err))
+	}
+	return elevations(ctx, bbox, t.Headway.ServicesDir)
 }
 
-// Converts elevation HGT files to TIF format
-func (m *Bbox) Elevation(ctx context.Context,
-	// +defaultPath="./services/otp/dem-hgt-to-tif"
-	demScript *dagger.File) *dagger.Directory {
+func (h *Headway) Elevations(ctx context.Context) *dagger.Directory {
+	bbox, err := h.BBox(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get bounding box: %w", err))
+	}
+	return elevations(ctx, bbox, h.ServicesDir)
+}
 
-	elevationHgts := m.DownloadElevation(ctx)
+func elevations(ctx context.Context, bbox *Bbox, serviceDirectory *dagger.Directory) *dagger.Directory {
+	elevationHgts := valhallaBaseContainer().
+		WithExec([]string{"valhalla_build_elevation", "--outdir", "elevation-hgts", "--from-bbox=" + bbox.CommaSeparated()}).
+		Directory("/tiles/elevation-hgts")
 
+	// Convert elevation HGT files to TIF format
+	demScript := serviceDirectory.Directory("otp").File("dem-hgt-to-tif")
 	container := dag.Container().
 		From("debian:bookworm-slim")
-
 	container = WithAptPackages(container, "gdal-bin").
 		WithMountedFile("/dem-hgt-to-tif", demScript).
 		WithMountedDirectory("/elevation-hgts", elevationHgts).
@@ -551,27 +799,14 @@ func (h *Headway) LocalPBF(
 	}
 }
 
-// Downloads OSM extract from bbike
-func (h *Headway) WithDownloadedPBF(
-	// Area name (e.g. "Seattle")
-	area string) *Headway {
-
-	h.OSMExport = h.DownloadPBF(area)
-	return h
-}
-
-// Mounts a local OSM PBF file
-func (h *Headway) WithLocalPBF(
-	// Local OSM PBF file to mount
-	pbfFile *dagger.File) *Headway {
-
-	h.OSMExport = h.LocalPBF(pbfFile)
-	return h
-}
-
 /**
  * Helpers
  */
+
+func slimContainer() *dagger.Container {
+	return dag.Container().
+		From("debian:bookworm-slim")
+}
 
 // Export the given container
 func (h *Headway) ExportContainerImage(ctx context.Context,
@@ -618,13 +853,23 @@ func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Co
 }
 
 func compressDir(dir *dagger.Directory) *dagger.File {
-	container := WithAptPackages(dag.Container().From("debian:bookworm-slim"), "zip", "zstd").
-		WithDirectory("/workspace", dag.Directory()).
-		WithWorkdir("/workspace").
-		WithMountedDirectory("/workspace/input", dir).
+	container := WithAptPackages(slimContainer(), "zstd").
+		WithExec([]string{"mkdir", "/app"}).
+		WithWorkdir("/app").
+		WithMountedDirectory("/app/input", dir).
 		WithExec([]string{"sh", "-c", "tar --use-compress-program='zstd -T0' -cf output.tar.zst -C input ."})
 
 	return container.File("output.tar.zst")
+}
+
+func compressFile(input *dagger.File) *dagger.File {
+	container := WithAptPackages(slimContainer(), "zstd").
+		WithExec([]string{"mkdir", "/app"}).
+		WithWorkdir("/app").
+		WithMountedFile("/app/input", input).
+		WithExec([]string{"sh", "-c", "zstd -T0 input"})
+
+	return container.File("input.zst")
 }
 
 func (h *Headway) TestCompression(ctx context.Context, dir *dagger.Directory) *dagger.File {
