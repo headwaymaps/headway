@@ -26,15 +26,9 @@ fi
 
 set -o nounset
 
-EARTHLY_ARGS=${@:1}
-
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 
 source "${CONFIG_DIR}/env.sh"
 
-# earthly ${EARTHLY_ARGS} +save-transit-zones --area="$HEADWAY_AREA" --transit_zones="$TRANSIT_ZONES" --otp_build_config="$OTP_BUILD_CONFIG"
-# WIP: dagger
 set -x
-# dagger --progress=plain -c "new ${HEADWAY_AREA} --local-pbf ${HEADWAY_AREA}.osm.pbf | build-transit ${TRANSIT_CONFIG_DIR} | export '${HEADWAY_AREA}-transit'"
-dagger --interactive -c "new ${HEADWAY_AREA} --local-pbf ${HEADWAY_AREA}.osm.pbf | build-transit ${TRANSIT_CONFIG_DIR} | export '${HEADWAY_AREA}-transit'"
-
+dagger --interactive -c "new ${HEADWAY_AREA} --local-pbf ${HEADWAY_AREA}.osm.pbf | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"

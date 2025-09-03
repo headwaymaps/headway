@@ -31,8 +31,6 @@ EOS
     exit 1
 fi
 
-EARTHLY_ARGS=${@:1}
-
 source "${CONFIG_DIR}/env.sh"
 
 if [ "$HEADWAY_COUNTRIES" = "ALL" ]; then
@@ -45,18 +43,15 @@ if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
     "${CONFIG_DIR}/prebuild.sh"
 fi
 
-INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
 if [[ $HEADWAY_DOWNLOAD_AREA_PBF ]]; then
-    dagger -c "download-pbf ${HEADWAY_AREA} | file | export ${INPUT_PBF}"
-fi
-
-if [[ ! -f "${INPUT_PBF}" ]]; then
-    echo "Missing input pbf ${INPUT_PBF}"
-    exit 1
+    INPUT_PBF="data/${HEADWAY_AREA}/${HEADWAY_AREA}.osm.pbf"
+    dagger -c "download-pbf ${HEADWAY_AREA} | file | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.osm.pbf"
+else
+    INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
 fi
 
 # TODO: is-planet-build
 dagger -c "new ${HEADWAY_AREA} --local-pbf $INPUT_PBF | build | export data/$HEADWAY_AREA"
 
-bin/build-transit "$CONFIG_DIR" $EARTHLY_ARGS
+bin/build-transit "$CONFIG_DIR"
 
