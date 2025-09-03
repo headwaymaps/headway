@@ -164,7 +164,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	transitFeedsDir := transitConfigDir.Directory("gtfs-feeds")
 
 	otpBuildConfig := (*dagger.File)(nil)
-	otpConfigExists, err := transitFeedsDir.Exists(ctx, "otp-build-config.json")
+	otpConfigExists, err := transitConfigDir.Exists(ctx, "otp-build-config.json")
 	if err != nil {
 		panic(fmt.Errorf("failed to check if otp-build-config.json exists: %w", err))
 	}
@@ -181,7 +181,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		transitFeedsFile := transitFeedsDir.File(entry)
 		zone := h.TransitZone(ctx, transitFeedsFile)
 		if otpBuildConfig != nil {
-			zone.WithOtpBuildConfig(ctx, otpBuildConfig)
+			zone = zone.WithOtpBuildConfig(ctx, otpBuildConfig)
 		}
 		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx))
 		output = output.WithFile(fmt.Sprintf("%s.gtfs.tar.zst", zone.Name(ctx)), compressDir(zone.GTFSDir))
@@ -289,16 +289,17 @@ func (t *TransitZone) OtpGraph(ctx context.Context, clipToGtfs bool) *dagger.Fil
 		WithExec([]string{"mkdir", "/var/opentripplanner"}).
 		WithWorkdir("/var/opentripplanner")
 
-	if t.OTPBuildConfig != nil {
-		container = container.WithMountedFile("/var/opentripplanner/otp-build-config.json", t.OTPBuildConfig)
-	}
 
 	elevationTifs := t.Elevations(ctx)
 
 	container = container.
-		WithMountedFile("/var/opentripplanner/data.osm.pbf", osmExport.File).
-		WithMountedDirectory("/var/opentripplanner", t.GTFSDir).
-		WithDirectory("/var/opentripplanner", elevationTifs)
+		WithDirectory("/var/opentripplanner", t.GTFSDir).
+		WithDirectory("/var/opentripplanner", elevationTifs).
+		WithMountedFile("/var/opentripplanner/data.osm.pbf", osmExport.File)
+
+	if t.OTPBuildConfig != nil {
+		container = container.WithFile("/var/opentripplanner/build-config.json", t.OTPBuildConfig)
+	}
 
 	return container.
 		WithExec([]string{"--build", "--save"}, dagger.ContainerWithExecOpts{UseEntrypoint: true}).

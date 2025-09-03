@@ -32,11 +32,6 @@ TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 
 source "${CONFIG_DIR}/env.sh"
 
-OTP_BUILD_CONFIG="${TRANSIT_CONFIG_DIR}/build-config.json"
-if [ ! -f "$OTP_BUILD_CONFIG" ]; then
-    OTP_BUILD_CONFIG=""
-fi
-
 # earthly ${EARTHLY_ARGS} +save-transit-zones --area="$HEADWAY_AREA" --transit_zones="$TRANSIT_ZONES" --otp_build_config="$OTP_BUILD_CONFIG"
 # WIP: dagger
 set -x
