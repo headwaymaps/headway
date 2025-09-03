@@ -56,7 +56,7 @@ if [[ ! -f "${INPUT_PBF}" ]]; then
 fi
 
 # TODO: is-planet-build
-dagger -c "with-area ${HEADWAY_AREA} | with-local-pbf $INPUT_PBF | build | export data/$HEADWAY_AREA"
+dagger -c "new ${HEADWAY_AREA} --local-pbf $INPUT_PBF | build | export data/$HEADWAY_AREA"
 
 bin/build-transit "$CONFIG_DIR" $EARTHLY_ARGS
 
