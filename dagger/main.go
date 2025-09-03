@@ -645,11 +645,8 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
  */
 func valhallaBaseContainer() *dagger.Container {
 	return dag.Container().
-		From("ghcr.io/gis-ops/docker-valhalla/valhalla").
-		WithUser("root").
-		WithWorkdir("/tiles").
-		WithExec([]string{"chown", "valhalla", "/tiles"}).
-		WithUser("valhalla")
+		From("ghcr.io/valhalla/valhalla:latest").
+		WithWorkdir("/tiles")
 }
 
 func valhallaBuildContainer() *dagger.Container {
