@@ -159,6 +159,8 @@ func (h *Headway) Build(ctx context.Context,
 func (h *Headway) BuildTransit(ctx context.Context,
 	transitConfigDir *dagger.Directory) (*dagger.Directory, error) {
 
+	cacheKey := time.Now().Format("2006-01-02")
+
 	output := dag.Directory()
 
 	transitFeedsDir := transitConfigDir.Directory("gtfs-feeds")
@@ -172,14 +174,13 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		otpBuildConfig = transitConfigDir.File("otp-build-config.json")
 	}
 	elevations := dag.Directory()
-	// TODO: ARG otp_build_config
 	transitFeedsFiles, err := transitFeedsDir.Entries(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to get entries in transit feeds dir: %w", err))
 	}
 	for _, entry := range transitFeedsFiles {
 		transitFeedsFile := transitFeedsDir.File(entry)
-		zone := h.TransitZone(ctx, transitFeedsFile)
+		zone := h.TransitZone(ctx, transitFeedsFile, cacheKey)
 		if otpBuildConfig != nil {
 			zone = zone.WithOtpBuildConfig(ctx, otpBuildConfig)
 		}
@@ -193,10 +194,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		otpGraph := zone.OtpGraph(ctx, clipToGtfs)
 		output = output.WithFile(fmt.Sprintf("%s.graph.obj.zst", zone.Name(ctx)), compressFile(otpGraph))
 		elevations = elevations.WithDirectory("./", zone.Elevations(ctx))
-		// TODO: What is the `-graph` about?
-		// BUILD +save-transit-elevations -graph --area=${area} --transit_feeds=${transit_feeds} --clip_to_gtfs=0
 	}
-	output = output.WithDirectory("elevations", elevations)
+	output = output.WithFile(fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, cacheKey), compressDir(elevations))
 
 	return output, nil
 }
@@ -210,8 +209,7 @@ type TransitZone struct {
 	OTPBuildConfig *dagger.File
 }
 
-func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File) *TransitZone {
-	cacheKey := time.Now().Format("2006-01-02")
+func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File, cacheKey string) *TransitZone {
 	return &TransitZone{
 		Headway:      h,
 		CacheKey:     cacheKey,
@@ -288,7 +286,6 @@ func (t *TransitZone) OtpGraph(ctx context.Context, clipToGtfs bool) *dagger.Fil
 		From("opentripplanner/opentripplanner:2.7.0").
 		WithExec([]string{"mkdir", "/var/opentripplanner"}).
 		WithWorkdir("/var/opentripplanner")
-
 
 	elevationTifs := t.Elevations(ctx)
 
