@@ -31,4 +31,4 @@ TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 source "${CONFIG_DIR}/env.sh"
 
 set -x
-dagger --interactive -c "new ${HEADWAY_AREA} --local-pbf ${HEADWAY_AREA}.osm.pbf | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"
+dagger --interactive -c "new | with-area ${HEADWAY_AREA} --local-pbf ${HEADWAY_AREA}.osm.pbf | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"

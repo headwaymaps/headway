@@ -73,17 +73,22 @@ type OSMExport struct {
 
 // Downloads OSM extract from bbike
 func (h *Headway) New(
+	// +defaultPath="./services"
+	servicesDir *dagger.Directory) *Headway {
+	h.ServicesDir = servicesDir
+	return h
+}
+
+// Downloads OSM extract from bbike
+func (h *Headway) WithAre(
 	// Area name (e.g. "Seattle")
 	area string,
 
 	// Local OSM PBF file to mount, if missing will download based on area
 	// +defaultPath=""
 	localPbf *dagger.File,
-
-	// +defaultPath="./services"
-	servicesDir *dagger.Directory) *Headway {
+) *Headway {
 	h.Area = area
-	h.ServicesDir = servicesDir
 	if localPbf == nil {
 		h.OSMExport = h.DownloadPBF(area)
 	} else {
@@ -94,15 +99,16 @@ func (h *Headway) New(
 }
 
 func (h *Headway) ServiceDir(subDirectory string) *dagger.Directory {
+	if h.ServicesDir == nil {
+		panic("Headway.ServicesDir was nil - did you start with `new`?")
+	}
 	return h.ServicesDir.Directory(subDirectory)
 }
 
 /**
  * Full build
  */
-func (h *Headway) Build(ctx context.Context,
-	// +defaultPath="./services"
-	servicesDir *dagger.Directory) (*dagger.Directory, error) {
+func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	if h.Area == "" {
 		return nil, fmt.Errorf("Area is required")
@@ -114,7 +120,7 @@ func (h *Headway) Build(ctx context.Context,
 	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
 
 	// BUILD +save-mbtiles --area=${area}
-	mbtiles, err := h.Mbtiles(ctx, false, servicesDir.Directory("tilebuilder"))
+	mbtiles, err := h.Mbtiles(ctx, false, h.ServiceDir("tilebuilder"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build mbtiles: %w", err)
 	}
@@ -134,7 +140,7 @@ func (h *Headway) Build(ctx context.Context,
 
 	// BUILD +save-pelias --area=${area} --countries=${countries}
 	//     BUILD +save-pelias-config --area=${area} --countries=${countries}
-	pelias := h.PeliasConfig(ctx, h.Area, []string{}, servicesDir.Directory("pelias"))
+	pelias := h.PeliasConfig(ctx, h.Area, []string{}, h.ServiceDir("pelias"))
 	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
 
 	//     BUILD +save-elasticsearch --area=${area} --countries=${countries}
@@ -200,6 +206,10 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	return output, nil
 }
 
+// ===
+// Transit
+// ===
+
 type TransitZone struct {
 	Headway        *Headway
 	CacheKey       string
@@ -243,55 +253,47 @@ func (t *TransitZone) ClippedOsmExport(ctx context.Context) *OSMExport {
 	return t.Headway.OSMExport.Clip(ctx, bbox)
 }
 
+// ===
+// OpenTripPlanner
+// ===
+func otpBaseContainer(ctx context.Context) *dagger.Container {
+	return dag.Container().
+		From("opentripplanner/opentripplanner:2.7.0")
+}
+
+func (h *Headway) OtpServeContainer(ctx context.Context) *dagger.Container {
+	container := otpBaseContainer(ctx).
+		WithExposedPort(8000).
+		WithEnvVariable("PORT", "8000").
+		WithEntrypoint([]string{"sh", "-c"}).
+		WithDefaultArgs([]string{"/docker-entrypoint.sh --load --port ${PORT}"})
+
+	// NOTE: we dropped the healthcheck directive from the old pre-dagger dockerfile
+	// because I don't see where dagger supports these kinds of health checks.
+	// As I understand it, k8s ignores them anyway
+	return container
+}
+
+func (h *Headway) OtpInitContainer(ctx context.Context) *dagger.Container {
+	return downloadContainer().
+		WithFile("/app/init.sh", h.ServiceDir("otp").File("init.sh")).
+		WithDefaultArgs([]string{"/app/init.sh"})
+}
+
 func (t *TransitZone) OtpGraph(ctx context.Context, clipToGtfs bool) *dagger.File {
-
-	// FROM +save-base
-	// ARG --required area
-	// ARG --required transit_feeds
-	// ARG --required clip_to_gtfs
-	// ARG otp_build_config
-
-	// # When working with a very large (e.g. planet sized) osm.pbf, we can't support
-	// # transit for the entire thing, but we can support smaller transit zones within the
-	// # planet.
-	// # We extract a bbox'd area of the input osm.pbf around the actual transit
-	// # zone for OTP to have any chance of fitting into memory.
-	// ARG transit_zone=$(basename $transit_feeds .gtfs_feeds.csv)
-	// IF [ -n "$clip_to_gtfs" ]
-	//     ARG output_name="${area}-${transit_zone}"
-	// ELSE
-	//     ARG clip_to_gtfs=0
-	//     ARG output_name="${transit_zone}"
-	// END
 	osmExport := t.Headway.OSMExport
 	if clipToGtfs {
 		osmExport = t.ClippedOsmExport(ctx)
 	}
 
-	// COPY +cache-buster/todays_date .
-	// ARG cache_key=$(cat todays_date)
-
-	// COPY (+otp-build-graph/graph.obj --area=${area} \
-	//                            --clip_to_gtfs=${clip_to_gtfs} \
-	//                            --transit_feeds=${transit_feeds} \
-	//                            --cache_key=${cache_key} \
-	//                            --otp_build_config=${otp_build_config} \
-	// ) /graph.obj
-
 	if t.GTFSDir == nil {
 		panic("TransitZone.GTFSDir must be set to build OTP graph, call `WithGTFSDir` first")
 	}
 
-	container := dag.Container().
-		From("opentripplanner/opentripplanner:2.7.0").
-		WithExec([]string{"mkdir", "/var/opentripplanner"}).
-		WithWorkdir("/var/opentripplanner")
-
-	elevationTifs := t.Elevations(ctx)
-
-	container = container.
+	container := otpBaseContainer(ctx).
+		WithWorkdir("/var/opentripplanner").
 		WithDirectory("/var/opentripplanner", t.GTFSDir).
-		WithDirectory("/var/opentripplanner", elevationTifs).
+		WithDirectory("/var/opentripplanner", t.Elevations(ctx)).
 		WithMountedFile("/var/opentripplanner/data.osm.pbf", osmExport.File)
 
 	if t.OTPBuildConfig != nil {
@@ -304,7 +306,7 @@ func (t *TransitZone) OtpGraph(ctx context.Context, clipToGtfs bool) *dagger.Fil
 }
 
 func (o *OSMExport) Clip(ctx context.Context, bbox *Bbox) *OSMExport {
-	container := WithAptPackages(slimContainer(), "osmium-tool").
+	container := slimContainer("osmium-tool").
 		WithExec([]string{"mkdir", "-p", "/app"}).
 		WithMountedFile("/app/data.osm.pbf", o.File).
 		WithExec([]string{"osmium", "extract", "--bbox", bbox.CommaSeparated(), "--output", "/app/clipped.osm.pbf", "/app/data.osm.pbf"})
@@ -318,7 +320,7 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 }
 
 func (t *TransitZone) BuildGtfsDir(ctx context.Context) *dagger.Directory {
-	servicesDir := t.Headway.ServicesDir.Directory("gtfs")
+	servicesDir := t.Headway.ServiceDir("gtfs")
 
 	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")
 
@@ -354,11 +356,8 @@ func (h *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, err
 func (h *Headway) TileserverAssets(ctx context.Context,
 	// +defaultPath="./services/tileserver"
 	serviceDir *dagger.Directory) *dagger.Directory {
-	container := dag.Container().
-		From("rust:bookworm")
-
 	assetsDir := serviceDir.Directory("assets")
-	container = WithAptPackages(container, "libfreetype6-dev").
+	container := rustContainer("libfreetype6-dev").
 		WithMountedDirectory("/app/assets/", assetsDir).
 		WithExec([]string{"cargo", "install", "spreet", "build_pbf_glyphs"}).
 
@@ -374,46 +373,30 @@ func (h *Headway) TileserverAssets(ctx context.Context,
 }
 
 // Build tileserver init container image
-func (h *Headway) TileserverInitImage(ctx context.Context,
-	// +defaultPath="./services/tileserver"
-	serviceDir *dagger.Directory,
-) *dagger.Container {
+func (h *Headway) TileserverInitContainer(ctx context.Context) *dagger.Container {
 	return downloadContainer().
-		WithFile("/app/init.sh", serviceDir.File("init.sh")).
+		WithFile("/app/init.sh", h.ServiceDir("tileserver").File("init.sh")).
 		WithDefaultArgs([]string{"/app/init.sh"})
 }
 
-func (h *Headway) TileserverServeImage(ctx context.Context,
-	// +defaultPath="./services/tileserver"
-	serviceDir *dagger.Directory,
-) *dagger.Container {
+func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Container {
 	container := dag.Container().
 		From("node:20-slim").
 		WithExec([]string{"npm", "install", "-g", "tileserver-gl-light"})
 
-	builtAssets := h.TileserverAssets(ctx, serviceDir)
+	builtAssets := h.TileserverAssets(ctx, h.ServiceDir("tileserver"))
 
 	container = container.WithExec([]string{"mkdir", "-p", "/app/styles"}).
 		WithExec([]string{"chown", "-R", "node", "/app"}).
 		WithDirectory("/app/fonts", builtAssets.Directory("fonts")).
 		WithDirectory("/app/sprites", builtAssets.Directory("sprites")).
-		WithDirectory("/app/styles/basic", serviceDir.Directory("styles/basic")).
-		WithDirectory("/templates/", serviceDir.Directory("templates")).
-		WithFile("/app/configure_run.sh", serviceDir.File("configure_run.sh")).
+		WithDirectory("/app/styles/basic", h.ServiceDir("tileserver").Directory("styles/basic")).
+		WithDirectory("/templates/", h.ServiceDir("tileserver").Directory("templates")).
+		WithFile("/app/configure_run.sh", h.ServiceDir("tileserver").File("configure_run.sh")).
 		WithEnvVariable("HEADWAY_PUBLIC_URL", "http://127.0.0.1:8080").
 		WithDefaultArgs([]string{"/app/configure_run.sh"})
 
 	return container
-}
-
-// FIXME: ExportImage doesn't work.  (but dagger shell: export-image does work!)
-func (h *Headway) ExportTileserverInitImage(ctx context.Context,
-	// +defaultPath="./services/tileserver"
-	serviceDir *dagger.Directory,
-	tags []string,
-) error {
-	container := h.TileserverInitImage(ctx, serviceDir)
-	return h.ExportContainerImage(ctx, container, "tileserver-init", tags)
 }
 
 // Builds mbtiles using Planetiler
@@ -726,9 +709,8 @@ func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
 //
 //	dagger -c 'gtfout | file assume-bikes-allowed | export ./assume-bikes-allowed'
 func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
-	sourceDir := h.ServicesDir.Directory("gtfs/gtfout")
-	container := dag.Container().
-		From("rust:bookworm").
+	sourceDir := h.ServiceDir("gtfs/gtfout")
+	container := rustContainer().
 		WithMountedDirectory("/gtfout", sourceDir).
 		WithWorkdir("/gtfout").
 		WithExec([]string{"cargo", "build", "--release"})
@@ -794,38 +776,73 @@ func (h *Headway) LocalPBF(
 	}
 }
 
-/**
- * Helpers
- */
+// ===
+// Travelmux
+// ===
 
-func slimContainer() *dagger.Container {
-	return dag.Container().
-		From("debian:bookworm-slim")
+func (h *Headway) TravelmuxServer(ctx context.Context) *dagger.File {
+	return rustContainer().
+		WithWorkdir("app").
+		// This speeds up rebuilds of rust projects by caching the prebuilt
+		// dependencies in a separate docker layer. Without this, every change to
+		// the source requires re-downloading and re-building all the project deps,
+		// which takes a while.
+		// WithMountedFile("Cargo.toml", h.ServicesDir.Directory("travelmux").File("Cargo.toml")).
+		// WithMountedFile("Cargo.lock", h.ServicesDir.Directory("travelmux").File("Cargo.lock")).
+		// WithExec([]string{"mkdir", "-p", "src"}).
+		// WithExec([]string{"sh", "-c", "echo 'fn main() { /* dummy main to get cargo to build deps */ }' > src/main.rs"}).
+		// WithExec([]string{"cargo", "build", "--release"}).
+		// WithExec([]string{"rm", "src/main.rs"}).
+		WithMountedDirectory("/app", h.ServiceDir("travelmux")).
+		WithExec([]string{"cargo", "build", "--release"}).
+		File("target/release/travelmux-server")
 }
 
-// Export the given container
-func (h *Headway) ExportContainerImage(ctx context.Context,
-	container *dagger.Container,
-	imageName string,
-	tags []string,
-) error {
-	// CURRENTLY NOT WORKING
-	// Maybe I need to mount my local docker socket?
-	for _, tag := range tags {
-		err := container.ExportImage(ctx, "ghcr.io/headwaymaps/"+imageName+":"+tag)
-		if err != nil {
-			return fmt.Errorf("failed to export image with tag %s: %w", tag, err)
-		}
+func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container {
+	serverBin := h.TravelmuxServer(ctx)
+
+	container := slimContainer("libssl3").
+		WithExec([]string{"adduser", "--disabled-login", "travelmux", "--gecos", ""}).
+		WithUser("travelmux").
+		WithWorkdir("/home/travelmux").
+		WithFile("/home/travelmux/travelmux-server", serverBin, dagger.ContainerWithFileOpts{Permissions: 0755}).
+		WithExposedPort(8000).
+		WithEnvVariable("RUST_LOG", "info").
+		WithEntrypoint([]string{"/home/travelmux/travelmux-server"}).
+		WithDefaultArgs([]string{"http://valhalla:8002", "http://opentripplanner:8000/otp/routers"})
+
+	return container
+}
+
+func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container {
+	return downloadContainer().
+		WithFile("/app/init.sh", h.ServiceDir("travelmux").File("init.sh"), dagger.ContainerWithFileOpts{Permissions: 0755}).
+		WithDefaultArgs([]string{"/app/init.sh"})
+}
+
+// ===
+// Helpers
+// ===
+
+func slimContainer(packages ...string) *dagger.Container {
+	container := dag.Container().From("debian:bookworm-slim")
+	if len(packages) == 0 {
+		return container
 	}
-	return nil
+	return WithAptPackages(container, packages...)
+}
+
+func rustContainer(packages ...string) *dagger.Container {
+	container := dag.Container().From("rust:bookworm")
+	if len(packages) == 0 {
+		return container
+	}
+	return WithAptPackages(container, packages...)
 }
 
 func downloadContainer() *dagger.Container {
-	container := dag.Container().
-		From("debian:bookworm-slim").
+	return slimContainer("wget", "ca-certificates", "zstd").
 		WithWorkdir("/data")
-	container = WithAptPackages(container, "wget", "ca-certificates", "zstd")
-	return container
 }
 
 func downloadFile(url string) *dagger.File {
@@ -848,7 +865,7 @@ func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Co
 }
 
 func compressDir(dir *dagger.Directory) *dagger.File {
-	container := WithAptPackages(slimContainer(), "zstd").
+	container := slimContainer("zstd").
 		WithExec([]string{"mkdir", "/app"}).
 		WithWorkdir("/app").
 		WithMountedDirectory("/app/input", dir).
@@ -858,15 +875,11 @@ func compressDir(dir *dagger.Directory) *dagger.File {
 }
 
 func compressFile(input *dagger.File) *dagger.File {
-	container := WithAptPackages(slimContainer(), "zstd").
+	container := slimContainer("zstd").
 		WithExec([]string{"mkdir", "/app"}).
 		WithWorkdir("/app").
 		WithMountedFile("/app/input", input).
 		WithExec([]string{"sh", "-c", "zstd -T0 input"})
 
 	return container.File("input.zst")
-}
-
-func (h *Headway) TestCompression(ctx context.Context, dir *dagger.Directory) *dagger.File {
-	return compressDir(dir)
 }
