@@ -1,0 +1,43 @@
+#!/bin/bash -ex
+
+function export_image() {
+  local build_function=$1
+  if [ -z "$build_function" ]; then
+    echo "missing 'build_function' arg"
+    exit 1
+  fi
+  local container=$2
+  if [ -z "$container" ]; then
+    echo "missing 'container' arg"
+    exit 1
+  fi
+  local tag=$3
+  if [ -z "$tag" ]; then
+    echo "missing 'tag' arg"
+    exit 1
+  fi
+
+  dagger --interactive -c "new | ${build_function} | export-image ghcr.io/headway/${container}:${tag}"
+}
+
+function export_all() {
+    local tag=$1
+    if [ -z "$tag" ]; then
+        echo "missing required 'tag' argument"
+        exit 1
+    fi
+    export_image travelmux-serve-container travelmux "$tag"
+    export_image travelmux-init-container travelmux-init "$tag"
+    export_image otp-serve-container opentripplanner "$tag"
+    export_image otp-init-container opentripplanner-init "$tag"
+    export_image valhalla-serve-container valhalla "$tag"
+    export_image valhalla-init-container valhalla-init "$tag"
+    export_image tileserver-serve-container tileserver "$tag"
+    export_image tileserver-init-container tileserver-init "$tag"
+    export_image "web-serve-container --branding=eotw.maps" headway "$tag"
+    export_image web-init-container headway-init "$tag"
+    export_image pelias-init-container pelias-init "$tag"
+}
+
+export_all latest
+

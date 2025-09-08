@@ -1,7 +1,9 @@
 .tmp_*
 *.swp
-*.osm.pbf
+# FIXME: dagger v0.18.17 wont load git-ignored files https://github.com/dagger/dagger/issues/10994
+# *.osm.pbf
 *.mbtiles
 **/.DS_Store
-data/*
+# FIXME: dagger v0.18.17 wont load git-ignored files https://github.com/dagger/dagger/issues/10994
+# data/*
 .env

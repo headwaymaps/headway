@@ -51,7 +51,9 @@ else
 fi
 
 # TODO: is-planet-build
-dagger -c "new | with-area ${HEADWAY_AREA} --local-pbf $INPUT_PBF | build | export data/$HEADWAY_AREA"
+# FIXME: This is failing because dagger started exluding .gitignore'd files from input
+# See https://github.com/dagger/dagger/issues/10994
+dagger -c "new | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF} | build | export data/${HEADWAY_AREA}"
 
 bin/build-transit "$CONFIG_DIR"
 

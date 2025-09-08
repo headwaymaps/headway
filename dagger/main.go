@@ -80,7 +80,7 @@ func (h *Headway) New(
 }
 
 // Downloads OSM extract from bbike
-func (h *Headway) WithAre(
+func (h *Headway) WithArea(
 	// Area name (e.g. "Seattle")
 	area string,
 
@@ -140,7 +140,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	// BUILD +save-pelias --area=${area} --countries=${countries}
 	//     BUILD +save-pelias-config --area=${area} --countries=${countries}
-	pelias := h.PeliasConfig(ctx, h.Area, []string{}, h.ServiceDir("pelias"))
+	pelias := h.PeliasConfig(ctx, []string{})
 	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
 
 	//     BUILD +save-elasticsearch --area=${area} --countries=${countries}
@@ -445,37 +445,33 @@ func (h *Headway) Mbtiles(ctx context.Context,
  */
 
 type Pelias struct {
-	Config     *dagger.File
-	ServiceDir *dagger.Directory
-	Headway    *Headway
+	Config  *dagger.File
+	Headway *Headway
 }
 
 // We use this both for import and for production pelias instances.
 // But we might want to try a longer timeout for the import process?
 func (h *Headway) PeliasConfig(ctx context.Context,
-	area string,
 	// +optional
 	countries []string,
-	// +defaultPath="./services/pelias"
-	serviceDir *dagger.Directory,
 ) *Pelias {
 	countriesStr := strings.Join(countries, ",")
 	config := dag.Container().
 		From("node:20-slim").
-		WithDirectory("generate_config", serviceDir.Directory("generate_config")).
+		WithDirectory("generate_config", h.ServiceDir("pelias").Directory("generate_config")).
 		WithWorkdir("generate_config").
 		WithExec([]string{"yarn", "install"}).
 		WithExec([]string{"yarn", "build"}).
-		WithExec([]string{"sh", "-c", fmt.Sprintf("bin/generate-pelias-config areas.csv '%s' '%s' > pelias.json", area, countriesStr)}).
+		WithExec([]string{"sh", "-c", fmt.Sprintf("bin/generate-pelias-config areas.csv '%s' '%s' > pelias.json", h.Area, countriesStr)}).
 		File("pelias.json")
 
-	return &Pelias{Config: config, ServiceDir: serviceDir, Headway: h}
+	return &Pelias{Config: config, Headway: h}
 }
 
 func (p *Pelias) PeliasContainerFrom(containerName string) *dagger.Container {
 	container := dag.Container().
 		From(containerName).
-		WithMountedDirectory("/pelias-service", p.ServiceDir).
+		WithMountedDirectory("/pelias-service", p.Headway.ServiceDir("pelias")).
 		WithFile("/code/pelias.json", p.Config)
 	return container
 }
@@ -500,9 +496,9 @@ func (p *Pelias) PeliasPreparePlaceholder(ctx context.Context) *dagger.Directory
 }
 
 type PeliasImporter struct {
-	Pelias               *Pelias
-	ElasticsearchCache   *dagger.CacheVolume
-	ElasticsearchService *dagger.Service
+	Pelias                   *Pelias
+	ElasticsearchCacheVolume *dagger.CacheVolume
+	ElasticsearchService     *dagger.Service
 }
 
 func (p *Pelias) PeliasImporter() *PeliasImporter {
@@ -514,16 +510,16 @@ func (p *Pelias) PeliasImporter() *PeliasImporter {
 	opts := dagger.ContainerWithMountedCacheOpts{Owner: "elasticsearch", Sharing: "SHARED"}
 
 	// NOTE: docker-compose passes some extra arguments to this container, e.g. IPC and mem size
-	db := dag.Container().
+	elasticsearchService := dag.Container().
 		From("pelias/elasticsearch:8.12.2-beta").
 		WithExposedPort(9200).
 		WithMountedCache("/usr/share/elasticsearch/data", elasticsearchCache, opts).
 		AsService()
 
 	return &PeliasImporter{
-		Pelias:               p,
-		ElasticsearchCache:   elasticsearchCache,
-		ElasticsearchService: db,
+		Pelias:                   p,
+		ElasticsearchCacheVolume: elasticsearchCache,
+		ElasticsearchService:     elasticsearchService,
 	}
 }
 
@@ -616,7 +612,7 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
 		//
 		// We need the "elasticsearch" cache, but mounting will error if the user doesn't exist, so we add the user
 		WithExec([]string{"useradd", "elasticsearch"}).
-		WithMountedCache("/data-cache", importer.ElasticsearchCache, opts).
+		WithMountedCache("/data-cache", importer.ElasticsearchCacheVolume, opts).
 		WithExec([]string{"cp", "-r", "/data-cache", "/export"}, dagger.ContainerWithExecOpts{UseEntrypoint: false}).
 		Directory("/export")
 }
@@ -655,6 +651,25 @@ func (h *Headway) ValhallaPolylines() *dagger.File {
 		WithExec([]string{"sh", "-c", "valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv"})
 
 	return container.File("/tiles/polylines.0sv")
+}
+
+func (h *Headway) ValhallaInitContainer(ctx context.Context) *dagger.Container {
+	container := valhallaBaseContainer().
+		WithUser("root")
+	container = WithAptPackages(container, "wget", "zstd")
+	return container.
+		WithUser("valhalla").
+		WithFile("/app/init.sh", h.ServiceDir("valhalla").File("init.sh")).
+		WithEntrypoint([]string{"/bin/bash"}).
+		WithUser("root").
+		WithDefaultArgs([]string{"/app/init.sh"})
+}
+
+func (h *Headway) ValhallaServeContainer(ctx context.Context) *dagger.Container {
+	return valhallaBaseContainer().
+		WithEntrypoint([]string{"valhalla_service"}).
+		WithUser("valhalla").
+		WithDefaultArgs([]string{"/data/valhalla.json"})
 }
 
 // Extracts bounding box for a given area from bboxes.csv
@@ -818,6 +833,70 @@ func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container 
 	return downloadContainer().
 		WithFile("/app/init.sh", h.ServiceDir("travelmux").File("init.sh"), dagger.ContainerWithFileOpts{Permissions: 0755}).
 		WithDefaultArgs([]string{"/app/init.sh"})
+}
+
+/**
+ * Web Frontend
+ */
+
+func (h *Headway) WebBuild(ctx context.Context,
+	// +optional
+	branding string) *dagger.Directory {
+	container := dag.Container().
+		From("node:20-slim").
+		WithExec([]string{"yarn", "global", "add", "@quasar/cli"}).
+		WithMountedDirectory("/www-app", h.ServiceDir("frontend/www-app")).
+		WithWorkdir("/www-app")
+
+	if branding != "" {
+		container = container.WithExec([]string{"sed", "-i", "s/.*productName.*/  \"productName\": \"" + branding + "\",/", "package.json"})
+	}
+
+	return container.
+		WithExec([]string{"yarn", "install"}).
+		WithExec([]string{"quasar", "build"}).
+		Directory("/www-app/dist/spa")
+}
+
+func (h *Headway) WebServeContainer(ctx context.Context,
+	// +optional
+	branding string) *dagger.Container {
+	webBuild := h.WebBuild(ctx, branding)
+
+	return dag.Container().
+		From("nginx").
+		WithDirectory("/usr/share/nginx/html/", webBuild).
+		WithFile("/etc/nginx/templates/nginx.conf.template", h.ServiceDir("frontend").File("nginx.conf.template")).
+		WithEnvVariable("HEADWAY_PUBLIC_URL", "http://127.0.0.1:8080").
+		WithEnvVariable("HEADWAY_SHARED_VOL", "/data").
+		WithEnvVariable("HEADWAY_HTTP_PORT", "8080").
+		WithEnvVariable("HEADWAY_RESOLVER", "127.0.0.11").
+		WithEnvVariable("HEADWAY_TRAVELMUX_URL", "http://travelmux:8000").
+		WithEnvVariable("HEADWAY_TILESERVER_URL", "http://tileserver:8000").
+		WithEnvVariable("HEADWAY_PELIAS_URL", "http://pelias-api:8080").
+		WithEnvVariable("ESC", "$").
+		WithEnvVariable("NGINX_ENVSUBST_OUTPUT_DIR", "/etc/nginx")
+}
+
+func (h *Headway) WebInitContainer(ctx context.Context) *dagger.Container {
+	return downloadContainer().
+		WithFile("/app/init.sh", h.ServiceDir("frontend").File("init.sh")).
+		WithFile("/app/generate_config.sh", h.ServiceDir("frontend").File("generate_config.sh")).
+		WithEnvVariable("HEADWAY_SHARED_VOL", "/data").
+		WithDefaultArgs([]string{"/app/init.sh"})
+}
+
+/**
+ * Pelias
+ */
+
+func (h *Headway) PeliasInitContainer(ctx context.Context) *dagger.Container {
+	return downloadContainer().
+		WithExec([]string{"mkdir", "-p", "/app"}).
+		WithFile("/app/", h.ServiceDir("pelias").File("init_config.sh")).
+		WithFile("/app/", h.ServiceDir("pelias").File("init_elastic.sh")).
+		WithFile("/app/", h.ServiceDir("pelias").File("init_placeholder.sh")).
+		WithDefaultArgs([]string{"echo", "run a specific command"})
 }
 
 // ===
