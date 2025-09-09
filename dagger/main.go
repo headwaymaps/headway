@@ -120,7 +120,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
 
 	// BUILD +save-mbtiles --area=${area}
-	mbtiles, err := h.Mbtiles(ctx, false, h.ServiceDir("tilebuilder"))
+	mbtiles, err := h.Mbtiles(ctx, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build mbtiles: %w", err)
 	}
@@ -353,10 +353,8 @@ func (h *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, err
 }
 
 // Build assets for the tileserver
-func (h *Headway) TileserverAssets(ctx context.Context,
-	// +defaultPath="./services/tileserver"
-	serviceDir *dagger.Directory) *dagger.Directory {
-	assetsDir := serviceDir.Directory("assets")
+func (h *Headway) TileserverAssets(ctx context.Context) *dagger.Directory {
+	assetsDir := h.ServiceDir("tileserver").Directory("assets")
 	container := rustContainer("libfreetype6-dev").
 		WithMountedDirectory("/app/assets/", assetsDir).
 		WithExec([]string{"cargo", "install", "spreet", "build_pbf_glyphs"}).
@@ -380,11 +378,10 @@ func (h *Headway) TileserverInitContainer(ctx context.Context) *dagger.Container
 }
 
 func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Container {
-	container := dag.Container().
-		From("node:20-slim").
+	container := slimNodeContainer("gettext-base").
 		WithExec([]string{"npm", "install", "-g", "tileserver-gl-light"})
 
-	builtAssets := h.TileserverAssets(ctx, h.ServiceDir("tileserver"))
+	builtAssets := h.TileserverAssets(ctx)
 
 	container = container.WithExec([]string{"mkdir", "-p", "/app/styles"}).
 		WithExec([]string{"chown", "-R", "node", "/app"}).
@@ -403,15 +400,13 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 func (h *Headway) Mbtiles(ctx context.Context,
 	// +optional
 	// Whether this is a planet-scale build (affects memory settings)
-	isPlanetBuild bool,
-	// +defaultPath="./services/tilebuilder"
-	serviceDir *dagger.Directory) (*dagger.File, error) {
+	isPlanetBuild bool) (*dagger.File, error) {
 
 	if h.OSMExport == nil || h.OSMExport.File == nil {
 		panic("Headway.OSMExport.File must be set to build mbtiles")
 	}
 
-	// memoryScript := serviceDir.File("percent-of-available-memory")
+	// memoryScript := h.ServiceDir("tilebuilder").File("percent-of-available-memory")
 	container := dag.Container().
 		From("ghcr.io/onthegomap/planetiler:0.7.0").
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
@@ -456,8 +451,7 @@ func (h *Headway) PeliasConfig(ctx context.Context,
 	countries []string,
 ) *Pelias {
 	countriesStr := strings.Join(countries, ",")
-	config := dag.Container().
-		From("node:20-slim").
+	config := slimNodeContainer().
 		WithDirectory("generate_config", h.ServiceDir("pelias").Directory("generate_config")).
 		WithWorkdir("generate_config").
 		WithExec([]string{"yarn", "install"}).
@@ -604,8 +598,7 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
 	}
 
 	opts := dagger.ContainerWithMountedCacheOpts{Owner: "elasticsearch", Sharing: "SHARED"}
-	return dag.Container().
-		From("debian:bookworm-slim").
+	return slimContainer().
 		// The cache "Owner" is two things:
 		//    1. the owner on the filesystem (as in `chown $owner`)
 		//    2. a namespace within the cache, so the same cache will container different data depending on the Owner argument
@@ -623,6 +616,8 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
 func valhallaBaseContainer() *dagger.Container {
 	return dag.Container().
 		From("ghcr.io/valhalla/valhalla:latest").
+		WithExec([]string{"useradd", "-s", "/usr/sbin/nologin", "valhalla"}).
+		WithUser("valhalla").
 		WithWorkdir("/tiles")
 }
 
@@ -658,17 +653,14 @@ func (h *Headway) ValhallaInitContainer(ctx context.Context) *dagger.Container {
 		WithUser("root")
 	container = WithAptPackages(container, "wget", "zstd")
 	return container.
-		WithUser("valhalla").
 		WithFile("/app/init.sh", h.ServiceDir("valhalla").File("init.sh")).
 		WithEntrypoint([]string{"/bin/bash"}).
-		WithUser("root").
 		WithDefaultArgs([]string{"/app/init.sh"})
 }
 
 func (h *Headway) ValhallaServeContainer(ctx context.Context) *dagger.Container {
 	return valhallaBaseContainer().
 		WithEntrypoint([]string{"valhalla_service"}).
-		WithUser("valhalla").
 		WithDefaultArgs([]string{"/data/valhalla.json"})
 }
 
@@ -682,8 +674,7 @@ func (h *Headway) BBox(ctx context.Context) (*Bbox, error) {
 		return nil, fmt.Errorf("Area is required to get bounding box")
 	}
 
-	container := dag.Container().
-		From("debian:bookworm-slim").
+	container := slimContainer().
 		WithMountedFile("/bboxes.csv", bboxesFile).
 		WithExec([]string{"sh", "-c", fmt.Sprintf("test $(grep '%s:' /bboxes.csv | wc -l) -eq 1", area)}).
 		WithExec([]string{"sh", "-c", fmt.Sprintf("grep '%s:' /bboxes.csv | cut -d':' -f2", area)})
@@ -696,9 +687,7 @@ func (h *Headway) BBox(ctx context.Context) (*Bbox, error) {
 }
 
 func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
-	container := dag.Container().
-		From("debian:bookworm-slim")
-	container = WithAptPackages(container, "unzip").
+	container := slimContainer("unzip").
 		WithMountedFile("/usr/local/bin/gtfs-bbox", t.Headway.Gtfout(ctx).File("gtfs-bbox")).
 		WithExec([]string{"mkdir", "-p", "/app"}).
 		WithExec([]string{"mkdir", "-p", "/app/gtfs"}).
@@ -739,7 +728,7 @@ func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {
 	if err != nil {
 		panic(fmt.Errorf("failed to get bounding box: %w", err))
 	}
-	return elevations(ctx, bbox, t.Headway.ServicesDir)
+	return elevations(ctx, bbox, t.Headway)
 }
 
 func (h *Headway) Elevations(ctx context.Context) *dagger.Directory {
@@ -747,19 +736,17 @@ func (h *Headway) Elevations(ctx context.Context) *dagger.Directory {
 	if err != nil {
 		panic(fmt.Errorf("failed to get bounding box: %w", err))
 	}
-	return elevations(ctx, bbox, h.ServicesDir)
+	return elevations(ctx, bbox, h)
 }
 
-func elevations(ctx context.Context, bbox *Bbox, serviceDirectory *dagger.Directory) *dagger.Directory {
+func elevations(ctx context.Context, bbox *Bbox, headway *Headway) *dagger.Directory {
 	elevationHgts := valhallaBaseContainer().
 		WithExec([]string{"valhalla_build_elevation", "--outdir", "elevation-hgts", "--from-bbox=" + bbox.CommaSeparated()}).
 		Directory("/tiles/elevation-hgts")
 
 	// Convert elevation HGT files to TIF format
-	demScript := serviceDirectory.Directory("otp").File("dem-hgt-to-tif")
-	container := dag.Container().
-		From("debian:bookworm-slim")
-	container = WithAptPackages(container, "gdal-bin").
+	demScript := headway.ServiceDir("otp").File("dem-hgt-to-tif")
+	container := slimContainer("gdal-bin").
 		WithMountedFile("/dem-hgt-to-tif", demScript).
 		WithMountedDirectory("/elevation-hgts", elevationHgts).
 		WithExec([]string{"/dem-hgt-to-tif", "/elevation-hgts", "/elevation-tifs"})
@@ -842,8 +829,7 @@ func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container 
 func (h *Headway) WebBuild(ctx context.Context,
 	// +optional
 	branding string) *dagger.Directory {
-	container := dag.Container().
-		From("node:20-slim").
+	container := slimNodeContainer().
 		WithExec([]string{"yarn", "global", "add", "@quasar/cli"}).
 		WithMountedDirectory("/www-app", h.ServiceDir("frontend/www-app")).
 		WithWorkdir("/www-app")
@@ -913,6 +899,14 @@ func slimContainer(packages ...string) *dagger.Container {
 
 func rustContainer(packages ...string) *dagger.Container {
 	container := dag.Container().From("rust:bookworm")
+	if len(packages) == 0 {
+		return container
+	}
+	return WithAptPackages(container, packages...)
+}
+
+func slimNodeContainer(packages ...string) *dagger.Container {
+    container := dag.Container().From("node:20-slim")
 	if len(packages) == 0 {
 		return container
 	}

@@ -10,7 +10,7 @@ services:
       LANDCOVER_ARTIFACT_DEST: /data/landcover.mbtiles
       LANDCOVER_ARTIFACT_SOURCE: /bootstrap/landcover.mbtiles
     volumes:
-      - "./data/:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}:/bootstrap/:ro"
       - "tileserver_data:/data/:rw"
   tileserver:
     image: ghcr.io/headwaymaps/tileserver:dagger-latest
@@ -39,7 +39,7 @@ services:
           }
         }
     volumes:
-      - "./data/:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "opentripplanner_data:/data/:rw"
   opentripplanner:
     image: ghcr.io/headwaymaps/opentripplanner:latest
@@ -60,7 +60,7 @@ services:
     environment:
       TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elevation-tifs.tar.zst
     volumes:
-      - "./data/:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "travelmux_data:/data/:rw"
   travelmux:
     image: ghcr.io/headwaymaps/travelmux:latest
@@ -84,8 +84,8 @@ services:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: .env
     volumes:
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "valhalla_data:/data/:rw"
-      - "./data/:/bootstrap/:ro"
     environment:
       VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar.zst
     ulimits:
@@ -113,7 +113,7 @@ services:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: .env
     volumes:
-      - "./data/:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "frontend_data:/data/:rw"
   frontend:
     image: ghcr.io/headwaymaps/headway:latest
@@ -146,7 +146,7 @@ services:
       PELIAS_CONFIG_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.pelias.json
     command: [ "/bin/bash", "/app/init_config.sh" ]
     volumes:
-      - "./data/:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "pelias_config_data:/config"
   pelias-elasticsearch-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
@@ -155,7 +155,7 @@ services:
       ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.zst
     command: [ "/bin/bash", "/app/init_elastic.sh" ]
     volumes:
-      - "./data/:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
   pelias-placeholder-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
@@ -164,7 +164,7 @@ services:
       PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.zst
     command: [ "/bin/bash", "/app/init_placeholder.sh" ]
     volumes:
-      - "./data/:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "pelias_placeholder_data:/data/placeholder"
   pelias-libpostal:
     image: pelias/libpostal-service

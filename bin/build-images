@@ -17,7 +17,7 @@ function export_image() {
     exit 1
   fi
 
-  dagger --interactive -c "new | ${build_function} | export-image ghcr.io/headway/${container}:${tag}"
+  dagger --interactive -c "new | ${build_function} | export-image ghcr.io/headwaymaps/${container}:${tag}"
 }
 
 function export_all() {
