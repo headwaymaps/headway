@@ -1,6 +1,6 @@
 services:
   tileserver-init:
-    image: ghcr.io/headwaymaps/tileserver-init:dagger-latest
+    image: ghcr.io/headwaymaps/tileserver-init:latest
     env_file: .env
     environment:
       AREAMAP_ARTIFACT_DEST: /data/${HEADWAY_AREA}.mbtiles
@@ -10,10 +10,10 @@ services:
       LANDCOVER_ARTIFACT_DEST: /data/landcover.mbtiles
       LANDCOVER_ARTIFACT_SOURCE: /bootstrap/landcover.mbtiles
     volumes:
-      - "./data/${HEADWAY_AREA}:/bootstrap/:ro"
+      - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "tileserver_data:/data/:rw"
   tileserver:
-    image: ghcr.io/headwaymaps/tileserver:dagger-latest
+    image: ghcr.io/headwaymaps/tileserver:latest
     restart: always
     env_file: .env
     environment:
@@ -31,7 +31,7 @@ services:
     image: ghcr.io/headwaymaps/opentripplanner-init:latest
     env_file: .env
     environment:
-      OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.zst
+      OTP_ARTIFACT_SOURCE_PATH: /bootstrap/transit/${HEADWAY_AREA}-${HEADWAY_AREA}.graph.obj.zst
       OTP_CONFIG_JSON: |
         {
           "otpFeatures": {
@@ -52,13 +52,17 @@ services:
         condition: service_completed_successfully
     networks:
       - otp_backend
+    # healthcheck:
+    #   test: nc -z localhost 8000
+    #   interval: 5s
+    #   start_period: 60s
     # ports:
     #   - "9002:8000"
   travelmux-init:
     image: ghcr.io/headwaymaps/travelmux-init:latest
     env_file: .env
     environment:
-      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elevation-tifs.tar.zst
+      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/transit/${HEADWAY_AREA}.elevation-tifs.tar.zst
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "travelmux_data:/data/:rw"
@@ -69,8 +73,8 @@ services:
     environment:
       ELEVATION_TIFS_DIR: /data/elevation-tifs
     depends_on:
-      opentripplanner:
-        condition: service_healthy
+      #opentripplanner:
+      #  condition: service_healthy
       travelmux-init:
         condition: service_completed_successfully
     networks:
