@@ -54,10 +54,7 @@ else
     INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
 fi
 
-# TODO: is-planet-build
-# FIXME: This is failing because dagger started exluding .gitignore'd files from input
-# See https://github.com/dagger/dagger/issues/10994
-dagger -c "new | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF} | build | export data/${HEADWAY_AREA}"
+dagger -c "new --is-planet-build=${HEADWAY_IS_PLANET_BUILD} | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF} | build | export data/${HEADWAY_AREA}"
 
 bin/build-transit "$CONFIG_DIR"
 

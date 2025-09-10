@@ -24,9 +24,10 @@ import (
 )
 
 type Headway struct {
-	Area        string
-	OSMExport   *OSMExport
-	ServicesDir *dagger.Directory
+	Area          string
+	OSMExport     *OSMExport
+	ServicesDir   *dagger.Directory
+	IsPlanetBuild bool
 }
 
 type Bbox struct {
@@ -73,8 +74,11 @@ type OSMExport struct {
 
 // Downloads OSM extract from bbike
 func (h *Headway) New(
+	// +optional
+	isPlanetBuild bool,
 	// +defaultPath="./services"
 	servicesDir *dagger.Directory) *Headway {
+	h.IsPlanetBuild = isPlanetBuild
 	h.ServicesDir = servicesDir
 	return h
 }
@@ -120,7 +124,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
 
 	// BUILD +save-mbtiles --area=${area}
-	mbtiles, err := h.Mbtiles(ctx, false)
+	mbtiles, err := h.Mbtiles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build mbtiles: %w", err)
 	}
@@ -135,7 +139,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 	// END
 
 	// BUILD +save-valhalla --area=${area}
-	valhalla := h.ValhallaTiles()
+	valhalla := h.ValhallaTiles(ctx)
 	output = output.WithFile(h.Area+".valhalla.tar.zst", compressDir(valhalla))
 
 	// BUILD +save-pelias --area=${area} --countries=${countries}
@@ -397,18 +401,25 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 }
 
 // Builds mbtiles using Planetiler
-func (h *Headway) Mbtiles(ctx context.Context,
-	// +optional
-	// Whether this is a planet-scale build (affects memory settings)
-	isPlanetBuild bool) (*dagger.File, error) {
+func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 
 	if h.OSMExport == nil || h.OSMExport.File == nil {
 		panic("Headway.OSMExport.File must be set to build mbtiles")
 	}
 
-	// memoryScript := h.ServiceDir("tilebuilder").File("percent-of-available-memory")
 	container := dag.Container().
-		From("ghcr.io/onthegomap/planetiler:0.7.0").
+		From("ghcr.io/onthegomap/planetiler:0.7.0")
+
+	memoryScript := h.ServiceDir("tilebuilder").File("percent-of-available-memory")
+	memoryBudget, err := container.
+		WithFile("percent-of-available-memory", memoryScript).
+		WithExec([]string{"/percent-of-available-memory", "75"}).
+		Stdout(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute memory budget: %w", err)
+	}
+
+	container = container.
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
 		WithExec([]string{"sh", "-c", "curl --no-progress-meter https://data.maps.earth/planetiler_fixtures/sources.tar | tar -x --directory /data/sources"}).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
@@ -418,14 +429,14 @@ func (h *Headway) Mbtiles(ctx context.Context,
 		return nil, fmt.Errorf("failed to get entrypoint: %w", err)
 	}
 
-	if isPlanetBuild {
+	if h.IsPlanetBuild {
 		container = container.WithExec(append(entrypoint,
 			"--osm_path=/data/data.osm.pbf",
 			"--force",
 			"--bounds=planet",
 			"--nodemap-type=array",
 			"--storage=mmap",
-			"-Xmx$(/percent-of-available-memory 75)",
+			fmt.Sprintf("-Xmx%d", memoryBudget),
 			"-XX:MaxHeapFreeRatio=40",
 		))
 	} else {
@@ -554,9 +565,9 @@ func (p *PeliasImporter) PeliasImportOpenStreetMap() *dagger.Container {
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *PeliasImporter) PeliasImportPolylines() *dagger.Container {
+func (p *PeliasImporter) PeliasImportPolylines(ctx context.Context) *dagger.Container {
 	return p.PeliasImporterContainerFrom("pelias/polylines:master").
-		WithMountedFile("/data/polylines/extract.0sv", p.Pelias.Headway.ValhallaPolylines()).
+		WithMountedFile("/data/polylines/extract.0sv", p.Pelias.Headway.ValhallaPolylines(ctx)).
 		// Polylines import also uses WhosOnFirst data
 		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst()).
 		WithExec([]string{"./bin/start"})
@@ -591,7 +602,7 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
 		panic(fmt.Errorf("failed to import OpenStreetMap data: %w", err))
 	}
 
-	_, err = importer.PeliasImportPolylines().
+	_, err = importer.PeliasImportPolylines(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import OpenStreetMap data: %w", err))
@@ -628,7 +639,7 @@ func valhallaBuildContainer() *dagger.Container {
 }
 
 // Builds Valhalla routing tiles
-func (h *Headway) ValhallaTiles() *dagger.Directory {
+func (h *Headway) ValhallaTiles(ctx context.Context) *dagger.Directory {
 	if h.OSMExport == nil || h.OSMExport.File == nil {
 		panic("Headway.OSMExport.File must be set to build Valhalla tiles")
 	}
@@ -640,9 +651,9 @@ func (h *Headway) ValhallaTiles() *dagger.Directory {
 	return container.Directory("/tiles")
 }
 
-func (h *Headway) ValhallaPolylines() *dagger.File {
+func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
 	container := valhallaBuildContainer().
-		WithMountedDirectory("/tiles", h.ValhallaTiles()).
+		WithMountedDirectory("/tiles", h.ValhallaTiles(ctx)).
 		WithExec([]string{"sh", "-c", "valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv"})
 
 	return container.File("/tiles/polylines.0sv")
@@ -906,7 +917,7 @@ func rustContainer(packages ...string) *dagger.Container {
 }
 
 func slimNodeContainer(packages ...string) *dagger.Container {
-    container := dag.Container().From("node:20-slim")
+	container := dag.Container().From("node:20-slim")
 	if len(packages) == 0 {
 		return container
 	}
