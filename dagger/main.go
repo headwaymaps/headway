@@ -28,6 +28,7 @@ type Headway struct {
 	OSMExport     *OSMExport
 	ServicesDir   *dagger.Directory
 	IsPlanetBuild bool
+	Countries     string
 }
 
 type Bbox struct {
@@ -75,10 +76,11 @@ type OSMExport struct {
 // Downloads OSM extract from bbike
 func (h *Headway) New(
 	// +optional
-	isPlanetBuild bool,
+	countries string,
 	// +defaultPath="./services"
 	servicesDir *dagger.Directory) *Headway {
-	h.IsPlanetBuild = isPlanetBuild
+	h.Countries = countries
+	h.IsPlanetBuild = countries == "ALL"
 	h.ServicesDir = servicesDir
 	return h
 }
@@ -144,7 +146,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	// BUILD +save-pelias --area=${area} --countries=${countries}
 	//     BUILD +save-pelias-config --area=${area} --countries=${countries}
-	pelias := h.PeliasConfig(ctx, []string{})
+	pelias := h.PeliasConfig(ctx)
 	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
 
 	//     BUILD +save-elasticsearch --area=${area} --countries=${countries}
@@ -457,11 +459,8 @@ type Pelias struct {
 
 // We use this both for import and for production pelias instances.
 // But we might want to try a longer timeout for the import process?
-func (h *Headway) PeliasConfig(ctx context.Context,
-	// +optional
-	countries []string,
-) *Pelias {
-	countriesStr := strings.Join(countries, ",")
+func (h *Headway) PeliasConfig(ctx context.Context) *Pelias {
+	countriesStr := h.Countries
 	config := slimNodeContainer().
 		WithDirectory("generate_config", h.ServiceDir("pelias").Directory("generate_config")).
 		WithWorkdir("generate_config").
