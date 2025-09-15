@@ -480,13 +480,13 @@ func (p *Pelias) PeliasContainerFrom(containerName string) *dagger.Container {
 	return container
 }
 
-func (p *Pelias) PeliasDownloadWhosOnFirst() *dagger.Directory {
+func (p *Pelias) PeliasDownloadWhosOnFirst(ctx context.Context) *dagger.Directory {
 	container := p.PeliasContainerFrom("pelias/whosonfirst:master").
 		WithExec([]string{"./bin/download"})
 	return container.Directory("/data/whosonfirst")
 }
 
-func (p *Pelias) PeliasDownloadOpenAddresses() *dagger.Directory {
+func (p *Pelias) PeliasDownloadOpenAddresses(ctx context.Context) *dagger.Directory {
 	container := p.PeliasContainerFrom("pelias/openaddresses:master").
 		WithExec([]string{"./bin/download"})
 	return container.Directory("/data/openaddresses")
@@ -494,7 +494,7 @@ func (p *Pelias) PeliasDownloadOpenAddresses() *dagger.Directory {
 
 func (p *Pelias) PeliasPreparePlaceholder(ctx context.Context) *dagger.Directory {
 	container := p.PeliasContainerFrom("pelias/placeholder:master").
-		WithMountedDirectory("/data/whosonfirst", p.PeliasDownloadWhosOnFirst()).
+		WithMountedDirectory("/data/whosonfirst", p.PeliasDownloadWhosOnFirst(ctx)).
 		WithExec([]string{"bash", "-c", "./cmd/extract.sh && ./cmd/build.sh"})
 	return container.Directory("/data/placeholder")
 }
@@ -505,9 +505,9 @@ type PeliasImporter struct {
 	ElasticsearchService     *dagger.Service
 }
 
-func (p *Pelias) PeliasImporter() *PeliasImporter {
-	cacheBuster := time.Now().UnixNano()
-	elasticsearchCache := dag.CacheVolume(fmt.Sprintf("pelias-elasticsearch-%d", cacheBuster))
+func (p *Pelias) PeliasImporter(ctx context.Context) *PeliasImporter {
+	cacheBuster := time.Now().Format("2006-01-02")
+	elasticsearchCache := dag.CacheVolume(fmt.Sprintf("pelias-elasticsearch-%s", cacheBuster))
 
 	// REVIEW: Sharing? Would "PRIVATE" allow us to get rid of the cache buster?
 	// maybe cache buster should be based on the input not timestamp
@@ -533,26 +533,26 @@ func (p *PeliasImporter) PeliasImporterContainerFrom(containerName string) *dagg
 		WithExec([]string{"/pelias-service/wait.sh"})
 }
 
-func (p *PeliasImporter) PeliasImportSchema() *dagger.Container {
+func (p *PeliasImporter) PeliasImportSchema(ctx context.Context) *dagger.Container {
 	return p.PeliasImporterContainerFrom("pelias/schema:master").
 		WithExec([]string{"./bin/create_index"})
 }
 
-func (p *PeliasImporter) PeliasImportWhosOnFirst() *dagger.Container {
+func (p *PeliasImporter) PeliasImportWhosOnFirst(ctx context.Context) *dagger.Container {
 	return p.PeliasImporterContainerFrom("pelias/whosonfirst:master").
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst()).
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *PeliasImporter) PeliasImportOpenAddresses() *dagger.Container {
+func (p *PeliasImporter) PeliasImportOpenAddresses(ctx context.Context) *dagger.Container {
 	return p.PeliasImporterContainerFrom("pelias/openaddresses:master").
-		WithMountedDirectory("/data/openaddresses", p.Pelias.PeliasDownloadOpenAddresses()).
+		WithMountedDirectory("/data/openaddresses", p.Pelias.PeliasDownloadOpenAddresses(ctx)).
 		// OpenAddress import also uses WhosOnFirst data
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst()).
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *PeliasImporter) PeliasImportOpenStreetMap() *dagger.Container {
+func (p *PeliasImporter) PeliasImportOpenStreetMap(ctx context.Context) *dagger.Container {
 	if p.Pelias.Headway.OSMExport == nil || p.Pelias.Headway.OSMExport.File == nil {
 		panic("PeliasImporter: Headway.OSMExport.File must be set to import OpenStreetMap data")
 	}
@@ -560,7 +560,7 @@ func (p *PeliasImporter) PeliasImportOpenStreetMap() *dagger.Container {
 	return p.PeliasImporterContainerFrom("pelias/openstreetmap:master").
 		WithMountedFile("/data/openstreetmap/data.osm.pbf", p.Pelias.Headway.OSMExport.File).
 		// OpenStreetMap import also uses WhosOnFirst data
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst()).
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
@@ -568,34 +568,34 @@ func (p *PeliasImporter) PeliasImportPolylines(ctx context.Context) *dagger.Cont
 	return p.PeliasImporterContainerFrom("pelias/polylines:master").
 		WithMountedFile("/data/polylines/extract.0sv", p.Pelias.Headway.ValhallaPolylines(ctx)).
 		// Polylines import also uses WhosOnFirst data
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst()).
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
 func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory {
 	err := error(nil)
 
-	importer := p.PeliasImporter()
+	importer := p.PeliasImporter(ctx)
 
-	_, err = importer.PeliasImportSchema().
+	_, err = importer.PeliasImportSchema(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import pelias schema: %w", err))
 	}
 
-	_, err = importer.PeliasImportWhosOnFirst().
+	_, err = importer.PeliasImportWhosOnFirst(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import WhoseOnFirst data: %w", err))
 	}
 
-	_, err = importer.PeliasImportOpenAddresses().
+	_, err = importer.PeliasImportOpenAddresses(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import OpenAddresses data: %w", err))
 	}
 
-	_, err = importer.PeliasImportOpenStreetMap().
+	_, err = importer.PeliasImportOpenStreetMap(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import OpenStreetMap data: %w", err))
@@ -611,7 +611,7 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
 	return slimContainer().
 		// The cache "Owner" is two things:
 		//    1. the owner on the filesystem (as in `chown $owner`)
-		//    2. a namespace within the cache, so the same cache will container different data depending on the Owner argument
+		//    2. a namespace within the cache, so the same cache will contain different data depending on the Owner argument
 		//
 		// We need the "elasticsearch" cache, but mounting will error if the user doesn't exist, so we add the user
 		WithExec([]string{"useradd", "elasticsearch"}).
