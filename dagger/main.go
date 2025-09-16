@@ -171,7 +171,8 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 func (h *Headway) BuildTransit(ctx context.Context,
 	transitConfigDir *dagger.Directory) (*dagger.Directory, error) {
 
-	cacheKey := time.Now().Format("2006-01-02")
+	// cacheKey := time.Now().Format("2006-01-02")
+	cacheKey := time.Now().Format("2006-01")
 
 	output := dag.Directory()
 
@@ -506,8 +507,8 @@ type PeliasImporter struct {
 }
 
 func (p *Pelias) PeliasImporter(ctx context.Context) *PeliasImporter {
-	cacheBuster := time.Now().Format("2006-01-02")
-	elasticsearchCache := dag.CacheVolume(fmt.Sprintf("pelias-elasticsearch-%s", cacheBuster))
+	cacheKey := time.Now().Format("2006-01")
+	elasticsearchCache := dag.CacheVolume(fmt.Sprintf("pelias-elasticsearch-%s", cacheKey))
 
 	// REVIEW: Sharing? Would "PRIVATE" allow us to get rid of the cache buster?
 	// maybe cache buster should be based on the input not timestamp
