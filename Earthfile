@@ -891,6 +891,7 @@ web-serve-image:
     ENV HEADWAY_TRAVELMUX_URL=http://travelmux:8000
     ENV HEADWAY_TILESERVER_URL=http://tileserver:8000
     ENV HEADWAY_PELIAS_URL=http://pelias-api:8080
+    ENV HEADWAY_VALHALLA_URL=http://valhalla:8002
     # for escaping $ in nginx template
     ENV ESC=$
     ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx

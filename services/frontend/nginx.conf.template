@@ -44,6 +44,10 @@ http {
       proxy_pass      ${HEADWAY_TRAVELMUX_URL}/;
     }
 
+    location ^~ /valhalla/ {
+      proxy_pass      ${HEADWAY_VALHALLA_URL}/;
+    }
+
     location ^~ /tileserver/  {
       expires 1h;
       proxy_pass       ${HEADWAY_TILESERVER_URL}/;
