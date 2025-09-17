@@ -31,6 +31,25 @@ type Headway struct {
 	Countries     string
 }
 
+type Artifact struct {
+	File      *dagger.File
+	Directory *dagger.Directory
+}
+
+func (a *Artifact) Compress() *dagger.File {
+	if a.File != nil {
+		if a.Directory != nil {
+			panic("Artifact cannot have both File and Directory set")
+		}
+		return compressFile(a.File)
+	} else {
+		if a.Directory == nil {
+			panic("Artifact must have either File or Directory set")
+		}
+		return compressDir(a.Directory)
+	}
+}
+
 type Bbox struct {
 	Left   float64
 	Bottom float64
@@ -142,20 +161,20 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	// BUILD +save-valhalla --area=${area}
 	valhalla := h.ValhallaTiles(ctx)
-	output = output.WithFile(h.Area+".valhalla.tar.zst", compressDir(valhalla))
+	output = output.WithFile(h.Area+".valhalla.tar.zst", valhalla.Compress())
 
 	// BUILD +save-pelias --area=${area} --countries=${countries}
 	//     BUILD +save-pelias-config --area=${area} --countries=${countries}
-	pelias := h.PeliasConfig(ctx)
+	pelias := h.Pelias(ctx)
 	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
 
 	//     BUILD +save-elasticsearch --area=${area} --countries=${countries}
-	elasticSearch := pelias.PeliasElasticsearchData(ctx)
-	output = output.WithFile(h.Area+".elasticsearch.tar.zst", compressDir(elasticSearch))
+	elasticSearch := pelias.ElasticsearchData(ctx)
+	output = output.WithFile(h.Area+".elasticsearch.tar.zst", elasticSearch.Compress())
 
 	//     BUILD +save-placeholder --area=${area} --countries=${countries}
-	placeholder := pelias.PeliasPreparePlaceholder(ctx)
-	output = output.WithFile(h.Area+".placeholder.tar.zst", compressDir(placeholder))
+	placeholder := pelias.PreparePlaceholder(ctx)
+	output = output.WithFile(h.Area+".placeholder.tar.zst", placeholder.Compress())
 
 	// BUILD +save-tileserver-terrain
 	terrain, err := h.TileserverTerrain(ctx)
@@ -218,7 +237,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 // ===
 
 type TransitZone struct {
-	Headway        *Headway
+	Headway *Headway
+	// TODO: verify we're actually caching anything. I think it's primarily the GTFSDir that we want to cache
 	CacheKey       string
 	TransitFeeds   *dagger.File
 	GTFSDir        *dagger.Directory
@@ -460,7 +480,7 @@ type Pelias struct {
 
 // We use this both for import and for production pelias instances.
 // But we might want to try a longer timeout for the import process?
-func (h *Headway) PeliasConfig(ctx context.Context) *Pelias {
+func (h *Headway) Pelias(ctx context.Context) *Pelias {
 	countriesStr := h.Countries
 	config := slimNodeContainer().
 		WithDirectory("generate_config", h.ServiceDir("pelias").Directory("generate_config")).
@@ -481,23 +501,23 @@ func (p *Pelias) PeliasContainerFrom(containerName string) *dagger.Container {
 	return container
 }
 
-func (p *Pelias) PeliasDownloadWhosOnFirst(ctx context.Context) *dagger.Directory {
+func (p *Pelias) DownloadWhosOnFirst(ctx context.Context) *dagger.Directory {
 	container := p.PeliasContainerFrom("pelias/whosonfirst:master").
 		WithExec([]string{"./bin/download"})
 	return container.Directory("/data/whosonfirst")
 }
 
-func (p *Pelias) PeliasDownloadOpenAddresses(ctx context.Context) *dagger.Directory {
+func (p *Pelias) DownloadOpenAddresses(ctx context.Context) *dagger.Directory {
 	container := p.PeliasContainerFrom("pelias/openaddresses:master").
 		WithExec([]string{"./bin/download"})
 	return container.Directory("/data/openaddresses")
 }
 
-func (p *Pelias) PeliasPreparePlaceholder(ctx context.Context) *dagger.Directory {
+func (p *Pelias) PreparePlaceholder(ctx context.Context) *Artifact {
 	container := p.PeliasContainerFrom("pelias/placeholder:master").
-		WithMountedDirectory("/data/whosonfirst", p.PeliasDownloadWhosOnFirst(ctx)).
+		WithMountedDirectory("/data/whosonfirst", p.DownloadWhosOnFirst(ctx)).
 		WithExec([]string{"bash", "-c", "./cmd/extract.sh && ./cmd/build.sh"})
-	return container.Directory("/data/placeholder")
+	return &Artifact{Directory: container.Directory("/data/placeholder")}
 }
 
 type PeliasImporter struct {
@@ -506,9 +526,9 @@ type PeliasImporter struct {
 	ElasticsearchService     *dagger.Service
 }
 
-func (p *Pelias) PeliasImporter(ctx context.Context) *PeliasImporter {
+func (p *Pelias) Importer(ctx context.Context) *PeliasImporter {
 	cacheKey := time.Now().Format("2006-01")
-	elasticsearchCache := dag.CacheVolume(fmt.Sprintf("pelias-elasticsearch-%s", cacheKey))
+	elasticsearchCache := dag.CacheVolume(fmt.Sprintf("pelias-elasticsearch-%s-%s", p.Headway.Area, cacheKey))
 
 	// REVIEW: Sharing? Would "PRIVATE" allow us to get rid of the cache buster?
 	// maybe cache buster should be based on the input not timestamp
@@ -528,88 +548,88 @@ func (p *Pelias) PeliasImporter(ctx context.Context) *PeliasImporter {
 	}
 }
 
-func (p *PeliasImporter) PeliasImporterContainerFrom(containerName string) *dagger.Container {
+func (p *PeliasImporter) ImporterContainerFrom(containerName string) *dagger.Container {
 	return p.Pelias.PeliasContainerFrom(containerName).
 		WithServiceBinding("pelias-elasticsearch", p.ElasticsearchService).
 		WithExec([]string{"/pelias-service/wait.sh"})
 }
 
-func (p *PeliasImporter) PeliasImportSchema(ctx context.Context) *dagger.Container {
-	return p.PeliasImporterContainerFrom("pelias/schema:master").
+func (p *PeliasImporter) ImportSchema(ctx context.Context) *dagger.Container {
+	return p.ImporterContainerFrom("pelias/schema:master").
 		WithExec([]string{"./bin/create_index"})
 }
 
-func (p *PeliasImporter) PeliasImportWhosOnFirst(ctx context.Context) *dagger.Container {
-	return p.PeliasImporterContainerFrom("pelias/whosonfirst:master").
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
+func (p *PeliasImporter) ImportWhosOnFirst(ctx context.Context) *dagger.Container {
+	return p.ImporterContainerFrom("pelias/whosonfirst:master").
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.DownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *PeliasImporter) PeliasImportOpenAddresses(ctx context.Context) *dagger.Container {
-	return p.PeliasImporterContainerFrom("pelias/openaddresses:master").
-		WithMountedDirectory("/data/openaddresses", p.Pelias.PeliasDownloadOpenAddresses(ctx)).
+func (p *PeliasImporter) ImportOpenAddresses(ctx context.Context) *dagger.Container {
+	return p.ImporterContainerFrom("pelias/openaddresses:master").
+		WithMountedDirectory("/data/openaddresses", p.Pelias.DownloadOpenAddresses(ctx)).
 		// OpenAddress import also uses WhosOnFirst data
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.DownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *PeliasImporter) PeliasImportOpenStreetMap(ctx context.Context) *dagger.Container {
+func (p *PeliasImporter) ImportOpenStreetMap(ctx context.Context) *dagger.Container {
 	if p.Pelias.Headway.OSMExport == nil || p.Pelias.Headway.OSMExport.File == nil {
 		panic("PeliasImporter: Headway.OSMExport.File must be set to import OpenStreetMap data")
 	}
 
-	return p.PeliasImporterContainerFrom("pelias/openstreetmap:master").
+	return p.ImporterContainerFrom("pelias/openstreetmap:master").
 		WithMountedFile("/data/openstreetmap/data.osm.pbf", p.Pelias.Headway.OSMExport.File).
 		// OpenStreetMap import also uses WhosOnFirst data
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.DownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *PeliasImporter) PeliasImportPolylines(ctx context.Context) *dagger.Container {
-	return p.PeliasImporterContainerFrom("pelias/polylines:master").
+func (p *PeliasImporter) ImportPolylines(ctx context.Context) *dagger.Container {
+	return p.ImporterContainerFrom("pelias/polylines:master").
 		WithMountedFile("/data/polylines/extract.0sv", p.Pelias.Headway.ValhallaPolylines(ctx)).
 		// Polylines import also uses WhosOnFirst data
-		WithMountedDirectory("/data/whosonfirst", p.Pelias.PeliasDownloadWhosOnFirst(ctx)).
+		WithMountedDirectory("/data/whosonfirst", p.Pelias.DownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
 }
 
-func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory {
+func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 	err := error(nil)
 
-	importer := p.PeliasImporter(ctx)
+	importer := p.Importer(ctx)
 
-	_, err = importer.PeliasImportSchema(ctx).
+	_, err = importer.ImportSchema(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import pelias schema: %w", err))
 	}
 
-	_, err = importer.PeliasImportWhosOnFirst(ctx).
+	_, err = importer.ImportWhosOnFirst(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import WhoseOnFirst data: %w", err))
 	}
 
-	_, err = importer.PeliasImportOpenAddresses(ctx).
+	_, err = importer.ImportOpenAddresses(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import OpenAddresses data: %w", err))
 	}
 
-	_, err = importer.PeliasImportOpenStreetMap(ctx).
+	_, err = importer.ImportOpenStreetMap(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import OpenStreetMap data: %w", err))
 	}
 
-	_, err = importer.PeliasImportPolylines(ctx).
+	_, err = importer.ImportPolylines(ctx).
 		Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import OpenStreetMap data: %w", err))
 	}
 
 	opts := dagger.ContainerWithMountedCacheOpts{Owner: "elasticsearch", Sharing: "SHARED"}
-	return slimContainer().
+	directory := slimContainer().
 		// The cache "Owner" is two things:
 		//    1. the owner on the filesystem (as in `chown $owner`)
 		//    2. a namespace within the cache, so the same cache will contain different data depending on the Owner argument
@@ -619,6 +639,7 @@ func (p *Pelias) PeliasElasticsearchData(ctx context.Context) *dagger.Directory 
 		WithMountedCache("/data-cache", importer.ElasticsearchCacheVolume, opts).
 		WithExec([]string{"cp", "-r", "/data-cache", "/export"}, dagger.ContainerWithExecOpts{UseEntrypoint: false}).
 		Directory("/export")
+	return &Artifact{Directory: directory}
 }
 
 /**
@@ -639,7 +660,7 @@ func valhallaBuildContainer() *dagger.Container {
 }
 
 // Builds Valhalla routing tiles
-func (h *Headway) ValhallaTiles(ctx context.Context) *dagger.Directory {
+func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 	if h.OSMExport == nil || h.OSMExport.File == nil {
 		panic("Headway.OSMExport.File must be set to build Valhalla tiles")
 	}
@@ -648,12 +669,12 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *dagger.Directory {
 		WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
 		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 
-	return container.Directory("/tiles")
+	return &Artifact{Directory: container.Directory("/tiles")}
 }
 
 func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
 	container := valhallaBuildContainer().
-		WithMountedDirectory("/tiles", h.ValhallaTiles(ctx)).
+		WithMountedDirectory("/tiles", h.ValhallaTiles(ctx).Directory).
 		WithExec([]string{"sh", "-c", "valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv"})
 
 	return container.File("/tiles/polylines.0sv")

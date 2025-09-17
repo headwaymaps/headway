@@ -53,12 +53,11 @@ fi
 DAGGER_PREFIX="new --countries=${HEADWAY_COUNTRIES} | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF}"
 
 dagger -c "$DAGGER_PREFIX | mbtiles | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.mbtiles"
-dagger -c "$DAGGER_PREFIX | valhalla | compress-dir | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.valhalla.tar.zst"
-dagger -c "$DAGGER_PREFIX | pelias-config | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
-dagger -c "$DAGGER_PREFIX | pelias-elasticsearch-data | compress-dir | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.elasticsearch.tar.zst"
-dagger -c "$DAGGER_PREFIX | pelias-prepare-placeholder | compress-dir | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.elasticsearch.tar.zst"
 dagger -c "$DAGGER_PREFIX | tileserver-terrain | file terrain.mbtiles | export data/${HEADWAY_AREA}/terrain.mbtiles"
 dagger -c "$DAGGER_PREFIX | tileserver-terrain | file landcover.mbtiles | export data/${HEADWAY_AREA}/landcover.mbtiles"
-
+dagger -c "$DAGGER_PREFIX | valhalla-tiles | compress | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.valhalla.tar.zst"
+dagger -c "$DAGGER_PREFIX | pelias | config | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
+dagger -c "$DAGGER_PREFIX | pelias | elasticsearch-data | compress | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.elasticsearch.tar.zst"
+dagger -c "$DAGGER_PREFIX | pelias | prepare-placeholder | compress | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.elasticsearch.tar.zst"
 bin/build-transit "$CONFIG_DIR"
 
