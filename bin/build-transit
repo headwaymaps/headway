@@ -42,4 +42,4 @@ else
     INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
 fi
 
-dagger --interactive -c "new | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF} | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"
+dagger --interactive -c "with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF} | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"

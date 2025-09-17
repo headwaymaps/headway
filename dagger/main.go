@@ -92,27 +92,25 @@ type OSMExport struct {
 	File *dagger.File
 }
 
-// Downloads OSM extract from bbike
-func (h *Headway) New(
-	// +optional
-	countries string,
+func New(
 	// +defaultPath="./services"
 	servicesDir *dagger.Directory) *Headway {
-	h.Countries = countries
-	h.IsPlanetBuild = countries == "ALL"
-	h.ServicesDir = servicesDir
-	return h
+	return &Headway{ServicesDir: servicesDir}
 }
 
-// Downloads OSM extract from bbike
 func (h *Headway) WithArea(
 	// Area name (e.g. "Seattle")
 	area string,
 
-	// Local OSM PBF file to mount, if missing will download based on area
+	// +optional
+	countries string,
+
+	// Local OSM PBF file to mount, if missing will download from bbike based on area name
 	// +defaultPath=""
 	localPbf *dagger.File,
 ) *Headway {
+	h.IsPlanetBuild = countries == "ALL"
+	h.Countries = countries
 	h.Area = area
 	if localPbf == nil {
 		h.OSMExport = h.DownloadPBF(area)
@@ -598,6 +596,11 @@ func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 
 	importer := p.Importer(ctx)
 
+	_, err = importer.ElasticsearchService.Start(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to start elasticsearch service: %w", err))
+	}
+
 	_, err = importer.ImportSchema(ctx).
 		Sync(ctx)
 	if err != nil {
@@ -628,6 +631,11 @@ func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 		panic(fmt.Errorf("failed to import OpenStreetMap data: %w", err))
 	}
 
+	_, err = importer.ElasticsearchService.Stop(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to stop elasticsearch service: %w", err))
+	}
+
 	opts := dagger.ContainerWithMountedCacheOpts{Owner: "elasticsearch", Sharing: "SHARED"}
 	directory := slimContainer().
 		// The cache "Owner" is two things:
@@ -639,6 +647,7 @@ func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 		WithMountedCache("/data-cache", importer.ElasticsearchCacheVolume, opts).
 		WithExec([]string{"cp", "-r", "/data-cache", "/export"}, dagger.ContainerWithExecOpts{UseEntrypoint: false}).
 		Directory("/export")
+
 	return &Artifact{Directory: directory}
 }
 
