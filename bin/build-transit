@@ -33,7 +33,7 @@ source "${CONFIG_DIR}/env.sh"
 set -x
 if [[ $HEADWAY_DOWNLOAD_AREA_PBF ]]; then
     INPUT_PBF="data/${HEADWAY_AREA}/${HEADWAY_AREA}.osm.pbf"
-    if [ ! -f $INPUT_PBF ]; then
+    if [ ! -f "$INPUT_PBF" ]; then
         dagger -c "download-pbf ${HEADWAY_AREA} | file | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.osm.pbf"
     else
         echo "${INPUT_PBF} already exists"

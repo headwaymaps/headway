@@ -2,15 +2,13 @@
 
 set -ex
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
-bin_name=$(basename $0)
+bin_name=$(basename "$0")
 log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
 log_dir=/pool1/logs
 log_file="${log_dir}/${log_filename}"
 
 function with_log {
-  $@ > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
+  "$@" > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
 }
 CONFIG_DIR="$1"
 if [ -z "$CONFIG_DIR" ]; then
@@ -39,7 +37,7 @@ fi
 
 if [[ $HEADWAY_DOWNLOAD_AREA_PBF ]]; then
     INPUT_PBF="data/${HEADWAY_AREA}/${HEADWAY_AREA}.osm.pbf"
-    if [ ! -f $INPUT_PBF ]; then
+    if [ ! -f "$INPUT_PBF" ]; then
         dagger -c "download-pbf ${HEADWAY_AREA} | file | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.osm.pbf"
     else
         echo "${INPUT_PBF} already exists"
@@ -48,7 +46,19 @@ else
     INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
 fi
 
-dagger --interactive -c "new --countries=${HEADWAY_COUNTRIES} | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF} | build | export data/${HEADWAY_AREA}"
+# Planet builds are failing during the long pelias build - failing to connect with the elasticsearch service (temporary dagger host not found)
+# So let's try it piece meal...
+# dagger --interactive -c "new --countries=${HEADWAY_COUNTRIES} | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF} | build | export data/${HEADWAY_AREA}"
+
+DAGGER_PREFIX="new --countries=${HEADWAY_COUNTRIES} | with-area ${HEADWAY_AREA} --local-pbf ${INPUT_PBF}"
+
+dagger -c "$DAGGER_PREFIX | mbtiles | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.mbtiles"
+dagger -c "$DAGGER_PREFIX | valhalla | compress-dir | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.valhalla.tar.zst"
+dagger -c "$DAGGER_PREFIX | pelias-config | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
+dagger -c "$DAGGER_PREFIX | pelias-elasticsearch-data | compress-dir | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.elasticsearch.tar.zst"
+dagger -c "$DAGGER_PREFIX | pelias-prepare-placeholder | compress-dir | export data/${HEADWAY_AREA}/${HEADWAY_AREA}.elasticsearch.tar.zst"
+dagger -c "$DAGGER_PREFIX | tileserver-terrain | file terrain.mbtiles | export data/${HEADWAY_AREA}/terrain.mbtiles"
+dagger -c "$DAGGER_PREFIX | tileserver-terrain | file landcover.mbtiles | export data/${HEADWAY_AREA}/landcover.mbtiles"
 
 bin/build-transit "$CONFIG_DIR"
 
