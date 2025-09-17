@@ -527,7 +527,7 @@ type PeliasImporter struct {
 }
 
 func (p *Pelias) Importer(ctx context.Context) *PeliasImporter {
-	cacheKey := time.Now().Format("2006-01")
+	cacheKey := time.Now().Format("2006-01-02 15:04:05")
 	elasticsearchCache := dag.CacheVolume(fmt.Sprintf("pelias-elasticsearch-%s-%s", p.Headway.Area, cacheKey))
 
 	// REVIEW: Sharing? Would "PRIVATE" allow us to get rid of the cache buster?
@@ -591,6 +591,39 @@ func (p *PeliasImporter) ImportPolylines(ctx context.Context) *dagger.Container 
 		// Polylines import also uses WhosOnFirst data
 		WithMountedDirectory("/data/whosonfirst", p.Pelias.DownloadWhosOnFirst(ctx)).
 		WithExec([]string{"./bin/start"})
+}
+
+func (p *Pelias) TestService(ctx context.Context) string {
+	importer := p.Importer(ctx)
+
+	container := WithAptPackages(p.PeliasContainerFrom("debian:bookworm-slim"), "curl", "iputils-ping").
+		WithServiceBinding("pelias-elasticsearch", importer.ElasticsearchService).
+		WithExec([]string{"/pelias-service/wait.sh"})
+
+	var output string
+
+	for i := 0; i < 10; i++ {
+		result, err := container.
+			WithExec([]string{"sh", "-c", fmt.Sprintf("sleep 65 && ping -c 1 pelias-elasticsearch && echo importer-%d", i+1)}).
+			Stdout(ctx)
+		if err != nil {
+			panic(fmt.Errorf("failed to import %d: %w", i+1, err))
+		}
+		output += result
+
+		// Try sleeping between service talk
+		result, err = dag.
+			Container().
+			From("debian:bookworm-slim").
+			WithExec([]string{"sh", "-c", fmt.Sprintf("sleep 65 && echo sleeper-%d", i+1)}).
+			Stdout(ctx)
+		if err != nil {
+			panic(fmt.Errorf("failed to import %d: %w", i+1, err))
+		}
+		output += result
+	}
+
+	return output
 }
 
 func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
