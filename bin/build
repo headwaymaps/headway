@@ -32,7 +32,7 @@ fi
 
 USE_LOCAL_PBF=""
 INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
-if [[ -f $INPUT_PBF ]]; then
+if [[ -f "${INPUT_PBF}" ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
