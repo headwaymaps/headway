@@ -60,7 +60,8 @@ function build_image() {
     exit 1
   fi
 
-  local image_ref="ghcr.io/headwaymaps/${container}:${tag}"
+  HEADWAY_IMAGE_REPO="${HEADWAY_IMAGE_REPO:-ghcr.io/headwaymaps}"
+  local image_ref="${HEADWAY_IMAGE_REPO}/${container}:${tag}"
 
   if [ "$PUBLISH" = true ]; then
     echo "Publishing ${image_ref}..."
