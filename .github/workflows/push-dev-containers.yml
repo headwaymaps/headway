@@ -11,7 +11,7 @@ jobs:
     env:
       DAGGER_NO_NAG: 1
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Install Dagger
         uses: dagger/dagger-for-github@v6
         with:
