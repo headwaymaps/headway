@@ -9,7 +9,7 @@
 - web frontend
   - custom quasar/vue.js app in [services/frontend](https://github.com/headwaymaps/headway/tree/main/services/frontend)
 - build system
-  -  Earthly [read more](https://github.com/headwaymaps/headway/blob/main/BUILD.md)
+  -  Dagger [read more](https://github.com/headwaymaps/headway/blob/main/BUILD.md)
 - map tiles
   - tile building: [planetiler](https://github.com/onthegomap/planetiler)
   - tile server: https://www.npmjs.com/package/tileserver-gl-light

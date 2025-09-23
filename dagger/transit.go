@@ -145,6 +145,30 @@ func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
 	return downloadFile("https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media")
 }
 
+// Enumerates GTFS feeds for a given area by filtering the mobility database
+func (h *Headway) NearbyGtfsFeeds(ctx context.Context) *dagger.File {
+	if h.Area == "" {
+		panic("Area is required for GTFS enumeration")
+	}
+
+	bbox, err := h.BBox(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get bounding box for area %s: %w", h.Area, err))
+	}
+
+	mobilityDb := h.GtfsGetMobilitydb(ctx)
+	servicesDir := h.ServiceDir("gtfs")
+
+	container := dag.Container().
+		From("python:3").
+		WithMountedDirectory("/app", servicesDir).
+		WithMountedFile("/app/sources.csv", mobilityDb).
+		WithWorkdir("/app").
+		WithExec([]string{"sh", "-c", fmt.Sprintf("./filter_feeds.py --bbox='%s' < sources.csv > nearby_gtfs_feeds.csv", bbox.SpaceSeparated())})
+
+	return container.File("/app/nearby_gtfs_feeds.csv")
+}
+
 // Builds Rust GTFS processing tools
 // I'm not yet sure how exporting will work in situ. Something akin to:
 //

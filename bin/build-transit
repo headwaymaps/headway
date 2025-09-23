@@ -34,5 +34,5 @@ if [[ -f $INPUT_PBF ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-dagger --interactive -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"
+dagger -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"
 

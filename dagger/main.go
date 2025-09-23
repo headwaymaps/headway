@@ -1,16 +1,14 @@
-// A generated module for Headway functions
+// Headway mapping stack build system
 //
-// This module has been generated via dagger init and serves as a reference to
-// basic module structure as you get started with Dagger.
+// This Dagger module builds the Headway mapping stack, which consists of:
 //
-// Two functions have been pre-created. You can modify, delete, or add to them,
-// as needed. They demonstrate usage of arguments and return types using simple
-// echo and grep commands. The functions can be called from the dagger CLI or
-// from one of the SDKs.
+// - Map tiles for the tileserver
+// - Routing graphs for Valhalla (car/bike/walking) and OpenTripPlanner (transit)
+// - Pelias geocoding index for address search
+// - Container images for all services (web UI, APIs, databases)
 //
-// The first line in this comment block is a short description line and the
-// rest is a long description with more detail on the module's purpose or usage,
-// if appropriate. All modules should have a short description.
+// The build system processes OpenStreetMap data, GTFS transit feeds, and other
+// geographic data sources to create a complete mapping solution for a given area.
 
 package main
 
@@ -58,6 +56,9 @@ type Bbox struct {
 
 func (b *Bbox) CommaSeparated() string {
 	return fmt.Sprintf("%f,%f,%f,%f", b.Left, b.Bottom, b.Right, b.Top)
+}
+func (b *Bbox) SpaceSeparated() string {
+	return fmt.Sprintf("%f %f %f %f", b.Left, b.Bottom, b.Right, b.Top)
 }
 
 func ParseBboxStr(bboxStr string) (*Bbox, error) {
