@@ -7,17 +7,19 @@ on:
     branches: [main]
 
 jobs:
-  earthly_build:
+  dagger_build:
     name: Run a small build
     runs-on: ubuntu-latest
+    env:
+      DAGGER_NO_NAG: 1
     steps:
-      - uses: earthly/actions-setup@v1
-        with:
-          # pinning to `latest` requires using the GH API, which causes spurious rate limiting errors
-          version: "0.8.4"
       - uses: actions/checkout@v2
-      - run: earthly --version
-      - run: earthly -P +build --area=Bogota
+      - name: Install Dagger
+        uses: dagger/dagger-for-github@v6
+        with:
+          version: "latest"
+      - name: Run build
+        run: bin/build builds/bogota
   www_checks:
     defaults:
       run:

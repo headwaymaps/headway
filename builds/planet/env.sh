@@ -1,6 +1,6 @@
 # See latest releases with: aws s3 ls --no-sign-request s3://osm-planet-us-west-2/planet/pbf/2025/
 # And update the HEADWAY_PLANET_VERSION accordingly. The build scripts will fetch the corresponding osm.pbf
-export HEADWAY_PLANET_VERSION=v1.250623
+export HEADWAY_PLANET_VERSION=v1.250908
 export HEADWAY_AREA=maps-earth-planet-${HEADWAY_PLANET_VERSION}
 export HEADWAY_AREA_TAG="$HEADWAY_AREA"
 export HEADWAY_COUNTRIES="ALL"

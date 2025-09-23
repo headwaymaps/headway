@@ -1,17 +1,8 @@
-#!/bin/bash -i
+#!/bin/bash -ex
 
-set -e
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
-bin_name=$(basename $0)
-log_filename="${bin_name}-$(date +%Y-%m-%d-%H:%M:%S).log"
-log_dir=/pool1/logs
-log_file="${log_dir}/${log_filename}"
-
-function with_log {
-  $@ > >(tee -a "${log_file}.out") 2> >(tee -a "${log_file}.err" >&2)
-}
 CONFIG_DIR="$1"
 if [ -z "$CONFIG_DIR" ]; then
     cat <<EOS
@@ -24,6 +15,8 @@ EOS
 fi
 shift
 
+set -o nounset
+
 if [ ! -d "$CONFIG_DIR" ]; then
     cat <<EOS
 Config dir "$CONFIG_DIR" doesn't exist
@@ -31,20 +24,22 @@ EOS
     exit 1
 fi
 
-EARTHLY_ARGS=${@:1}
-
 source "${CONFIG_DIR}/env.sh"
-
-if [ "$HEADWAY_COUNTRIES" = "ALL" ]; then
-    HEADWAY_IS_PLANET_BUILD=true
-else
-    HEADWAY_IS_PLANET_BUILD=false
-fi
 
 if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
     "${CONFIG_DIR}/prebuild.sh"
 fi
 
-with_log earthly $EARTHLY_ARGS -P +build --area="$HEADWAY_AREA" --countries="$HEADWAY_COUNTRIES" --is_planet_build="$HEADWAY_IS_PLANET_BUILD"
-bin/build-transit "$CONFIG_DIR" $EARTHLY_ARGS
+USE_LOCAL_PBF=""
+INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
+if [[ -f "${INPUT_PBF}" ]]; then
+    USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
+fi
+
+dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} | build | export data/${HEADWAY_AREA}"
+
+TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
+if [ -d "$TRANSIT_CONFIG_DIR" ]; then
+    bin/build-transit "$CONFIG_DIR"
+fi
 

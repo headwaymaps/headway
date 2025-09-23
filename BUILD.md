@@ -1,10 +1,10 @@
 # Building Headway
 
-Setting up your own Headway instance should be fairly straightforward if you follow these docs. Feel free to open bugs if things go wrong, or PRs to improve the project though!
+Setting up your own Headway instance should be fairly straightforward if you follow these docs. Feel free to open bugs if things go wrong, or submit PRs to improve the project!
 
 There is a script contributed by Santiago Crespo that will automatically deploy Headway as a systemd service on Debian, but it has not been widely tested yet. See [contrib/DEBIAN_BUILD.md](./contrib/DEBIAN_BUILD.md) for details.
 
-Prerequisites: [Install earthly.](#install-earthly)
+Prerequisites: [Install Dagger.](#install-dagger)
 
 [Option 1: Building from a pre-configured city](#building-headway-from-a-supported-bbbike-extract)
 
@@ -12,13 +12,13 @@ Prerequisites: [Install earthly.](#install-earthly)
 
 [Option 3: Building Headway for the whole planet](#full-planet-considerations)
 
-## Install Earthly
+## Install Dagger
 
-Headway processes data and builds its containers for hosting using Earthly. Earthly is a build system (like a Makefile) for orchestrating a bunch of depdendent docker containers. 
+Headway processes data and builds its containers for hosting using Dagger. Dagger is a build system for orchestrating containerized workflows.
 
-Instructions for installing the cloud-free version of earthly can be found here: https://earthly.dev/get-earthly
+Instructions for installing Dagger can be found here: https://docs.dagger.io/install
 
-⚠️ The earthly company has a cloud product that they will try to upsell you, but **you do not need to create an account** or use their cloud product to build Headway. I only ever use their account-free local client and recommend you start there as well.
+Dagger is open source and free to use locally without requiring any accounts or cloud services.
 
 ## Supported Build Methods
 
@@ -39,26 +39,25 @@ Headway currently supports fully automatic builds for the following cities:
 
 #### Build procedure.
 
-1. Pick a metro area from the list above, like "Amsterdam" or "Denver". These values are case-sensitive.
-2. (Optional) Set up GTFS feeds for public transit routing. This dramatically increases hardware requirements for large metro areas.
-   1. Run `earthly -P +gtfs-enumerate --area="Amsterdam"`, replacing "Amsterdam" with your metro area of choice.
-   2. Examine `data/Amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
-3. Execute `earthly -P +build --area="Amsterdam"` using your chosen metro area, or if you want public transit routing, run `earthly -P +build --area="Amsterdam" --transit_feeds="data/Amsterdam.gts_feeds.csv` using your chosen metro area.
+This approach will download all the mapping data you need automatically, but only works for the pre-defined metro areas above.
+
+1. Pick a metro area from the list above, like "Amsterdam" or "Denver". These values are case-sensitive. In all the examples, replace "Amsterdam" with your metro area of choice.
+2. Execute `dagger -c "with-area Amsterdam | build | export ./data/Amsterdam"`
+3. (Optional) Set up transit routing. Note: This dramatically increases hardware requirements for large metro areas.
+   1. Find nearby transit schedules by running `dagger -c 'with-area Amsterdam | nearby-gtfs-feeds | export ./builds/Amsterdam/transit/Amsterdam.gtfs_feeds.csv'`
+   2. Examine `builds/Amsterdam/transit/Amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
+   3. Build transit routing with `dagger -c "with-area Amsterdam | build-transit ./builds/Amsterdam/transit | export ./data/Amsterdam/transit"`
 4. Make a `.env` file with your configuration. See `.env.example` for documentation and defaults.
-5. Execute `docker-compose up -d` to bring up a headway server on port 8080.
+5. Execute `docker-compose up -d` to bring up the headway stack with a web frontend on port 8080.
 6. (For https and non-default port use only) reverse-proxy traffic to port 8080.
 
 That's it! In the future I'd like to have a kubernetes config to further productionize this project.
 
 ### Building Headway from your own OSM extract
 
-Using a custom OSM extract is a bit more complicated, and less regularly tested. Please report issues if you have any. Transit trip planning isn't currently supported for arbitrary OSM extracts, contributions are welcome though!
+To build Headway for a custom area, you just need to provide your own OSM extract (.osm.pbf).
 
-1. Copy your OSM extract into Headway's top-level directory (same directory as this file), as e.g. `./california.osm.pbf`. It is important to name it something different than the cities listed above. For example, if I was building a custom extract of Amsterdam to avoid conflicts I would name it `AmsterdamCustom`.
-2. Execute `earthly -P +build --area="california" --countries="US"` replacing `california` with the name (no extension) of your OSM extract, and `US` with a comma-separated list of the countries that the extract covers.
-Countries should be provided as two-character [ISO-3166-1 codes](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)
-This specifies which data to download from Who's On First. Accidentally including a country won't harm anything but it will cause needless downloads. You may wish to simply put `ALL` which will download data for the whole planet (potentially tens of gigabytes).
-3. Make a `.env` file with configuration. See/copy `.env.example` for defaults. In particular:
+The process is largely the same as above. After downloading your OSM extract, move it to the project root (in the same directory as this BUILD.md), and wherever you see `with-area Amsterdam` above, change it to `with-area YourArea --local-pbf ./your-area.osm.pbf`
 
 ## Docker-compose restarts
 

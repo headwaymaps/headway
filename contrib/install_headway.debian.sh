@@ -1,4 +1,7 @@
 #!/bin/bash
+
+#⚠️ **Note**: This Debian setup was written for an earlier build system based on Earthly and needs to be updated to work with Dagger. Contributions welcome!
+
 # Script to install Headway on Debian 11
 # The default port is 8080. If you want to change it for another non-privileged port, edit the PORT variable below.
 # This script will automatically:

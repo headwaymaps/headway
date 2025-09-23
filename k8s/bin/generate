@@ -40,7 +40,7 @@ export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-latest}"
 
 source "$DEPLOYMENT_ENV_FILE"
 
-PELIAS_CONFIG_FILE="${REPO_ROOT}/data/${HEADWAY_AREA}.pelias.json"
+PELIAS_CONFIG_FILE="${REPO_ROOT}/data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
 if [ ! -f "$PELIAS_CONFIG_FILE" ]; then
     echo "Missing pelias config file: ${PELIAS_CONFIG_FILE}"
     exit 1

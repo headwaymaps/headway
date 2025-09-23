@@ -1,12 +1,15 @@
 # Headway installation on Debian
 
+⚠️ **Note**: This Debian setup was written for an earlier build system based on Earthly and needs to be updated to work with Dagger. Contributions welcome!
+
 The [install_headway.debian.sh](./install_headway.debian.sh) script contributed by Santiago Crespo will automatically deploy Headway on your Debian server, using either one of the predefined extracts or your own. It should also work on Ubuntu but this has not been tested yet.
 
 The default port is 8080. If you want to change it for another non-privileged port, edit the PORT variable at the beginning of the script.
 
 This script will automatically:
  * create a "headway" user. If you want to change the user, edit the USER variable.
- * download and install everything required, including Docker, Earthly and Headway
+ * download and install everything required, including Docker, Earthly, and Headway
+
  * add a systemd service that will run at boot
  * add scripts for the service to start, stop and reload. Note that reload upgrades the headway source, downloads fresh data and process everything from scratch.
  * edit /etc/crontab so there is a daily reload at a random time between 00:00 and 06:00
