@@ -12,6 +12,7 @@
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "jest",
     "build": "yarn tsc",
+    "build-quasar": "quasar build",
     "tsc": "tsc --noEmit --skipLibCheck",
     "dev": "quasar dev"
   },
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@eslint/js": "^9.16.0",
     "@quasar/app-vite": "^2.0.1",
+    "@quasar/cli": "^2.5.0",
     "@quasar/quasar-app-extension-testing": "^2.0.4",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.14.202",

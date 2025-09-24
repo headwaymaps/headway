@@ -10,16 +10,10 @@ yarn
 npm install
 ```
 
-### Install Quasar CLI
-
-```bash
-npm i -g @quasar/cli
-```
-
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)
 
 ```bash
-quasar dev
+yarn dev
 ```
 
 ### Lint the files
@@ -41,7 +35,7 @@ npm run format
 ### Build the app for production
 
 ```bash
-quasar build
+yarn build-quasar
 ```
 
 ### Customize the configuration
