@@ -3,7 +3,7 @@ set -o pipefail
 
 # Default values
 PUBLISH=false
-TAGS="dev"
+TAGS="latest"
 BRANDING=""
 
 # Parse command line arguments
@@ -24,15 +24,15 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [--publish] [--tags TAGS] [--branding BRAND]"
       echo ""
       echo "Options:"
-      echo "  --publish      Publish images to registry (default: export to local docker)"
+      echo "  --publish      Publish images to registry instead of local docker export"
       echo "  --tags TAGS    Comma-separated image tags (default: latest)"
       echo "  --branding B   Branding for web container (default: none)"
       echo ""
       echo "Examples:"
-      echo "  $0                                      # Export latest to local docker"
-      echo "  $0 --tags dev                           # Export dev tag to local docker"
-      echo "  $0 --tags \"latest,v1.0.0\"               # Export multiple tags to local docker"
-      echo "  $0 --publish --tags latest              # Publish latest to registry"
+      echo "  $0                              # Export latest to local docker"
+      echo "  $0 --tags dev                   # Export dev tag to local docker"
+      echo "  $0 --tags \"latest,v1.0.0\"       # Export multiple tags to local docker"
+      echo "  $0 --publish --tags dev         # Publish dev tag to remote registry"
       echo "  $0 --publish --tags \"latest,v1.0.0\" --branding maps.earth"
       exit 0
       ;;
