@@ -142,7 +142,8 @@ func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 
 // Downloads GTFS mobility database CSV
 func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
-	return downloadFile("https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media")
+	downloadUrl := getEnvWithDefault("HEADWAY_MOBILITYDB_URL", "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media")
+	return downloadFile(downloadUrl)
 }
 
 // Enumerates GTFS feeds for a given area by filtering the mobility database
