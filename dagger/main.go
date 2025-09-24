@@ -522,7 +522,7 @@ func rustContainer(packages ...string) *dagger.Container {
 }
 
 func slimNodeContainer(packages ...string) *dagger.Container {
-	container := dag.Container().From("node:20-slim")
+	container := dag.Container().From("node:22-slim")
 	if len(packages) == 0 {
 		return container
 	}
