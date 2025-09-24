@@ -16,6 +16,7 @@ import (
 	"context"
 	"dagger/headway/internal/dagger"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -131,6 +132,13 @@ func (h *Headway) ServiceDir(subDirectory string) *dagger.Directory {
 	return h.ServicesDir.Directory(subDirectory)
 }
 
+func getEnvWithDefault(envVariable, defaultValue string) string {
+	if envValue := os.Getenv(envVariable); envValue != "" {
+		return envValue
+	}
+	return defaultValue
+}
+
 /**
  * Full build
  */
@@ -187,7 +195,7 @@ func (o *OSMExport) Clip(ctx context.Context, bbox *Bbox) *OSMExport {
 
 // Downloads terrain tiles from headway-data repository
 func (h *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, error) {
-	assetRoot := "https://github.com/headwaymaps/headway-data/raw/main/tiles/"
+	assetRoot := getEnvWithDefault("HEADWAY_TILES_URL", "https://github.com/headwaymaps/headway-data/raw/main/tiles/")
 
 	container := downloadContainer().
 		WithExec([]string{"wget", "-nv", assetRoot + "terrain.mbtiles"}).
@@ -259,9 +267,11 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 		return nil, fmt.Errorf("failed to compute memory budget: %w", err)
 	}
 
+	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
+
 	container = container.
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"sh", "-c", "curl --no-progress-meter https://data.maps.earth/planetiler_fixtures/sources.tar | tar -x --directory /data/sources"}).
+		WithExec([]string{"sh", "-c", "curl --no-progress-meter " + fixturesUrl +" | tar -x --directory /data/sources"}).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
 	entrypoint, err := container.Entrypoint(ctx)
@@ -394,7 +404,8 @@ func (h *Headway) DownloadPBF(
 	// Area name (e.g. "Seattle")
 	area string) *OSMExport {
 
-	downloadUrl := fmt.Sprintf("https://download.bbbike.org/osm/bbbike/%s/%s.osm.pbf", area, area)
+	downloadUrlRoot := getEnvWithDefault("HEADWAY_PBF_URL", "https://download.bbbike.org/osm/bbbike")
+	downloadUrl := fmt.Sprintf("%s/%s/%s.osm.pbf", downloadUrlRoot, area, area)
 	pbf := downloadFile(downloadUrl)
 
 	return &OSMExport{File: pbf}
