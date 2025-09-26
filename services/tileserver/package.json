@@ -1,0 +1,16 @@
+{
+  "name": "headway-tileserver",
+  "version": "0.0.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/headwaymaps/headway.git"
+  },
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/headwaymaps/headway/issues"
+  },
+  "dependencies": {
+    "tileserver-gl-light": "^5.4.0"
+  }
+}
