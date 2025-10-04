@@ -15,7 +15,7 @@ set -e
 (cd services/frontend/www-app &&
   yarn fmt &&
   yarn lint &&
-  yarn build)
+  yarn tsc)
 
 (cd services/travelmux &&
     cargo fmt &&

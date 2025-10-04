@@ -11,8 +11,7 @@
     "fmt": "yarn format",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "jest",
-    "build": "yarn tsc",
-    "build-quasar": "quasar build",
+    "build": "quasar build",
     "tsc": "tsc --noEmit --skipLibCheck",
     "dev": "quasar dev"
   },

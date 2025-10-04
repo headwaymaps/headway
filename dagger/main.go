@@ -467,7 +467,7 @@ func (h *Headway) WebBuild(ctx context.Context,
 
 	return container.
 		WithExec([]string{"yarn", "install", "--frozen-lockfile"}).
-		WithExec([]string{"yarn", "build-quasar"}).
+		WithExec([]string{"yarn", "build"}).
 		Directory("/www-app/dist/spa")
 }
 
