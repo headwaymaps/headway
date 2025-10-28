@@ -35,7 +35,7 @@ npm run format
 ### Build the app for production
 
 ```bash
-yarn build-quasar
+yarn build
 ```
 
 ### Customize the configuration
