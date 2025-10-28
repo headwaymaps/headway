@@ -458,7 +458,6 @@ func (h *Headway) WebBuild(ctx context.Context,
 	// +optional
 	branding string) *dagger.Directory {
 	container := slimNodeContainer().
-		WithExec([]string{"yarn", "global", "add", "@quasar/cli"}).
 		WithMountedDirectory("/www-app", h.ServiceDir("frontend/www-app")).
 		WithWorkdir("/www-app")
 
@@ -467,8 +466,8 @@ func (h *Headway) WebBuild(ctx context.Context,
 	}
 
 	return container.
-		WithExec([]string{"yarn", "install"}).
-		WithExec([]string{"quasar", "build"}).
+		WithExec([]string{"yarn", "install", "--frozen-lockfile"}).
+		WithExec([]string{"yarn", "build"}).
 		Directory("/www-app/dist/spa")
 }
 
