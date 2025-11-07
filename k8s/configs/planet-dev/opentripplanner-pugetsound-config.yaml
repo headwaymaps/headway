@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: otp-pugetsound-config
 data:
-  graph-url: https://data.example.com/0.10.0/maps-earth-planet-v1.250915/PugetSound.graph.obj.zst
+  graph-url: https://data.example.com/0.10.0/maps-earth-planet-v1.251110/PugetSound.graph.obj.zst
   otp-config-json: |
     {
         "otpFeatures" : {
