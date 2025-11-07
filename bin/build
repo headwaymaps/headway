@@ -43,3 +43,4 @@ if [ -d "$TRANSIT_CONFIG_DIR" ]; then
     bin/build-transit "$CONFIG_DIR"
 fi
 
+echo "Next, run: git co . && k8s/bin/regenerate-all"
