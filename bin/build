@@ -26,6 +26,8 @@ fi
 
 source "${CONFIG_DIR}/env.sh"
 
+bin/update-fetch-urls
+
 if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
     "${CONFIG_DIR}/prebuild.sh"
 fi

@@ -18,6 +18,8 @@ jobs:
         uses: dagger/dagger-for-github@v6
         with:
           version: "latest"
+      - name: Copy env
+        run: cp .env-example .env
       - name: Run build
         run: bin/build builds/bogota
   www_checks:
