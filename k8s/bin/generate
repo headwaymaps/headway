@@ -89,7 +89,7 @@ function generate_otp() {
 
     # Lowercase transit area for idiomatic k8s names
     export TRANSIT_AREA=$(echo $headway_transit_area | tr '[:upper:]' '[:lower:]')
-    export OTP_GRAPH_URL="${HEADWAY_K8S_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${headway_transit_area}.graph.obj.zst"
+    export OTP_GRAPH_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${headway_transit_area}.graph.obj.zst"
     export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_AREA}"
 
     local router_config_file="${BUILD_CONFIG}/transit/${headway_transit_area}-router-config.json"

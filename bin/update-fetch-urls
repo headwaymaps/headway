@@ -1,0 +1,17 @@
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+source "${REPO_ROOT}/.env"
+
+if [ -z "$HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT" ]; then
+    echo "set HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT in .env"
+    exit 1
+fi
+
+if [ -z "$DEPLOYMENT_ARTIFACT_ROOT" ]; then
+    echo "set DEPLOYMENT_ARTIFACT_ROOT in .env"
+    exit 1
+fi
+
+find $REPO_ROOT/k8s/configs -type f | xargs sed -i "s,${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT},${DEPLOYMENT_ARTIFACT_ROOT},"
+find $REPO_ROOT/builds/*/transit -type f | xargs sed -i "s,${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT},${DEPLOYMENT_ARTIFACT_ROOT},"
+sed -i "s,${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT},${DEPLOYMENT_ARTIFACT_ROOT}," services/pelias/generate_config/src/Area.ts
