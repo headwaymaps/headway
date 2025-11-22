@@ -74,7 +74,7 @@ function upload() {
   done
 }
 
-source "${REPO_ROOT}/.env"
+source "${REPO_ROOT}/.env.sh"
 
 # stash env vars in local before they get clobbered by _headway_version.sh
 local_data_tag=$HEADWAY_DATA_TAG

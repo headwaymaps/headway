@@ -29,7 +29,7 @@ OUTPUT_DIR="$2"
 
 DEPLOYMENT_ENV_FILE="${BUILD_CONFIG}/env.sh"
 
-source "${REPO_ROOT}/.env"
+source "${REPO_ROOT}/.env.sh"
 
 # stash env vars in local before they get clobbered by _headway_version.sh
 local_data_tag=$HEADWAY_DATA_TAG
