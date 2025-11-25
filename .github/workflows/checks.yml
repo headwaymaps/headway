@@ -19,7 +19,7 @@ jobs:
         with:
           version: "latest"
       - name: Copy env
-        run: cp .env-example .env
+        run: cp builds/bogota/.env .env
       - name: Build data artifacts
         run: bin/build builds/bogota
       - name: Upload data artifacts
@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Copy env
-        run: cp .env-example .env
+        run: cp builds/bogota/.env .env
       - name: Install Dagger
         uses: dagger/dagger-for-github@v8.2.0
         with:
@@ -135,7 +135,7 @@ jobs:
       - name: Load Docker images
         run: gunzip -c docker-images.tar.gz | docker load
       - name: Copy env
-        run: cp .env-example .env
+        run: cp builds/bogota/.env .env
       - name: Run integration tests
         run: tests/integration/run-integration-tests.sh
       - name: Collect logs on failure

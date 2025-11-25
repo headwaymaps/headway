@@ -24,7 +24,9 @@ EOS
     exit 1
 fi
 
-source "${CONFIG_DIR}/env.sh"
+set -a
+source "${CONFIG_DIR}/.env"
+set +a
 
 bin/update-fetch-urls
 
