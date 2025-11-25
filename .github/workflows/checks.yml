@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  dagger_build:
-    name: Run a small build
+  build_data:
+    name: Build Bogota data artifacts
     runs-on: ubuntu-latest
     env:
       DAGGER_NO_NAG: 1
@@ -20,14 +20,36 @@ jobs:
           version: "latest"
       - name: Copy env
         run: cp .env-example .env
-      - name: Run build
+      - name: Build data artifacts
         run: bin/build builds/bogota
-      - name: Upload build artifacts
+      - name: Upload data artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: bogota-artifacts
+          name: bogota-artifacts-${{ github.sha }}
           path: data/Bogota
-          retention-days: 1
+          retention-days: 7
+  build_images:
+    name: Build service images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Copy env
+        run: cp .env-example .env
+      - name: Install Dagger
+        uses: dagger/dagger-for-github@v8.2.0
+        with:
+          version: "latest"
+      - name: Build service images
+        run: bin/build-images
+      - name: Save Docker images
+        run: |
+          docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep headway) | gzip > docker-images.tar.gz
+      - name: Upload Docker images
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images-${{ github.sha }}
+          path: docker-images.tar.gz
+          retention-days: 7
   www_checks:
     defaults:
       run:
@@ -95,24 +117,25 @@ jobs:
   integration_tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: dagger_build
+    needs: [build_data, build_images]
     steps:
       - uses: actions/checkout@v6
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
-      - name: Download build artifacts
+      - name: Download data artifacts
         uses: actions/download-artifact@v4
         with:
-          name: bogota-artifacts
+          name: bogota-artifacts-${{ github.sha }}
           path: data/Bogota
+      - name: Download Docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images-${{ github.sha }}
+          path: .
+      - name: Load Docker images
+        run: gunzip -c docker-images.tar.gz | docker load
       - name: Copy env
         run: cp .env-example .env
-      - name: Install Dagger
-        uses: dagger/dagger-for-github@v8.2.0
-        with:
-          version: "latest"
-      - name: Build service images
-        run: bin/build-images
       - name: Run integration tests
         run: tests/integration/run-integration-tests.sh
       - name: Collect logs on failure
