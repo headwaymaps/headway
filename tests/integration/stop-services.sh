@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stop docker-compose services
+# Stop docker compose services
 
 set -e
 
@@ -11,5 +11,5 @@ cd "$PROJECT_ROOT"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
 
 echo "Stopping services..."
-docker-compose -f "$COMPOSE_FILE" down --volumes
+docker compose -f "$COMPOSE_FILE" down --volumes
 echo "Services stopped and volumes removed."

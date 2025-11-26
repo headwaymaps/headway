@@ -86,7 +86,7 @@ func (p *Pelias) Importer(ctx context.Context) *PeliasImporter {
 
 	opts := dagger.ContainerWithMountedCacheOpts{Owner: "elasticsearch", Sharing: "SHARED"}
 
-	// NOTE: docker-compose passes some extra arguments to this container, e.g. IPC and mem size
+	// NOTE: docker compose passes some extra arguments to this container, e.g. IPC and mem size
 	elasticsearchService := dag.Container().
 		From("pelias/elasticsearch:8.12.2-beta").
 		WithEnvVariable("ES_JAVA_OPTS", "-Xmx8g").

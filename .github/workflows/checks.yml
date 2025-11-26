@@ -140,7 +140,7 @@ jobs:
         run: tests/integration/run-integration-tests.sh
       - name: Collect logs on failure
         if: failure()
-        run: docker-compose logs > integration-test-logs.txt
+        run: docker compose logs > integration-test-logs.txt
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v5

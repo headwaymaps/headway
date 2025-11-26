@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start docker-compose services for integration testing
+# Start docker compose services for integration testing
 
 set -e
 
@@ -30,11 +30,11 @@ if [ ! -d "data/${HEADWAY_AREA}" ]; then
 fi
 
 # Start services
-echo "Starting docker-compose services..."
-docker-compose -f "$COMPOSE_FILE" up -d
+echo "Starting docker compose services..."
+docker compose -f "$COMPOSE_FILE" up -d
 
 echo ""
 echo "Services started! Use wait-for-services.sh to check readiness."
 echo ""
 echo "To stop services, run:"
-echo "  docker-compose down --volumes"
+echo "  docker compose down --volumes"

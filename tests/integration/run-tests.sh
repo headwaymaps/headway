@@ -64,7 +64,7 @@ if [ $TESTS_FAILED -gt 0 ]; then
     echo "FAILURE: Some tests failed"
     echo ""
     echo "To view logs, run:"
-    echo "  docker-compose logs"
+    echo "  docker compose logs"
     exit 1
 else
     echo "SUCCESS: All tests passed!"
