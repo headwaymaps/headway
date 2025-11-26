@@ -276,7 +276,7 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 
 	container = container.
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"sh", "-c", "curl --no-progress-meter " + fixturesUrl +" | tar -x --directory /data/sources"}).
+		WithExec([]string{"sh", "-c", "curl --no-progress-meter " + fixturesUrl + " | tar -x --directory /data/sources"}).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
 	entrypoint, err := container.Entrypoint(ctx)

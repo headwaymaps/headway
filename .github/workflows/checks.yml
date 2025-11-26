@@ -19,8 +19,6 @@ jobs:
         uses: dagger/dagger-for-github@v8.2.0
         with:
           version: "latest"
-      - name: Copy env
-        run: cp builds/bogota/.env .env
       - name: Build data artifacts
         run: bin/build builds/bogota
       - name: Upload data artifacts
@@ -34,8 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Copy env
-        run: cp builds/bogota/.env .env
       - name: Install Dagger
         uses: dagger/dagger-for-github@v8.2.0
         with:
@@ -135,10 +131,8 @@ jobs:
           path: .
       - name: Load Docker images
         run: gunzip -c docker-images.tar.gz | docker load
-      - name: Copy env
-        run: cp builds/bogota/.env .env
       - name: Run integration tests
-        run: tests/integration/run-integration-tests.sh
+        run: tests/integration/run-integration-tests.sh builds/bogota
       - name: Collect logs on failure
         if: failure()
         run: docker compose logs > integration-test-logs.txt
