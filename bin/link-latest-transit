@@ -12,13 +12,15 @@ Use a version prefix other than what's in bin/_headway_version.sh
 EOF
 }
 
-if [ ! $# -eq 1 ]; then
-  usage
-  exit 1
+CONFIG_DIR="$1"
+if [ -z "$CONFIG_DIR" ]; then
+    usage
+    exit 1
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-source "${REPO_ROOT}/.env.sh"
+
+source bin/_source-env.sh "$CONFIG_DIR"
 
 # stash env vars in local before they get clobbered by _headway_version.sh
 local_data_tag=$HEADWAY_DATA_TAG
@@ -29,14 +31,6 @@ if [ ! -z "$HEADWAY_TAG" ]; then
 fi
 
 export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
-
-BUILD_DIR=$1
-DEPLOYMENT_ENV_FILE="${BUILD_DIR}/env.sh"
-if [ ! -f "$DEPLOYMENT_ENV_FILE" ]; then
-    echo "missing file ${DEPLOYMENT_ENV_FILE}"
-    exit 1
-fi
-source "$DEPLOYMENT_ENV_FILE"
 
 DATA_ROOT="${REPO_ROOT}/data"
 OUTPUT_ROOT="/pool1/www/data.maps.earth"

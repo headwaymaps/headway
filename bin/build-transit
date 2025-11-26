@@ -24,7 +24,7 @@ EOS
     exit 1
 fi
 
-source "${CONFIG_DIR}/env.sh"
+source bin/_source-env.sh "$CONFIG_DIR"
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 

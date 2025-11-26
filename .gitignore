@@ -6,3 +6,4 @@
 data/*
 .env
 **/node_modules/*
+.bin-env
