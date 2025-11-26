@@ -49,7 +49,9 @@ export default class Area {
       fields.countryCodes
         .split(",")
         .filter((countryCode) => countryCode.length > 0),
-      (fields.openaddressesFiles || "").split(",").filter((file) => file.length > 0),
+      (fields.openaddressesFiles || "")
+        .split(",")
+        .filter((file) => file.length > 0),
     );
   }
 
