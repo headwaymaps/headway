@@ -55,9 +55,12 @@ type Bbox struct {
 }
 
 func (b *Bbox) CommaSeparated() string {
+	// west, south, east, north
 	return fmt.Sprintf("%f,%f,%f,%f", b.Left, b.Bottom, b.Right, b.Top)
 }
+
 func (b *Bbox) SpaceSeparated() string {
+	// west, south, east, north
 	return fmt.Sprintf("%f %f %f %f", b.Left, b.Bottom, b.Right, b.Top)
 }
 
@@ -337,20 +340,20 @@ func (h *Headway) ValhallaServeContainer(ctx context.Context) *dagger.Container 
 		WithDefaultArgs([]string{"/data/valhalla.json"})
 }
 
-// Extracts bounding box for a given area from bboxes.csv
+// Extracts bounding box for a given area from areas.csv
 func (h *Headway) BBox(ctx context.Context) (*Bbox, error) {
-	bboxesFile := h.ServiceDir("gtfs").File("bboxes.csv")
+	areasFile := h.ServicesDir.File("areas.csv")
 
-	// Area name to look up (must exist in bboxes.csv)
+	// Area name to look up (must exist in areas.csv)
 	area := h.Area
 	if area == "" {
 		return nil, fmt.Errorf("Area is required to get bounding box")
 	}
 
 	container := slimContainer().
-		WithMountedFile("/bboxes.csv", bboxesFile).
-		WithExec([]string{"sh", "-c", fmt.Sprintf("test $(grep '%s:' /bboxes.csv | wc -l) -eq 1", area)}).
-		WithExec([]string{"sh", "-c", fmt.Sprintf("grep '%s:' /bboxes.csv | cut -d':' -f2", area)})
+		WithMountedFile("/areas.csv", areasFile).
+		WithExec([]string{"sh", "-c", fmt.Sprintf("test $(grep '^%s,' /areas.csv | wc -l) -eq 1", area)}).
+		WithExec([]string{"sh", "-c", fmt.Sprintf("grep '^%s,' /areas.csv | cut -d',' -f3", area)})
 
 	bboxStr, err := container.Stdout(ctx)
 	if err != nil {
