@@ -22,15 +22,10 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
-# stash env vars in local before they get clobbered by _headway_version.sh
-local_data_tag=$HEADWAY_DATA_TAG
-source "${REPO_ROOT}/bin/_headway_version.sh"
-
-if [ ! -z "$HEADWAY_TAG" ]; then
-  HEADWAY_DATA_TAG="$HEADWAY_TAG"
+if [ -z "$HEADWAY_DATA_TAG" ]; then
+    source "${REPO_ROOT}/bin/_headway_version.sh"
 fi
-
-export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
+export HEADWAY_DATA_TAG
 
 DATA_ROOT="${REPO_ROOT}/data"
 OUTPUT_ROOT="/pool1/www/data.maps.earth"

@@ -76,15 +76,12 @@ function upload() {
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
-# stash env vars in local before they get clobbered by _headway_version.sh
-local_data_tag=$HEADWAY_DATA_TAG
-source "${REPO_ROOT}/bin/_headway_version.sh"
-
-if [ ! -z "$HEADWAY_TAG" ]; then
-  HEADWAY_DATA_TAG="$HEADWAY_TAG"
+if [ -z "$HEADWAY_DATA_TAG" ]; then
+    source "${REPO_ROOT}/bin/_headway_version.sh"
+else 
+    explicit_data_tag=1
 fi
-
-export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
+export HEADWAY_DATA_TAG
 
 set -o nounset
 
@@ -116,10 +113,10 @@ done
 
 echo "Return codes: ${rets[*]}"
 
+echo "Next, on $HOST..."
 # Todo: just do it automatically
-
-if [ ! -z "$local_data_tag" ]; then
-echo "Do you want to 'HEADWAY_DATA_TAG=${local_data_tag} bin/link-latest-transit ${CONFIG_DIR}' next?"
+if [ ! -z "$explicit_data_tag" ]; then
+echo "Do you want to 'HEADWAY_DATA_TAG=${HEADWAY_DATA_TAG} bin/link-latest-transit ${CONFIG_DIR}' next?"
 else
 echo "Do you want to 'bin/link-latest-transit ${CONFIG_DIR}' next?"
 fi
