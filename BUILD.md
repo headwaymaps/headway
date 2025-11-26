@@ -48,7 +48,7 @@ This approach will download all the mapping data you need automatically, but onl
    2. Examine `builds/Amsterdam/transit/Amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
    3. Build transit routing with `dagger -c "with-area Amsterdam | build-transit ./builds/Amsterdam/transit | export ./data/Amsterdam/transit"`
 4. Make a `.env` file with your configuration. See `.env.example` for documentation and defaults.
-5. Execute `docker-compose up -d` to bring up the headway stack with a web frontend on port 8080.
+5. Execute `docker compose up -d` to bring up the headway stack with a web frontend on port 8080.
 6. (For https and non-default port use only) reverse-proxy traffic to port 8080.
 
 That's it! In the future I'd like to have a kubernetes config to further productionize this project.
@@ -61,7 +61,7 @@ The process is largely the same as above. After downloading your OSM extract, mo
 
 ## Docker-compose restarts
 
-Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker-compose down --volumes` to re-initialize the data in the init containers.
+Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker compose down --volumes` to re-initialize the data in the init containers.
 
 This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `.env` file.
 

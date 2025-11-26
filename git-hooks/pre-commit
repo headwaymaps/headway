@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 #
-# Run formatting and linting checks.
+# Run formatting and linting checks in parallel.
 #
 # The checks should align with our CI checks in .github/workflows/frontend-checks.yml
 #
@@ -10,25 +10,56 @@
 
 set -e
 
-(cd dagger && go fmt)
+# Array to store background job PIDs
+pids=()
+# Array to store job names for better error reporting
+jobs=()
 
-(cd services/frontend/www-app &&
-  yarn fmt &&
-  yarn lint &&
-  yarn tsc)
+# Helper function to run a job in background
+run_job() {
+    local name=$1
+    shift
+    echo "Starting: $name"
+    (
+        set -e
+        "$@"
+    ) &
+    pids+=($!)
+    jobs+=("$name")
+}
 
-(cd services/travelmux &&
-    cargo fmt &&
-    cargo clippy --all-features -- -D warnings &&
-    cargo test)
+# Run all checks in parallel
+run_job "dagger fmt" bash -c "cd dagger && go fmt"
 
-(cd services/gtfs/gtfout &&
-    cargo fmt --all &&
-    cargo clippy --all-targets --all-features -- -D warnings &&
-    cargo test --all-targets --all-features)
+run_job "frontend checks" bash -c "cd services/frontend/www-app && yarn fmt && yarn lint && yarn tsc"
 
-(cd services/pelias/generate_config &&
-  yarn fmt &&
-  yarn lint &&
-  yarn build)
+run_job "travelmux checks" bash -c "cd services/travelmux && cargo fmt && cargo clippy --all-features -- -D warnings && cargo test"
+
+run_job "gtfout checks" bash -c "cd services/gtfs/gtfout && cargo fmt --all && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"
+
+run_job "pelias config checks" bash -c "cd services/pelias/generate_config && yarn fmt && yarn lint && yarn build"
+
+# Wait for all background jobs and collect exit codes
+echo ""
+echo "Waiting for all checks to complete..."
+failed=0
+for i in "${!pids[@]}"; do
+    pid=${pids[$i]}
+    job=${jobs[$i]}
+    if wait $pid; then
+        echo "✓ $job passed"
+    else
+        echo "✗ $job failed"
+        failed=1
+    fi
+done
+
+echo ""
+if [ $failed -eq 1 ]; then
+    echo "Some checks failed. Fix the issues and try again."
+    exit 1
+else
+    echo "All checks passed!"
+    exit 0
+fi
 
