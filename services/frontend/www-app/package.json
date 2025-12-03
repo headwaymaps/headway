@@ -33,7 +33,6 @@
     "@quasar/quasar-app-extension-testing": "^2.0.4",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.14.202",
-    "@types/mime": "4.0.0",
     "@types/node": "^22.10.2",
     "autoprefixer": "^10.4.17",
     "babel-jest": "^29.7.0",
