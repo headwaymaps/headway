@@ -42,28 +42,33 @@ Headway currently supports fully automatic builds for the following cities:
 This approach will download all the mapping data you need automatically, but only works for the pre-defined metro areas above.
 
 1. Pick a metro area from the list above, like "Amsterdam" or "Denver". These values are case-sensitive. In all the examples, replace "Amsterdam" with your metro area of choice.
-2. Execute `dagger -c "with-area Amsterdam | build | export ./data/Amsterdam"`
-3. (Optional) Set up transit routing. Note: This dramatically increases hardware requirements for large metro areas.
-   1. Find nearby transit schedules by running `dagger -c 'with-area Amsterdam | nearby-gtfs-feeds | export ./builds/Amsterdam/transit/Amsterdam.gtfs_feeds.csv'`
+2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, review and edit `builds/Amsterdam/.env`
+3. Execute `bin/build builds/Amsterdam` to build data artifacts
+4. (Optional) Set up transit routing. Note: This dramatically increases hardware requirements for large metro areas.
+   1. Find nearby transit schedules by running `bin/export-nearby-transit-feeds builds/Amsterdam`
    2. Examine `builds/Amsterdam/transit/Amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
-   3. Build transit routing with `dagger -c "with-area Amsterdam | build-transit ./builds/Amsterdam/transit | export ./data/Amsterdam/transit"`
-4. Make a `.env` file with your configuration. See `.env.example` for documentation and defaults.
-5. Execute `docker compose up -d` to bring up the headway stack with a web frontend on port 8080.
-6. (For https and non-default port use only) reverse-proxy traffic to port 8080.
+   3. Build transit routing with `bin/build-transit builds/Amsterdam`
+5. Start services from the build directory by running: `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml up -d`
+6. This will bring up the headway stack with a web frontend on port 8080.
+7. (For https and non-default port use only) reverse-proxy traffic to port 8080.
 
-That's it! In the future I'd like to have a kubernetes config to further productionize this project.
+That's it!
+
+There are some experimental kubernetes configs in k8s/configs, but they are pretty specific to my own needs at this point.
 
 ### Building Headway from your own OSM extract
 
 To build Headway for a custom area, you just need to provide your own OSM extract (.osm.pbf).
 
-The process is largely the same as above. After downloading your OSM extract, move it to the project root (in the same directory as this BUILD.md), and wherever you see `with-area Amsterdam` above, change it to `with-area YourArea --local-pbf ./your-area.osm.pbf`
+The process is largely the same as above. After downloading your OSM extract, move it to the project root (in the same directory as this BUILD.md), and wherever you see `with-area Amsterdam` in the build scripts, change it to `with-area YourArea --local-pbf ./your-area.osm.pbf`. 
 
 ## Docker-compose restarts
 
 Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker compose down --volumes` to re-initialize the data in the init containers.
 
-This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `.env` file.
+When running docker compose commands, make sure to run them from the build directory (e.g., `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml down --volumes`) so they use the correct `.env` file, or use the integration test helper: `tests/integration/stop-services.sh builds/Amsterdam`
+
+This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `builds/<area>/.env` file.
 
 ## Full-planet considerations
 

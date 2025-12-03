@@ -1,5 +1,5 @@
 #!/bin/bash -e
-#
+
 function usage() {
   cat << EOF
 Link latest transit files in web root
@@ -8,38 +8,32 @@ examples:
     $0 builds/planet
 
 Use a version prefix other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev $0 builds/seattle
+    HEADWAY_DATA_TAG=dev $0 builds/Seattle
+
+For local hosting
+    TRANSIT_DATA_ROOT="./data" $0 builds/Seattle
 EOF
 }
 
-if [ ! $# -eq 1 ]; then
-  usage
-  exit 1
+CONFIG_DIR="$1"
+if [ -z "$CONFIG_DIR" ]; then
+    usage
+    exit 1
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-source "${REPO_ROOT}/.env.sh"
 
-# stash env vars in local before they get clobbered by _headway_version.sh
-local_data_tag=$HEADWAY_DATA_TAG
-source "${REPO_ROOT}/bin/_headway_version.sh"
+source bin/_source-env.sh "$CONFIG_DIR"
 
-if [ ! -z "$HEADWAY_TAG" ]; then
-  HEADWAY_DATA_TAG="$HEADWAY_TAG"
+if [ -z TRANSIT_DATA_ROOT ]; then
+    if [ -z "$HEADWAY_DATA_TAG" ]; then
+        source "${REPO_ROOT}/bin/_headway_version.sh"
+    fi
+    OUTPUT_ROOT="/pool1/www/data.maps.earth"
+    TRANSIT_DATA_DIR="${OUTPUT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+else
+    TRANSIT_DATA_DIR="${TRANSIT_DATA_ROOT}/${HEADWAY_AREA}"
 fi
-
-export HEADWAY_DATA_TAG="${local_data_tag:-$HEADWAY_DATA_TAG}"
-
-BUILD_DIR=$1
-DEPLOYMENT_ENV_FILE="${BUILD_DIR}/env.sh"
-if [ ! -f "$DEPLOYMENT_ENV_FILE" ]; then
-    echo "missing file ${DEPLOYMENT_ENV_FILE}"
-    exit 1
-fi
-source "$DEPLOYMENT_ENV_FILE"
-
-DATA_ROOT="${REPO_ROOT}/data"
-OUTPUT_ROOT="/pool1/www/data.maps.earth"
 
 snake_to_upper_camel() {
     local input="$1"
@@ -93,7 +87,7 @@ all_transit_graphs() {
         echo "city was blank"
         exit 1
     fi
-    ls *$city*.graph.obj.zst
+    find . -name \*.graph.obj.zst -type f | grep "$city"
 }
 
 most_recent_transit_graph() {
@@ -115,7 +109,7 @@ indent() {
  }
 
 main() {
-    cd "${OUTPUT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+    cd $TRANSIT_DATA_DIR
     echo "PWD: $(pwd)"
 
     # Handle transit graphs
@@ -143,7 +137,7 @@ main() {
         if [ -n "$most_recent_elevation" ]; then
             echo "most recent elevation: $most_recent_elevation" | indent
 
-            local elevation_link_name="${archive}.elevation-tifs.tar.zst"
+            local elevation_link_name=$(basename "${archive}.elevation-tifs.tar.zst")
             echo "elevation link_name: $elevation_link_name" | indent
 
             ln -sf "$most_recent_elevation" "$elevation_link_name"

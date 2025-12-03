@@ -9,7 +9,7 @@ if [ -z "$CONFIG_DIR" ]; then
 $0 must specify build config directory
 e.g.
     $0 builds/planet
-    $0 builds/seattle
+    $0 builds/Seattle
 EOS
     exit 1
 fi
@@ -24,9 +24,7 @@ EOS
     exit 1
 fi
 
-set -a
-source "${CONFIG_DIR}/.env"
-set +a
+source bin/_source-env.sh "$CONFIG_DIR"
 
 bin/update-fetch-urls
 
@@ -40,7 +38,7 @@ if [[ -f "${INPUT_PBF}" ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} | build | export data/${HEADWAY_AREA}"
+dagger --progress=plain -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} | build | export data/${HEADWAY_AREA}"
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 if [ -d "$TRANSIT_CONFIG_DIR" ]; then

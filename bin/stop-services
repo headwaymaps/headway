@@ -1,0 +1,31 @@
+#!/bin/bash
+# Stop docker compose services
+
+set -e
+
+CONFIG_DIR="$1"
+if [ -z "$CONFIG_DIR" ]; then
+    cat <<EOS
+Usage: $0 <build-config-dir>
+Example: Basic
+    $0 builds/Bogota
+Example: With Transit
+    COMPOSE_FILE=docker-compose-with-transit.yaml $0 builds/Seattle
+EOS
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_ROOT=$(git rev-parse --show-toplevel)
+
+cd "$APP_ROOT"
+
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
+
+source bin/_source-env.sh "$CONFIG_DIR"
+
+# Stop services - cd to build dir so docker compose uses the correct .env
+cd "$CONFIG_DIR"
+echo "Stopping services from $CONFIG_DIR..."
+docker compose -f "../../$COMPOSE_FILE" down --volumes
+echo "Services stopped and volumes removed."

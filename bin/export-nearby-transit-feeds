@@ -1,0 +1,43 @@
+#!/bin/bash -e
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
+
+CONFIG_DIR="$1"
+if [ -z "$CONFIG_DIR" ]; then
+    cat <<EOS
+$0 must specify build config directory
+e.g.
+    $0 builds/planet
+    $0 builds/Seattle
+EOS
+    exit 1
+fi
+shift
+
+set -o nounset
+
+if [ ! -d "$CONFIG_DIR" ]; then
+    cat <<EOS
+Config dir "$CONFIG_DIR" doesn't exist
+EOS
+    exit 1
+fi
+
+source bin/_source-env.sh "$CONFIG_DIR"
+
+# Create transit directory if it doesn't exist
+TRANSIT_DIR="${CONFIG_DIR}/transit"
+mkdir -p "$TRANSIT_DIR"
+
+OUTPUT_FILE="${TRANSIT_DIR}/${HEADWAY_AREA}.gtfs_feeds.csv"
+
+echo "Finding nearby GTFS feeds for ${HEADWAY_AREA}..."
+echo "Output will be written to: ${OUTPUT_FILE}"
+
+dagger -c "with-area ${HEADWAY_AREA} | nearby-gtfs-feeds | export ${OUTPUT_FILE}"
+
+echo ""
+echo "GTFS feeds list created at: ${OUTPUT_FILE}"
+echo "Review and edit this file to curate which feeds to use for transit routing."
+echo "Then run: bin/build-transit ${CONFIG_DIR}"

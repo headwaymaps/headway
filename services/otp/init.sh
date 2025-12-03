@@ -7,7 +7,7 @@ if [ -f /data/graph.obj ]; then
     echo "Nothing to do, already have artifact."
 elif [ -f "$OTP_ARTIFACT_SOURCE_PATH" ]; then
     echo "Copying artifact."
-    zstd --decompress --stdout "$OTP_ARTIFACT_SOURCE_PATH" > /data/graph.obj
+    cat "$OTP_ARTIFACT_SOURCE_PATH" | zstd --decompress --stdout > /data/graph.obj
 elif [ -n "$OTP_ARTIFACT_URL" ]; then
     echo "Downloading artifact"
     wget --tries=100 --continue -O- "$OTP_ARTIFACT_URL" | zstd --decompress --stdout > /data/graph.obj.download
