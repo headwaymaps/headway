@@ -8,12 +8,12 @@
 #
 # You can commit without running the checks by running `git commit --no-verify` if need be.
 
-set -e
-
 # Array to store background job PIDs
 pids=()
 # Array to store job names for better error reporting
 jobs=()
+# Array to store job status
+statuses=()
 
 # Helper function to run a job in background
 run_job() {
@@ -42,24 +42,36 @@ run_job "pelias config checks" bash -c "cd services/pelias/generate_config && ya
 # Wait for all background jobs and collect exit codes
 echo ""
 echo "Waiting for all checks to complete..."
-failed=0
+failed=""
 for i in "${!pids[@]}"; do
     pid=${pids[$i]}
     job=${jobs[$i]}
-    if wait $pid; then
-        echo "✓ $job passed"
+    wait $pid
+    statuses+=($?)
+done
+
+echo ""
+echo "Status"
+echo "======"
+echo ""
+exit_status=0
+for i in "${!statuses[@]}"; do
+    job=${jobs[$i]}
+    status=${statuses[$i]}
+
+    if [ $status -eq 0 ]; then
+        echo "✅ $job passed"
     else
-        echo "✗ $job failed"
-        failed=1
+        echo "❌ $job failed"
+        exit_status=$status
     fi
 done
 
 echo ""
-if [ $failed -eq 1 ]; then
-    echo "Some checks failed. Fix the issues and try again."
-    exit 1
+if [ $exit_status -ne 0 ]; then
+    echo "Fix the issues and try again."
 else
     echo "All checks passed!"
-    exit 0
 fi
+exit $exit_status
 
