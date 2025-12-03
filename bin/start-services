@@ -1,0 +1,52 @@
+#!/bin/bash
+# Start docker compose services for integration testing
+
+set -e
+
+CONFIG_DIR="$1"
+if [ -z "$CONFIG_DIR" ]; then
+    cat <<EOS
+Usage: $0 <build-config-dir>
+Example: Basic
+    $0 builds/Bogota
+Example: With Transit
+    COMPOSE_FILE=docker-compose-with-transit.yaml $0 builds/Seattle
+EOS
+    exit 1
+fi
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd $APP_ROOT
+
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
+
+echo "========================================"
+echo "Starting Headway Services"
+echo "========================================"
+echo "Build dir: $CONFIG_DIR"
+echo "Compose file: $COMPOSE_FILE"
+echo ""
+
+source bin/_source-env.sh "$CONFIG_DIR"
+
+echo "Area: ${HEADWAY_AREA}"
+echo "Data directory: data/${HEADWAY_AREA}"
+echo ""
+
+# Check if data directory exists
+if [ ! -d "data/${HEADWAY_AREA}" ]; then
+    echo "Error: Data directory data/${HEADWAY_AREA} not found"
+    echo "Please run: bin/build $CONFIG_DIR"
+    exit 1
+fi
+
+# Start services - cd to build dir so docker-compose picks up the .env
+cd "$CONFIG_DIR"
+echo "Starting docker compose services from $CONFIG_DIR..."
+docker compose -f "../../$COMPOSE_FILE" up -d
+
+echo ""
+echo "Services started! Use bin/wait-for-services to check readiness."
+echo ""
+echo "To stop services and remove volumes, run:"
+echo "  bin/stop-services $CONFIG_DIR"

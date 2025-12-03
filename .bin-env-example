@@ -1,0 +1,11 @@
+##
+# The following are only needed for the scripts in bin/*
+# If you're not using them, we can leave these blank.
+##
+
+# The template placeholder for where artifacts are downloaded from by k8s init-containers
+HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT="https://data.example.com"
+
+# Where artifacts are actually downloaded from by k8s init-containers when running bin/deploy or bin/build
+# Replaces HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT
+DEPLOYMENT_ARTIFACT_ROOT="https://data.example.com"

@@ -1,7 +1,7 @@
 services:
   tileserver-init:
     image: ghcr.io/headwaymaps/tileserver-init:latest
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       AREAMAP_ARTIFACT_DEST: /data/${HEADWAY_AREA}.mbtiles
       AREAMAP_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_AREA}.mbtiles
@@ -15,7 +15,7 @@ services:
   tileserver:
     image: ghcr.io/headwaymaps/tileserver:latest
     restart: always
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       PORT: 8000
     volumes:
@@ -29,7 +29,7 @@ services:
       - tileserver_frontend
   travelmux-init:
     image: ghcr.io/headwaymaps/travelmux-init:latest
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/transit/${HEADWAY_AREA}.elevation-tifs.tar.zst
     volumes:
@@ -38,7 +38,7 @@ services:
   travelmux:
     image: ghcr.io/headwaymaps/travelmux:latest
     restart: always
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       ELEVATION_TIFS_DIR: /data/elevation-tifs
     depends_on:
@@ -52,7 +52,7 @@ services:
     command: ["http://valhalla:8002"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "valhalla_data:/data/:rw"
@@ -65,7 +65,7 @@ services:
   valhalla:
     image: ghcr.io/headwaymaps/valhalla:latest
     restart: always
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     networks:
       - valhalla_backend
     volumes:
@@ -81,14 +81,14 @@ services:
     #   - "9002:8002"
   frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "frontend_data:/data/:rw"
   frontend:
     image: ghcr.io/headwaymaps/headway:latest
     restart: always
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       HEADWAY_RESOLVER: 127.0.0.11
       HEADWAY_PELIAS_URL: http://pelias-api:4000
@@ -111,7 +111,7 @@ services:
       - "valhalla"
   pelias-config-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       PELIAS_CONFIG_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.pelias.json
     command: [ "/bin/bash", "/app/init_config.sh" ]
@@ -120,7 +120,7 @@ services:
       - "pelias_config_data:/config"
   pelias-elasticsearch-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.zst
     command: [ "/bin/bash", "/app/init_elastic.sh" ]
@@ -129,7 +129,7 @@ services:
       - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
   pelias-placeholder-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
-    env_file: .env
+    env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.zst
     command: [ "/bin/bash", "/app/init_placeholder.sh" ]

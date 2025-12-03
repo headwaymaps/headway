@@ -17,7 +17,7 @@ mkdir -p "$ELEVATION_TIFS_DIR"
 # Download and extract elevation data
 if [ -f "$TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH" ]; then
     echo "Copying elevation artifact from local path."
-    zstd --decompress --stdout "$TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH" | tar -xf - -C "$ELEVATION_TIFS_DIR"
+    cat "$TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH" | zstd --decompress --stdout| tar -xf - -C "$ELEVATION_TIFS_DIR"
     ls "$ELEVATION_TIFS_DIR"
 elif [ -n "$TRAVELMUX_ELEVATION_ARTIFACT_URL" ]; then
     echo "Downloading elevation artifact from URL: $TRAVELMUX_ELEVATION_ARTIFACT_URL"

@@ -9,7 +9,7 @@ if [ -z "$CONFIG_DIR" ]; then
 $0 must specify build config directory
 e.g.
     $0 builds/planet
-    $0 builds/seattle
+    $0 builds/Seattle
 EOS
     exit 1
 fi
@@ -24,7 +24,7 @@ EOS
     exit 1
 fi
 
-source "${CONFIG_DIR}/env.sh"
+source bin/_source-env.sh "$CONFIG_DIR"
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 

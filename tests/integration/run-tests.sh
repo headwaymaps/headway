@@ -5,9 +5,9 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+APP_ROOT=$(git rev-parse --show-toplevel)
 
-cd "$PROJECT_ROOT"
+cd "$APP_ROOT"
 
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
 
@@ -23,7 +23,6 @@ TESTS_FAILED=0
 # Export FRONTEND_URL for test scripts
 export FRONTEND_URL
 
-# Run tileserver tests
 echo "Running tileserver tests..."
 if "$SCRIPT_DIR/test-tileserver.sh"; then
     TESTS_PASSED=$((TESTS_PASSED + 1))
@@ -32,7 +31,6 @@ else
     echo "Tileserver tests FAILED"
 fi
 
-# Run geosearch tests
 echo ""
 echo "Running geosearch tests..."
 if "$SCRIPT_DIR/test-geosearch.sh"; then
@@ -42,7 +40,6 @@ else
     echo "Geosearch tests FAILED"
 fi
 
-# Run routing tests
 echo ""
 echo "Running routing tests..."
 if "$SCRIPT_DIR/test-routing.sh"; then

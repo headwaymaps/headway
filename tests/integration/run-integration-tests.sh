@@ -4,35 +4,39 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+CONFIG_DIR="$1"
+if [ -z "$CONFIG_DIR" ]; then
+    cat <<EOS
+Usage: $0 <config-dir>
+Example: $0 builds/Bogota
+EOS
+    exit 1
+fi
 
-cd "$PROJECT_ROOT"
+APP_ROOT=$(git rev-parse --show-toplevel)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$APP_ROOT"
 
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
 
 echo "========================================"
 echo "Headway Integration Test Runner"
 echo "========================================"
+echo "Build dir: $CONFIG_DIR"
 echo ""
 
-# Function to cleanup on exit
 cleanup() {
     echo ""
-    "$SCRIPT_DIR/stop-services.sh"
+    "$APP_ROOT/bin/stop-services" "$CONFIG_DIR"
 }
-
-# Register cleanup function
 trap cleanup EXIT INT TERM
 
-# Start services
-"$SCRIPT_DIR/start-services.sh"
+"$APP_ROOT/bin/start-services" "$CONFIG_DIR"
 
 echo ""
 echo "Waiting for services to be ready..."
 export FRONTEND_URL
-"$SCRIPT_DIR/wait-for-services.sh"
+"$APP_ROOT/bin/wait-for-services"
 
 echo ""
-# Run tests
 "$SCRIPT_DIR/run-tests.sh"
