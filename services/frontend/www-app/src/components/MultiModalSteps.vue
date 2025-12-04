@@ -132,7 +132,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
     f: (prev: ItineraryLeg, current: ItineraryLeg | undefined) => void,
   ): void {
     for (let idx = 0; idx < list.length; idx++) {
-      f(list[idx], list[idx + 1]);
+      f(list[idx]!, list[idx + 1]);
     }
   }
 

@@ -293,9 +293,9 @@ export default defineComponent({
       this.activeTrip = trips[selectedIdx];
 
       for (let tripIdx = 0; tripIdx < trips.length; tripIdx++) {
-        const trip = trips[tripIdx];
+        const trip = trips[tripIdx]!;
         for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
-          const leg = trip.legs[legIdx];
+          const leg = trip.legs[legIdx]!;
           if (tripIdx == selectedIdx) {
             if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
               map.removeLayer(TripLayerId.unselectedLeg(tripIdx, legIdx));
@@ -333,9 +333,9 @@ export default defineComponent({
       }
 
       // Add selected trip last to be sure it's on top of the unselected trips
-      const selectedTrip = trips[selectedIdx];
+      const selectedTrip = trips[selectedIdx]!;
       for (let legIdx = 0; legIdx < selectedTrip.legs.length; legIdx++) {
-        const leg = selectedTrip.legs[legIdx];
+        const leg = selectedTrip.legs[legIdx]!;
         if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
           map.pushTripLayer(
             TripLayerId.selectedLeg(selectedIdx, legIdx),
