@@ -76,7 +76,7 @@ export default defineComponent({
     };
   },
   data: function (): {
-    trip?: Trip;
+    trip?: Trip | undefined;
     tripMarkers: string[];
   } {
     return {
@@ -202,7 +202,7 @@ export default defineComponent({
       // we can keep the layer we need and remove the others based on a prefix/regex/w.e.
       const layerIds = [];
       for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
-        const leg = trip.legs[legIdx];
+        const leg = trip.legs[legIdx]!;
 
         const layerId = TripLayerId.selectedLeg(tripIdx, legIdx);
         layerIds.push(layerId);
