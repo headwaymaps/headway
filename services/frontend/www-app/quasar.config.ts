@@ -90,7 +90,7 @@ export default defineConfig((/* ctx */) => {
             vueTsc: true,
             eslint: {
               lintCommand:
-                'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
+                'eslint -c ./eslint.config.mjs "./src*/**/*.{ts,js,mjs,cjs,vue}"',
               useFlatConfig: true,
             },
           },
