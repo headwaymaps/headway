@@ -537,7 +537,7 @@ export default defineComponent({
         if (beforeLayerType) {
           for (const key in map.style._layers) {
             const layer = map.style._layers[key];
-            if (layer.type == beforeLayerType) {
+            if (layer?.type == beforeLayerType) {
               beforeLayerId = layer.id;
               break;
             }

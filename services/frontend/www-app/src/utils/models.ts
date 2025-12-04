@@ -66,8 +66,12 @@ const addressKeys = [
 ];
 
 export async function mapFeatureToPlace(
-  feature: GeoJSON.Feature,
+  feature?: GeoJSON.Feature,
 ): Promise<Place | undefined> {
+  if (!feature) {
+    console.error('Missing feature argument');
+    return;
+  }
   const pointGeometry = feature.geometry as GeoJSON.Point;
   if (!pointGeometry) {
     console.error(

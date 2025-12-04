@@ -123,6 +123,9 @@ type Step = {
 
 function buildSteps(itinerary: Itinerary): Step[] {
   const firstLeg = itinerary.legs[0];
+  if (!firstLeg) {
+    throw new Error('Missing firstLeg of itinerary');
+  }
 
   function pairwiseForEach(
     list: ItineraryLeg[],
