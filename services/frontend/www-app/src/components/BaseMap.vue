@@ -59,7 +59,10 @@ async function loadMap(): Promise<maplibregl.Map> {
 
   const bounds = Config.maxBounds;
   if (bounds) {
-    const center: [number, number] = [(bounds[2] + bounds[0]) / 2, (bounds[3] + bounds[1]) / 2];
+    const center: [number, number] = [
+      (bounds[2] + bounds[0]) / 2,
+      (bounds[3] + bounds[1]) / 2,
+    ];
     const scaleFactor = 1.0 / Math.cos((3.14159 / 180) * center[1]);
     const extents = [bounds[2] - bounds[0], bounds[3] - bounds[1]];
     const maxExtent = Math.max(...extents) * scaleFactor;
