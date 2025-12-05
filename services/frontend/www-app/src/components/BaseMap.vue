@@ -59,7 +59,10 @@ async function loadMap(): Promise<maplibregl.Map> {
 
   const bounds = Config.maxBounds;
   if (bounds) {
-    const center = [(bounds[2] + bounds[0]) / 2, (bounds[3] + bounds[1]) / 2];
+    const center: [number, number] = [
+      (bounds[2] + bounds[0]) / 2,
+      (bounds[3] + bounds[1]) / 2,
+    ];
     const scaleFactor = 1.0 / Math.cos((3.14159 / 180) * center[1]);
     const extents = [bounds[2] - bounds[0], bounds[3] - bounds[1]];
     const maxExtent = Math.max(...extents) * scaleFactor;
@@ -151,8 +154,8 @@ interface SimpleMarker {
 export default defineComponent({
   name: 'BaseMap',
   data: function (): {
-    flyToOptions?: FlyToOptions;
-    boundsToFit?: LngLatBoundsLike;
+    flyToOptions?: FlyToOptions | undefined;
+    boundsToFit?: LngLatBoundsLike | undefined;
     markers: Map<string, SimpleMarker>;
     layers: string[];
     loaded: boolean;
@@ -286,11 +289,11 @@ export default defineComponent({
       });
     });
     this.pushTouchHandler('poi_click', async (event) => {
-      if (!event.features) {
+      if (!event.features || event.features.length === 0) {
         console.warn('poi_click without features');
         return;
       }
-      const place = await mapFeatureToPlace(event?.features[0]);
+      const place = await mapFeatureToPlace(event.features[0]!);
       if (place?.id.gid) {
         const id = PlaceId.gid(place.id.gid);
         this.$router.push({
@@ -510,20 +513,19 @@ export default defineComponent({
     pushLayer(
       layerId: TripLayerId,
       source: SourceSpecification,
-      layer: LayerSpecification,
+      newLayer: LayerSpecification,
       beforeLayerType: string,
     ) {
       const sourceKey = layerId.toString();
-      const actualLayer = layer;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((actualLayer as any).source) {
+      if ((newLayer as any).source) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (actualLayer as any).source = sourceKey;
+        (newLayer as any).source = sourceKey;
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((actualLayer as any).id) {
+      if ((newLayer as any).id) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (actualLayer as any).id = sourceKey;
+        (newLayer as any).id = sourceKey;
       }
       this.ensureMapLoaded((map: maplibregl.Map) => {
         if (map.getLayer(sourceKey)) {
@@ -536,14 +538,14 @@ export default defineComponent({
         let beforeLayerId = undefined;
         if (beforeLayerType) {
           for (const key in map.style._layers) {
-            const layer = map.style._layers[key];
-            if (layer.type == beforeLayerType) {
+            const layer = map.style._layers[key]!;
+            if (layer.type === beforeLayerType) {
               beforeLayerId = layer.id;
               break;
             }
           }
         }
-        map.addLayer(layer, beforeLayerId);
+        map.addLayer(newLayer, beforeLayerId);
         this.layers.push(layerId.toString());
       });
     },

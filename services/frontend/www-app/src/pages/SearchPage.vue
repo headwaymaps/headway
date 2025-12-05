@@ -81,9 +81,9 @@ export default defineComponent({
     },
   },
   data(): {
-    searchResults?: SearchResults;
-    selectedPlace?: Place;
-    hoveredPlace?: Place;
+    searchResults?: SearchResults | undefined;
+    selectedPlace?: Place | undefined;
+    hoveredPlace?: Place | undefined;
     isLoading: boolean;
   } {
     return {

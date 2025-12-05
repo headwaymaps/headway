@@ -123,13 +123,17 @@ type Step = {
 
 function buildSteps(itinerary: Itinerary): Step[] {
   const firstLeg = itinerary.legs[0];
+  if (!firstLeg) {
+    console.error('Itinerary has no legs');
+    return [];
+  }
 
   function pairwiseForEach(
     list: ItineraryLeg[],
     f: (prev: ItineraryLeg, current: ItineraryLeg | undefined) => void,
   ): void {
     for (let idx = 0; idx < list.length; idx++) {
-      f(list[idx], list[idx + 1]);
+      f(list[idx]!, list[idx + 1]);
     }
   }
 
