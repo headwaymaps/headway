@@ -283,14 +283,19 @@ export default defineComponent({
     },
     renderTrips(selectedIdx: number) {
       console.assert(this.trips.length > 0);
-      const trips: Trip[] = this.trips as Trip[];
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');
         return;
       }
+      const trips: Trip[] = this.trips as Trip[];
+      const selectedTrip = trips[selectedIdx]!;
+      if (!selectedTrip) {
+        console.error('selected trip was unexpectedly undefined');
+        return;
+      }
       this.$data.trips = trips;
-      this.activeTrip = trips[selectedIdx];
+      this.activeTrip = selectedTrip;
 
       for (let tripIdx = 0; tripIdx < trips.length; tripIdx++) {
         const trip = trips[tripIdx]!;
@@ -333,7 +338,6 @@ export default defineComponent({
       }
 
       // Add selected trip last to be sure it's on top of the unselected trips
-      const selectedTrip = trips[selectedIdx]!;
       for (let legIdx = 0; legIdx < selectedTrip.legs.length; legIdx++) {
         const leg = selectedTrip.legs[legIdx]!;
         if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
