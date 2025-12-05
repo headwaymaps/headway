@@ -289,11 +289,11 @@ export default defineComponent({
       });
     });
     this.pushTouchHandler('poi_click', async (event) => {
-      if (!event.features) {
+      if (!event.features || event.features.length === 0) {
         console.warn('poi_click without features');
         return;
       }
-      const place = await mapFeatureToPlace(event?.features[0]);
+      const place = await mapFeatureToPlace(event.features[0]!);
       if (place?.id.gid) {
         const id = PlaceId.gid(place.id.gid);
         this.$router.push({
