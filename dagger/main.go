@@ -486,8 +486,10 @@ func (h *Headway) WebBuild(ctx context.Context,
 	}
 
 	return container.
-		WithExec([]string{"yarn", "install", "--frozen-lockfile"}).
+		WithExec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts"}).
 		WithExec([]string{"yarn", "build"}).
+		// Strip devDependencies from final image
+		WithExec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts", "--prod"}).
 		Directory("/www-app/dist/spa")
 }
 
