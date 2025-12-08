@@ -234,7 +234,8 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 		WithFile("/app/package.json", h.ServiceDir("tileserver").File("package.json")).
 		WithFile("/app/yarn.lock", h.ServiceDir("tileserver").File("yarn.lock")).
 		WithWorkdir("/app").
-		WithExec([]string{"yarn", "install", "--prod", "--frozen-lockfile"})
+		WithExec([]string{"yarn", "install", "--prod", "--frozen-lockfile", "--ignore-scripts"}).
+		WithExec([]string{"sh", "-c", "cd node_modules/sqlite3 && yarn run install"})
 
 	builtAssets := h.TileserverAssets(ctx)
 
