@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+cd "$REPO_ROOT"
+
+HEADWAY_CONTAINER_TAG=maps-earth-dev HEADWAY_DATA_TAG=dev bin/k8s-generate builds/Seattle k8s/configs/seattle-dev
+HEADWAY_CONTAINER_TAG=maps-earth-dev bin/k8s-generate builds/planet k8s/configs/planet-dev
+HEADWAY_CONTAINER_TAG=maps-earth-latest bin/k8s-generate builds/planet k8s/configs/planet

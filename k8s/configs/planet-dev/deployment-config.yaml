@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: deployment-config
 data:
-  area: maps-earth-planet-v1.251110
+  area: maps-earth-planet-v1.251124
   public-url: https://maps.earth
   bbox: ""
   enable-transit-routing: "1"
