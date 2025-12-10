@@ -77,6 +77,7 @@ function upload() {
 source bin/_source-env.sh "$CONFIG_DIR"
 
 if [ -z "$HEADWAY_DATA_TAG" ]; then
+    explicit_data_tag=0
     source "${REPO_ROOT}/bin/_headway_version.sh"
 else 
     explicit_data_tag=1
@@ -115,7 +116,7 @@ echo "Return codes: ${rets[*]}"
 
 echo "Next, on $HOST..."
 # Todo: just do it automatically
-if [ ! -z "$explicit_data_tag" ]; then
+if [ "$explicit_data_tag" -eq 1 ]; then
 echo "Do you want to 'HEADWAY_DATA_TAG=${HEADWAY_DATA_TAG} bin/link-latest-transit ${CONFIG_DIR}' next?"
 else
 echo "Do you want to 'bin/link-latest-transit ${CONFIG_DIR}' next?"
