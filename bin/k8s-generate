@@ -1,8 +1,9 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 APP_ROOT=$(git rev-parse --show-toplevel)
+cd $APP_ROOT
 
 function usage() {
 cat << EOF
@@ -27,19 +28,17 @@ fi
 CONFIG_DIR="$1"
 OUTPUT_DIR="$2"
 
-source bin/_source-env.sh "$CONFIG_DIR"
-source "${APP_ROOT}/.bin-env"
-
 if [ -z "$HEADWAY_DATA_TAG" ]; then
-    source "${APP_ROOT}/bin/_headway_version.sh"
+    source "bin/_headway_version.sh"
 fi
 export HEADWAY_DATA_TAG
 
 export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-latest}"
 
-source "$DEPLOYMENT_ENV_FILE"
+source bin/_source-env.sh "$CONFIG_DIR"
+source ".bin-env"
 
-PELIAS_CONFIG_FILE="${APP_ROOT}/data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
+PELIAS_CONFIG_FILE="data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
 if [ ! -f "$PELIAS_CONFIG_FILE" ]; then
     echo "Missing pelias config file: ${PELIAS_CONFIG_FILE}"
     exit 1
@@ -51,10 +50,10 @@ export PELIAS_CONFIG_JSON_YAML="|
 $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 
 function render_template() {
-    local file=$1
-    local output="${2:-$(basename $file | sed 's/\.tpl$//')}"
+    local template_file=$1
+    local output="${2:-$(basename $template_file | sed 's/\.tpl$//')}"
 
-    envsubst < "$file" > "${OUTPUT_DIR}/${output}"
+    envsubst < "$template_file" > "${OUTPUT_DIR}/${output}"
 }
 
 set -o nounset
@@ -72,7 +71,7 @@ function generate_transit() {
   done
 
   export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
-  render_template "_template/travelmux-deployment.yaml.tpl"
+  render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
 
 function log() {
@@ -102,9 +101,9 @@ $(indent4 < "$router_config_file")"
     fi
 
     export OTP_CONFIG_JSON_YAML="|
-$(indent4 < "$APP_ROOT/services/otp/otp-config.json")"
+$(indent4 < "services/otp/otp-config.json")"
 
-    for file in _template/opentripplanner*.tpl; do
+    for file in k8s/_template/opentripplanner*.tpl; do
         output=$(basename "$file" | sed 's/\.tpl$//' | sed "s/AREA/${TRANSIT_AREA}/")
         render_template "$file" "$output"
     done
@@ -121,10 +120,10 @@ fi
 # be to remove the travelmux section from nginx altogether when transit
 # routing is disabled, but that's beyond the capabilities of the simple
 # envsubst we're using. For now then, we copy in the service defintion.
-render_template "_template/travelmux-service.yaml.tpl"
+render_template "k8s/_template/travelmux-service.yaml.tpl"
 
 shopt -s extglob
-for file in _template/!(opentripplanner*|travelmux*).tpl
+for file in k8s/_template/!(opentripplanner*|travelmux*).tpl
 do
     render_template $file
 done
