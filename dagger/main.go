@@ -234,7 +234,8 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 		WithFile("/app/package.json", h.ServiceDir("tileserver").File("package.json")).
 		WithFile("/app/yarn.lock", h.ServiceDir("tileserver").File("yarn.lock")).
 		WithWorkdir("/app").
-		WithExec([]string{"yarn", "install", "--prod", "--frozen-lockfile"})
+		WithExec([]string{"yarn", "install", "--prod", "--frozen-lockfile", "--ignore-scripts"}).
+		WithExec([]string{"sh", "-c", "cd node_modules/sqlite3 && yarn run install"})
 
 	builtAssets := h.TileserverAssets(ctx)
 
@@ -485,8 +486,10 @@ func (h *Headway) WebBuild(ctx context.Context,
 	}
 
 	return container.
-		WithExec([]string{"yarn", "install", "--frozen-lockfile"}).
+		WithExec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts"}).
 		WithExec([]string{"yarn", "build"}).
+		// Strip devDependencies from final image
+		WithExec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts", "--prod"}).
 		Directory("/www-app/dist/spa")
 }
 
