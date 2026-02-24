@@ -27,7 +27,7 @@ echo ""
 
 cleanup() {
     echo ""
-    "$APP_ROOT/bin/stop-services" "$CONFIG_DIR"
+    "$APP_ROOT/bin/stop-and-remove-services" "$CONFIG_DIR"
 }
 trap cleanup EXIT INT TERM
 

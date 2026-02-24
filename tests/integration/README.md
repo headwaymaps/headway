@@ -34,5 +34,5 @@ When iterating on tests, keep services running between test runs:
 
 # 4. Stop services when done
 # BEWARE: This will destroy your headway docker volumes.
-./tests/integration/stop-services.sh
+./tests/integration/stop-and-remove-services
 ```
