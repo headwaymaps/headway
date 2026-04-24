@@ -161,9 +161,7 @@ impl PlanResponseOk {
             return Err(otp_error.into());
         }
 
-        otp.plan
-            .itineraries
-            .sort_by(|a, b| a.end_time.cmp(&b.end_time));
+        otp.plan.itineraries.sort_by_key(|a| a.end_time);
 
         let itineraries_result: crate::Result<Vec<_>> = otp
             .plan
