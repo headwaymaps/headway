@@ -60,13 +60,13 @@ There are some experimental kubernetes configs in k8s/configs, but they are pret
 
 To build Headway for a custom area, you just need to provide your own OSM extract (.osm.pbf).
 
-The process is largely the same as above. After downloading your OSM extract, move it to the project root (in the same directory as this BUILD.md), and wherever you see `with-area Amsterdam` in the build scripts, change it to `with-area YourArea --local-pbf ./your-area.osm.pbf`. 
+The process is largely the same as above. After downloading your OSM extract, move it to the project root (in the same directory as this BUILD.md), and wherever you see `with-area Amsterdam` in the build scripts, change it to `with-area YourArea --local-pbf ./your-area.osm.pbf`.
 
 ## Docker-compose restarts
 
 Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker compose down --volumes` to re-initialize the data in the init containers.
 
-When running docker compose commands, make sure to run them from the build directory (e.g., `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml down --volumes`) so they use the correct `.env` file, or use the integration test helper: `tests/integration/stop-services.sh builds/Amsterdam`
+When running docker compose commands, make sure to run them from the build directory (e.g., `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml down --volumes`) so they use the correct `.env` file, or use the integration test helper: `tests/integration/stop-and-remove-services builds/Amsterdam`
 
 This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `builds/<area>/.env` file.
 
