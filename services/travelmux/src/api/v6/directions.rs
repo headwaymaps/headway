@@ -1,6 +1,6 @@
 use super::error::{PlanResponseErr, PlanResponseOk};
 use super::osrm_api;
-use super::plan::{PlanQuery, _get_plan};
+use super::plan::{_get_plan, PlanQuery};
 use crate::api::AppState;
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use serde::Serialize;
