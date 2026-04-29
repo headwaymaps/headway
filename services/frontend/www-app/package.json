@@ -19,7 +19,7 @@
     "@fragaria/address-formatter": "^6.3.0",
     "@quasar/extras": "^1.16.9",
     "lodash": "^4.17.21",
-    "maplibre-gl": "^4.0.0",
+    "maplibre-gl": "5.24.0",
     "opening_hours": "^3.8.0",
     "quasar": "^2.14.3",
     "vue": "^3.4.15",
