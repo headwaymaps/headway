@@ -246,7 +246,6 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 		WithDirectory("/app/styles/basic", h.ServiceDir("tileserver").Directory("styles/basic")).
 		WithDirectory("/templates/", h.ServiceDir("tileserver").Directory("templates")).
 		WithFile("/app/configure_run.sh", h.ServiceDir("tileserver").File("configure_run.sh")).
-		WithEnvVariable("PATH", "/app/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin").
 		WithEnvVariable("HEADWAY_PUBLIC_URL", "http://127.0.0.1:8080").
 		WithWorkdir("/").
 		WithDefaultArgs([]string{"/app/configure_run.sh"})
