@@ -13,4 +13,4 @@ fi
 
 # The -u option allows the generated configs to reference assets with the
 # requisite hostname/path-prefix.
-tileserver-gl-light --config /app/config.json -u "${HEADWAY_PUBLIC_URL}/tileserver"
+yarn --cwd /app run tileserver-gl --config /app/config.json -u "${HEADWAY_PUBLIC_URL}/tileserver"
