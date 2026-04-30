@@ -20,6 +20,7 @@ import maplibregl, {
   MapOptions,
   Marker,
   SourceSpecification,
+  StyleSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Prefs from 'src/utils/Prefs';
@@ -50,7 +51,6 @@ async function loadMap(): Promise<maplibregl.Map> {
 
   const mapOptions: MapOptions = {
     container: mapContainerId,
-    style: '/tileserver/styles/basic/style.json', // style URL
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
     attributionControl: false,
@@ -78,6 +78,22 @@ async function loadMap(): Promise<maplibregl.Map> {
   }
 
   map = new maplibregl.Map(mapOptions);
+  map.setStyle('/tileserver/style/basic.json', {
+    transformStyle: (
+      _previous: StyleSpecification | undefined,
+      next: StyleSpecification,
+    ): StyleSpecification => {
+      // MapLibre requires sprite URLs to be absolute, but our style uses relative URLs for
+      // portability across domains.
+      //
+      // For some reason font and tile sources are happy with relative URLs, but sprite URLs are not,
+      // so we only transform the sprite URL.
+      if (typeof next.sprite === 'string' && next.sprite.startsWith('/')) {
+        return { ...next, sprite: window.location.origin + next.sprite };
+      }
+      return next;
+    },
+  });
   return map;
 }
 
