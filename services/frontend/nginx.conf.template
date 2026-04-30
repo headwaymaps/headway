@@ -50,7 +50,18 @@ http {
 
     location ^~ /tileserver/  {
       expires 1h;
-      proxy_pass       ${HEADWAY_TILESERVER_URL}/;
+
+      # Legacy tileserver-gl style URL — remove once old clients are phased out
+      location = /tileserver/styles/basic/style.json {
+        return 301 /tileserver/style/basic.json;
+      }
+
+      proxy_set_header  X-Rewrite-URL $uri;
+      proxy_set_header  X-Forwarded-Host $host:$server_port;
+      proxy_set_header  X-Forwarded-Proto $scheme;
+      proxy_redirect    off;
+
+      proxy_pass          ${HEADWAY_TILESERVER_URL}/;
     }
 
     location ^~ /static/  {

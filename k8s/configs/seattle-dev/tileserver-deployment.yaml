@@ -23,21 +23,21 @@ spec:
             - name: HEADWAY_AREA
               value: area
             - name: TERRAIN_ARTIFACT_DEST
-              value: /data/terrain.mbtiles
+              value: /data/tiles/terrain.mbtiles
             - name: TERRAIN_ARTIFACT_SOURCE
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
                   key: terrain-source-url
             - name: LANDCOVER_ARTIFACT_DEST
-              value: /data/landcover.mbtiles
+              value: /data/tiles/landcover.mbtiles
             - name: LANDCOVER_ARTIFACT_SOURCE
               valueFrom:
                 configMapKeyRef:
                   name: deployment-config
                   key: landcover-source-url
             - name: AREAMAP_ARTIFACT_DEST
-              value: /data/area.mbtiles
+              value: /data/tiles/area.mbtiles
             - name: AREAMAP_ARTIFACT_SOURCE
               valueFrom:
                 configMapKeyRef:
@@ -58,13 +58,6 @@ spec:
             - name: tileserver-volume
               mountPath: /data
           env:
-            - name: HEADWAY_PUBLIC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: public-url
-            - name: HEADWAY_AREA
-              value: area
             - name: PORT
               value: "8000"
           resources:

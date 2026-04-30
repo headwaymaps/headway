@@ -204,24 +204,6 @@ func (h *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, err
 	return container.Directory("/data"), nil
 }
 
-// Build assets for the tileserver
-func (h *Headway) TileserverAssets(ctx context.Context) *dagger.Directory {
-	assetsDir := h.ServiceDir("tileserver").Directory("assets")
-	container := rustContainer("libfreetype6-dev").
-		WithMountedDirectory("/app/assets/", assetsDir).
-		WithExec([]string{"cargo", "install", "spreet", "build_pbf_glyphs"}).
-
-		// FONTS
-		WithExec([]string{"build_pbf_glyphs", "/app/assets/fonts", "/output/fonts"}).
-
-		// SPRITES
-		WithExec([]string{"mkdir", "-p", "/output/sprites"}).
-		WithExec([]string{"spreet", "/app/assets/sprites", "/output/sprites/sprite"}).
-		WithExec([]string{"spreet", "--retina", "/app/assets/sprites", "/output/sprites/sprite@2x"})
-
-	return container.Directory("/output")
-}
-
 // Build tileserver init container image
 func (h *Headway) TileserverInitContainer(ctx context.Context) *dagger.Container {
 	return downloadContainer().
@@ -229,28 +211,34 @@ func (h *Headway) TileserverInitContainer(ctx context.Context) *dagger.Container
 		WithDefaultArgs([]string{"/app/init.sh"})
 }
 
+func martinBinary() *dagger.File {
+	const martinVersion = "1.8.2"
+	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites"
+
+	return rustContainer().
+		WithExec([]string{"cargo", "install", "--locked", "--version", martinVersion,
+			"--no-default-features", "--features", martinFeatures, "martin"}).
+		File("/usr/local/cargo/bin/martin")
+
+	// To build from source (e.g. for debugging a fork), comment out the above and uncomment below:
+	// return rustContainer("git").
+	// 	WithExec([]string{"git", "clone", "--branch", "mkirk/foo", "--depth=1",
+	// 		"https://github.com/michaelkirk/martin.git", "/martin"}).
+	// 	WithWorkdir("/martin").
+	// 	WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
+	// 	File("target/release/martin")
+}
+
 func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Container {
-	container := slimNodeContainer("gettext-base").
-		WithFile("/app/package.json", h.ServiceDir("tileserver").File("package.json")).
-		WithFile("/app/yarn.lock", h.ServiceDir("tileserver").File("yarn.lock")).
-		WithWorkdir("/app").
-		WithExec([]string{"yarn", "install", "--prod", "--frozen-lockfile", "--ignore-scripts"}).
-		WithExec([]string{"sh", "-c", "cd node_modules/sqlite3 && yarn run install"})
-
-	builtAssets := h.TileserverAssets(ctx)
-
-	container = container.WithExec([]string{"mkdir", "-p", "/app/styles"}).
-		WithExec([]string{"chown", "-R", "node", "/app"}).
-		WithDirectory("/app/fonts", builtAssets.Directory("fonts")).
-		WithDirectory("/app/sprites", builtAssets.Directory("sprites")).
-		WithDirectory("/app/styles/basic", h.ServiceDir("tileserver").Directory("styles/basic")).
-		WithDirectory("/templates/", h.ServiceDir("tileserver").Directory("templates")).
-		WithFile("/app/configure_run.sh", h.ServiceDir("tileserver").File("configure_run.sh")).
-		WithEnvVariable("HEADWAY_PUBLIC_URL", "http://127.0.0.1:8080").
+	serviceDir := h.ServiceDir("tileserver")
+	return slimContainer("ca-certificates", "libfreetype6", "libssl3").
+		WithFile("/usr/local/bin/martin", martinBinary(), dagger.ContainerWithFileOpts{Permissions: 0755}).
+		WithDirectory("/app/assets", serviceDir.Directory("assets")).
+		WithFile("/app/martin-config.yaml", serviceDir.File("martin-config.yaml")).
+		WithFile("/app/configure-and-run.sh", serviceDir.File("configure-and-run.sh")).
 		WithWorkdir("/").
-		WithDefaultArgs([]string{"/app/configure_run.sh"})
-
-	return container
+		WithExposedPort(8000).
+		WithDefaultArgs([]string{"/app/configure-and-run.sh"})
 }
 
 // Builds mbtiles using Planetiler
