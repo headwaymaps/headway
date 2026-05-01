@@ -23,6 +23,7 @@ http {
                  'status=$status bytes_sent=$bytes_sent '
                  'body_bytes_sent=$body_bytes_sent '
                  'referer=$http_referer '
+                 'http_host=$http_host '
                  'user_agent="$http_user_agent" '
                  'upstream_addr=$upstream_addr '
                  'upstream_status=$upstream_status '
@@ -30,6 +31,13 @@ http {
                  'upstream_response_time=$upstream_response_time '
                  'upstream_connect_time=$upstream_connect_time '
                  'upstream_header_time=$upstream_header_time';
+
+  # Tell downstream services which proto the user connected with
+  # The user may have connected via a proxy or directly to nginx
+  map $http_x_forwarded_proto $forwarded_proto {
+     ""      $scheme;
+     default $http_x_forwarded_proto;
+  }
 
   server {
     access_log /var/log/nginx/access.log apm;
@@ -50,7 +58,21 @@ http {
 
     location ^~ /tileserver/  {
       expires 1h;
-      proxy_pass       ${HEADWAY_TILESERVER_URL}/;
+
+      # Legacy tileserver-gl style URL (pre-Martin)
+      # Remove once old clients are phased out
+      location = /tileserver/styles/basic/style.json {
+        return 301 /tileserver/style/basic.json;
+      }
+
+      # Martin will construct a URL relative to the request with these headers
+      proxy_set_header  X-Rewrite-URL $uri;
+      proxy_set_header  X-Forwarded-Host $http_host;
+      proxy_set_header  X-Forwarded-Proto $forwarded_proto;
+
+      proxy_redirect    off;
+
+      proxy_pass        ${HEADWAY_TILESERVER_URL}/;
     }
 
     location ^~ /static/  {

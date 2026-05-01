@@ -1,0 +1,11 @@
+mbtiles:
+  sources:
+    areamap: /data/tiles/areamap.mbtiles
+    landcover: /data/tiles/landcover.mbtiles
+    terrain: /data/tiles/terrain.mbtiles
+styles:
+  paths: ['/app/assets/styles']
+sprites:
+  paths: ['/app/assets/sprites']
+fonts:
+  paths: ['/app/assets/fonts']

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -e
+
+CONFIG_DIR="$1"
+if [ -z "$CONFIG_DIR" ]; then
+    cat <<EOS
+Usage: $0 <build-config-dir> [docker compose args...]
+Example:
+    $0 builds/Bogota ps
+    $0 builds/Bogota logs --follow
+EOS
+    exit 1
+fi
+shift
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
+
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
+
+source bin/_source-env.sh "$CONFIG_DIR"
+
+cd "$CONFIG_DIR"
+docker compose -f "../../$COMPOSE_FILE" "$@"

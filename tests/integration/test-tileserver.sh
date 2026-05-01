@@ -19,7 +19,7 @@ echo ""
 
 # Test a single vector tile
 run_binary_test "vector tile" \
-    "$FRONTEND_URL/tileserver/data/default/$ZOOM/$TILE_X/$TILE_Y.pbf" \
+    "$FRONTEND_URL/tileserver/areamap/$ZOOM/$TILE_X/$TILE_Y" \
     "application/x-protobuf" \
     100
 

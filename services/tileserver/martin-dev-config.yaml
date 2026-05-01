@@ -1,0 +1,11 @@
+mbtiles:
+  sources:
+    areamap: ../../data/Seattle/Seattle.mbtiles
+    landcover: ../../data/Seattle/landcover.mbtiles
+    terrain: ../../data/Seattle/terrain.mbtiles
+styles:
+  paths: ['./assets/styles']
+sprites:
+  paths: ['./assets/sprites']
+fonts:
+  paths: ['./assets/fonts']

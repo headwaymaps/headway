@@ -3,7 +3,6 @@ kind: ConfigMap
 metadata:
   name: deployment-config
 data:
-  area: Seattle
   public-url: https://seattle.maps.earth
   bbox: "-122.462 47.394 -122.005 47.831"
   enable-transit-routing: "1"
