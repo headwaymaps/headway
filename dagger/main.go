@@ -252,7 +252,7 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 	}
 
 	container := dag.Container().
-		From("ghcr.io/onthegomap/planetiler:0.7.0")
+		From("ghcr.io/onthegomap/planetiler:0.10.2")
 
 	memoryScript := h.ServiceDir("tilebuilder").File("percent-of-available-memory")
 	memoryBudget, err := container.
@@ -266,8 +266,9 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
 
 	container = container.
+		WithMountedFile("/tmp/planetile-fixture-sources.tar", downloadFile(fixturesUrl)).
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"sh", "-c", "curl --no-progress-meter " + fixturesUrl + " | tar -x --directory /data/sources"}).
+		WithExec([]string{"sh", "-c", "tar -x --directory /data/sources -f /tmp/planetile-fixture-sources.tar"}).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
 	entrypoint, err := container.Entrypoint(ctx)
