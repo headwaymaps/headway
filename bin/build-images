@@ -5,6 +5,7 @@ set -o pipefail
 PUBLISH=false
 TAGS="latest"
 BRANDING=""
+FILTERS=()
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -21,7 +22,10 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -h|--help)
-      echo "Usage: $0 [--publish] [--tags TAGS] [--branding BRAND]"
+      echo "Usage: $0 [--publish] [--tags TAGS] [--branding BRAND] [FILTER...]"
+      echo ""
+      echo "Arguments:"
+      echo "  FILTER         Only build images whose name contains FILTER (can specify multiple)"
       echo ""
       echo "Options:"
       echo "  --publish      Publish images to registry instead of local docker export"
@@ -29,19 +33,38 @@ while [[ $# -gt 0 ]]; do
       echo "  --branding B   Branding for web container (default: none)"
       echo ""
       echo "Examples:"
-      echo "  $0                              # Export latest to local docker"
+      echo "  $0                              # Build all images"
+      echo "  $0 tileserver                   # Build tileserver and tileserver-init"
+      echo "  $0 tileserver headway           # Build tileserver, tileserver-init, headway, headway-init"
       echo "  $0 --tags dev                   # Export dev tag to local docker"
       echo "  $0 --tags \"latest,v1.0.0\"       # Export multiple tags to local docker"
       echo "  $0 --publish --tags dev         # Publish dev tag to remote registry"
       echo "  $0 --publish --tags \"latest,v1.0.0\" --branding maps.earth"
       exit 0
       ;;
-    *)
+    -*)
       echo "Unknown option $1"
       exit 1
       ;;
+    *)
+      FILTERS+=("$1")
+      shift
+      ;;
   esac
 done
+
+function should_build() {
+  local container=$1
+  if [ ${#FILTERS[@]} -eq 0 ]; then
+    return 0
+  fi
+  for filter in "${FILTERS[@]}"; do
+    if [[ "$container" == *"$filter"* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
 
 function build_image() {
   local build_function=$1
@@ -96,17 +119,18 @@ function build_image_tags() {
 
         echo "Processing tag: $tag"
 
-        build_image "otp-init-container" "opentripplanner-init" "$tag"
-        build_image "otp-serve-container" "opentripplanner" "$tag"
-        build_image "pelias-init-container" "pelias-init" "$tag"
-        build_image "travelmux-init-container" "travelmux-init" "$tag"
-        build_image "travelmux-serve-container" "travelmux" "$tag"
-        build_image "tileserver-serve-container" "tileserver" "$tag"
-        build_image "tileserver-init-container" "tileserver-init" "$tag"
-        build_image "valhalla-init-container" "valhalla-init" "$tag"
-        build_image "valhalla-serve-container" "valhalla" "$tag"
-        build_image "web-serve-container ${web_branding_param}" "headway" "$tag"
-        build_image "web-init-container" "headway-init" "$tag"
+        should_build "otp-init" && build_image "otp-init-container" "opentripplanner-init" "$tag"
+        should_build "otp" && build_image "otp-serve-container" "opentripplanner" "$tag"
+        should_build "pelias-init" && build_image "pelias-init-container" "pelias-init" "$tag"
+        should_build "travelmux-init" && build_image "travelmux-init-container" "travelmux-init" "$tag"
+        should_build "travelmux" && build_image "travelmux-serve-container" "travelmux" "$tag"
+        should_build "tileserver" && build_image "tileserver-serve-container" "tileserver" "$tag"
+        should_build "tileserver-init" && build_image "tileserver-init-container" "tileserver-init" "$tag"
+        should_build "valhalla-init" && build_image "valhalla-init-container" "valhalla-init" "$tag"
+        should_build "valhalla" && build_image "valhalla-serve-container" "valhalla" "$tag"
+        should_build "frontend" && build_image "web-serve-container ${web_branding_param}" "headway" "$tag"
+        should_build "frontend-init" && build_image "web-init-container" "headway-init" "$tag"
+        true
     done
 }
 
