@@ -50,11 +50,6 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: elasticsearch-artifact-url
-            - name: HEADWAY_AREA
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: area
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
           resources:
             limits:

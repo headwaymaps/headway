@@ -33,11 +33,6 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: pelias-config-json
-            - name: HEADWAY_AREA
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: area
           command: ["/bin/bash", "-c", "/app/init_config.sh" ]
           resources:
             limits:
