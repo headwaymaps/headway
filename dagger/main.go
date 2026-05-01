@@ -217,7 +217,7 @@ func martinBinary() *dagger.File {
 	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites"
 
 	// To build from source (e.g. for debugging a fork), set this to true
-	const buildFromSource = true
+	const buildFromSource = false
 	if buildFromSource {
 		return rustContainer("git").
 			WithEnvVariable("CACHE_BUSTER", time.Now().String()).
