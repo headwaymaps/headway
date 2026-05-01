@@ -57,8 +57,10 @@ http {
       }
 
       proxy_set_header  X-Rewrite-URL $uri;
-      proxy_set_header  X-Forwarded-Host $host:$server_port;
-      proxy_set_header  X-Forwarded-Proto $scheme;
+      # This isn't what the docs say, but emperically it looks like what we want
+      # proxy_set_header  X-Forwarded-Host $host:$server_port;
+      # proxy_set_header  X-Forwarded-Proto $scheme;
+      proxy_set_header  X-Forwarded-Host $http_referer;
       proxy_redirect    off;
 
       proxy_pass          ${HEADWAY_TILESERVER_URL}/;
