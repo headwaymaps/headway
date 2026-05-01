@@ -153,11 +153,11 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
 
-	mbtiles, err := h.Mbtiles(ctx)
+	pmtiles, err := h.Pmtiles(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build mbtiles: %w", err)
+		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
-	output = output.WithFile(h.Area+".mbtiles", mbtiles)
+	output = output.WithFile(h.Area+".pmtiles", pmtiles)
 
 	valhalla := h.ValhallaTiles(ctx)
 	output = output.WithFile(h.Area+".valhalla.tar.zst", valhalla.Compress())
@@ -244,11 +244,11 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 		WithDefaultArgs([]string{"/app/configure-and-run.sh"})
 }
 
-// Builds mbtiles using Planetiler
-func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
+// Builds maptiles using Planetiler
+func (h *Headway) Pmtiles(ctx context.Context) (*dagger.File, error) {
 
 	if h.OSMExport == nil || h.OSMExport.File == nil {
-		panic("Headway.OSMExport.File must be set to build mbtiles")
+		panic("Headway.OSMExport.File must be set to build pmtiles")
 	}
 
 	container := dag.Container().
@@ -275,11 +275,14 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get entrypoint: %w", err)
 	}
-
+	output := "/data/output.pmtiles"
+	entrypoint = append(entrypoint,
+		"--osm_path=/data/data.osm.pbf",
+		"--force",
+		fmt.Sprintf("--output=%s", output),
+	)
 	if h.IsPlanetBuild {
 		container = container.WithExec(append(entrypoint,
-			"--osm_path=/data/data.osm.pbf",
-			"--force",
 			"--bounds=planet",
 			"--nodemap-type=array",
 			"--storage=mmap",
@@ -287,10 +290,10 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 			"-XX:MaxHeapFreeRatio=40",
 		))
 	} else {
-		container = container.WithExec(append(entrypoint, "--osm_path=/data/data.osm.pbf", "--force"))
+		container = container.WithExec(entrypoint)
 	}
 
-	return container.File("/data/output.mbtiles"), nil
+	return container.File(output), nil
 }
 
 /**

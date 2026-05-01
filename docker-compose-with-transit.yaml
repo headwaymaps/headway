@@ -3,8 +3,8 @@ services:
     image: ghcr.io/headwaymaps/tileserver-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      AREAMAP_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_AREA}.mbtiles
-      AREAMAP_ARTIFACT_DEST: /data/tiles/areamap.mbtiles
+      AREAMAP_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_AREA}.pmtiles
+      AREAMAP_ARTIFACT_DEST: /data/tiles/areamap.pmtiles
       TERRAIN_ARTIFACT_SOURCE: /bootstrap/terrain.mbtiles
       TERRAIN_ARTIFACT_DEST: /data/tiles/terrain.mbtiles
       LANDCOVER_ARTIFACT_SOURCE: /bootstrap/landcover.mbtiles
