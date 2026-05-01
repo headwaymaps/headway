@@ -54,7 +54,9 @@ async function loadMap(): Promise<maplibregl.Map> {
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
     attributionControl: false,
-    antialias: true,
+    canvasContextAttributes: {
+      antialias: true,
+    },
   };
 
   const bounds = Config.maxBounds;
