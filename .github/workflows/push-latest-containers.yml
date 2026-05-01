@@ -17,6 +17,7 @@ jobs:
         uses: dagger/dagger-for-github@v8.2.0
         with:
           version: "latest"
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
       - name: Docker login
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u headwaymaps --password-stdin
       - name: Push latest images
