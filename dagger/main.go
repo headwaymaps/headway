@@ -19,6 +19,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Headway struct {
@@ -215,18 +216,20 @@ func martinBinary() *dagger.File {
 	const martinVersion = "1.8.2"
 	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites"
 
-	return rustContainer().
-		WithExec([]string{"cargo", "install", "--locked", "--version", martinVersion,
-			"--no-default-features", "--features", martinFeatures, "martin"}).
-		File("/usr/local/cargo/bin/martin")
-
-	// To build from source (e.g. for debugging a fork), comment out the above and uncomment below:
-	// return rustContainer("git").
-	// 	WithExec([]string{"git", "clone", "--branch", "mkirk/foo", "--depth=1",
-	// 		"https://github.com/michaelkirk/martin.git", "/martin"}).
-	// 	WithWorkdir("/martin").
-	// 	WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
-	// 	File("target/release/martin")
+	// To build from source (e.g. for debugging a fork), set this to true
+	const buildFromSource = true
+	if buildFromSource {
+		return rustContainer("git").
+			WithEnvVariable("CACHE_BUSTER", time.Now().String()).
+			WithExec([]string{"git", "clone", "--branch", "mkirk/fix-forwarding-header", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
+			WithWorkdir("/martin").
+			WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
+			File("target/release/martin")
+	} else {
+		return rustContainer().
+			WithExec([]string{"cargo", "install", "--locked", "--version", martinVersion, "--no-default-features", "--features", martinFeatures, "martin"}).
+			File("/usr/local/cargo/bin/martin")
+	}
 }
 
 func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Container {
