@@ -3,7 +3,6 @@ kind: ConfigMap
 metadata:
   name: deployment-config
 data:
-  area: ${HEADWAY_AREA}
   public-url: ${HEADWAY_PUBLIC_URL}
   bbox: "${HEADWAY_BBOX}"
   enable-transit-routing: "${HEADWAY_ENABLE_TRANSIT_ROUTING}"

@@ -20,8 +20,6 @@ spec:
             - name: tileserver-volume
               mountPath: /data
           env:
-            - name: HEADWAY_AREA
-              value: area
             - name: TERRAIN_ARTIFACT_SOURCE
               valueFrom:
                 configMapKeyRef:

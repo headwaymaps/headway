@@ -34,11 +34,6 @@ spec:
                 configMapKeyRef:
                   name: deployment-config
                   key: placeholder-artifact-url
-            - name: HEADWAY_AREA
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: area
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
           resources:
             limits:

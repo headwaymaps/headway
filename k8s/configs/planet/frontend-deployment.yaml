@@ -74,11 +74,6 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: HEADWAY_AREA
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: area
             - name: HEADWAY_TILESERVER_URL
               value: http://tileserver:8000
             - name: HEADWAY_PELIAS_URL
