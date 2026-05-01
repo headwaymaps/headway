@@ -1,6 +1,8 @@
+pmtiles:
+  sources:
+    areamap: ../../data/Seattle/Seattle.pmtiles
 mbtiles:
   sources:
-    areamap: ../../data/Seattle/Seattle.mbtiles
     landcover: ../../data/Seattle/landcover.mbtiles
     terrain: ../../data/Seattle/terrain.mbtiles
 styles:
