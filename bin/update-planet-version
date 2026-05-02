@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -euo pipefail
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+ENV_FILE="$APP_ROOT/builds/planet/.env"
+S3_BASE="s3://osm-planet-us-west-2/planet/pbf"
+
+LATEST_YEAR=$(aws s3 ls --no-sign-request "$S3_BASE/" \
+    | grep -oE '[0-9]{4}/' \
+    | tr -d '/' \
+    | sort -n \
+    | tail -1)
+
+LATEST_FILE=$(aws s3 ls --no-sign-request "$S3_BASE/$LATEST_YEAR/" \
+    | grep '\.osm\.pbf$' \
+    | awk '{print $4}' \
+    | sort \
+    | tail -1)
+
+YYMMDD=$(echo "$LATEST_FILE" | sed 's/planet-\([0-9]*\)\.osm\.pbf/\1/')
+NEW_VERSION="v1.$YYMMDD"
+CURRENT_VERSION=$(grep '^HEADWAY_PLANET_VERSION=' "$ENV_FILE" | cut -d= -f2)
+
+if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+    echo "Already up to date: $CURRENT_VERSION"
+    exit 0
+fi
+
+echo "Updating HEADWAY_PLANET_VERSION: $CURRENT_VERSION -> $NEW_VERSION"
+
+perl -i -pe "s/^HEADWAY_PLANET_VERSION=.*/HEADWAY_PLANET_VERSION=$NEW_VERSION/" "$ENV_FILE"
