@@ -50,3 +50,7 @@ echo "Services started! Use bin/wait-for-services to check readiness."
 echo ""
 echo "To stop services and remove volumes, run:"
 echo "  bin/stop-and-remove-services $CONFIG_DIR"
+echo ""
+
+cd "$APP_ROOT"
+bin/docker-compose "$CONFIG_DIR" logs --follow
