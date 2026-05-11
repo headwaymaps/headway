@@ -3,10 +3,27 @@
 
 set -e
 
+FOLLOW_LOGS=1
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --no-follow-logs)
+            FOLLOW_LOGS=0
+            shift
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 CONFIG_DIR="$1"
 if [ -z "$CONFIG_DIR" ]; then
     cat <<EOS
-Usage: $0 <build-config-dir>
+Usage: $0 [--no-follow-logs] <build-config-dir>
 Example: Basic
     $0 builds/Bogota
 Example: With Transit
@@ -50,3 +67,9 @@ echo "Services started! Use bin/wait-for-services to check readiness."
 echo ""
 echo "To stop services and remove volumes, run:"
 echo "  bin/stop-and-remove-services $CONFIG_DIR"
+echo ""
+
+cd "$APP_ROOT"
+if [ "$FOLLOW_LOGS" -eq 1 ]; then
+    bin/docker-compose "$CONFIG_DIR" logs --follow
+fi

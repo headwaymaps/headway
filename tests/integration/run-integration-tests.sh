@@ -31,7 +31,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-"$APP_ROOT/bin/start-services" "$CONFIG_DIR"
+"$APP_ROOT/bin/start-services" --no-follow-logs "$CONFIG_DIR"
 
 echo ""
 echo "Waiting for services to be ready..."
