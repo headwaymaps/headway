@@ -9,21 +9,22 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "/tileserver/areamap"
+      "url": "/areamap-mlt",
+      "encoding": "mlt"
     },
     "landcover": {
       "maxzoom": 8,
       "type": "vector",
-      "url": "/tileserver/landcover"
+      "url": "/landcover"
     },
     "terrain": {
       "maxzoom": 6,
       "type": "raster",
-      "url": "/tileserver/terrain"
+      "url": "/terrain"
     }
   },
-  "sprite": "/tileserver/sprite/sprites",
-  "glyphs": "/tileserver/font/{fontstack}/{range}",
+  "sprite": "/sprite/sprites",
+  "glyphs": "/font/{fontstack}/{range}",
   "layers": [
     {
       "id": "background",

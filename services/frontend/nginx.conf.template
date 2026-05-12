@@ -62,7 +62,7 @@ http {
       # Legacy tileserver-gl style URL (pre-Martin)
       # Remove once old clients are phased out
       location = /tileserver/styles/basic/style.json {
-        return 301 $forwarded_proto://$http_host/tileserver/style/basic;
+        return 301 $forwarded_proto://$http_host/tileserver/style/basic-v1;
       }
 
       # Martin will construct a URL relative to the request with these headers

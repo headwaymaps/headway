@@ -50,12 +50,21 @@ async function loadMap(): Promise<maplibregl.Map> {
 
   const mapOptions: MapOptions = {
     container: mapContainerId,
-    style: '/tileserver/styles/basic/style.json', // style URL
+    style: '/tileserver/style/basic-v2',
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
     attributionControl: false,
     canvasContextAttributes: {
       antialias: true,
+    },
+    transformRequest: (url, resourceType) => {
+      if (resourceType === 'Tile' && url.includes('areamap')) {
+        return {
+          url,
+          headers: { Accept: 'application/vnd.maplibre-tile' },
+        };
+      }
+      return { url };
     },
   };
 

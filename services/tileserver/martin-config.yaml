@@ -1,6 +1,17 @@
+base_path: "/tileserver"
 pmtiles:
   sources:
-    areamap: /data/tiles/areamap.pmtiles
+    areamap-mlt:
+      path: /data/tiles/areamap.pmtiles
+      # Convert MVT <-> MLT when client requests it.
+      # Currently the archive stores .mvt tiles, but this might change.
+      convert_to_mlt:
+        allow_shared_dict: false
+    areamap-mvt:
+      path: /data/tiles/areamap.pmtiles
+      # Convert MVT <-> MLT when client requests it.
+      # Currently the archive stores .mvt tiles, but this might change.
+      convert_to_mvt: auto
 mbtiles:
   sources:
     landcover: /data/tiles/landcover.mbtiles
