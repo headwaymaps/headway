@@ -105,20 +105,23 @@ export default defineConfig((/* ctx */) => {
       open: true, // opens browser window automatically
       proxy: {
         '/tileserver': {
+          // martin tileserver needs to receive headers in order to expand relative paths to the right
+          // protocol+host
+          xfwd: true,
           changeOrigin: true,
           target: HEADWAY_HOST,
           // target: 'http://localhost:8000',
           // rewrite: (path) => path.replace(/^\/tileserver/, ''),
         },
         '/pelias': {
-          target: HEADWAY_HOST,
           changeOrigin: true,
+          target: HEADWAY_HOST,
           // target: 'http://0.0.0.0:4000',
           // rewrite: (path) => path.replace(/^\/pelias/, ''),
         },
         '/travelmux': {
-          target: HEADWAY_HOST,
           changeOrigin: true,
+          target: HEADWAY_HOST,
           // target: 'http://0.0.0.0:8000',
           // rewrite: (path) => path.replace(/^\/travelmux/, ''),
         },

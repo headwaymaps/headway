@@ -10,4 +10,4 @@ cat "$MARTIN_CONFIG"
 
 MARTIN_SRC="$SCRIPT_DIR/../../../martin"
 (cd $MARTIN_SRC && cargo build)
-(cd $SCRIPT_DIR && $MARTIN_SRC/target/debug/martin --config "$MARTIN_CONFIG" --listen-addresses "0.0.0.0:${PORT}")
+(cd $SCRIPT_DIR && RUST_LOG=debug $MARTIN_SRC/target/debug/martin --config "$MARTIN_CONFIG" --listen-addresses "0.0.0.0:${PORT}")

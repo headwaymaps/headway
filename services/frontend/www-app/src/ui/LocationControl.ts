@@ -2,6 +2,7 @@ import {
   Map,
   GeolocateControl,
   GeolocateControlOptions,
+  GeolocatePositionEvent,
   Evented,
   IControl,
   Marker,
@@ -96,16 +97,11 @@ export default class LocationControl extends Evented implements IControl {
     return this.geolocateControl.onRemove();
   }
 
-  _updateMarkerPosition(position?: GeolocationPosition | null): void {
-    if (position) {
-      this.mostRecentPosition = new LngLat(
-        position.coords.longitude,
-        position.coords.latitude,
-      );
-    } else {
-      console.assert(false, 'position should not be null');
-      this.mostRecentPosition = undefined;
-    }
+  _updateMarkerPosition(event: GeolocatePositionEvent): void {
+    this.mostRecentPosition = new LngLat(
+      event.coords.longitude,
+      event.coords.latitude,
+    );
     this._updateMarker();
   }
 

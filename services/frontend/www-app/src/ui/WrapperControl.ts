@@ -1,4 +1,4 @@
-import { IControl } from 'maplibre-gl';
+import { IControl, Map } from 'maplibre-gl';
 
 export default class WrapperControl implements IControl {
   element: HTMLElement;
@@ -14,14 +14,14 @@ export default class WrapperControl implements IControl {
     this.children.push(el);
   }
 
-  onAdd(map: maplibregl.Map): HTMLElement {
+  onAdd(map: Map): HTMLElement {
     for (const child of this.children) {
       this.element.appendChild(child.onAdd(map));
     }
     return this.element;
   }
 
-  onRemove(map: maplibregl.Map): void {
+  onRemove(map: Map): void {
     for (const child of this.children) {
       child.onRemove(map);
     }
