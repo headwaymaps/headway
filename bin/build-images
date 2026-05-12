@@ -119,17 +119,17 @@ function build_image_tags() {
 
         echo "Processing tag: $tag"
 
+        should_build "frontend" && build_image "web-serve-container ${web_branding_param}" "headway" "$tag"
+        should_build "frontend-init" && build_image "web-init-container" "headway-init" "$tag"
         should_build "otp-init" && build_image "otp-init-container" "opentripplanner-init" "$tag"
         should_build "otp" && build_image "otp-serve-container" "opentripplanner" "$tag"
         should_build "pelias-init" && build_image "pelias-init-container" "pelias-init" "$tag"
-        should_build "travelmux-init" && build_image "travelmux-init-container" "travelmux-init" "$tag"
-        should_build "travelmux" && build_image "travelmux-serve-container" "travelmux" "$tag"
         should_build "tileserver" && build_image "tileserver-serve-container" "tileserver" "$tag"
         should_build "tileserver-init" && build_image "tileserver-init-container" "tileserver-init" "$tag"
+        should_build "travelmux-init" && build_image "travelmux-init-container" "travelmux-init" "$tag"
+        should_build "travelmux" && build_image "travelmux-serve-container" "travelmux" "$tag"
         should_build "valhalla-init" && build_image "valhalla-init-container" "valhalla-init" "$tag"
         should_build "valhalla" && build_image "valhalla-serve-container" "valhalla" "$tag"
-        should_build "frontend" && build_image "web-serve-container ${web_branding_param}" "headway" "$tag"
-        should_build "frontend-init" && build_image "web-init-container" "headway-init" "$tag"
         true
     done
 }
