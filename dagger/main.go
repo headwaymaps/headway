@@ -217,11 +217,11 @@ func martinBinary() *dagger.File {
 	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites"
 
 	// To build from source (e.g. for debugging a fork), set this to true
-	const buildFromSource = false
+	const buildFromSource = true
 	if buildFromSource {
 		return rustContainer("git").
 			WithEnvVariable("CACHE_BUSTER", time.Now().String()).
-			WithExec([]string{"git", "clone", "--branch", "mkirk/fix-forwarding-header", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
+			WithExec([]string{"git", "clone", "--branch", "mkirk/relative-source-urls", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
 			WithWorkdir("/martin").
 			WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
 			File("target/release/martin")

@@ -1,10 +1,10 @@
 pmtiles:
   sources:
-    areamap: ../../data/Seattle/Seattle.pmtiles
+    areamap: ../../data/Bogota/Bogota.pmtiles
 mbtiles:
   sources:
-    landcover: ../../data/Seattle/landcover.mbtiles
-    terrain: ../../data/Seattle/terrain.mbtiles
+    landcover: ../../data/Bogota/landcover.mbtiles
+    terrain: ../../data/Bogota/terrain.mbtiles
 styles:
   paths: ['./assets/styles']
 sprites:
