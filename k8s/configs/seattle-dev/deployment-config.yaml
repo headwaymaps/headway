@@ -12,7 +12,7 @@ data:
   www-contact-link-text: "Contact Us"
   terrain-source-url: https://data.example.com/dev/terrain.mbtiles
   landcover-source-url: https://data.example.com/dev/landcover.mbtiles
-  areamap-source-url: https://data.example.com/dev/seattle-latest/Seattle.mbtiles
+  areamap-source-url: https://data.example.com/dev/seattle-latest/Seattle.pmtiles
   valhalla-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.valhalla.tar.zst
   placeholder-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.placeholder.tar.zst
   elasticsearch-artifact-url: https://data.example.com/dev/seattle-latest/Seattle.elasticsearch.tar.zst

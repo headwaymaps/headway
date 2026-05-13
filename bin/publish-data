@@ -88,7 +88,7 @@ set -o nounset
 
 upload "${HEADWAY_AREA}.valhalla.tar.zst"      "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 upload "${HEADWAY_AREA}.elasticsearch.tar.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "${HEADWAY_AREA}.mbtiles"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+upload "${HEADWAY_AREA}.pmtiles"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 upload "${HEADWAY_AREA}.placeholder.tar.zst"   "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 upload "${HEADWAY_AREA}.osm.pbf"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 

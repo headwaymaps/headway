@@ -40,7 +40,7 @@ spec:
                   name: deployment-config
                   key: areamap-source-url
             - name: AREAMAP_ARTIFACT_DEST
-              value: /data/tiles/areamap.mbtiles
+              value: /data/tiles/areamap.pmtiles
           resources:
             limits:
               memory: 200Mi

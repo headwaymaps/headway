@@ -153,11 +153,11 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
 
-	mbtiles, err := h.Mbtiles(ctx)
+	pmtiles, err := h.Pmtiles(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build mbtiles: %w", err)
+		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
-	output = output.WithFile(h.Area+".mbtiles", mbtiles)
+	output = output.WithFile(h.Area+".pmtiles", pmtiles)
 
 	valhalla := h.ValhallaTiles(ctx)
 	output = output.WithFile(h.Area+".valhalla.tar.zst", valhalla.Compress())
@@ -217,11 +217,11 @@ func martinBinary() *dagger.File {
 	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites"
 
 	// To build from source (e.g. for debugging a fork), set this to true
-	const buildFromSource = false
+	const buildFromSource = true
 	if buildFromSource {
 		return rustContainer("git").
 			WithEnvVariable("CACHE_BUSTER", time.Now().String()).
-			WithExec([]string{"git", "clone", "--branch", "mkirk/fix-forwarding-header", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
+			WithExec([]string{"git", "clone", "--branch", "mkirk/relative-source-urls", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
 			WithWorkdir("/martin").
 			WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
 			File("target/release/martin")
@@ -244,15 +244,15 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 		WithDefaultArgs([]string{"/app/configure-and-run.sh"})
 }
 
-// Builds mbtiles using Planetiler
-func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
+// Builds maptiles using Planetiler
+func (h *Headway) Pmtiles(ctx context.Context) (*dagger.File, error) {
 
 	if h.OSMExport == nil || h.OSMExport.File == nil {
-		panic("Headway.OSMExport.File must be set to build mbtiles")
+		panic("Headway.OSMExport.File must be set to build pmtiles")
 	}
 
 	container := dag.Container().
-		From("ghcr.io/onthegomap/planetiler:0.7.0")
+		From("ghcr.io/onthegomap/planetiler:0.10.2")
 
 	memoryScript := h.ServiceDir("tilebuilder").File("percent-of-available-memory")
 	memoryBudget, err := container.
@@ -266,19 +266,23 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
 
 	container = container.
+		WithMountedFile("/tmp/planetile-fixture-sources.tar", downloadFile(fixturesUrl)).
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"sh", "-c", "curl --no-progress-meter " + fixturesUrl + " | tar -x --directory /data/sources"}).
+		WithExec([]string{"sh", "-c", "tar -x --directory /data/sources -f /tmp/planetile-fixture-sources.tar"}).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
 	entrypoint, err := container.Entrypoint(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get entrypoint: %w", err)
 	}
-
+	output := "/data/output.pmtiles"
+	entrypoint = append(entrypoint,
+		"--osm_path=/data/data.osm.pbf",
+		"--force",
+		fmt.Sprintf("--output=%s", output),
+	)
 	if h.IsPlanetBuild {
 		container = container.WithExec(append(entrypoint,
-			"--osm_path=/data/data.osm.pbf",
-			"--force",
 			"--bounds=planet",
 			"--nodemap-type=array",
 			"--storage=mmap",
@@ -286,10 +290,10 @@ func (h *Headway) Mbtiles(ctx context.Context) (*dagger.File, error) {
 			"-XX:MaxHeapFreeRatio=40",
 		))
 	} else {
-		container = container.WithExec(append(entrypoint, "--osm_path=/data/data.osm.pbf", "--force"))
+		container = container.WithExec(entrypoint)
 	}
 
-	return container.File("/data/output.mbtiles"), nil
+	return container.File(output), nil
 }
 
 /**
@@ -562,6 +566,24 @@ func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Co
 	cmd := fmt.Sprintf("apt-get update && apt-get install -y --no-install-recommends %s && rm -rf /var/lib/apt/lists/*", pkgList)
 
 	return container.WithExec([]string{"sh", "-c", cmd})
+}
+
+// Publish a container to multiple registry addresses in a single Dagger
+// session, so every tag points at the same image digest.
+func (h *Headway) PublishMulti(
+	ctx context.Context,
+	container *dagger.Container,
+	addresses []string,
+) ([]string, error) {
+	out := make([]string, 0, len(addresses))
+	for _, addr := range addresses {
+		ref, err := container.Publish(ctx, addr)
+		if err != nil {
+			return nil, fmt.Errorf("publishing %q: %w", addr, err)
+		}
+		out = append(out, ref)
+	}
+	return out, nil
 }
 
 func compressDir(dir *dagger.Directory) *dagger.File {
