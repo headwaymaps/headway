@@ -77,21 +77,27 @@ function build_image() {
     echo "missing 'container' arg"
     exit 1
   fi
-  local tag=$3
-  if [ -z "$tag" ]; then
-    echo "missing 'tag' arg"
+  local addresses=$3
+  if [ -z "$addresses" ]; then
+    echo "missing 'addresses' arg"
     exit 1
   fi
 
-  HEADWAY_IMAGE_REPO="${HEADWAY_IMAGE_REPO:-ghcr.io/headwaymaps}"
-  local image_ref="${HEADWAY_IMAGE_REPO}/${container}:${tag}"
-
   if [ "$PUBLISH" = true ]; then
-    echo "Publishing ${image_ref}..."
-    dagger -c "${build_function} | publish \"${image_ref}\""
+    echo "Publishing ${container}: ${addresses}"
+    dagger -c "publish-multi --container=\$(${build_function}) --addresses=${addresses}"
   else
-    echo "Exporting ${image_ref} to local docker..."
-    dagger --interactive -c "${build_function} | export-image \"${image_ref}\""
+    # Dagger's host-image-loader can only fulfill one ExportImage per session,
+    # so export to the first tag and use `docker tag` for the rest. This keeps
+    # all tags pointing at the same image id locally.
+    IFS=',' read -ra _addr_list <<< "$addresses"
+    local primary="${_addr_list[0]}"
+    echo "Exporting ${container} to local docker: ${primary}"
+    dagger --interactive -c "${build_function} | export-image \"${primary}\""
+    for extra in "${_addr_list[@]:1}"; do
+      echo "Tagging ${extra} -> ${primary}"
+      docker tag "$primary" "$extra"
+    done
   fi
 }
 
@@ -108,30 +114,49 @@ function build_image_tags() {
         web_branding_param="--branding=$BRANDING"
     fi
 
-    # Convert comma/space separated tags to array
+    HEADWAY_IMAGE_REPO="${HEADWAY_IMAGE_REPO:-ghcr.io/headwaymaps}"
+
+    # Convert comma/space separated tags to array, dropping empties
     IFS=', ' read -ra tag_array <<< "$tags_input"
-
+    local tags=()
     for tag in "${tag_array[@]}"; do
-        # Skip empty tags
-        if [ -z "$tag" ]; then
-            continue
-        fi
-
-        echo "Processing tag: $tag"
-
-        should_build "frontend" && build_image "web-serve-container ${web_branding_param}" "headway" "$tag"
-        should_build "frontend-init" && build_image "web-init-container" "headway-init" "$tag"
-        should_build "otp-init" && build_image "otp-init-container" "opentripplanner-init" "$tag"
-        should_build "otp" && build_image "otp-serve-container" "opentripplanner" "$tag"
-        should_build "pelias-init" && build_image "pelias-init-container" "pelias-init" "$tag"
-        should_build "tileserver" && build_image "tileserver-serve-container" "tileserver" "$tag"
-        should_build "tileserver-init" && build_image "tileserver-init-container" "tileserver-init" "$tag"
-        should_build "travelmux-init" && build_image "travelmux-init-container" "travelmux-init" "$tag"
-        should_build "travelmux" && build_image "travelmux-serve-container" "travelmux" "$tag"
-        should_build "valhalla-init" && build_image "valhalla-init-container" "valhalla-init" "$tag"
-        should_build "valhalla" && build_image "valhalla-serve-container" "valhalla" "$tag"
-        true
+        [ -n "$tag" ] && tags+=("$tag")
     done
+
+    if [ ${#tags[@]} -eq 0 ]; then
+        echo "no tags provided"
+        exit 1
+    fi
+
+    # Build comma-separated "repo/container:tag" list for one image across all tags.
+    function addresses_for() {
+        local container=$1
+        local out=""
+        for tag in "${tags[@]}"; do
+            out+="${HEADWAY_IMAGE_REPO}/${container}:${tag},"
+        done
+        echo "${out%,}"
+    }
+
+    function build() {
+        local filter=$1
+        local build_function=$2
+        local container=$3
+        should_build "$filter" || return 0
+        build_image "$build_function" "$container" "$(addresses_for "$container")"
+    }
+
+    build "frontend"        "web-serve-container ${web_branding_param}" "headway"
+    build "frontend-init"   "web-init-container"                        "headway-init"
+    build "otp-init"        "otp-init-container"                        "opentripplanner-init"
+    build "otp"             "otp-serve-container"                       "opentripplanner"
+    build "pelias-init"     "pelias-init-container"                     "pelias-init"
+    build "tileserver"      "tileserver-serve-container"                "tileserver"
+    build "tileserver-init" "tileserver-init-container"                 "tileserver-init"
+    build "travelmux-init"  "travelmux-init-container"                  "travelmux-init"
+    build "travelmux"       "travelmux-serve-container"                 "travelmux"
+    build "valhalla-init"   "valhalla-init-container"                   "valhalla-init"
+    build "valhalla"        "valhalla-serve-container"                  "valhalla"
 }
 
 echo "Mode: $([ "$PUBLISH" = true ] && echo "Publish" || echo "Export")"

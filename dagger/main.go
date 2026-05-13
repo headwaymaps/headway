@@ -568,6 +568,24 @@ func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Co
 	return container.WithExec([]string{"sh", "-c", cmd})
 }
 
+// Publish a container to multiple registry addresses in a single Dagger
+// session, so every tag points at the same image digest.
+func (h *Headway) PublishMulti(
+	ctx context.Context,
+	container *dagger.Container,
+	addresses []string,
+) ([]string, error) {
+	out := make([]string, 0, len(addresses))
+	for _, addr := range addresses {
+		ref, err := container.Publish(ctx, addr)
+		if err != nil {
+			return nil, fmt.Errorf("publishing %q: %w", addr, err)
+		}
+		out = append(out, ref)
+	}
+	return out, nil
+}
+
 func compressDir(dir *dagger.Directory) *dagger.File {
 	container := slimContainer("zstd").
 		WithExec([]string{"mkdir", "/app"}).
