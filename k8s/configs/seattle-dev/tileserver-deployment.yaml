@@ -60,9 +60,9 @@ spec:
               value: "8000"
           resources:
             limits:
-              memory: 500Mi
+              memory: 1500Mi
             requests:
-              memory: 200Mi
+              memory: 250Mi
           livenessProbe:
             httpGet:
               path: /
