@@ -1,3 +1,4 @@
+cache_size_mb: 1024
 pmtiles:
   sources:
     areamap: ../../data/Bogota/Bogota.pmtiles
