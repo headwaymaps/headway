@@ -3,18 +3,26 @@
 set -xe
 set -o pipefail
 
-if [ ! -z "$(ls -A /data/placeholder)" ]; then
+# Staged on the same filesystem as the destination so the final installation
+# is one atomic rename - an interrupted init can't leave a partial
+# /data/placeholder that a later run would mistake for complete data.
+STAGING_DIR=/data/.placeholder.download
+
+function install_artifact() {
+    rm -fr "$STAGING_DIR"
+    mkdir -p "$STAGING_DIR"
+    tar --zstd -x -f - -C "$STAGING_DIR"
+    mv "$STAGING_DIR" /data/placeholder
+}
+
+if [ ! -z "$(ls -A /data/placeholder 2>/dev/null)" ]; then
     echo "Nothing to do, already have placeholder data"
 elif [ -f "${PLACEHOLDER_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Extracting artifact."
-    mkdir -p /data/placeholder
-    tar --zstd -xf "${PLACEHOLDER_ARTIFACT_SOURCE_PATH}" -C /data/placeholder
+    install_artifact < "${PLACEHOLDER_ARTIFACT_SOURCE_PATH}"
 elif [ ! -z "${PLACEHOLDER_ARTIFACT_URL}" ]; then
     echo "Downloading and extracting artifact."
-    rm -fr /tmp/placeholder.download
-    mkdir -p /tmp/placeholder.download
-    wget --tries=100 -O- "${PLACEHOLDER_ARTIFACT_URL}" | tar --zstd -x -C /tmp/placeholder.download
-    mv /tmp/placeholder.download /data/placeholder
+    wget --tries=100 -O- "${PLACEHOLDER_ARTIFACT_URL}" | install_artifact
 else
     echo "No placeholder artifact available."
     exit 1
