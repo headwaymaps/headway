@@ -15,13 +15,8 @@ spec:
     spec:
       volumes:
         - name: elasticsearch-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 90Gi
+          persistentVolumeClaim:
+            claimName: elasticsearch-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

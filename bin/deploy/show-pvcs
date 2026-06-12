@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -e
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
+
+function usage() {
+cat << EOF
+usage: $0 <config-dir>
+
+Lists headway PersistentVolumeClaims in the current kubectl context, marking
+each as [current] or [stale] relative to the given config's data/area tags.
+
+example:
+    $0 builds/Seattle
+EOF
+}
+
+if [ ! $# -eq 1 ]; then
+    usage
+    exit 1
+fi
+
+CONFIG_DIR="$1"
+
+if [ -z "$HEADWAY_DATA_TAG" ]; then
+    source "bin/_headway_version.sh"
+fi
+
+source bin/_source-env.sh "$CONFIG_DIR"
+
+DATA_SAFE=$(echo "$HEADWAY_DATA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
+AREA_SAFE=$(echo "$HEADWAY_AREA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
+CURRENT_SUFFIX="${AREA_SAFE}-${DATA_SAFE}"
+
+echo "Config:      ${CONFIG_DIR}"
+echo "DATA_TAG:    ${HEADWAY_DATA_TAG}"
+echo "AREA_TAG:    ${HEADWAY_AREA_TAG}"
+echo "PVC suffix:  ${CURRENT_SUFFIX}"
+echo ""
+
+HEADWAY_PVC_PATTERN='^(valhalla|tileserver|elasticsearch|placeholder|opentripplanner)-'
+
+pvcs=$(kubectl get pvc --no-headers \
+    -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,CAPACITY:.spec.resources.requests.storage' \
+    2>/dev/null) || true
+
+if [ -z "$pvcs" ]; then
+    echo "No PVCs found (or kubectl not configured)."
+    exit 0
+fi
+
+found=0
+while IFS= read -r line; do
+    name=$(echo "$line" | awk '{print $1}')
+    if echo "$name" | grep -qE "$HEADWAY_PVC_PATTERN"; then
+        found=1
+        if [[ "$name" == *"-${CURRENT_SUFFIX}" ]]; then
+            printf "  [current]  %s\n" "$line"
+        else
+            printf "  [stale]    %s\n" "$line"
+        fi
+    fi
+done <<< "$pvcs"
+
+if [ "$found" -eq 0 ]; then
+    echo "  No headway PVCs found."
+fi

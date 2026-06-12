@@ -46,10 +46,5 @@ spec:
               memory: ${VALHALLA_MEMORY_REQUEST}
       volumes:
         - name: valhalla-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 200Gi
+          persistentVolumeClaim:
+            claimName: valhalla-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}

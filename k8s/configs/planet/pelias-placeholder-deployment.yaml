@@ -76,13 +76,8 @@ spec:
             failureThreshold: 10
       volumes:
         - name: placeholder-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 40Gi
+          persistentVolumeClaim:
+            claimName: placeholder-maps-earth-planet-v1-260420-0-11-0
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

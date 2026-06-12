@@ -70,10 +70,5 @@ spec:
             failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi
+          persistentVolumeClaim:
+            claimName: opentripplanner-barcelona-maps-earth-planet-v1-260420-0-11-0
