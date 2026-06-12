@@ -7,6 +7,8 @@ spec:
     matchLabels:
       app: opentripplanner-seattle
   replicas: 1
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:

@@ -7,6 +7,8 @@ spec:
     matchLabels:
       app: valhalla
   replicas: 1
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:

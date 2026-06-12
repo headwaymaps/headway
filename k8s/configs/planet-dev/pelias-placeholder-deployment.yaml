@@ -4,6 +4,8 @@ metadata:
   name: pelias-placeholder
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   minReadySeconds: 10
   selector:
     matchLabels:
