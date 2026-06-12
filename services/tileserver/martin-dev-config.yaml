@@ -4,15 +4,13 @@ pmtiles:
   sources:
     areamap-mlt:
       path: ../../data/Bogota/Bogota.pmtiles
-      # Convert MVT <-> MLT when client requests it
-      # Currently the archive stores .mvt tiles, but this might change.
+      output_format: mlt
       convert_to_mlt:
         allow_shared_dict: false
+        allow_fastpfor: false
     areamap-mvt:
       path: ../../data/Bogota/Bogota.pmtiles
-      # Convert MVT <-> MLT when client requests it.
-      # Currently the archive stores .mvt tiles, but this might change.
-      convert_to_mvt: auto
+      output_format: mvt
 mbtiles:
   sources:
     landcover: ../../data/Bogota/landcover.mbtiles
