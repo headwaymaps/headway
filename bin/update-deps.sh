@@ -4,5 +4,6 @@ set -ex
     && (cd services/pelias/generate_config && yarn upgrade) \
     && (cd services/travelmux && cargo update) \
     && (cd services/gtfs/gtfout && cargo update) \
-    && (cd services/tileserver && yarn upgrade) \
     && (cd dagger && go get -u ./... && go mod tidy)
+
+# NOTE: no tileserver step for now - martin is pinned dependency in dagger/main.go for now.
