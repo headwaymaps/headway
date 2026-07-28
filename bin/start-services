@@ -24,10 +24,12 @@ CONFIG_DIR="$1"
 if [ -z "$CONFIG_DIR" ]; then
     cat <<EOS
 Usage: $0 [--no-follow-logs] <build-config-dir>
-Example: Basic
+
+Example:
     $0 builds/Bogota
-Example: With Transit
-    COMPOSE_FILE=docker-compose-with-transit.yaml $0 builds/Seattle
+Override the compose file:
+    COMPOSE_FILE=docker-compose.yaml $0 builds/Seattle
+Otherwise the compose file follows the build's HEADWAY_ENABLE_TRANSIT_ROUTING setting.
 EOS
     exit 1
 fi
@@ -35,7 +37,8 @@ fi
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd $APP_ROOT
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
+source bin/_source-env.sh "$CONFIG_DIR"
+source bin/_compose-file.sh
 
 echo "========================================"
 echo "Starting Headway Services"
@@ -43,8 +46,6 @@ echo "========================================"
 echo "Build dir: $CONFIG_DIR"
 echo "Compose file: $COMPOSE_FILE"
 echo ""
-
-source bin/_source-env.sh "$CONFIG_DIR"
 
 echo "Area: ${HEADWAY_AREA}"
 echo "Data directory: data/${HEADWAY_AREA}"
