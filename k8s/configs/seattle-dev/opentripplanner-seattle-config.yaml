@@ -5,11 +5,7 @@ metadata:
 data:
   graph-url: https://data.example.com/dev/seattle-latest/Seattle.graph.obj.zst
   otp-config-json: |
-    {
-        "otpFeatures" : {
-            "LegacyRestApi": true
-        }
-    }
+    {}
   router-config-json: |
     {
       "updaters": [

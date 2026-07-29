@@ -5,6 +5,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use travelmux::api::{self, AppState};
+use travelmux::otp::OtpCluster;
 use travelmux::Result;
 
 #[actix_web::main]
@@ -19,7 +20,7 @@ async fn main() -> Result<()> {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} https://valhalla.example.com https://endpoint1.example.com/otp/routers https://endpoint2.example.com/otp/routers")
+        panic!("No endpoints specified. Usage: {bin_name} https://valhalla.example.com https://otp1.example.com https://otp2.example.com")
     };
 
     let Ok(valhalla_endpoint) = Url::parse(&valhalla_endpoint) else {
@@ -44,17 +45,16 @@ async fn main() -> Result<()> {
     } else {
         log::warn!("No elevation directory at {elevation_dir:?}");
     }
-    let mut app_state = AppState::new(valhalla_endpoint, elevation_dir);
-
+    let mut otp_cluster = OtpCluster::default();
     for endpoint in endpoints {
         // If we change this to be non-blocking, we'll
         // want to update our readiness probe in health.rs
-        app_state.add_otp_endpoint(&endpoint).await?;
+        otp_cluster.insert_endpoint(&endpoint).await?;
     }
 
     log::info!(
         "setup completed - there are {} routers.",
-        app_state.otp_cluster().router_len()
+        otp_cluster.router_len()
     );
 
     let port: u16 = std::env::var("PORT")
@@ -65,9 +65,15 @@ async fn main() -> Result<()> {
         .unwrap_or(8000);
 
     HttpServer::new(move || {
+        // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
+        let app_state = AppState::new(
+            valhalla_endpoint.clone(),
+            elevation_dir.clone(),
+            otp_cluster.prepare(),
+        );
         App::new()
             .wrap(Logger::default())
-            .app_data(web::Data::new(app_state.clone()))
+            .app_data(web::Data::new(app_state))
             .service(api::v5::plan::get_plan)
             .service(api::v6::plan::get_plan)
             .service(api::v6::directions::get_directions)

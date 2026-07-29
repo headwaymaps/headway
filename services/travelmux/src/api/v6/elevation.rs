@@ -103,6 +103,7 @@ pub async fn get_elevation(
 mod tests {
     use super::*;
     use crate::api::AppState;
+    use crate::otp::OtpCluster;
     use actix_web::{test, web, App};
     use std::path::PathBuf;
     use url::Url;
@@ -111,6 +112,7 @@ mod tests {
         AppState::new(
             Url::parse("http://test:8002").unwrap(),
             PathBuf::from("tests/fixtures/low_res_elevation_tifs"),
+            OtpCluster::default().prepare(),
         )
     }
 

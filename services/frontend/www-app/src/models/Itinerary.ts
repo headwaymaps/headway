@@ -117,14 +117,20 @@ export default class Itinerary {
     return this.raw.endTime;
   }
 
-  // Usually walking, but will be biking if mode is transit+bike
-  get walkDistance(): number {
-    return this.raw.walkDistance;
+  // How far the rider travels under their own power. Usually walking, but will be biking if mode
+  // is transit+bike.
+  //
+  // Summed from the legs rather than read from OTP's `walkDistance`, which counts *only* walking -
+  // it's 0 for a bike+transit itinerary.
+  get nonTransitDistance(): number {
+    return this.legs
+      .filter((leg) => !leg.transitLeg)
+      .reduce((total, leg) => total + leg.distance, 0);
   }
 
   public get walkingDistanceFormatted(): string {
     const preformattedDistance = formatDistance(
-      this.walkDistance,
+      this.nonTransitDistance,
       DistanceUnits.Meters, // OTP is always metric
       this.preferredDistanceUnits,
     );
@@ -192,7 +198,7 @@ export class ItineraryLeg {
 
   get shortName(): string {
     const emoji = this.emoji;
-    const shortName = this.raw.routeShortName ?? this.raw.route;
+    const shortName = this.raw.routeShortName ?? this.raw.route ?? '';
     return `${emoji} ${shortName}`.trim();
   }
 
@@ -222,6 +228,11 @@ export class ItineraryLeg {
 
   get transitLeg(): boolean {
     return this.raw.transitLeg;
+  }
+
+  /// Meters travelled on this leg
+  get distance(): number {
+    return this.raw.distance;
   }
 
   get startTime(): number {

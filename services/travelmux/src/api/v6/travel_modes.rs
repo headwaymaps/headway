@@ -16,6 +16,9 @@ impl TravelModes {
     pub fn first(&self) -> Option<&TravelMode> {
         self.0.first()
     }
+    pub fn as_slice(&self) -> &[TravelMode] {
+        &self.0
+    }
 }
 
 impl<'de> Deserialize<'de> for TravelModes {

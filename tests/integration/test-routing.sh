@@ -17,6 +17,16 @@ START_LNG=-74.0758
 END_LAT=4.6029
 END_LNG=-74.067
 
+# Portal Norte (north end of the city) - far enough that transit beats walking
+TRANSIT_END_LAT=4.7085
+TRANSIT_END_LNG=-74.0425
+
+# Depart at noon rather than "now", so the test doesn't depend on there being service at
+# whatever time it happens to run. travelmux ignores a time without a date, and both are in
+# the graph's local timezone, so pair it with today's date in Bogota.
+TRANSIT_DATE=$(TZ=America/Bogota date +%Y-%m-%d)
+TRANSIT_TIME="12:00"
+
 echo "Testing Routing..."
 echo ""
 
@@ -47,5 +57,25 @@ run_jq_test "car route" \
     '.plan' \
     '.plan.itineraries' \
     '.plan.itineraries | length > 0'
+
+# Test 3: Transit route
+# Only for builds with transit routing enabled - it's the one mode served by OTP rather than
+# Valhalla, so it also covers travelmux finding the OTP instance covering these coordinates.
+if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
+    transit_url="$(build_route_url TRANSIT "$START_LAT" "$START_LNG" "$TRANSIT_END_LAT" "$TRANSIT_END_LNG")"
+    transit_url="${transit_url}&date=${TRANSIT_DATE}&time=${TRANSIT_TIME}"
+
+    # The last validation is the one that proves transit data was actually loaded and used:
+    # a leg riding a vehicle, rather than an all-walking itinerary.
+    run_jq_test "transit route" \
+        "$transit_url" \
+        '.plan' \
+        '.plan.itineraries' \
+        '.plan.itineraries | length > 0' \
+        '[.plan.itineraries[].legs[] | select(.mode == "TRANSIT")] | length > 0' \
+        '[.plan.itineraries[].legs[] | select(.mode == "TRANSIT") | .transitLeg.mode | select(test("^(BUS|TRAM|SUBWAY|RAIL|FERRY|CABLE_CAR|GONDOLA|FUNICULAR)$"))] | length > 0'
+else
+    echo "  Skipping transit route (HEADWAY_ENABLE_TRANSIT_ROUTING is not set)"
+fi
 
 print_test_summary "Routing"

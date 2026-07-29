@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run integration tests against running services
-# Assumes services are already started (use start-services.sh first)
+# Assumes services are already started (use bin/start-services builds/Bogota first)
 
 set -e
 
@@ -9,12 +9,18 @@ APP_ROOT=$(git rev-parse --show-toplevel)
 
 cd "$APP_ROOT"
 
+# The tests assert against Bogota - see run-integration-tests.sh. Sourcing its env tells the
+# test scripts which features to exercise, e.g. HEADWAY_ENABLE_TRANSIT_ROUTING.
+CONFIG_DIR="builds/Bogota"
+source bin/_source-env.sh "$CONFIG_DIR"
+
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
 
 echo "========================================"
 echo "Running Integration Tests"
 echo "========================================"
 echo "Frontend URL: $FRONTEND_URL"
+echo "Transit routing: ${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}"
 echo ""
 
 TESTS_PASSED=0

@@ -1,19 +1,53 @@
-use crate::otp::otp_router::{OTPRouter, OTPRouterClient};
-use crate::Result;
-use geo::geometry::Point;
+use crate::otp::otp_router::{OTPRouter, OTPRouterClient, PreparedOTPRouter};
+use crate::{Error, Result};
+use geo::geometry::{Point, Polygon};
+use geo::PreparedGeometry;
 use url::Url;
 use wkt::ToWkt;
 
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct OtpCluster {
-    routers: Vec<OTPRouter>,
+#[derive(Debug, Clone)]
+pub struct OtpCluster<Coverage = Polygon> {
+    routers: Vec<OTPRouter<Coverage>>,
+}
+
+/// An [`OtpCluster`] whose routers are ready to serve trips - see [`OTPRouter::prepare`].
+pub type PreparedOtpCluster = OtpCluster<PreparedGeometry<'static, Polygon>>;
+
+// Hand written rather than derived: the derive would needlessly require `Coverage: Default`.
+impl<Coverage> Default for OtpCluster<Coverage> {
+    fn default() -> Self {
+        Self { routers: vec![] }
+    }
+}
+
+impl<Coverage> OtpCluster<Coverage> {
+    pub fn router_len(&self) -> usize {
+        self.routers.len()
+    }
 }
 
 impl OtpCluster {
-    pub async fn insert_endpoint(&mut self, url: Url) -> Result<()> {
-        for router in OTPRouterClient::new(url).fetch_all().await? {
+    /// `base_url` is the root of an OTP instance, e.g. `http://opentripplanner:8000` — the
+    /// GraphQL API's path is appended by [`OTPRouterClient`].
+    pub async fn insert_endpoint(&mut self, base_url: &str) -> Result<()> {
+        log::info!("adding endpoint: {base_url}");
+        let url = Url::parse(base_url).map_err(|err| {
+            log::error!("error while parsing endpoint url {base_url:?}");
+            Error::server(format!("invalid endpoint url: {err}"))
+        })?;
+
+        // TODO: Separate inserting an endpoint from (periodically) fetching its routers
+        let routers = OTPRouterClient::new(url)?
+            .fetch_all()
+            .await
+            .inspect_err(|err| {
+                log::error!("error while inserting endpoint {base_url:?}, {err}");
+            })?;
+
+        for router in routers {
             self.push_router(router);
         }
+        log::info!("added endpoint: {base_url}");
         Ok(())
     }
 
@@ -21,16 +55,19 @@ impl OtpCluster {
         self.routers.push(router)
     }
 
-    pub fn find_router_url(&self, source: Point, destination: Point) -> Option<Url> {
-        let router = self.find_router(source, destination)?;
-        let router_url = OTPRouterClient::router_url(router);
-        Some(router_url)
+    /// Index every router's coverage area for serving requests. See [`OTPRouter::prepare`].
+    pub fn prepare(&self) -> PreparedOtpCluster {
+        OtpCluster {
+            routers: self.routers.iter().map(OTPRouter::prepare).collect(),
+        }
     }
+}
 
-    fn find_router(&self, source: Point, destination: Point) -> Option<&OTPRouter> {
+impl PreparedOtpCluster {
+    /// Find the OTP instance whose coverage area contains both `source` and `destination`.
+    pub fn find_router(&self, source: Point, destination: Point) -> Option<&PreparedOTPRouter> {
         for router in &self.routers {
-            use geo::algorithm::Contains;
-            if !router.polygon().contains(&source) {
+            if !router.contains(&source) {
                 log::debug!(
                     "trip source isn't within router: ({} NOT WITHIN {})",
                     source.wkt_string(),
@@ -38,7 +75,7 @@ impl OtpCluster {
                 );
                 continue;
             }
-            if !router.polygon().contains(&destination) {
+            if !router.contains(&destination) {
                 log::debug!(
                     "trip destination isn't within router: ({} NOT WITHIN {})",
                     destination.wkt_string(),
@@ -50,50 +87,41 @@ impl OtpCluster {
         }
         None
     }
-
-    pub fn router_len(&self) -> usize {
-        self.routers.len()
-    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use geo::geometry::Polygon;
+    use geo::wkt;
 
     #[test]
     fn no_router() {
-        let cluster = OtpCluster::default();
+        let cluster = OtpCluster::default().prepare();
         let from = Point::new(0.0, 0.0);
         let to = Point::new(0.0, 0.0);
-        let result = cluster.find_router_url(from, to);
-        assert_eq!(result, None);
+        assert!(cluster.find_router(from, to).is_none());
     }
 
     #[test]
     fn found_router() {
-        use wkt::TryFromWkt;
-
         let mut cluster = OtpCluster::default();
 
+        let endpoint_1 = Url::parse("http://host_1.example.com/otp/gtfs/v1").unwrap();
         {
-            let endpoint_1 = Url::parse("http://host_1.example.com/foo").unwrap();
-            let polygon_1 =
-                Polygon::try_from_wkt_str("POLYGON ((0 0, 40 0, 40 40, 0 40, 0 0))").unwrap();
-            let router_1 = OTPRouter::new(endpoint_1, "router_1".to_string(), polygon_1);
+            let polygon_1 = wkt! { POLYGON((0.0 0.0, 40.0 0.0, 40.0 40.0, 0.0 40.0, 0.0 0.0)) };
+            let router_1 = OTPRouter::new(endpoint_1.clone(), polygon_1, None);
             cluster.push_router(router_1);
         }
         // points in polygon_1
         let p1_a = Point::new(1.0, 1.0);
         let p1_b = Point::new(2.0, 2.0);
 
+        let endpoint_2 = Url::parse("http://host_2.example.com/otp/gtfs/v1").unwrap();
         {
-            let endpoint_2 = Url::parse("http://host_2.example.com/foo").unwrap();
-            let polygon_2 = Polygon::try_from_wkt_str(
-                "POLYGON ((100 100, 140 100, 140 140, 100 140, 100 100))",
-            )
-            .unwrap();
-            let router_2 = OTPRouter::new(endpoint_2, "router_2".to_string(), polygon_2);
+            let polygon_2 = wkt! {
+                POLYGON((100.0 100.0, 140.0 100.0, 140.0 140.0, 100.0 140.0, 100.0 100.0))
+            };
+            let router_2 = OTPRouter::new(endpoint_2.clone(), polygon_2, None);
             cluster.push_router(router_2);
         }
         // points in polygon_2
@@ -104,38 +132,29 @@ mod test {
         let p3_a = Point::new(-1.0, -1.0);
         let p3_b = Point::new(-2.0, -2.0);
 
+        let cluster = cluster.prepare();
+
         {
-            let result = cluster
-                .find_router_url(p1_a, p1_b)
+            let router = cluster
+                .find_router(p1_a, p1_b)
                 .expect("should have found a result");
-            let expected = Url::parse("http://host_1.example.com/foo/router_1/plan").unwrap();
-            assert_eq!(result, expected);
+            assert_eq!(router.endpoint(), &endpoint_1);
         }
 
         {
-            let result = cluster
-                .find_router_url(p2_a, p2_b)
+            let router = cluster
+                .find_router(p2_a, p2_b)
                 .expect("should have found a result");
-            let expected = Url::parse("http://host_2.example.com/foo/router_2/plan").unwrap();
-            assert_eq!(result, expected);
+            assert_eq!(router.endpoint(), &endpoint_2);
         }
 
         // neither point covered by a router
-        {
-            let result = cluster.find_router_url(p3_a, p3_b);
-            assert_eq!(result, None);
-        }
+        assert!(cluster.find_router(p3_a, p3_b).is_none());
 
         // one point covered by a router, one point not covered by any router
-        {
-            let result = cluster.find_router_url(p1_a, p3_b);
-            assert_eq!(result, None);
-        }
+        assert!(cluster.find_router(p1_a, p3_b).is_none());
 
         // both points covered by different routers
-        {
-            let result = cluster.find_router_url(p1_a, p2_b);
-            assert_eq!(result, None);
-        }
+        assert!(cluster.find_router(p1_a, p2_b).is_none());
     }
 }

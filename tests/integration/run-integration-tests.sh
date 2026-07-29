@@ -4,20 +4,23 @@
 
 set -e
 
-CONFIG_DIR="$1"
-if [ -z "$CONFIG_DIR" ]; then
-    cat <<EOS
-Usage: $0 <config-dir>
-Example: $0 builds/Bogota
-EOS
-    exit 1
-fi
+# The tests assert against Bogota - its coordinates, its transit - so the build they run
+# against isn't interchangeable.
+CONFIG_DIR="builds/Bogota"
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_ROOT"
 
+source bin/_source-env.sh "$CONFIG_DIR"
+
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
+
+if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
+    # The build writes dated transit artifacts - link the latest ones to the names
+    # docker compose serves them from.
+    TRANSIT_DATA_ROOT=./data "$APP_ROOT/bin/link-latest-transit" "$CONFIG_DIR"
+fi
 
 echo "========================================"
 echo "Headway Integration Test Runner"

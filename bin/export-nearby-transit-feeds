@@ -27,7 +27,8 @@ fi
 source bin/_source-env.sh "$CONFIG_DIR"
 
 # Create transit directory if it doesn't exist
-TRANSIT_DIR="${CONFIG_DIR}/transit"
+# Each file in gtfs-feeds/ is built into its own transit zone, named after the file.
+TRANSIT_DIR="${CONFIG_DIR}/transit/gtfs-feeds"
 mkdir -p "$TRANSIT_DIR"
 
 OUTPUT_FILE="${TRANSIT_DIR}/${HEADWAY_AREA}.gtfs_feeds.csv"

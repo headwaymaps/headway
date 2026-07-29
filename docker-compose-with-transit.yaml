@@ -32,12 +32,6 @@ services:
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.zst
-      OTP_CONFIG_JSON: |
-        {
-          "otpFeatures": {
-            "LegacyRestApi": true
-          }
-        }
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "opentripplanner_data:/data/:rw"
@@ -83,7 +77,7 @@ services:
       - valhalla_backend
     volumes:
       - "travelmux_data:/data/:ro"
-    command: ["http://valhalla:8002", "http://opentripplanner:8000/otp/routers"]
+    command: ["http://valhalla:8002", "http://opentripplanner:8000"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env

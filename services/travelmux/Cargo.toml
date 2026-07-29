@@ -11,6 +11,8 @@ integration-tests = []
 
 [dependencies]
 actix-web = "4.5.1"
+chrono = "0.4.38"
+chrono-tz = "0.10.0"
 env_logger = "0.11.0"
 geo = "0.30.0"
 geojson = "0.24.0"

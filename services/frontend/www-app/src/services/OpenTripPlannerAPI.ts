@@ -38,10 +38,12 @@ export type OTPItineraryLeg = {
   endTime: number;
   mode: OTPMode;
   transitLeg: boolean;
+  /// How far this leg travels, in meters
+  distance: number;
   legGeometry: OTPLegGeometry;
   realTime: boolean;
-  // Seems to always be set, but may be an empty string, e.g. for a walk
-  route: string;
+  // Omitted (or an empty string) for non-transit legs, e.g. a walk
+  route?: string;
   routeShortName?: string;
   routeLongName?: string;
   routeColor?: string;

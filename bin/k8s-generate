@@ -74,7 +74,7 @@ function generate_transit() {
   for headway_transit_area in $HEADWAY_TRANSIT_AREAS; do
       local otp_endpoint_name=$(generate_otp $headway_transit_area);
 
-      otp_endpoints+="${separator}\"http://${otp_endpoint_name}:8000/otp/routers\""
+      otp_endpoints+="${separator}\"http://${otp_endpoint_name}:8000\""
   done
 
   export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"

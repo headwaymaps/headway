@@ -481,7 +481,7 @@ func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container
 		WithExposedPort(8000).
 		WithEnvVariable("RUST_LOG", "info").
 		WithEntrypoint([]string{"/home/travelmux/travelmux-server"}).
-		WithDefaultArgs([]string{"http://valhalla:8002", "http://opentripplanner:8000/otp/routers"})
+		WithDefaultArgs([]string{"http://valhalla:8002", "http://opentripplanner:8000"})
 
 	return container
 }
