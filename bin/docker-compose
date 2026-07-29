@@ -17,9 +17,8 @@ shift
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
-
 source bin/_source-env.sh "$CONFIG_DIR"
+source bin/_compose-file.sh
 
 cd "$CONFIG_DIR"
 docker compose -f "../../$COMPOSE_FILE" "$@"

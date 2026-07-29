@@ -28,16 +28,24 @@ run_job() {
     jobs+=("$name")
 }
 
-# Run all checks in parallel
-run_job "dagger fmt" bash -c "cd dagger && go fmt"
+# Determine which checks to run
+filter="${1:-}"
 
-run_job "frontend checks" bash -c "cd services/frontend/www-app && yarn fmt && yarn lint && yarn tsc"
+should_run() {
+    [[ -z "$filter" || "$1" == "$filter" ]]
+}
 
-run_job "travelmux checks" bash -c "cd services/travelmux && cargo fmt && cargo clippy --all-features -- -D warnings && cargo test"
+# Run checks (all in parallel, or only the named one)
+should_run "dagger" && run_job "dagger fmt" bash -c "cd dagger && go fmt"
+should_run "frontend" && run_job "frontend checks" bash -c "cd services/frontend/www-app && yarn install && yarn fmt && yarn lint && yarn tsc && yarn test"
+should_run "travelmux" && run_job "travelmux checks" bash -c "cd services/travelmux && cargo fmt && cargo clippy --all-features -- -D warnings && cargo test"
+should_run "gtfout" && run_job "gtfout checks" bash -c "cd services/gtfs/gtfout && cargo fmt --all && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"
+should_run "pelias" && run_job "pelias config checks" bash -c "cd services/pelias/generate_config && yarn install && yarn fmt && yarn lint && yarn build"
 
-run_job "gtfout checks" bash -c "cd services/gtfs/gtfout && cargo fmt --all && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features"
-
-run_job "pelias config checks" bash -c "cd services/pelias/generate_config && yarn fmt && yarn lint && yarn build"
+if [[ ${#pids[@]} -eq 0 ]]; then
+    echo "Unknown check: '$filter'. Valid options: dagger, frontend, travelmux, gtfout, pelias"
+    exit 1
+fi
 
 # Wait for all background jobs and collect exit codes
 echo ""

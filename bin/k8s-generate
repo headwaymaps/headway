@@ -117,7 +117,7 @@ $(indent4 < "services/otp/otp-config.json")"
     echo "$OTP_ENDPOINT_NAME"
 }
 
-if [[ "$HEADWAY_ENABLE_TRANSIT_ROUTING" != 0 ]]; then
+if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" = 1 ]; then
     generate_transit
 fi
 

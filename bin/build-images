@@ -93,7 +93,7 @@ function build_image() {
     IFS=',' read -ra _addr_list <<< "$addresses"
     local primary="${_addr_list[0]}"
     echo "Exporting ${container} to local docker: ${primary}"
-    dagger --interactive -c "${build_function} | export-image \"${primary}\""
+    dagger -c "${build_function} | export-image \"${primary}\""
     for extra in "${_addr_list[@]:1}"; do
       echo "Tagging ${extra} -> ${primary}"
       docker tag "$primary" "$extra"

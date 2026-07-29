@@ -1,4 +1,4 @@
-import { expect, test } from '@jest/globals';
+import { expect, test } from 'vitest';
 import { LngLat } from 'maplibre-gl';
 import Place from 'src/models/Place';
 import { DistanceUnits } from './models';

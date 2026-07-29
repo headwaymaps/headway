@@ -14,18 +14,35 @@ import (
 
 type TransitZone struct {
 	Headway *Headway
-	// TODO: verify we're actually caching anything. I think it's primarily the GTFSDir that we want to cache
-	CacheKey       string
+	// Date stamp (YYYY-MM-DD) of the GTFS download that this zone is built from.
+	//
+	// It's both the cache key for BuildGtfsDir and the artifact versioning
+	// scheme, which is what keeps the two honest with each other: the feeds are
+	// fetched at most once per day, and the date in the name is by construction
+	// the day they were fetched.
+	//
+	// Published builds accumulate side by side as e.g.
+	// planet-puget_sound-2026-07-28.graph.obj.zst, and bin/link-latest-transit
+	// parses the date back out to symlink the newest one to
+	// PugetSound.graph.obj.zst.
+	BuildDate      string
 	TransitFeeds   *dagger.File
 	GTFSDir        *dagger.Directory
 	OSMExport      *OSMExport
 	OTPBuildConfig *dagger.File
 }
 
+// Top-level transit orchestrator. Must not be cached: it reads time.Now() to
+// decide which day's feeds to build, and a cached call would freeze that at
+// whatever day it first ran.
+//
+// +cache="never"
 func (h *Headway) BuildTransit(ctx context.Context,
 	transitConfigDir *dagger.Directory) (*dagger.Directory, error) {
 
-	cacheKey := time.Now().Format("2006-01-02")
+	// UTC so the day boundary doesn't depend on where the build runs - this
+	// date is a cache key, not just a label.
+	buildDate := time.Now().UTC().Format("2006-01-02")
 
 	output := dag.Directory()
 
@@ -46,11 +63,11 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	}
 	for _, entry := range transitFeedsFiles {
 		transitFeedsFile := transitFeedsDir.File(entry)
-		zone := h.TransitZone(ctx, transitFeedsFile, cacheKey)
+		zone := h.TransitZone(ctx, transitFeedsFile, buildDate)
 		if otpBuildConfig != nil {
 			zone = zone.WithOtpBuildConfig(ctx, otpBuildConfig)
 		}
-		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx))
+		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx, buildDate))
 		output = output.WithFile(fmt.Sprintf("%s.gtfs.tar.zst", zone.Name(ctx)), compressDir(zone.GTFSDir))
 		// TODO: make an arg or config or something... or just always clip?
 		// Any harm besides slowing things down a little?
@@ -61,15 +78,15 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		output = output.WithFile(fmt.Sprintf("%s.graph.obj.zst", zone.Name(ctx)), compressFile(otpGraph))
 		elevations = elevations.WithDirectory("./", zone.Elevations(ctx))
 	}
-	output = output.WithFile(fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, cacheKey), compressDir(elevations))
+	output = output.WithFile(fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate), compressDir(elevations))
 
 	return output, nil
 }
 
-func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File, cacheKey string) *TransitZone {
+func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File, buildDate string) *TransitZone {
 	return &TransitZone{
 		Headway:      h,
-		CacheKey:     cacheKey,
+		BuildDate:    buildDate,
 		TransitFeeds: transitFeeds,
 	}
 }
@@ -88,7 +105,7 @@ func (t *TransitZone) WithOtpBuildConfig(ctx context.Context, otpBuildConfig *da
 }
 
 func (t *TransitZone) Name(ctx context.Context) string {
-	return fmt.Sprintf("%s-%s-%s", t.Headway.Area, t.ZoneName(ctx), t.CacheKey)
+	return fmt.Sprintf("%s-%s-%s", t.Headway.Area, t.ZoneName(ctx), t.BuildDate)
 }
 
 func (t *TransitZone) ClippedOsmExport(ctx context.Context) *OSMExport {
@@ -105,7 +122,20 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 	return t
 }
 
-func (t *TransitZone) BuildGtfsDir(ctx context.Context) *dagger.Directory {
+// Downloads each agency's GTFS zip and repacks them.
+//
+// buildDate (YYYY-MM-DD) is passed explicitly rather than read off the receiver
+// so that it's unambiguously part of dagger's cache key. Every build on the
+// same UTC day reuses one download; the first build of a new day re-downloads.
+// That's what ties the date stamped into the artifact names to the day the
+// feeds were actually fetched.
+//
+// The TTL is belt-and-suspenders: any same-day reuse is by definition under
+// 24h, so it never expires an entry that the date key would still consider
+// current.
+//
+// +cache="24h"
+func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string) *dagger.Directory {
 	servicesDir := t.Headway.ServiceDir("gtfs")
 
 	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")

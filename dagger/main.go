@@ -143,6 +143,11 @@ func getEnvWithDefault(envVariable, defaultValue string) string {
 /**
  * Full build
  */
+// Top-level orchestrator: never cached on its own, so that the cache policies of
+// the steps it composes are the ones that actually govern. Re-entering it is
+// cheap - every expensive step underneath keeps its own cache entry.
+//
+// +cache="never"
 func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	if h.Area == "" {
@@ -194,9 +199,32 @@ func (o *OSMExport) Clip(ctx context.Context, bbox *Bbox) *OSMExport {
  * TileServer
  */
 
+const headwayDataRepo = "https://github.com/headwaymaps/headway-data"
+
 // Downloads terrain tiles from headway-data repository
+//
+// Resolving the branch is cheap, so this isn't cached - it just turns "main"
+// into a commit and hands off to TileserverTerrainAtCommit, which is where the
+// caching happens. Net effect: the download is reused for the default 7 days,
+// but a new headway-data commit invalidates it on the very next build.
+//
+// +cache="never"
 func (h *Headway) TileserverTerrain(ctx context.Context) (*dagger.Directory, error) {
-	assetRoot := getEnvWithDefault("HEADWAY_TILES_URL", "https://github.com/headwaymaps/headway-data/raw/main/tiles/")
+	commit, err := dag.Git(headwayDataRepo).Branch("main").Commit(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve %s main: %w", headwayDataRepo, err)
+	}
+	return h.TileserverTerrainAtCommit(ctx, commit)
+}
+
+// Downloads terrain tiles at a specific headway-data commit
+//
+// The commit is a function argument, so it's part of dagger's cache key - which
+// is what lets the download be cached indefinitely (well, 7 days) while still
+// reacting immediately to a new commit. Fetching by SHA instead of by branch
+// also makes the download reproducible.
+func (h *Headway) TileserverTerrainAtCommit(ctx context.Context, commit string) (*dagger.Directory, error) {
+	assetRoot := getEnvWithDefault("HEADWAY_TILES_URL", fmt.Sprintf("%s/raw/%s/tiles/", headwayDataRepo, commit))
 
 	container := downloadContainer().
 		WithExec([]string{"wget", "-nv", assetRoot + "terrain.mbtiles"}).
@@ -570,6 +598,12 @@ func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Co
 
 // Publish a container to multiple registry addresses in a single Dagger
 // session, so every tag points at the same image digest.
+//
+// Pushing is a side effect we always want to actually happen - a cache hit here
+// would silently skip the push and hand back refs for tags that were never
+// written.
+//
+// +cache="never"
 func (h *Headway) PublishMulti(
 	ctx context.Context,
 	container *dagger.Container,

@@ -1,4 +1,4 @@
-import { expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 import { LngLat } from 'maplibre-gl';
 import { PlaceId } from './Place';
 import OSMID from './OSMID';

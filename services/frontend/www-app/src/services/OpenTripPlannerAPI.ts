@@ -93,7 +93,6 @@ export type OTPPlanResponse = {
 };
 
 export type OTPError =
-  | { planError: OTPPlanError }
-  | { responseError: OTPResponseError };
+  { planError: OTPPlanError } | { responseError: OTPResponseError };
 
 export type OTPResponseError = { status: number };
