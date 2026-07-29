@@ -1,5 +1,6 @@
 pub mod gtfs_graphql;
 pub mod otp_api;
+pub mod schema;
 
 mod otp_cluster;
 use crate::TravelMode;

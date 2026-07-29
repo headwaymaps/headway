@@ -1,12 +1,12 @@
 use crate::otp::gtfs_graphql;
-use crate::Result;
+use crate::otp::schema;
+// NB: `Result` is deliberately not imported here - see the note in `gtfs_graphql`.
 
 use chrono_tz::Tz;
+use cynic::QueryBuilder;
 use geo::algorithm::{ConvexHull, Relate};
 use geo::geometry::{MultiPoint, Point, Polygon};
 use geo::PreparedGeometry;
-use serde::Deserialize;
-use serde_json::json;
 use url::Url;
 
 /// An OTP instance, and the area its graph covers.
@@ -85,35 +85,27 @@ pub struct OTPRouterClient {
 // TODO: Ask upstream OTP to expose the graph's coverage area (extent/convex hull) via the GTFS
 // GraphQL API so we don't have to fetch every stop and recompute it here.
 // See https://github.com/opentripplanner/OpenTripPlanner
-const COVERAGE_QUERY: &str = r#"
-query Coverage {
-  stops { lat lon }
-  agencies { timezone }
-}
-"#;
-
-#[derive(Debug, Deserialize)]
-struct CoverageData {
-    #[serde(default)]
-    stops: Vec<StopNode>,
-    #[serde(default)]
-    agencies: Vec<AgencyNode>,
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "QueryType")]
+struct CoverageQuery {
+    stops: Option<Vec<Option<Stop>>>,
+    agencies: Option<Vec<Option<Agency>>>,
 }
 
-#[derive(Debug, Deserialize)]
-struct StopNode {
+#[derive(cynic::QueryFragment, Debug)]
+struct Stop {
     lat: Option<f64>,
     lon: Option<f64>,
 }
 
-#[derive(Debug, Deserialize)]
-struct AgencyNode {
-    timezone: Option<String>,
+#[derive(cynic::QueryFragment, Debug)]
+struct Agency {
+    timezone: String,
 }
 
 impl OTPRouterClient {
     /// `base_url` is the root of an OTP instance, e.g. `http://opentripplanner:8000`.
-    pub fn new(base_url: Url) -> Result<Self> {
+    pub fn new(base_url: Url) -> crate::Result<Self> {
         let http_client = reqwest::Client::new();
         Ok(Self {
             endpoint: gtfs_graphql::endpoint_url(&base_url)?,
@@ -121,14 +113,16 @@ impl OTPRouterClient {
         })
     }
 
-    pub async fn fetch_all(&self) -> Result<Vec<OTPRouter>> {
-        let body = json!({ "query": COVERAGE_QUERY });
-        let data: CoverageData =
-            gtfs_graphql::post_graphql(&self.http_client, &self.endpoint, &body).await?;
+    pub async fn fetch_all(&self) -> crate::Result<Vec<OTPRouter>> {
+        let data: CoverageQuery =
+            gtfs_graphql::post_graphql(&self.http_client, &self.endpoint, CoverageQuery::build(()))
+                .await?;
 
         let points: Vec<Point> = data
             .stops
+            .unwrap_or_default()
             .into_iter()
+            .flatten()
             .filter_map(|stop| Some(Point::new(stop.lon?, stop.lat?)))
             .collect();
 
@@ -143,8 +137,11 @@ impl OTPRouterClient {
 
         let timezone = data
             .agencies
+            .unwrap_or_default()
             .into_iter()
-            .find_map(|agency| agency.timezone)
+            .flatten()
+            .map(|agency| agency.timezone)
+            .next()
             .and_then(|tz| match tz.parse::<Tz>() {
                 Ok(tz) => Some(tz),
                 Err(e) => {

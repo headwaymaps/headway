@@ -10,6 +10,11 @@
 
 use serde::{Deserialize, Serialize};
 
+// The direction enums below are shared with the GraphQL layer: `cynic::Enum` derives the
+// `Serialize`/`Deserialize` impls that carry the SCREAMING_SNAKE_CASE names OTP uses, which is
+// also the spelling our own clients expect, and checks the variants against OTP's schema.
+use crate::otp::schema;
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanError {
@@ -145,8 +150,7 @@ pub struct Step {
     pub lat: f64,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, PartialEq, Clone, cynic::Enum)]
 pub enum AbsoluteDirection {
     North,
     Northeast,
@@ -158,8 +162,7 @@ pub enum AbsoluteDirection {
     Northwest,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, PartialEq, Clone, Copy, cynic::Enum)]
 pub enum RelativeDirection {
     Depart,
     HardLeft,

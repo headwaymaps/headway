@@ -77,6 +77,12 @@ impl From<reqwest::Error> for Error {
     }
 }
 
+impl From<cynic::http::CynicReqwestError> for Error {
+    fn from(err: cynic::http::CynicReqwestError) -> Self {
+        Error::server(err)
+    }
+}
+
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         Error::server(err)

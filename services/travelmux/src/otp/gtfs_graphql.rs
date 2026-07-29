@@ -1,19 +1,23 @@
 //! Client for OTP's GTFS GraphQL API (`/otp/gtfs/v1`).
 //!
-//! OTP removed its REST `/plan` endpoint in 2.8, so we talk to it over GraphQL now. This module
-//! builds the `planConnection` query, POSTs it, and maps the response back into the
+//! OTP removed its REST `/plan` endpoint in 2.8, so we talk to it over GraphQL now. The query is
+//! described by the `cynic` types in this module, which are checked against
+//! [`crate::otp::schema`] at compile time. Responses are mapped back into the
 //! [`crate::otp::otp_api`] types that the rest of travelmux (and its clients) expect.
 
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use chrono_tz::Tz;
+use cynic::http::ReqwestExt;
+use cynic::{Operation, QueryBuilder};
 use geo::geometry::Point;
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
-use serde_json::{json, Value};
+use serde::{de::DeserializeOwned, Serialize};
 use url::Url;
 
 use crate::otp::otp_api;
-use crate::{Error, Result, TravelMode};
+use crate::otp::schema;
+// NB: `Result`/`Error` are deliberately *not* imported here: cynic's derives expand to code
+// using `std::result::Result` unqualified, which our aliases would shadow.
+use crate::TravelMode;
 
 // ===
 // Request
@@ -38,38 +42,96 @@ pub struct PlanParams<'a> {
     pub timezone: Option<Tz>,
 }
 
-const PLAN_QUERY: &str = r#"
-query Plan(
-  $fromLat: CoordinateValue!, $fromLon: CoordinateValue!,
-  $toLat: CoordinateValue!, $toLon: CoordinateValue!,
-  $first: Int, $dateTime: PlanDateTimeInput, $modes: PlanModesInput
-) {
-  planConnection(
-    origin: { location: { coordinate: { latitude: $fromLat, longitude: $fromLon } } }
-    destination: { location: { coordinate: { latitude: $toLat, longitude: $toLon } } }
-    first: $first
-    dateTime: $dateTime
-    modes: $modes
-  ) {
-    edges { node {
-      start end duration walkDistance
-      legs {
-        mode transitLeg distance duration realTime headsign
-        start { scheduledTime estimated { time } }
-        end { scheduledTime estimated { time } }
-        from { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }
-        to { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }
-        legGeometry { points length }
-        route { gtfsId shortName longName color }
-        agency { name }
-        steps { distance relativeDirection absoluteDirection streetName lat lon area bogusName stayOn exit }
-        alerts { alertHeaderText alertDescriptionText alertUrl effectiveStartDate effectiveEndDate }
-      }
-    } }
-    routingErrors { code description }
-  }
+#[derive(cynic::QueryVariables, Debug)]
+struct PlanVariables {
+    origin: PlanLabeledLocationInput,
+    destination: PlanLabeledLocationInput,
+    first: Option<i32>,
+    date_time: Option<PlanDateTimeInput>,
+    modes: Option<PlanModesInput>,
 }
-"#;
+
+#[derive(cynic::InputObject, Debug)]
+struct PlanLabeledLocationInput {
+    location: PlanLocationInput,
+}
+
+#[derive(cynic::InputObject, Debug)]
+enum PlanLocationInput {
+    Coordinate(PlanCoordinateInput),
+}
+
+#[derive(cynic::InputObject, Debug)]
+struct PlanCoordinateInput {
+    latitude: f64,
+    longitude: f64,
+}
+
+/// `@oneOf`: exactly one of these may be given, which the Rust enum enforces for us.
+#[derive(cynic::InputObject, Debug)]
+enum PlanDateTimeInput {
+    EarliestDeparture(DateTime<FixedOffset>),
+    LatestArrival(DateTime<FixedOffset>),
+}
+
+#[derive(cynic::InputObject, Debug)]
+struct PlanModesInput {
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    direct: Option<Vec<PlanDirectMode>>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    direct_only: Option<bool>,
+    #[cynic(skip_serializing_if = "Option::is_none")]
+    transit: Option<PlanTransitModesInput>,
+}
+
+#[derive(cynic::InputObject, Debug)]
+struct PlanTransitModesInput {
+    access: Option<Vec<PlanAccessMode>>,
+    egress: Option<Vec<PlanEgressMode>>,
+    transfer: Option<Vec<PlanTransferMode>>,
+}
+
+// OTP has a separate street-mode enum per phase of a trip (direct, access, egress, transfer), each
+// with many more variants than the plain walking/cycling/driving we ask for. Each is declared
+// `non_exhaustive` so we only have to name the modes we actually use; the fallback variants exist
+// to satisfy that and are never constructed.
+
+#[derive(cynic::Enum, Clone, Copy, Debug)]
+#[cynic(non_exhaustive)]
+enum PlanDirectMode {
+    Walk,
+    Bicycle,
+    Car,
+    #[cynic(fallback)]
+    Unused,
+}
+
+#[derive(cynic::Enum, Clone, Copy, Debug)]
+#[cynic(non_exhaustive)]
+enum PlanAccessMode {
+    Walk,
+    Bicycle,
+    #[cynic(fallback)]
+    Unused,
+}
+
+#[derive(cynic::Enum, Clone, Copy, Debug)]
+#[cynic(non_exhaustive)]
+enum PlanEgressMode {
+    Walk,
+    Bicycle,
+    #[cynic(fallback)]
+    Unused,
+}
+
+#[derive(cynic::Enum, Clone, Copy, Debug)]
+#[cynic(non_exhaustive)]
+enum PlanTransferMode {
+    Walk,
+    Bicycle,
+    #[cynic(fallback)]
+    Unused,
+}
 
 impl PlanParams<'_> {
     fn primary_mode(&self) -> TravelMode {
@@ -81,33 +143,49 @@ impl PlanParams<'_> {
         !matches!(self.primary_mode(), TravelMode::Transit)
     }
 
-    /// Build the `PlanModesInput` value.
-    fn modes_input(&self) -> Value {
+    fn modes_input(&self) -> PlanModesInput {
+        let direct = |mode| PlanModesInput {
+            direct: Some(vec![mode]),
+            direct_only: Some(true),
+            transit: None,
+        };
+
         match self.primary_mode() {
-            TravelMode::Walk => json!({ "directOnly": true, "direct": ["WALK"] }),
-            TravelMode::Bicycle => json!({ "directOnly": true, "direct": ["BICYCLE"] }),
-            TravelMode::Car => json!({ "directOnly": true, "direct": ["CAR"] }),
+            TravelMode::Walk => direct(PlanDirectMode::Walk),
+            TravelMode::Bicycle => direct(PlanDirectMode::Bicycle),
+            TravelMode::Car => direct(PlanDirectMode::Car),
             TravelMode::Transit => {
                 // bike+transit: access/egress/transfer must all agree on BICYCLE for OTP to
                 // consider cycling to/from and between stops.
-                let street = if self.modes.contains(&TravelMode::Bicycle) {
-                    "BICYCLE"
-                } else {
-                    "WALK"
-                };
-                json!({
-                    "transit": {
-                        "access": [street],
-                        "egress": [street],
-                        "transfer": [street],
-                    }
-                })
+                let bike = self.modes.contains(&TravelMode::Bicycle);
+                PlanModesInput {
+                    direct: None,
+                    direct_only: None,
+                    transit: Some(PlanTransitModesInput {
+                        access: Some(vec![if bike {
+                            PlanAccessMode::Bicycle
+                        } else {
+                            PlanAccessMode::Walk
+                        }]),
+                        egress: Some(vec![if bike {
+                            PlanEgressMode::Bicycle
+                        } else {
+                            PlanEgressMode::Walk
+                        }]),
+                        transfer: Some(vec![if bike {
+                            PlanTransferMode::Bicycle
+                        } else {
+                            PlanTransferMode::Walk
+                        }]),
+                    }),
+                }
             }
         }
     }
 
-    /// Build the optional `PlanDateTimeInput` value from the client's naive date/time.
-    fn date_time_input(&self) -> Option<Value> {
+    /// Resolve the client's naive date/time into the absolute instant OTP wants, or `None` to let
+    /// OTP plan from "now".
+    fn date_time_input(&self) -> Option<PlanDateTimeInput> {
         let date = self.date?;
         // The frontend only sends a time alongside a date; default to midnight if it's missing.
         let time = self.time.unwrap_or("00:00");
@@ -135,37 +213,39 @@ impl PlanParams<'_> {
             return None;
         };
 
-        let rfc3339 = resolved.to_rfc3339();
-        let key = if self.arrive_by {
-            "latestArrival"
+        let resolved = resolved.fixed_offset();
+        Some(if self.arrive_by {
+            PlanDateTimeInput::LatestArrival(resolved)
         } else {
-            "earliestDeparture"
-        };
-        Some(json!({ key: rfc3339 }))
+            PlanDateTimeInput::EarliestDeparture(resolved)
+        })
     }
 
-    fn request_body(&self) -> Value {
+    fn build_query(&self) -> Operation<PlanConnectionQuery, PlanVariables> {
         let first = if self.is_direct() {
             // For plain walking/cycling OTP returns a single itinerary, and downstream code
             // assumes exactly one.
             1
         } else {
-            self.num_itineraries
+            self.num_itineraries.try_into().unwrap_or(i32::MAX)
         };
 
-        let mut variables = json!({
-            "fromLat": self.from.y(),
-            "fromLon": self.from.x(),
-            "toLat": self.to.y(),
-            "toLon": self.to.x(),
-            "first": first,
-            "modes": self.modes_input(),
-        });
-        if let Some(date_time) = self.date_time_input() {
-            variables["dateTime"] = date_time;
-        }
+        PlanConnectionQuery::build(PlanVariables {
+            origin: location(self.from),
+            destination: location(self.to),
+            first: Some(first),
+            date_time: self.date_time_input(),
+            modes: Some(self.modes_input()),
+        })
+    }
+}
 
-        json!({ "query": PLAN_QUERY, "variables": variables })
+fn location(point: Point) -> PlanLabeledLocationInput {
+    PlanLabeledLocationInput {
+        location: PlanLocationInput::Coordinate(PlanCoordinateInput {
+            latitude: point.y(),
+            longitude: point.x(),
+        }),
     }
 }
 
@@ -187,44 +267,41 @@ const GRAPHQL_PATH: [&str; 3] = ["otp", "gtfs", "v1"];
 /// The GraphQL endpoint for an OTP instance's base URL.
 ///
 /// e.g. `http://opentripplanner:8000` -> `http://opentripplanner:8000/otp/gtfs/v1`
-pub(crate) fn endpoint_url(base_url: &Url) -> Result<Url> {
+pub(crate) fn endpoint_url(base_url: &Url) -> crate::Result<Url> {
     let mut endpoint = base_url.clone();
     endpoint
         .path_segments_mut()
-        .map_err(|_| Error::server(format!("OTP base url must be a valid base: {base_url}")))?
+        .map_err(|_| {
+            crate::Error::server(format!("OTP base url must be a valid base: {base_url}"))
+        })?
         .pop_if_empty()
         .extend(GRAPHQL_PATH);
     Ok(endpoint)
 }
 
-/// POST a GraphQL query to `endpoint` and return the deserialized `data` payload.
-pub(crate) async fn post_graphql<T: DeserializeOwned>(
+/// POST a GraphQL operation to `endpoint` and return the deserialized `data` payload.
+pub(crate) async fn post_graphql<Data, Variables>(
     client: &reqwest::Client,
     endpoint: &Url,
-    body: &Value,
-) -> Result<T> {
-    let response = client.post(endpoint.clone()).json(body).send().await?;
-    if !response.status().is_success() {
-        return Err(Error::server(format!(
-            "HTTP error from OTP GraphQL: {}",
-            response.status()
+    operation: Operation<Data, Variables>,
+) -> crate::Result<Data>
+where
+    Data: DeserializeOwned + 'static,
+    Variables: Serialize,
+{
+    let response = client.post(endpoint.clone()).run_graphql(operation).await?;
+
+    if let Some(errors) = response.errors.filter(|errors| !errors.is_empty()) {
+        let messages: Vec<_> = errors.into_iter().map(|e| e.message).collect();
+        return Err(crate::Error::server(format!(
+            "OTP GraphQL returned errors: {}",
+            messages.join("; ")
         )));
     }
 
-    let envelope: GraphQlResponse<T> = response.json().await?;
-    if let Some(errors) = envelope.errors {
-        if !errors.is_empty() {
-            let messages: Vec<_> = errors.into_iter().map(|e| e.message).collect();
-            return Err(Error::server(format!(
-                "OTP GraphQL returned errors: {}",
-                messages.join("; ")
-            )));
-        }
-    }
-
-    envelope
+    response
         .data
-        .ok_or_else(|| Error::server("OTP GraphQL response had no data"))
+        .ok_or_else(|| crate::Error::server("OTP GraphQL response had no data"))
 }
 
 /// Execute a `planConnection` query and map the result into the legacy [`otp_api::PlanResponse`].
@@ -232,9 +309,8 @@ pub async fn plan(
     client: &reqwest::Client,
     endpoint: &Url,
     params: &PlanParams<'_>,
-) -> Result<otp_api::PlanResponse> {
-    let body = params.request_body();
-    let data: PlanData = post_graphql(client, endpoint, &body).await?;
+) -> crate::Result<otp_api::PlanResponse> {
+    let data: PlanConnectionQuery = post_graphql(client, endpoint, params.build_query()).await?;
     Ok(data.into_otp())
 }
 
@@ -242,75 +318,62 @@ pub async fn plan(
 // Response
 // ===
 
-#[derive(Debug, Deserialize)]
-struct GraphQlResponse<T> {
-    data: Option<T>,
-    errors: Option<Vec<GraphQlError>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GraphQlError {
-    message: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PlanData {
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "QueryType", variables = "PlanVariables")]
+struct PlanConnectionQuery {
+    #[arguments(
+        origin: $origin,
+        destination: $destination,
+        first: $first,
+        dateTime: $date_time,
+        modes: $modes
+    )]
     plan_connection: Option<PlanConnection>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(cynic::QueryFragment, Debug)]
 struct PlanConnection {
-    #[serde(default)]
-    edges: Vec<PlanEdge>,
-    #[serde(default)]
+    edges: Option<Vec<Option<PlanEdge>>>,
     routing_errors: Vec<RoutingError>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(cynic::QueryFragment, Debug)]
 struct PlanEdge {
-    node: ItineraryNode,
+    node: Itinerary,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ItineraryNode {
-    start: Option<String>,
-    end: Option<String>,
+#[derive(cynic::QueryFragment, Debug)]
+struct Itinerary {
+    start: Option<DateTime<FixedOffset>>,
+    end: Option<DateTime<FixedOffset>>,
     /// seconds
     duration: Option<i64>,
     walk_distance: Option<f64>,
-    #[serde(default)]
-    legs: Vec<LegNode>,
+    legs: Vec<Option<Leg>>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct LegNode {
+#[derive(cynic::QueryFragment, Debug)]
+struct Leg {
     mode: Option<Mode>,
     transit_leg: Option<bool>,
     distance: Option<f64>,
     real_time: Option<bool>,
     headsign: Option<String>,
-    start: Option<LegTime>,
-    end: Option<LegTime>,
-    from: PlaceNode,
-    to: PlaceNode,
+    start: LegTime,
+    end: LegTime,
+    from: Place,
+    to: Place,
     leg_geometry: Option<Geometry>,
-    route: Option<RouteNode>,
-    agency: Option<AgencyNode>,
-    #[serde(default)]
-    steps: Vec<StepNode>,
-    #[serde(default)]
-    alerts: Vec<AlertNode>,
+    route: Option<Route>,
+    agency: Option<Agency>,
+    steps: Option<Vec<Option<Step>>>,
+    alerts: Option<Vec<Option<Alert>>>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(cynic::QueryFragment, Debug)]
 struct LegTime {
-    scheduled_time: String,
-    estimated: Option<EstimatedTime>,
+    scheduled_time: DateTime<FixedOffset>,
+    estimated: Option<RealTimeEstimate>,
 }
 
 impl LegTime {
@@ -319,19 +382,18 @@ impl LegTime {
         let source = self
             .estimated
             .as_ref()
-            .map(|e| e.time.as_str())
-            .unwrap_or(self.scheduled_time.as_str());
-        parse_rfc3339_millis(source)
+            .map_or(self.scheduled_time, |e| e.time);
+        millis(source)
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct EstimatedTime {
-    time: String,
+#[derive(cynic::QueryFragment, Debug)]
+struct RealTimeEstimate {
+    time: DateTime<FixedOffset>,
 }
 
-#[derive(Debug, Deserialize)]
-struct PlaceNode {
+#[derive(cynic::QueryFragment, Debug)]
+struct Place {
     name: Option<String>,
     lat: f64,
     lon: f64,
@@ -339,60 +401,58 @@ struct PlaceNode {
     departure: Option<LegTime>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(cynic::QueryFragment, Debug)]
 struct Geometry {
     points: Option<String>,
-    length: Option<i64>,
+    length: Option<i32>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RouteNode {
+#[derive(cynic::QueryFragment, Debug)]
+struct Route {
     short_name: Option<String>,
     long_name: Option<String>,
     color: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-struct AgencyNode {
-    name: Option<String>,
+#[derive(cynic::QueryFragment, Debug)]
+struct Agency {
+    name: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct StepNode {
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "step")]
+struct Step {
     distance: Option<f64>,
     relative_direction: Option<otp_api::RelativeDirection>,
     absolute_direction: Option<otp_api::AbsoluteDirection>,
     street_name: Option<String>,
-    lat: f64,
-    lon: f64,
+    lat: Option<f64>,
+    lon: Option<f64>,
     area: Option<bool>,
     bogus_name: Option<bool>,
     stay_on: Option<bool>,
     exit: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AlertNode {
+#[derive(cynic::QueryFragment, Debug)]
+struct Alert {
     alert_header_text: Option<String>,
-    alert_description_text: Option<String>,
+    alert_description_text: String,
     alert_url: Option<String>,
     effective_start_date: Option<i64>,
     effective_end_date: Option<i64>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(cynic::QueryFragment, Debug)]
 struct RoutingError {
-    code: Option<String>,
-    description: Option<String>,
+    code: RoutingErrorCode,
+    description: String,
 }
 
 /// GTFS GraphQL leg `Mode` enum. A superset of [`otp_api::TransitMode`]; anything we don't model
 /// explicitly is treated as generic transit.
-#[derive(Debug, Deserialize, Clone, Copy)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(cynic::Enum, Clone, Copy, Debug)]
+#[cynic(non_exhaustive)]
 enum Mode {
     Walk,
     Bicycle,
@@ -406,7 +466,8 @@ enum Mode {
     Gondola,
     Funicular,
     Transit,
-    #[serde(other)]
+    /// Anything else (COACH, MONORAIL, TROLLEYBUS, TAXI, ...) is some flavor of transit.
+    #[cynic(fallback)]
     Other,
 }
 
@@ -424,20 +485,51 @@ impl From<Mode> for otp_api::TransitMode {
             Mode::CableCar => otp_api::TransitMode::CableCar,
             Mode::Gondola => otp_api::TransitMode::Gondola,
             Mode::Funicular => otp_api::TransitMode::Funicular,
-            // Anything else (COACH, MONORAIL, TROLLEYBUS, TAXI, ...) is some flavor of transit.
             Mode::Transit | Mode::Other => otp_api::TransitMode::Transit,
         }
     }
 }
 
-fn parse_rfc3339_millis(s: &str) -> Option<u64> {
-    let millis = chrono::DateTime::parse_from_rfc3339(s)
-        .ok()?
-        .timestamp_millis();
-    u64::try_from(millis).ok()
+/// Why OTP couldn't plan a trip. The fallback carries the raw name of any code we don't know
+/// about, since we pass it through to our own clients.
+#[derive(cynic::Enum, Clone, Debug)]
+#[cynic(non_exhaustive)]
+enum RoutingErrorCode {
+    LocationNotFound,
+    NoStopsInRange,
+    NoTransitConnection,
+    NoTransitConnectionInSearchWindow,
+    OutsideBounds,
+    OutsideServicePeriod,
+    WalkingBetterThanTransit,
+    #[cynic(fallback)]
+    Other(String),
 }
 
-impl PlanData {
+impl RoutingErrorCode {
+    /// The code's name as OTP spells it, e.g. "NO_TRANSIT_CONNECTION".
+    fn as_str(&self) -> &str {
+        match self {
+            RoutingErrorCode::LocationNotFound => "LOCATION_NOT_FOUND",
+            RoutingErrorCode::NoStopsInRange => "NO_STOPS_IN_RANGE",
+            RoutingErrorCode::NoTransitConnection => "NO_TRANSIT_CONNECTION",
+            RoutingErrorCode::NoTransitConnectionInSearchWindow => {
+                "NO_TRANSIT_CONNECTION_IN_SEARCH_WINDOW"
+            }
+            RoutingErrorCode::OutsideBounds => "OUTSIDE_BOUNDS",
+            RoutingErrorCode::OutsideServicePeriod => "OUTSIDE_SERVICE_PERIOD",
+            RoutingErrorCode::WalkingBetterThanTransit => "WALKING_BETTER_THAN_TRANSIT",
+            RoutingErrorCode::Other(code) => code,
+        }
+    }
+}
+
+/// Millis since the Unix epoch, or `None` for instants before it.
+fn millis(time: DateTime<FixedOffset>) -> Option<u64> {
+    u64::try_from(time.timestamp_millis()).ok()
+}
+
+impl PlanConnectionQuery {
     fn into_otp(self) -> otp_api::PlanResponse {
         let Some(connection) = self.plan_connection else {
             return otp_api::PlanResponse {
@@ -454,7 +546,9 @@ impl PlanData {
 
         let itineraries: Vec<_> = connection
             .edges
+            .unwrap_or_default()
             .into_iter()
+            .flatten()
             .map(|edge| edge.node.into_otp())
             .collect();
 
@@ -466,10 +560,10 @@ impl PlanData {
                 id: 400,
                 msg: first
                     .as_ref()
-                    .and_then(|e| e.description.clone())
+                    .map(|e| e.description.clone())
                     .unwrap_or_else(|| "No itineraries found".to_string()),
                 message: first
-                    .and_then(|e| e.code)
+                    .map(|e| e.code.as_str().to_string())
                     .unwrap_or_else(|| "NO_ITINERARIES".to_string()),
             })
         } else {
@@ -483,20 +577,18 @@ impl PlanData {
     }
 }
 
-impl ItineraryNode {
+impl Itinerary {
     fn into_otp(self) -> otp_api::Itinerary {
-        let legs: Vec<_> = self.legs.into_iter().map(LegNode::into_otp).collect();
+        let legs: Vec<_> = self.legs.into_iter().flatten().map(Leg::into_otp).collect();
 
         let start_time = self
             .start
-            .as_deref()
-            .and_then(parse_rfc3339_millis)
+            .and_then(millis)
             .or_else(|| legs.first().map(|l| l.start_time))
             .unwrap_or(0);
         let end_time = self
             .end
-            .as_deref()
-            .and_then(parse_rfc3339_millis)
+            .and_then(millis)
             .or_else(|| legs.last().map(|l| l.end_time))
             .unwrap_or(0);
 
@@ -510,7 +602,7 @@ impl ItineraryNode {
     }
 }
 
-impl LegNode {
+impl Leg {
     fn into_otp(self) -> otp_api::Leg {
         let mode: otp_api::TransitMode = self
             .mode
@@ -521,10 +613,10 @@ impl LegNode {
             otp_api::TransitMode::Walk | otp_api::TransitMode::Bicycle | otp_api::TransitMode::Car
         ));
 
-        let start_time = self.start.as_ref().and_then(LegTime::millis).unwrap_or(0);
-        let end_time = self.end.as_ref().and_then(LegTime::millis).unwrap_or(0);
+        let start_time = self.start.millis().unwrap_or(0);
+        let end_time = self.end.millis().unwrap_or(0);
 
-        let route = self.route.unwrap_or(RouteNode {
+        let route = self.route.unwrap_or(Route {
             short_name: None,
             long_name: None,
             color: None,
@@ -550,10 +642,22 @@ impl LegNode {
             route_short_name: route.short_name,
             route_long_name: route.long_name,
             route_color: route.color,
-            agency_name: self.agency.and_then(|a| a.name),
+            agency_name: self.agency.map(|a| a.name),
             headsign: self.headsign,
-            alerts: self.alerts.into_iter().map(AlertNode::into_otp).collect(),
-            steps: self.steps.into_iter().map(StepNode::into_otp).collect(),
+            alerts: self
+                .alerts
+                .unwrap_or_default()
+                .into_iter()
+                .flatten()
+                .map(Alert::into_otp)
+                .collect(),
+            steps: self
+                .steps
+                .unwrap_or_default()
+                .into_iter()
+                .flatten()
+                .map(Step::into_otp)
+                .collect(),
             from: self.from.into_otp(),
             to: self.to.into_otp(),
             start_time,
@@ -563,7 +667,7 @@ impl LegNode {
     }
 }
 
-impl PlaceNode {
+impl Place {
     fn into_otp(self) -> otp_api::Place {
         otp_api::Place {
             location: otp_api::LonLat {
@@ -577,7 +681,7 @@ impl PlaceNode {
     }
 }
 
-impl StepNode {
+impl Step {
     fn into_otp(self) -> otp_api::Step {
         otp_api::Step {
             distance: self.distance.unwrap_or(0.0),
@@ -590,20 +694,24 @@ impl StepNode {
             stay_on: self.stay_on,
             area: self.area,
             bogus_name: self.bogus_name,
-            lon: self.lon,
-            lat: self.lat,
+            lon: self.lon.unwrap_or(0.0),
+            lat: self.lat.unwrap_or(0.0),
         }
     }
 }
 
-impl AlertNode {
+impl Alert {
     fn into_otp(self) -> otp_api::Alert {
+        // The GraphQL API gives these as Unix *seconds*; the REST API gave millis, which is what
+        // `otp_api::Alert` documents and what our clients read.
+        let seconds_to_millis = |seconds: i64| seconds * 1000;
+
         otp_api::Alert {
             alert_header_text: self.alert_header_text,
-            alert_description_text: self.alert_description_text,
+            alert_description_text: Some(self.alert_description_text),
             alert_url: self.alert_url,
-            effective_start_date: self.effective_start_date,
-            effective_end_date: self.effective_end_date,
+            effective_start_date: self.effective_start_date.map(seconds_to_millis),
+            effective_end_date: self.effective_end_date.map(seconds_to_millis),
         }
     }
 }
@@ -611,6 +719,7 @@ impl AlertNode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cynic::GraphQlResponse;
     use serde_json::json;
 
     #[test]
@@ -625,6 +734,9 @@ mod tests {
         }
     }
 
+    /// A `planConnection` response. Like OTP, it spells out *every* field the query selects,
+    /// using `null` for the ones that don't apply - that's what GraphQL guarantees, and what the
+    /// generated deserializers expect.
     const PLAN_CONNECTION_FIXTURE: &str = r#"{
       "data": { "planConnection": {
         "edges": [ { "node": {
@@ -634,26 +746,35 @@ mod tests {
           "walkDistance": 500.0,
           "legs": [
             {
-              "mode": "WALK", "transitLeg": false, "distance": 120.0, "realTime": false,
-              "start": { "scheduledTime": "2024-05-17T10:00:00-07:00" },
-              "end": { "scheduledTime": "2024-05-17T10:05:00-07:00" },
-              "from": { "name": "Origin", "lat": 47.5758, "lon": -122.3392 },
-              "to": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341 },
+              "mode": "WALK", "transitLeg": false, "distance": 120.0, "realTime": false, "headsign": null,
+              "start": { "scheduledTime": "2024-05-17T10:00:00-07:00", "estimated": null },
+              "end": { "scheduledTime": "2024-05-17T10:05:00-07:00", "estimated": null },
+              "from": { "name": "Origin", "lat": 47.5758, "lon": -122.3392, "arrival": null, "departure": null },
+              "to": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341, "arrival": null, "departure": null },
               "legGeometry": { "points": "abcd", "length": 2 },
-              "steps": [ { "distance": 10.0, "relativeDirection": "DEPART", "absoluteDirection": "SOUTH", "streetName": "East Marginal Way South", "lat": 47.5758, "lon": -122.3392, "area": false, "bogusName": false } ],
+              "route": null,
+              "agency": null,
+              "steps": [ {
+                "distance": 10.0, "relativeDirection": "DEPART", "absoluteDirection": "SOUTH",
+                "streetName": "East Marginal Way South", "lat": 47.5758, "lon": -122.3392,
+                "area": false, "bogusName": false, "stayOn": false, "exit": null
+              } ],
               "alerts": []
             },
             {
               "mode": "BUS", "transitLeg": true, "distance": 5000.0, "realTime": true, "headsign": "Downtown",
               "start": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": { "time": "2024-05-17T10:08:00-07:00" } },
-              "end": { "scheduledTime": "2024-05-17T10:35:00-07:00" },
-              "from": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341 },
-              "to": { "name": "3rd Ave & Pine St", "lat": 47.6106, "lon": -122.3376 },
+              "end": { "scheduledTime": "2024-05-17T10:35:00-07:00", "estimated": null },
+              "from": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341, "arrival": null, "departure": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": null } },
+              "to": { "name": "3rd Ave & Pine St", "lat": 47.6106, "lon": -122.3376, "arrival": { "scheduledTime": "2024-05-17T10:35:00-07:00", "estimated": null }, "departure": null },
               "legGeometry": { "points": "wxyz", "length": 10 },
-              "route": { "gtfsId": "1:100", "shortName": "40", "longName": "Downtown - Ballard", "color": "0080FF" },
+              "route": { "shortName": "40", "longName": "Downtown - Ballard", "color": "0080FF" },
               "agency": { "name": "Metro Transit" },
               "steps": [],
-              "alerts": [ { "alertHeaderText": "Detour", "alertDescriptionText": "Reroute", "alertUrl": "http://x", "effectiveStartDate": 1715000000000, "effectiveEndDate": 1716000000000 } ]
+              "alerts": [ {
+                "alertHeaderText": "Detour", "alertDescriptionText": "Reroute", "alertUrl": "http://x",
+                "effectiveStartDate": 1715000000, "effectiveEndDate": 1716000000
+              } ]
             }
           ]
         } } ],
@@ -661,8 +782,12 @@ mod tests {
       } }
     }"#;
 
+    fn millis_at(rfc3339: &str) -> u64 {
+        millis(DateTime::parse_from_rfc3339(rfc3339).unwrap()).unwrap()
+    }
+
     fn parse_fixture() -> otp_api::PlanResponse {
-        let envelope: GraphQlResponse<PlanData> =
+        let envelope: GraphQlResponse<PlanConnectionQuery> =
             serde_json::from_str(PLAN_CONNECTION_FIXTURE).unwrap();
         envelope.data.unwrap().into_otp()
     }
@@ -676,10 +801,7 @@ mod tests {
         let itin = &plan.plan.itineraries[0];
         assert_eq!(itin.duration, 2100);
         assert_eq!(itin.walk_distance, 500.0);
-        assert_eq!(
-            itin.start_time,
-            parse_rfc3339_millis("2024-05-17T10:00:00-07:00").unwrap()
-        );
+        assert_eq!(itin.start_time, millis_at("2024-05-17T10:00:00-07:00"));
         assert_eq!(itin.legs.len(), 2);
     }
 
@@ -710,12 +832,13 @@ mod tests {
         assert_eq!(bus.agency_name.as_deref(), Some("Metro Transit"));
         assert_eq!(bus.headsign.as_deref(), Some("Downtown"));
         // Realtime estimate is preferred over the scheduled time.
-        assert_eq!(
-            bus.start_time,
-            parse_rfc3339_millis("2024-05-17T10:08:00-07:00").unwrap()
-        );
+        assert_eq!(bus.start_time, millis_at("2024-05-17T10:08:00-07:00"));
         assert_eq!(bus.alerts.len(), 1);
-        assert_eq!(bus.alerts[0].alert_header_text.as_deref(), Some("Detour"));
+        let alert = &bus.alerts[0];
+        assert_eq!(alert.alert_header_text.as_deref(), Some("Detour"));
+        // OTP's alert timestamps are in seconds, ours are in millis.
+        assert_eq!(alert.effective_start_date, Some(1715000000000));
+        assert_eq!(alert.effective_end_date, Some(1716000000000));
     }
 
     #[test]
@@ -726,11 +849,12 @@ mod tests {
                 "routingErrors": [ { "code": "NO_TRANSIT_CONNECTION", "description": "No transit connection was found." } ]
             } }
         });
-        let envelope: GraphQlResponse<PlanData> = serde_json::from_value(body).unwrap();
+        let envelope: GraphQlResponse<PlanConnectionQuery> = serde_json::from_value(body).unwrap();
         let plan = envelope.data.unwrap().into_otp();
         assert!(plan.plan.itineraries.is_empty());
         let error = plan.error.expect("expected an error");
         assert_eq!(error.message, "NO_TRANSIT_CONNECTION");
+        assert_eq!(error.msg, "No transit connection was found.");
     }
 
     fn params(modes: &[TravelMode]) -> PlanParams<'_> {
@@ -746,27 +870,32 @@ mod tests {
         }
     }
 
+    /// The serialized variables of the query `params` would send.
+    fn variables(params: &PlanParams<'_>) -> serde_json::Value {
+        let body = serde_json::to_value(params.build_query()).unwrap();
+        body["variables"].clone()
+    }
+
     #[test]
     fn transit_request_body() {
-        let body = params(&[TravelMode::Transit]).request_body();
-        let vars = &body["variables"];
+        let vars = variables(&params(&[TravelMode::Transit]));
         assert_eq!(vars["first"], 5);
+        assert_eq!(vars["origin"]["location"]["coordinate"]["latitude"], 47.5);
         assert_eq!(vars["modes"]["transit"]["access"][0], "WALK");
-        assert!(vars.get("dateTime").is_none());
+        assert_eq!(vars["dateTime"], serde_json::Value::Null);
     }
 
     #[test]
     fn bike_transit_request_body() {
-        let body = params(&[TravelMode::Transit, TravelMode::Bicycle]).request_body();
-        let vars = &body["variables"];
+        let vars = variables(&params(&[TravelMode::Transit, TravelMode::Bicycle]));
         assert_eq!(vars["modes"]["transit"]["access"][0], "BICYCLE");
         assert_eq!(vars["modes"]["transit"]["egress"][0], "BICYCLE");
+        assert_eq!(vars["modes"]["transit"]["transfer"][0], "BICYCLE");
     }
 
     #[test]
     fn walk_request_body_is_direct() {
-        let body = params(&[TravelMode::Walk]).request_body();
-        let vars = &body["variables"];
+        let vars = variables(&params(&[TravelMode::Walk]));
         // Direct searches only ever want a single itinerary.
         assert_eq!(vars["first"], 1);
         assert_eq!(vars["modes"]["directOnly"], true);
@@ -780,10 +909,9 @@ mod tests {
         params.time = Some("14:30");
         params.timezone = Some(chrono_tz::America::Los_Angeles);
 
-        let body = params.request_body();
         // 2:30pm on June 13th in Los Angeles is UTC-7 (PDT).
         assert_eq!(
-            body["variables"]["dateTime"]["earliestDeparture"],
+            variables(&params)["dateTime"]["earliestDeparture"],
             "2024-06-13T14:30:00-07:00"
         );
     }
@@ -796,9 +924,8 @@ mod tests {
         params.arrive_by = true;
         params.timezone = Some(chrono_tz::America::Los_Angeles);
 
-        let body = params.request_body();
         assert_eq!(
-            body["variables"]["dateTime"]["latestArrival"],
+            variables(&params)["dateTime"]["latestArrival"],
             "2024-06-13T14:30:00-07:00"
         );
     }

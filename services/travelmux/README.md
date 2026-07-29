@@ -115,3 +115,18 @@ cd services/frontend/www-app && yarn dev
 ```
 
 At this point, you should be ready to go. Visit localhost:9000
+
+## Talking to OTP
+
+OTP is queried over its [GTFS GraphQL API](https://docs.opentripplanner.org/api/dev-2.x/graphql-gtfs/)
+at `/otp/gtfs/v1`. The queries live in `src/otp/` as [cynic](https://cynic-rs.dev) structs, which
+are checked against `schemas/otp.graphql` at compile time - so a field, argument, or nullability
+that OTP doesn't agree with is a build error rather than a puzzling runtime response.
+
+`schemas/otp.graphql` is the schema of the OTP version we deploy. When updating OTP, refresh it by
+introspecting a running instance:
+
+```
+cargo install cynic-cli
+cynic introspect http://localhost:9002/otp/gtfs/v1 -o services/travelmux/schemas/otp.graphql
+```
