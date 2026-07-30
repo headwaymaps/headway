@@ -229,7 +229,7 @@ func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {
 
 func otpBaseContainer(ctx context.Context) *dagger.Container {
 	return dag.Container().
-		From("opentripplanner/opentripplanner:2.7.0")
+		From("opentripplanner/opentripplanner:2.9.0")
 }
 
 func (h *Headway) OtpServeContainer(ctx context.Context) *dagger.Container {

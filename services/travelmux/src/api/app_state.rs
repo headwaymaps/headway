@@ -1,46 +1,30 @@
 use crate::elevation::ElevationService;
-use crate::{otp::OtpCluster, valhalla::ValhallaRouter, Error, Result};
+use crate::{otp::PreparedOtpCluster, valhalla::ValhallaRouter};
 use std::path::PathBuf;
 use url::Url;
 
+/// Note this is *not* `Send`: the OTP coverage areas it holds are `Rc`-backed, so each server
+/// worker builds its own from a shared [`crate::otp::OtpCluster`].
 #[derive(Debug, Clone)]
 pub struct AppState {
-    otp_cluster: OtpCluster,
+    otp_cluster: PreparedOtpCluster,
     valhalla_router: ValhallaRouter,
     elevation: ElevationService,
 }
 
 impl AppState {
-    pub fn new(valhalla_endpoint: Url, tif_dir: PathBuf) -> Self {
-        log::info!("new AppState with valhalla_endpoint: {valhalla_endpoint:?}");
+    pub fn new(valhalla_endpoint: Url, tif_dir: PathBuf, otp_cluster: PreparedOtpCluster) -> Self {
+        log::debug!("new AppState with valhalla_endpoint: {valhalla_endpoint:?}");
         let valhalla_router = ValhallaRouter::new(valhalla_endpoint);
         debug_assert!(std::fs::exists(&tif_dir).unwrap());
         Self {
             valhalla_router,
-            otp_cluster: OtpCluster::default(),
+            otp_cluster,
             elevation: ElevationService::new(tif_dir),
         }
     }
 
-    pub async fn add_otp_endpoint(&mut self, endpoint: &str) -> Result<()> {
-        log::info!("adding endpoint: {endpoint}");
-        let url = Url::parse(endpoint).map_err(|err| {
-            log::error!("error while parsing endpoint url {endpoint:?}");
-            Error::server(format!("invalid endpoint url: {err}"))
-        })?;
-
-        // TODO: Separate inserting an endpoint from (periodically) fetching its routers
-        self.otp_cluster
-            .insert_endpoint(url)
-            .await
-            .inspect_err(|err| {
-                log::error!("error while inserting endpoint {endpoint:?}, {err}");
-            })?;
-        log::info!("added endpoint: {endpoint}");
-        Ok(())
-    }
-
-    pub fn otp_cluster(&self) -> &OtpCluster {
+    pub fn otp_cluster(&self) -> &PreparedOtpCluster {
         &self.otp_cluster
     }
 

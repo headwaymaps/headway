@@ -1,7 +1,7 @@
 // These tests assume the server is running (and an OTP server to back it)
 // eventually it'd be nice to manage the setup as well...
 // Startup OTP on (e.g.) port 9001
-// Then startup travelmux `cargo run -- "https://valhalla:8002" "http://otp:9001/otp/routers"`
+// Then startup travelmux `cargo run -- "https://valhalla:8002" "http://otp:9001"`
 // then run these tests
 
 #[cfg(feature = "integration-tests")]

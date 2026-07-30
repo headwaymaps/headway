@@ -34,7 +34,7 @@ spec:
         - name: main
           image: ghcr.io/headwaymaps/travelmux:maps-earth-dev
           imagePullPolicy: Always
-          args: ["http://valhalla:8002", "http://opentripplanner-seattle:8000/otp/routers"]
+          args: ["http://valhalla:8002", "http://opentripplanner-seattle:8000"]
           env:
             - name: ELEVATION_TIFS_DIR
               value: /data/elevation-tifs

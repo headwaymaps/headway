@@ -23,20 +23,59 @@ fetch_valhalla pedestrian
 fetch_valhalla bicycle
 fetch_valhalla auto # car
 
-realFine="47.575837,-122.339414"
-zeitgeist="47.651048,-122.347234"
+# realFine coffee in West Seattle
+from_lat=47.575837
+from_lon=-122.339414
+# Zeitgeist downtown Seattle
+to_lat=47.651048
+to_lon=-122.347234
 
+# OTP removed its REST /plan endpoint in 2.8. We now query the GTFS GraphQL `planConnection` at
+# /otp/gtfs/v1. `$modes` is a GraphQL PlanModesInput literal, e.g.
+#   '{ directOnly: true, direct: [WALK] }' or '{ transit: { access: [WALK], egress: [WALK] } }'.
+#
+# Keep the selection below in sync with the query fragments in src/otp/gtfs_graphql.rs - the tests
+# deserialize these files with them.
+#
+# The `*_plan.json` fixtures alongside these are the *old* REST responses, which back the v6 tests.
+# There's no endpoint left to re-capture those from; the ones here were derived from them.
 function fetch_opentripplanner {
-    mode=$1
-    output_prefix="opentripplanner_$(echo "$mode" | tr '[:upper:]' '[:lower:]' | sed 's/,/_with_/')"
-    request_url="http://localhost:9002/otp/routers/default/plan?fromPlace=${realFine}&toPlace=${zeitgeist}&mode=${mode}"
+    name=$1
+    modes=$2
 
-    # Make the request and save the output to a file
-    curl "$request_url" | jq -S . > "${output_prefix}_plan.json"
+    query="query {
+      planConnection(
+        origin: { location: { coordinate: { latitude: ${from_lat}, longitude: ${from_lon} } } }
+        destination: { location: { coordinate: { latitude: ${to_lat}, longitude: ${to_lon} } } }
+        first: 5
+        modes: ${modes}
+      ) {
+        edges { node {
+          start end duration walkDistance
+          legs {
+            mode transitLeg distance duration realTime headsign
+            start { scheduledTime estimated { time } }
+            end { scheduledTime estimated { time } }
+            from { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }
+            to { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }
+            legGeometry { points length }
+            route { shortName longName color }
+            agency { name }
+            steps { distance relativeDirection absoluteDirection streetName lat lon area bogusName stayOn exit }
+            alerts { alertHeaderText alertDescriptionText alertUrl effectiveStartDate effectiveEndDate }
+          }
+        } }
+        routingErrors { code description }
+      }
+    }"
+
+    jq -n --arg q "$query" '{query: $q}' \
+      | curl -s -X POST -H "Content-Type: application/json" -d @- "http://localhost:9002/otp/gtfs/v1" \
+      | jq -S . > "opentripplanner_${name}_planconnection.json"
 }
 
-fetch_opentripplanner WALK
-fetch_opentripplanner BICYCLE
-fetch_opentripplanner TRANSIT
-fetch_opentripplanner "TRANSIT,BICYCLE"
+fetch_opentripplanner walk '{ directOnly: true, direct: [WALK] }'
+fetch_opentripplanner bicycle '{ directOnly: true, direct: [BICYCLE] }'
+fetch_opentripplanner transit '{ transit: { access: [WALK], egress: [WALK], transfer: [WALK] } }'
+fetch_opentripplanner transit_with_bicycle '{ transit: { access: [BICYCLE], egress: [BICYCLE], transfer: [BICYCLE] } }'
 

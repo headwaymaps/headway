@@ -134,7 +134,7 @@ jobs:
       - name: Load Docker images
         run: gunzip -c docker-images.tar.gz | docker load
       - name: Run integration tests
-        run: tests/integration/run-integration-tests.sh builds/Bogota
+        run: tests/integration/run-integration-tests.sh
       - name: Collect logs on failure
         if: failure()
         run: docker compose logs > integration-test-logs.txt

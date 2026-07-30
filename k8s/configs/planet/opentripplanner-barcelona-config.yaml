@@ -3,12 +3,8 @@ kind: ConfigMap
 metadata:
   name: otp-barcelona-config
 data:
-  graph-url: https://data.example.com/0.11.0/maps-earth-planet-v1.260420/Barcelona.graph.obj.zst
+  graph-url: https://data.example.com/0.12.0/maps-earth-planet-v1.260420/Barcelona.graph.obj.zst
   otp-config-json: |
-    {
-        "otpFeatures" : {
-            "LegacyRestApi": true
-        }
-    }
+    {}
   router-config-json: ""
 

@@ -1,9 +1,9 @@
 <template>
   <q-item-label>
-    {{ itinerary.startStopTimesFormatted }}
+    {{ trip.startStopTimesFormatted }}
   </q-item-label>
   <q-item-label>
-    <span v-for="(leg, idx) in itinerary.legs" :key="JSON.stringify(leg)">
+    <span v-for="(leg, idx) in trip.legs" :key="JSON.stringify(leg)">
       <span v-if="idx > 0"> → </span>
       {{ leg.shortName }}
       <sup v-if="leg.alerts.length > 0"><q-icon name="warning" /></sup>
@@ -13,7 +13,7 @@
     </span>
   </q-item-label>
   <q-item-label v-if="active" caption>
-    {{ itinerary.walkingDistanceFormatted }}
+    {{ trip.walkingDistanceFormatted }}
   </q-item-label>
   <div v-if="formattedDurationUntilStart() !== undefined">
     <q-icon
@@ -35,14 +35,13 @@
       }}
     </span>
   </div>
-  <ul v-if="itinerary.hasAlerts" class="alert-list" :hidden="!active">
-    <li v-for="alert in itinerary.alerts" :key="JSON.stringify(alert)">
+  <ul v-if="trip.hasAlerts" class="alert-list" :hidden="!active">
+    <li v-for="alert in trip.alerts" :key="JSON.stringify(alert)">
       ⚠️ {{ alert.headerText }}
     </li>
   </ul>
 </template>
 <script lang="ts">
-import Itinerary from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
 import { formatDuration } from 'src/utils/format';
 import { i18n } from 'src/i18n/lang';
@@ -60,35 +59,31 @@ export default defineComponent({
       required: true,
     },
   },
-  data(): { nowTime: number; itinerary: Itinerary } {
-    // this cast is safe because we know that the trip is a transit trip
-    const itinerary = this.trip.transitItinerary() as Itinerary;
-    console.assert(itinerary);
+  data(): { nowTime: number } {
     return {
       nowTime: Date.now(),
-      itinerary,
     };
   },
   methods: {
     firstTransitLegIsRealTime(): boolean {
-      return this.itinerary.firstTransitLeg?.realTime ?? false;
+      return this.trip.firstTransitLeg?.realTime ?? false;
     },
     firstTransitLegDepartureLocation(): string | undefined {
-      return this.itinerary.firstTransitLeg?.departureLocationName;
+      return this.trip.firstTransitLeg?.departureLocationName;
     },
     formattedDurationUntilStart(): string | undefined {
-      const startTime = this.itinerary.firstTransitLeg?.startTime;
+      const startTime = this.trip.firstTransitLeg?.startTime;
       if (!startTime) {
         return undefined;
       }
-      const timeUntilStart = startTime - this.nowTime;
-      if (timeUntilStart < 0) {
+      const secondsUntilStart = (startTime.getTime() - this.nowTime) / 1000;
+      if (secondsUntilStart < 0) {
         return i18n.global.t('departs_$timeDuration_since_now', {
-          timeDuration: formatDuration(-timeUntilStart / 1000),
+          timeDuration: formatDuration(-secondsUntilStart),
         });
       } else {
         return i18n.global.t('departs_$timeDuration_from_now', {
-          timeDuration: formatDuration(timeUntilStart / 1000),
+          timeDuration: formatDuration(secondsUntilStart),
         });
       }
     },

@@ -36,3 +36,11 @@ fi
 
 dagger -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"
 
+set +x
+cat <<EOS
+
+Transit artifacts written to data/${HEADWAY_AREA}/transit, with dated filenames.
+To serve them locally, link the latest ones:
+    TRANSIT_DATA_ROOT=./data bin/link-latest-transit ${CONFIG_DIR}
+EOS
+

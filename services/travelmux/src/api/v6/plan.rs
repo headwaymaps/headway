@@ -2,6 +2,7 @@ use super::error::{PlanResponseErr, PlanResponseOk};
 use super::TravelModes;
 use actix_web::web::{Data, Query};
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
+use chrono_tz::Tz;
 use geo::algorithm::BoundingRect;
 use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
@@ -13,6 +14,7 @@ use std::time::{Duration, SystemTime};
 
 use crate::api::AppState;
 use crate::error::ErrorType;
+use crate::otp::gtfs_graphql;
 use crate::otp::otp_api;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
@@ -44,6 +46,44 @@ pub struct PlanQuery {
     /// Ignored by OTP - transit trips will always be metric.
     /// Examine the `distance_units` in the response `Itinerary` to correctly interpret the response.
     preferred_distance_units: Option<DistanceUnit>,
+
+    /// Desired departure (or arrival, if `arrive_by`) date, "YYYY-MM-DD" in the graph's local
+    /// timezone. Only meaningful for transit trips. Defaults to today when omitted.
+    date: Option<String>,
+
+    /// Desired departure (or arrival, if `arrive_by`) time, "HH:MM" (24h) in the graph's local
+    /// timezone. Only meaningful for transit trips. Defaults to now when omitted.
+    time: Option<String>,
+
+    /// When true, `date`/`time` describe the desired arrival time rather than departure time.
+    #[serde(default)]
+    arrive_by: bool,
+}
+
+impl<'a> From<(&'a PlanQuery, Option<Tz>)> for gtfs_graphql::PlanParams<'a> {
+    /// The timezone isn't part of the client's query - it comes from the OTP graph serving the
+    /// trip - but the query's `date`/`time` are interpreted in it, so it's paired with the query
+    /// here rather than left for the caller to remember.
+    fn from((query, timezone): (&'a PlanQuery, Option<Tz>)) -> Self {
+        Self {
+            from: query.from_place,
+            to: query.to_place,
+            modes: query.mode.as_slice(),
+            num_itineraries: query.num_itineraries,
+            date_time: query.date.as_deref().and_then(|date| {
+                // The frontend only sends a time alongside a date; default to midnight if it's
+                // missing.
+                let time = query.time.as_deref().unwrap_or("00:00");
+                let date_time = gtfs_graphql::PlanDateTime::from_local_date_and_time(date, time);
+                if date_time.is_none() {
+                    log::warn!("could not parse plan date/time: date={date:?} time={time:?}");
+                }
+                date_time
+            }),
+            arrive_by: query.arrive_by,
+            timezone,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -465,6 +505,11 @@ fn maneuver_instruction(
         otp_api::RelativeDirection::UturnLeft | otp_api::RelativeDirection::UturnRight => {
             Some("Make a U-turn.".to_string())
         }
+        // These only occur on transit legs (station entrances/exits, signage), for which we don't
+        // render turn-by-turn maneuvers, so a generic instruction is fine.
+        otp_api::RelativeDirection::EnterStation
+        | otp_api::RelativeDirection::ExitStation
+        | otp_api::RelativeDirection::FollowSigns => Some("Continue.".to_string()),
     }
 }
 
@@ -751,55 +796,34 @@ async fn valhalla_plan(
 
 async fn otp_plan(
     query: &web::Query<PlanQuery>,
-    req: HttpRequest,
+    _req: HttpRequest,
     app_state: &web::Data<AppState>,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
-    let Some(mut router_url) = app_state
-        .otp_cluster()
-        .find_router_url(query.from_place, query.to_place)
-    else {
-        Err(
-            Error::user("Transit directions not available for this area.")
-                .error_type(ErrorType::NoCoverageForArea),
-        )?
+    let (endpoint, timezone) = {
+        let Some(router) = app_state
+            .otp_cluster()
+            .find_router(query.from_place, query.to_place)
+        else {
+            Err(
+                Error::user("Transit directions not available for this area.")
+                    .error_type(ErrorType::NoCoverageForArea),
+            )?
+        };
+        (router.endpoint().clone(), router.timezone())
     };
+    log::debug!("found matching router. Querying OTP GraphQL at: {endpoint}");
 
-    // if we end up building this manually rather than passing it through, we'll need to be sure
-    // to handle the bike+bus case
-    router_url.set_query(Some(req.query_string()));
-    log::debug!("found matching router. Forwarding request to: {router_url}",);
+    let params = gtfs_graphql::PlanParams::from((&**query, timezone));
 
-    let otp_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
-        log::error!("error while fetching from otp service: {e}");
-        PlanResponseErr::from(Error::server(e))
-    })?;
-    if !otp_response.status().is_success() {
-        log::warn!(
-            "upstream HTTP Error from otp service: {}",
-            otp_response.status()
-        )
-    }
+    let client = reqwest::Client::new();
+    let otp_plan_response = gtfs_graphql::plan(&client, &endpoint, &params)
+        .await
+        .map_err(|e| {
+            log::error!("error while fetching plan from otp service: {e}");
+            PlanResponseErr::from(e)
+        })?;
 
-    let mut response = HttpResponseBuilder::new(
-        otp_response
-            .status()
-            .as_u16()
-            .try_into()
-            .expect("valid status code"),
-    );
-    debug_assert_eq!(
-        otp_response
-            .headers()
-            .get(HeaderName::from_static("content-type")),
-        Some(&HeaderValue::from_str("application/json").unwrap())
-    );
-    response.content_type("application/json");
-
-    let otp_plan_response: otp_api::PlanResponse = otp_response.json().await.map_err(|e| {
-        log::error!("error while parsing otp response: {e}");
-        PlanResponseErr::from(Error::server(e))
-    })?;
     PlanResponseOk::from_otp(
         *primary_mode,
         otp_plan_response,

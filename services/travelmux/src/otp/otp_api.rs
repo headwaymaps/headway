@@ -1,20 +1,19 @@
-use geo::geometry::Polygon;
+//! Types describing the shape of an OTP trip plan.
+//!
+//! Historically these types were deserialized directly from OTP's now-removed REST `/plan`
+//! endpoint. As of OTP 2.8 the REST API is gone, so we now talk to OTP over the GTFS GraphQL
+//! API (see [`crate::otp::gtfs_graphql`]) and *map* the GraphQL response into these structs.
+//!
+//! Their `Serialize` shape is still part of travelmux's public contract: the raw plan is echoed
+//! back to clients under the `_otp` key, and transit legs are passed through verbatim. Keep the
+//! serialized field names stable unless you're intentionally changing that contract.
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Router {
-    #[serde(deserialize_with = "geojson::de::deserialize_geometry")]
-    pub polygon: Polygon,
-    pub router_id: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Routers {
-    pub router_info: Vec<Router>,
-}
+// The step directions come straight from the GraphQL layer: `cynic::Enum` derives
+// `Serialize`/`Deserialize` impls carrying the SCREAMING_SNAKE_CASE names OTP uses, which is also
+// the spelling our own clients expect.
+pub use crate::otp::gtfs_graphql::{AbsoluteDirection, RelativeDirection};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -24,8 +23,6 @@ pub struct PlanError {
     pub msg: String,
     // a stable message key
     pub message: String,
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -33,20 +30,14 @@ pub struct PlanError {
 pub struct PlanResponse {
     pub plan: Plan,
 
-    // Note that `plan` will be present even if error is present, but plan.itinieraries will be []
+    // Note that `plan` will be present even if error is present, but plan.itineraries will be []
     pub error: Option<PlanError>,
-
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Plan {
     pub itineraries: Vec<Itinerary>,
-
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -59,9 +50,8 @@ pub struct Itinerary {
     pub start_time: u64,
     /// unix mills, UTC
     pub end_time: u64,
-
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
+    /// meters walked across the whole itinerary
+    pub walk_distance: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -70,8 +60,32 @@ pub struct Leg {
     pub mode: TransitMode,
     pub distance: f64,
     pub leg_geometry: LegGeometry,
+
+    /// Whether this leg is a transit leg (as opposed to a walk/bike/car access leg).
+    pub transit_leg: bool,
+
+    // The following transit-only fields were flattened onto the leg by the old REST API.
+    // We reconstruct them here from the nested GraphQL `route`/`agency` so the serialized shape
+    // stays stable for clients (the web frontend reads these directly off the `_otp` legs).
+    /// Route short name (empty/omitted for non-transit legs, matching the old REST behaviour).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub route: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub route_short_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub route_long_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub route_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agency_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub headsign: Option<String>,
+
+    #[serde(default)]
+    pub alerts: Vec<Alert>,
+
     // Present, but empty, for transit legs. Non-empty for non-transit legs.
+    #[serde(default)]
     pub steps: Vec<Step>,
 
     pub from: Place,
@@ -80,20 +94,35 @@ pub struct Leg {
     /// What time the leg starts, in millis since Unix epoch (UTC)
     pub start_time: u64,
 
-    /// What time the leg starts, in millis since Unix epoch (UTC)
+    /// What time the leg ends, in millis since Unix epoch (UTC)
     pub end_time: u64,
 
     /// Whether there is real-time data about this Leg
     pub real_time: bool,
-
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
 }
 
 impl Leg {
     pub(crate) fn duration_seconds(&self) -> f64 {
         (self.end_time - self.start_time) as f64 / 1000.0
     }
+}
+
+/// A service alert (e.g. detour, elevator outage) affecting a transit leg.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Alert {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alert_header_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alert_description_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alert_url: Option<String>,
+    /// millis since Unix epoch, or None if unknown
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effective_start_date: Option<i64>,
+    /// millis since Unix epoch, or None if unknown
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effective_end_date: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -119,40 +148,6 @@ pub struct Step {
     pub lon: f64,
     /// The latitude of start of the step
     pub lat: f64,
-    // pub alerts: Vec<Alert>,
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum AbsoluteDirection {
-    North,
-    Northeast,
-    East,
-    Southeast,
-    South,
-    Southwest,
-    West,
-    Northwest,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum RelativeDirection {
-    Depart,
-    HardLeft,
-    Left,
-    SlightlyLeft,
-    Continue,
-    SlightlyRight,
-    Right,
-    HardRight,
-    CircleClockwise,
-    CircleCounterclockwise,
-    Elevator,
-    UturnLeft,
-    UturnRight,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
@@ -204,30 +199,6 @@ pub struct Place {
     /// Transit stops often have names. But this is often blank when
     /// the place is some random lat/lon (e.g. the users destination)
     pub name: Option<String>,
-
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
-}
-
-use crate::valhalla::valhalla_api::ManeuverType as ValhallaManeuverType;
-impl From<RelativeDirection> for ValhallaManeuverType {
-    fn from(otp: RelativeDirection) -> Self {
-        match otp {
-            RelativeDirection::Depart => ValhallaManeuverType::Start,
-            RelativeDirection::HardLeft => ValhallaManeuverType::SharpLeft,
-            RelativeDirection::Left => ValhallaManeuverType::Left,
-            RelativeDirection::SlightlyLeft => ValhallaManeuverType::SlightLeft,
-            RelativeDirection::Continue => ValhallaManeuverType::Continue,
-            RelativeDirection::SlightlyRight => ValhallaManeuverType::SlightRight,
-            RelativeDirection::Right => ValhallaManeuverType::Right,
-            RelativeDirection::HardRight => ValhallaManeuverType::SharpRight,
-            RelativeDirection::CircleClockwise => ValhallaManeuverType::RoundaboutEnter,
-            RelativeDirection::CircleCounterclockwise => ValhallaManeuverType::RoundaboutEnter,
-            RelativeDirection::Elevator => ValhallaManeuverType::ElevatorEnter,
-            RelativeDirection::UturnLeft => ValhallaManeuverType::UturnLeft,
-            RelativeDirection::UturnRight => ValhallaManeuverType::UturnRight,
-        }
-    }
 }
 
 #[cfg(test)]

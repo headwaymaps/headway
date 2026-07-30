@@ -1,10 +1,13 @@
+pub mod gtfs_graphql;
 pub mod otp_api;
+pub mod schema;
 
 mod otp_cluster;
 use crate::TravelMode;
-pub use otp_cluster::OtpCluster;
+pub use otp_cluster::{OtpCluster, PreparedOtpCluster};
 
 mod otp_router;
+pub use otp_router::{OTPRouter, PreparedOTPRouter};
 
 impl From<otp_api::TransitMode> for TravelMode {
     fn from(mode: otp_api::TransitMode) -> Self {

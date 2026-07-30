@@ -42,13 +42,14 @@ Headway currently supports fully automatic builds for the following cities:
 This approach will download all the mapping data you need automatically, but only works for the pre-defined metro areas above.
 
 1. Pick a metro area from the list above, like "Amsterdam" or "Denver". These values are case-sensitive. In all the examples, replace "Amsterdam" with your metro area of choice.
-2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, review and edit `builds/Amsterdam/.env`
+2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, review and edit `builds/Amsterdam/.env`. Bogota is configured for transit routing, so unless you're setting that up too (step 4), delete the copied `builds/Amsterdam/transit` directory and unset `HEADWAY_ENABLE_TRANSIT_ROUTING`.
 3. Execute `bin/build builds/Amsterdam` to build data artifacts
 4. (Optional) Set up transit routing. Note: This dramatically increases hardware requirements for large metro areas.
    1. Find nearby transit schedules by running `bin/export-nearby-transit-feeds builds/Amsterdam`
-   2. Examine `builds/Amsterdam/transit/Amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
+   2. Examine `builds/Amsterdam/transit/gtfs-feeds/Amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
    3. Build transit routing with `bin/build-transit builds/Amsterdam`
-5. Start services from the build directory by running: `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml up -d`
+   4. Transit artifacts are built with dated names, so link the ones to serve: `TRANSIT_DATA_ROOT=./data bin/link-latest-transit builds/Amsterdam`. Re-run this after each `bin/build-transit`.
+5. Start services from the build directory by running: `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml up -d`. With transit routing, use `../../docker-compose-with-transit.yaml` instead - or `bin/start-services builds/Amsterdam`, which picks the compose file based on `HEADWAY_ENABLE_TRANSIT_ROUTING`.
 6. This will bring up the headway stack with a web frontend on port 8080.
 7. (For https and non-default port use only) reverse-proxy traffic to port 8080.
 
