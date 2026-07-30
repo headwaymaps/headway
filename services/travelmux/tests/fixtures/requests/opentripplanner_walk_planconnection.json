@@ -1,0 +1,328 @@
+{
+  "data": {
+    "planConnection": {
+      "edges": [
+        {
+          "node": {
+            "duration": 7505,
+            "end": "2024-05-17T14:38:59-07:00",
+            "legs": [
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 9165.05,
+                "duration": 7505.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T14:38:59-07:00"
+                },
+                "from": {
+                  "arrival": null,
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:33:54-07:00"
+                  },
+                  "lat": 47.575837,
+                  "lon": -122.339414,
+                  "name": "Origin"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 380,
+                  "points": "}ckaHbkuiV`@@?J?~@ADANG\\AFEB?@AN}PCcRFq@@}W?{BCe@EYGUM[Um@y@a@g@KQEGq@w@uAiAa@UYQa@Q{EgBuAy@a@I[EUE]GGE?GSA]Eg@IyAc@YIkAWe@SeA_@y@QKC_AO[ASAcAGaACaCAqA@mEGgA?_@?iEBGAAC?K?QG?I?I?a@@GD_@?_ABm@?G?K@_EAGCIFS?MAW?g@BMBOFKBA@KHg@XM@c@`@A?CCCBILEFEFKLCDEDkAbACDA@c@ZIFoAfAMHQLEDGDGFGPCDuAlAC@QPQNSPwApA]XCBmAfA[X]XEDEDKHy@t@_@\\SNIH}@v@sAhA]\\YXORY^[b@ADW`@EFK[O]MNMRa@^sAlAIFGNEDSPQNON_@^k@l@i@j@WXUT_A`AWXQ\\_@t@m@jAA@GLS^CFININIOQXOV{@dAIJODs@x@EGKLKLC@EDEBCAKHUL]JEFKBGBOFCBC?E?GDMJIJADCAMTw@gAGJGPABo@pAIN]H]BWAG?CE]n@ACKKKMCCCCo@}@s@aA@AEGGGKM??CEAAs@aAm@_AAACEKMKQCCA?AAo@}@o@_AACCCCCEIMQAACAAAo@}@m@{@AC?ECACEMOEGCEC?aBaCABCEKOIMCEA@C?ACk@}@o@aA?C?EC@KCCACC}@?E?A@?DCAKCKCC@CAw@?y@?a@?o@AA@C?MAI?C@AAmAAwB?A@ACM?G?EFCEqA?G?Y?{@?S?A?C?M?K?A?AAA?gBAuA?C@CAIAM?I?AB@@?rA?bB_@?g@E_@CW?u@AuADM?wBCCA?EC@G?I?CCAFC@qACAX[Ag@Cg@CgCC_ECcFE[?eA?Q?{CC{ICi@?gDAkDAiA?gC?q@AcAFa@H[HqAh@cDrBeGrDIF_Ah@EB{Av@KDoChAmA^wGfBu@Pq@TUSO@k@PEDG@M@{@HyADw@@oCBiB@oa@A"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:33:54-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 19.15,
+                    "exit": null,
+                    "lat": 47.5758346,
+                    "lon": -122.3392181,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "WEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 62.82,
+                    "exit": null,
+                    "lat": 47.5756624,
+                    "lon": -122.3392227,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 1198.9,
+                    "exit": null,
+                    "lat": 47.5757783,
+                    "lon": -122.3400157,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 414.27,
+                    "exit": null,
+                    "lat": 47.58656,
+                    "lon": -122.3400253,
+                    "relativeDirection": "CONTINUE",
+                    "stayOn": false,
+                    "streetName": "Alaskan Way South"
+                  },
+                  {
+                    "absoluteDirection": "NORTHEAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 286.33,
+                    "exit": null,
+                    "lat": 47.589876,
+                    "lon": -122.3376963,
+                    "relativeDirection": "CONTINUE",
+                    "stayOn": false,
+                    "streetName": "Marginal Way Cycle Route"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 659.69,
+                    "exit": null,
+                    "lat": 47.592328,
+                    "lon": -122.3367458,
+                    "relativeDirection": "CONTINUE",
+                    "stayOn": false,
+                    "streetName": "Portside Trail"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 129.47,
+                    "exit": null,
+                    "lat": 47.5981133,
+                    "lon": -122.3360192,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "Portside Trail"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 111.29,
+                    "exit": null,
+                    "lat": 47.5992728,
+                    "lon": -122.3360808,
+                    "relativeDirection": "CONTINUE",
+                    "stayOn": false,
+                    "streetName": "Marginal Way Cycle Route"
+                  },
+                  {
+                    "absoluteDirection": "NORTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 156.24,
+                    "exit": null,
+                    "lat": 47.6002712,
+                    "lon": -122.3360595,
+                    "relativeDirection": "SLIGHTLY_LEFT",
+                    "stayOn": true,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "NORTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 1253.45,
+                    "exit": null,
+                    "lat": 47.6015907,
+                    "lon": -122.3365504,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "NORTHEAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 8.17,
+                    "exit": null,
+                    "lat": 47.6107169,
+                    "lon": -122.3455955,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": true,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "NORTHWEST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 120.75,
+                    "exit": null,
+                    "lat": 47.610769,
+                    "lon": -122.3455186,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "Elliott Way"
+                  },
+                  {
+                    "absoluteDirection": "NORTHEAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 4.47,
+                    "exit": null,
+                    "lat": 47.6116213,
+                    "lon": -122.346496,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "NORTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 124.31,
+                    "exit": null,
+                    "lat": 47.6116517,
+                    "lon": -122.3464569,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "bike path"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 53.96,
+                    "exit": null,
+                    "lat": 47.6126463,
+                    "lon": -122.3471407,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": true,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "NORTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 120.37,
+                    "exit": null,
+                    "lat": 47.6130108,
+                    "lon": -122.3468803,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "alley"
+                  },
+                  {
+                    "absoluteDirection": "NORTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 1218.05,
+                    "exit": null,
+                    "lat": 47.6138772,
+                    "lon": -122.3475726,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "NORTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 365.79,
+                    "exit": null,
+                    "lat": 47.6233135,
+                    "lon": -122.3425506,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "WEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 9.21,
+                    "exit": null,
+                    "lat": 47.6259112,
+                    "lon": -122.3434396,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "service road"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 1915.66,
+                    "exit": null,
+                    "lat": 47.6259225,
+                    "lon": -122.3435614,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "Aurora Avenue North"
+                  },
+                  {
+                    "absoluteDirection": "NORTHEAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 14.02,
+                    "exit": null,
+                    "lat": 47.642699,
+                    "lon": -122.3470338,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "service road"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 918.7,
+                    "exit": null,
+                    "lat": 47.6428041,
+                    "lon": -122.3469305,
+                    "relativeDirection": "LEFT",
+                    "stayOn": true,
+                    "streetName": "sidewalk"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T14:38:59-07:00"
+                  },
+                  "departure": null,
+                  "lat": 47.651048,
+                  "lon": -122.347234,
+                  "name": "Destination"
+                },
+                "transitLeg": false
+              }
+            ],
+            "start": "2024-05-17T12:33:54-07:00",
+            "walkDistance": 9165.05
+          }
+        }
+      ],
+      "routingErrors": []
+    }
+  }
+}

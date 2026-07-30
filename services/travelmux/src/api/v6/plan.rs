@@ -70,8 +70,16 @@ impl<'a> From<(&'a PlanQuery, Option<Tz>)> for gtfs_graphql::PlanParams<'a> {
             to: query.to_place,
             modes: query.mode.as_slice(),
             num_itineraries: query.num_itineraries,
-            date: query.date.as_deref(),
-            time: query.time.as_deref(),
+            date_time: query.date.as_deref().and_then(|date| {
+                // The frontend only sends a time alongside a date; default to midnight if it's
+                // missing.
+                let time = query.time.as_deref().unwrap_or("00:00");
+                let date_time = gtfs_graphql::PlanDateTime::from_local_date_and_time(date, time);
+                if date_time.is_none() {
+                    log::warn!("could not parse plan date/time: date={date:?} time={time:?}");
+                }
+                date_time
+            }),
             arrive_by: query.arrive_by,
             timezone,
         }

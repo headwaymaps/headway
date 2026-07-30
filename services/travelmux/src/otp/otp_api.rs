@@ -10,10 +10,10 @@
 
 use serde::{Deserialize, Serialize};
 
-// The direction enums below are shared with the GraphQL layer: `cynic::Enum` derives the
-// `Serialize`/`Deserialize` impls that carry the SCREAMING_SNAKE_CASE names OTP uses, which is
-// also the spelling our own clients expect, and checks the variants against OTP's schema.
-use crate::otp::schema;
+// The step directions come straight from the GraphQL layer: `cynic::Enum` derives
+// `Serialize`/`Deserialize` impls carrying the SCREAMING_SNAKE_CASE names OTP uses, which is also
+// the spelling our own clients expect.
+pub use crate::otp::gtfs_graphql::{AbsoluteDirection, RelativeDirection};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -150,40 +150,6 @@ pub struct Step {
     pub lat: f64,
 }
 
-#[derive(Debug, PartialEq, Clone, cynic::Enum)]
-pub enum AbsoluteDirection {
-    North,
-    Northeast,
-    East,
-    Southeast,
-    South,
-    Southwest,
-    West,
-    Northwest,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy, cynic::Enum)]
-pub enum RelativeDirection {
-    Depart,
-    HardLeft,
-    Left,
-    SlightlyLeft,
-    Continue,
-    SlightlyRight,
-    Right,
-    HardRight,
-    CircleClockwise,
-    CircleCounterclockwise,
-    Elevator,
-    UturnLeft,
-    UturnRight,
-    // Newer OTP GraphQL directions (station entrances / signage). We don't produce turn-by-turn
-    // instructions for transit legs, so these just need to round-trip.
-    EnterStation,
-    ExitStation,
-    FollowSigns,
-}
-
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransitMode {
@@ -233,32 +199,6 @@ pub struct Place {
     /// Transit stops often have names. But this is often blank when
     /// the place is some random lat/lon (e.g. the users destination)
     pub name: Option<String>,
-}
-
-use crate::valhalla::valhalla_api::ManeuverType as ValhallaManeuverType;
-impl From<RelativeDirection> for ValhallaManeuverType {
-    fn from(otp: RelativeDirection) -> Self {
-        match otp {
-            RelativeDirection::Depart => ValhallaManeuverType::Start,
-            RelativeDirection::HardLeft => ValhallaManeuverType::SharpLeft,
-            RelativeDirection::Left => ValhallaManeuverType::Left,
-            RelativeDirection::SlightlyLeft => ValhallaManeuverType::SlightLeft,
-            RelativeDirection::Continue => ValhallaManeuverType::Continue,
-            RelativeDirection::SlightlyRight => ValhallaManeuverType::SlightRight,
-            RelativeDirection::Right => ValhallaManeuverType::Right,
-            RelativeDirection::HardRight => ValhallaManeuverType::SharpRight,
-            RelativeDirection::CircleClockwise => ValhallaManeuverType::RoundaboutEnter,
-            RelativeDirection::CircleCounterclockwise => ValhallaManeuverType::RoundaboutEnter,
-            RelativeDirection::Elevator => ValhallaManeuverType::ElevatorEnter,
-            RelativeDirection::UturnLeft => ValhallaManeuverType::UturnLeft,
-            RelativeDirection::UturnRight => ValhallaManeuverType::UturnRight,
-            // These only occur on transit legs, where we don't emit turn-by-turn maneuvers, but
-            // map them to something sensible for completeness.
-            RelativeDirection::EnterStation
-            | RelativeDirection::ExitStation
-            | RelativeDirection::FollowSigns => ValhallaManeuverType::Continue,
-        }
-    }
 }
 
 #[cfg(test)]

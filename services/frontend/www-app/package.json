@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "quasar build",
-    "tsc": "tsc --noEmit --skipLibCheck",
+    "tsc": "vue-tsc --noEmit --skipLibCheck",
     "dev": "quasar dev"
   },
   "dependencies": {

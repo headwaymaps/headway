@@ -2,32 +2,74 @@ import { LngLat, LngLatLike } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Ok, Err, Result } from 'src/utils/Result';
 import Trip, { TripFetchError } from 'src/models/Trip';
-import {
-  OTPPlanResponse,
-  OTPItinerary,
-  OTPItineraryLeg,
-} from './OpenTripPlannerAPI';
-import { ValhallaRouteResponse, ValhallaErrorCode } from './ValhallaAPI';
-import Itinerary from 'src/models/Itinerary';
-import { zipWith } from 'lodash';
+import { ValhallaErrorCode } from './ValhallaAPI';
 
 export interface TravelmuxPlanResponse {
-  _otp: OTPPlanResponse;
-  _valhalla: ValhallaRouteResponse;
-  plan: TravelmuxPlan;
+  itineraries: TravelmuxItinerary[];
 }
 
-export interface TravelmuxPlan {
-  itineraries: TravelmuxItinerary[];
+export interface TravelmuxItinerary {
+  mode: TravelmuxMode;
+  /// RFC 3339, in the timezone of the graph that planned the trip
+  startTime: string;
+  /// RFC 3339, in the timezone of the graph that planned the trip
+  endTime: string;
+  durationSeconds: number;
+  distanceMeters: number;
+  bounds: { min: [number, number]; max: [number, number] };
+  legs: TravelmuxLeg[];
 }
 
 export interface TravelmuxLeg {
   mode: TravelmuxMode;
-  distanceMeters: number;
-  duration: number;
+  /// encoded polyline, 1e-6 scale
   geometry: string;
-  transitLeg?: OTPItineraryLeg;
+  fromPlace: TravelmuxPlace;
+  toPlace: TravelmuxPlace;
+  /// RFC 3339. Includes any real-time delay travelmux knows about.
+  startTime: string;
+  /// RFC 3339. Includes any real-time delay travelmux knows about.
+  endTime: string;
+  distanceMeters: number;
+  durationSeconds: number;
+  // Exactly one of these is set
+  transitLeg?: TransitLeg;
   nonTransitLeg?: NonTransitLeg;
+}
+
+export interface TravelmuxPlace {
+  lat: number;
+  lon: number;
+  /// Transit stops have names. Places the user picked usually don't.
+  name?: string;
+}
+
+export interface TransitLeg {
+  /// What kind of vehicle this is a ride on. The leg's own `mode` is always TRANSIT.
+  vehicleMode: TransitVehicleMode;
+  route?: TransitRoute;
+  agencyName?: string;
+  headsign?: string;
+  /// Whether the leg's times reflect real-time data, rather than just the schedule
+  realTime: boolean;
+  alerts: TransitAlert[];
+}
+
+export interface TransitRoute {
+  shortName?: string;
+  longName?: string;
+  /// An RRGGBB hex color, without a leading "#"
+  color?: string;
+}
+
+export interface TransitAlert {
+  headerText?: string;
+  descriptionText: string;
+  url?: string;
+  /// RFC 3339
+  effectiveStart?: string;
+  /// RFC 3339
+  effectiveEnd?: string;
 }
 
 export interface NonTransitLeg {
@@ -45,23 +87,14 @@ export interface TravelmuxManeuver {
   type: number;
 }
 
-export interface TravelmuxItinerary {
-  mode: TravelmuxMode;
-  duration: number;
-  distance: number;
-  distanceUnits: DistanceUnits;
-  bounds: { min: [number, number]; max: [number, number] };
-  legs: TravelmuxLeg[];
-}
-
 // Non-exaustive
 export enum TravelmuxErrorCode {
+  // No transit graph covers the requested area, either because travelmux has no OTP instance
+  // serving it or because OTP itself reported the trip as out of bounds.
   TransitUnsupportedArea = 1701,
 
   // Currently, errors originating in Valhalla are +2000
   ValhallaUnsupportedArea = ValhallaErrorCode.UnsupportedArea + 2000,
-
-  // Errors originating in OpenTripPlanner are +3000
 }
 
 export interface TravelmuxError {
@@ -78,11 +111,14 @@ export type TravelmuxPlanRequest = {
   // additional type juggling elsewhere
   //numItineraries?: number,
   numItineraries?: string;
-  time?: string;
-  date?: string;
+  /// An RFC 3339 instant, or a local wall clock time like "2024-06-13T14:30", which travelmux
+  /// interprets in the timezone of the graph serving the trip.
+  dateTime?: string;
   arriveBy?: string;
   // comma separated list Mode(s)
   mode?: string;
+  /// Only affects the prose of an instruction ("Continue for 2 miles.") - every distance in the
+  /// response is in meters.
   preferredDistanceUnits: string;
 };
 
@@ -90,6 +126,22 @@ export enum TravelmuxMode {
   Bike = 'BICYCLE',
   Walk = 'WALK',
   Drive = 'CAR',
+  Transit = 'TRANSIT',
+}
+
+/// The kind of vehicle a transit leg is a ride on, as OTP names it.
+///
+/// Non-exhaustive: OTP has more of these (COACH, MONORAIL, TROLLEYBUS, ...) and travelmux passes
+/// them through verbatim, so treat an unrecognized value as generic transit.
+export enum TransitVehicleMode {
+  Bus = 'BUS',
+  CableCar = 'CABLE_CAR',
+  Ferry = 'FERRY',
+  Funicular = 'FUNICULAR',
+  Gondola = 'GONDOLA',
+  Rail = 'RAIL',
+  Subway = 'SUBWAY',
+  Tram = 'TRAM',
   Transit = 'TRANSIT',
 }
 
@@ -105,7 +157,7 @@ export class TravelmuxClient {
     path: string,
   ): Promise<Result<ElevationResponse, Error>> {
     const params = new URLSearchParams({ path });
-    const response = await fetch(`/travelmux/v6/elevation?${params}`);
+    const response = await fetch(`/travelmux/v7/elevation?${params}`);
 
     if (response.ok) {
       const elevationData: ElevationResponse = await response.json();
@@ -136,18 +188,16 @@ export class TravelmuxClient {
       preferredDistanceUnits,
     };
 
-    // The OTP API assumes current date and time if neither are specified.
-    // If only date is specified, the current time at that date is assumed.
-    // If only time is specified, it's an error.
-    if (time) {
-      console.assert(
-        date,
-        'The OTP API requires that if time is specified, date must also be specified',
-      );
-      params['time'] = time;
-    }
+    // travelmux plans from "now" unless we name a departure (or arrival) time. The time the user
+    // picked is a wall clock time where they're traveling, not necessarily where they are, so we
+    // send it without an offset and let travelmux resolve it in the graph's timezone.
     if (date) {
-      params['date'] = date;
+      params['dateTime'] = `${date}T${time ?? '00:00'}`;
+    } else {
+      console.assert(
+        !time,
+        'travelmux requires that if time is specified, date must also be specified',
+      );
     }
     if (arriveBy) {
       params['arriveBy'] = true.toString();
@@ -155,51 +205,15 @@ export class TravelmuxClient {
 
     const query = new URLSearchParams(params).toString();
 
-    const response = await fetch('/travelmux/v6/plan?' + query);
+    const response = await fetch('/travelmux/v7/plan?' + query);
 
     if (response.ok) {
-      const travelmuxResponseJson: TravelmuxPlanResponse =
-        await response.json();
-
-      const tmxItineraries = travelmuxResponseJson.plan.itineraries;
-
-      if (travelmuxResponseJson._otp) {
-        const otpItineraries = travelmuxResponseJson._otp.plan.itineraries;
-        const trips = zipWith(
-          tmxItineraries,
-          otpItineraries,
-          (tmxItinerary: TravelmuxItinerary, otpRawItinerary: OTPItinerary) => {
-            const otpItinerary = Itinerary.fromOtp(
-              otpRawItinerary,
-              preferredDistanceUnits,
-              modes.includes(TravelmuxMode.Bike),
-            );
-            // OTP always returns metric units
-            return new Trip(
-              tmxItinerary,
-              preferredDistanceUnits,
-              otpItinerary,
-              DistanceUnits.Kilometers,
-            );
-          },
-        );
-        return Ok(trips);
-      } else {
-        console.assert(
-          travelmuxResponseJson._valhalla,
-          'expected valhalla in non-transit response',
-        );
-        const trips = tmxItineraries.map((tmxItinerary: TravelmuxItinerary) => {
-          console.assert(tmxItinerary, 'expected tmxItinerary to be set');
-          return new Trip(
-            tmxItinerary,
-            preferredDistanceUnits,
-            null,
-            tmxItinerary.distanceUnits,
-          );
-        });
-        return Ok(trips);
-      }
+      const plan: TravelmuxPlanResponse = await response.json();
+      const trips = plan.itineraries.map(
+        (itinerary: TravelmuxItinerary) =>
+          new Trip(itinerary, preferredDistanceUnits),
+      );
+      return Ok(trips);
     } else {
       const errorBody = await response.json();
       const error = errorBody['error'];

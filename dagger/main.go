@@ -473,7 +473,7 @@ func (h *Headway) TravelmuxServer(ctx context.Context) *dagger.File {
 func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container {
 	serverBin := h.TravelmuxServer(ctx)
 
-	container := slimContainer("libssl3").
+	container := slimContainer("libssl3", "ca-certificates").
 		WithExec([]string{"adduser", "--disabled-login", "travelmux", "--gecos", ""}).
 		WithUser("travelmux").
 		WithWorkdir("/home/travelmux").

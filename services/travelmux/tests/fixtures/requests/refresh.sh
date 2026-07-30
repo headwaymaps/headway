@@ -33,6 +33,12 @@ to_lon=-122.347234
 # OTP removed its REST /plan endpoint in 2.8. We now query the GTFS GraphQL `planConnection` at
 # /otp/gtfs/v1. `$modes` is a GraphQL PlanModesInput literal, e.g.
 #   '{ directOnly: true, direct: [WALK] }' or '{ transit: { access: [WALK], egress: [WALK] } }'.
+#
+# Keep the selection below in sync with the query fragments in src/otp/gtfs_graphql.rs - the tests
+# deserialize these files with them.
+#
+# The `*_plan.json` fixtures alongside these are the *old* REST responses, which back the v6 tests.
+# There's no endpoint left to re-capture those from; the ones here were derived from them.
 function fetch_opentripplanner {
     name=$1
     modes=$2
@@ -53,7 +59,7 @@ function fetch_opentripplanner {
             from { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }
             to { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }
             legGeometry { points length }
-            route { gtfsId shortName longName color }
+            route { shortName longName color }
             agency { name }
             steps { distance relativeDirection absoluteDirection streetName lat lon area bogusName stayOn exit }
             alerts { alertHeaderText alertDescriptionText alertUrl effectiveStartDate effectiveEndDate }

@@ -1,42 +1,34 @@
 import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
-import Itinerary from './Itinerary';
 import {
   TravelmuxMode,
   TravelmuxClient,
   TravelmuxItinerary,
   TravelmuxLeg,
+  TransitAlert,
+  TransitVehicleMode,
   travelModeFromTravelmuxMode,
   TravelmuxError,
   TravelmuxErrorCode,
 } from 'src/services/TravelmuxClient';
-import { formatDistance, formatDuration } from 'src/utils/format';
+import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/utils/decodePolyline';
 import { i18n } from 'src/i18n/lang';
 
 export default class Trip {
   raw: TravelmuxItinerary;
-  inner: Itinerary | null;
   preferredDistanceUnits: DistanceUnits;
-  innerDistanceUnits: DistanceUnits;
   legs: TripLeg[];
 
-  constructor(
-    raw: TravelmuxItinerary,
-    preferredDistanceUnits: DistanceUnits,
-    inner: Itinerary | null,
-    innerDistanceUnits: DistanceUnits,
-  ) {
+  constructor(raw: TravelmuxItinerary, preferredDistanceUnits: DistanceUnits) {
     this.raw = raw;
     this.preferredDistanceUnits = preferredDistanceUnits;
-    this.inner = inner;
     this.legs = raw.legs.map((raw: TravelmuxLeg) => new TripLeg(raw));
-    this.innerDistanceUnits = innerDistanceUnits;
   }
 
   get durationFormatted(): string {
-    return formatDuration(this.raw.duration, 'shortform');
+    return formatDuration(this.raw.durationSeconds, 'shortform');
   }
 
   get viaRoadsFormatted(): string | null {
@@ -51,8 +43,8 @@ export default class Trip {
 
   get distanceFormatted(): string {
     return formatDistance(
-      this.raw.distance,
-      this.innerDistanceUnits,
+      this.raw.distanceMeters,
+      DistanceUnits.Meters,
       this.preferredDistanceUnits,
     );
   }
@@ -65,17 +57,63 @@ export default class Trip {
     return travelModeFromTravelmuxMode(this.raw.mode);
   }
 
-  transitItinerary(): Itinerary | undefined {
-    if (this.mode == TravelMode.Transit) {
-      return this.inner as Itinerary;
+  get startTime(): Date {
+    return new Date(this.raw.startTime);
+  }
+
+  get endTime(): Date {
+    return new Date(this.raw.endTime);
+  }
+
+  get startStopTimesFormatted(): string {
+    return i18n.global.t('time_range$startTime$endTime', {
+      startTime: formatTime(this.startTime),
+      endTime: formatTime(this.endTime),
+    });
+  }
+
+  // How far the rider travels under their own power. Usually walking, but will be biking if mode
+  // is transit+bike.
+  get nonTransitDistanceMeters(): number {
+    return this.legs
+      .filter((leg) => !leg.transitLeg)
+      .reduce((total, leg) => total + leg.distanceMeters, 0);
+  }
+
+  /// Whether the rider brings a bicycle along on their transit trip
+  get withBicycle(): boolean {
+    return this.legs.some((leg) => leg.raw.mode == TravelmuxMode.Bike);
+  }
+
+  get walkingDistanceFormatted(): string {
+    const preformattedDistance = formatDistance(
+      this.nonTransitDistanceMeters,
+      DistanceUnits.Meters,
+      this.preferredDistanceUnits,
+    );
+
+    if (this.withBicycle) {
+      return i18n.global.t('bike_distance', { preformattedDistance });
     } else {
-      return undefined;
+      return i18n.global.t('walk_distance', { preformattedDistance });
     }
+  }
+
+  get alerts(): TransitAlert[] {
+    return this.legs.flatMap((leg) => leg.alerts);
+  }
+
+  get hasAlerts(): boolean {
+    return this.alerts.length > 0;
+  }
+
+  get firstTransitLeg(): TripLeg | undefined {
+    return this.legs.slice(0, 2).find((leg) => leg.transitLeg);
   }
 }
 
 export class TripLeg {
-  raw: TravelmuxLeg;
+  readonly raw: TravelmuxLeg;
   geometry: GeoJSON.LineString;
 
   constructor(raw: TravelmuxLeg) {
@@ -96,15 +134,102 @@ export class TripLeg {
     return travelModeFromTravelmuxMode(this.raw.mode);
   }
 
+  get startTime(): Date {
+    return new Date(this.raw.startTime);
+  }
+
+  get endTime(): Date {
+    return new Date(this.raw.endTime);
+  }
+
+  get durationSeconds(): number {
+    return this.raw.durationSeconds;
+  }
+
+  /// How far this leg travels, in meters
+  get distanceMeters(): number {
+    return this.raw.distanceMeters;
+  }
+
+  /// Whether this leg is a ride on a transit vehicle, as opposed to walking or cycling to one
+  get transitLeg(): boolean {
+    return this.raw.transitLeg !== undefined;
+  }
+
+  /// Whether this leg's times reflect real-time data, rather than just the schedule
+  get realTime(): boolean {
+    return this.raw.transitLeg?.realTime ?? false;
+  }
+
+  get alerts(): TransitAlert[] {
+    return this.raw.transitLeg?.alerts ?? [];
+  }
+
+  get emoji(): string {
+    switch (this.raw.transitLeg?.vehicleMode) {
+      case undefined:
+        // not a transit leg - the traveler gets there themselves
+        switch (this.raw.mode) {
+          case TravelmuxMode.Bike:
+            return '🚲';
+          case TravelmuxMode.Drive:
+            return '🚙';
+          default:
+            return '🚶‍♀️';
+        }
+      case TransitVehicleMode.Rail:
+        return '🚆';
+      case TransitVehicleMode.Subway:
+        return '🚇';
+      case TransitVehicleMode.CableCar:
+      case TransitVehicleMode.Tram:
+        return '🚊';
+      case TransitVehicleMode.Funicular:
+        return '🚡';
+      case TransitVehicleMode.Gondola:
+        return '🚠';
+      case TransitVehicleMode.Ferry:
+        return '⛴️';
+      default:
+        // BUS, TRANSIT, and anything else OTP might name
+        return '🚍';
+    }
+  }
+
+  get shortName(): string {
+    const route = this.raw.transitLeg?.route;
+    const shortName = route?.shortName ?? route?.longName ?? '';
+    return `${this.emoji} ${shortName}`.trim();
+  }
+
+  get sourceName(): string {
+    return this.raw.fromPlace.name ?? '';
+  }
+
+  get destinationName(): string {
+    return this.raw.toPlace.name ?? '';
+  }
+
+  get sourceLngLat(): LngLat {
+    return new LngLat(this.raw.fromPlace.lon, this.raw.fromPlace.lat);
+  }
+
+  get destinationLngLat(): LngLat {
+    return new LngLat(this.raw.toPlace.lon, this.raw.toPlace.lat);
+  }
+
+  get departureLocationName(): string | undefined {
+    return this.raw.fromPlace.name;
+  }
+
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
     if (active) {
       if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
         return LineStyles.walkingActive;
       } else {
-        if (this.raw.transitLeg?.routeColor) {
-          return LineStyles.activeColored(
-            `#${this.raw.transitLeg?.routeColor}`,
-          );
+        const routeColor = this.raw.transitLeg?.route?.color;
+        if (routeColor) {
+          return LineStyles.activeColored(`#${routeColor}`);
         } else {
           return LineStyles.active;
         }

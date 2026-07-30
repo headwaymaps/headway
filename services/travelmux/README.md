@@ -37,6 +37,27 @@ uses 3-4GB while mostly idle.
 [ valhalla ]  [ OTP Los Angeles ]  [ OTP Puget ]  [ OTP ...]
 
 
+## API versions
+
+Each version is a directory under `src/api/`, mounted at its own path prefix
+(`/v7/plan`, `/v7/directions`, `/v7/elevation`, ...). Versions are self-contained
+rather than layered on each other, so an old one keeps behaving the way its
+clients expect while a new one is free to change shape.
+
+- **v7** is current. Its response types were designed around OTP's GraphQL API:
+  times are RFC 3339 timestamps in the timezone of the graph that planned the
+  trip, distances are always meters and durations always seconds (`distanceMeters`,
+  `durationSeconds`), itineraries are returned directly rather than nested under
+  `plan`, and the trip is fully described by our own types - there's no `_otp`
+  raw passthrough. `preferredDistanceUnits` only chooses the units *instruction
+  prose* is written in ("Continue for 2 miles."). Departure/arrival time is a
+  single `dateTime`: an RFC 3339 instant, or a local wall clock time like
+  `2024-06-13T14:30` interpreted in the graph's timezone.
+- **v6** has the shape of OTP's old REST API - unix-millis timestamps, distances
+  in whichever units the client asked for, and the upstream OTP and Valhalla
+  responses echoed back under `_otp`/`_valhalla`. The iOS app still uses it; the
+  web frontend has moved to v7. New clients should use v7.
+
 ## Development Setup
 
 ```

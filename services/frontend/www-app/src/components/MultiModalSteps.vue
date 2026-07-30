@@ -63,10 +63,10 @@
           )
         "
         >{{ step.description }}
-        <div v-if="step.waitTime > 60" class="timeline-wait-time">
+        <div v-if="step.waitTimeSeconds > 60" class="timeline-wait-time">
           {{
             $t('transit_timeline_wait_for_transit_$timeDuration', {
-              timeDuration: formatDuration(step.waitTime / 1000),
+              timeDuration: formatDuration(step.waitTimeSeconds),
             })
           }}
         </div>
@@ -76,12 +76,11 @@
 </template>
 
 <script lang="ts">
-import Itinerary, { ItineraryLeg } from 'src/models/Itinerary';
 import { defineComponent, PropType } from 'vue';
 import { formatDuration, formatTime } from 'src/utils/format';
 import { LngLat } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
-import Trip from 'src/models/Trip';
+import Trip, { TripLeg } from 'src/models/Trip';
 
 export default defineComponent({
   name: 'MultiModalSteps',
@@ -91,13 +90,9 @@ export default defineComponent({
       required: true,
     },
   },
-  data(): { steps: Step[]; itinerary: Itinerary } {
-    // this cast is safe because we know that the trip is a transit trip
-    const itinerary = this.trip.transitItinerary() as Itinerary;
-    console.assert(itinerary);
+  data(): { steps: Step[] } {
     return {
-      steps: buildSteps(itinerary),
-      itinerary,
+      steps: buildSteps(this.trip),
     };
   },
   methods: {
@@ -118,19 +113,19 @@ type Step = {
   isDestination: boolean;
   position: LngLat;
   realTime: boolean;
-  waitTime: number;
+  waitTimeSeconds: number;
 };
 
-function buildSteps(itinerary: Itinerary): Step[] {
-  const firstLeg = itinerary.legs[0];
+function buildSteps(trip: Trip): Step[] {
+  const firstLeg = trip.legs[0];
   if (!firstLeg) {
-    console.error('Itinerary has no legs');
+    console.error('Trip has no legs');
     return [];
   }
 
   function pairwiseForEach(
-    list: ItineraryLeg[],
-    f: (prev: ItineraryLeg, current: ItineraryLeg | undefined) => void,
+    list: TripLeg[],
+    f: (prev: TripLeg, current: TripLeg | undefined) => void,
   ): void {
     for (let idx = 0; idx < list.length; idx++) {
       f(list[idx]!, list[idx + 1]);
@@ -146,26 +141,27 @@ function buildSteps(itinerary: Itinerary): Step[] {
     isDestination: false,
     position: firstLeg.sourceLngLat,
     realTime: firstLeg.realTime,
-    waitTime: 0,
+    waitTimeSeconds: 0,
   };
 
   const steps = [originStep];
 
-  pairwiseForEach(itinerary.legs, (prevLeg, currentLeg) => {
-    let waitTime = 0;
+  pairwiseForEach(trip.legs, (prevLeg, currentLeg) => {
+    let waitTimeSeconds = 0;
     if (currentLeg) {
-      waitTime = currentLeg.startTime - prevLeg.endTime;
+      waitTimeSeconds =
+        (currentLeg.startTime.getTime() - prevLeg.endTime.getTime()) / 1000;
     }
     steps.push({
       leftColumn: prevLeg.shortName,
       timeline: '',
       timelineClasses: ['timeline-edge', `timeline-edge-${prevLeg.mode}`],
-      description: formatDuration(prevLeg.duration),
+      description: formatDuration(prevLeg.durationSeconds),
       position: prevLeg.sourceLngLat,
       isMovement: true,
       isDestination: false,
       realTime: prevLeg.realTime,
-      waitTime: waitTime,
+      waitTimeSeconds,
     });
 
     if (currentLeg) {
@@ -178,7 +174,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
         isMovement: false,
         isDestination: false,
         realTime: currentLeg.realTime,
-        waitTime: 0,
+        waitTimeSeconds: 0,
       });
     } else {
       steps.push({
@@ -190,7 +186,7 @@ function buildSteps(itinerary: Itinerary): Step[] {
         isMovement: false,
         isDestination: true,
         realTime: prevLeg.realTime,
-        waitTime: 0,
+        waitTimeSeconds: 0,
       });
     }
   });
@@ -209,11 +205,12 @@ function buildSteps(itinerary: Itinerary): Step[] {
   margin-bottom: -10px;
 }
 
-.timeline-edge-WALK {
+.timeline-edge-walk,
+.timeline-edge-bicycle {
   border-left: dashed $walkColor 6px;
 }
 
-.timeline-edge:not(.timeline-edge-WALK) {
+.timeline-edge:not(.timeline-edge-walk):not(.timeline-edge-bicycle) {
   border-left: solid $transitColor 6px;
 }
 

@@ -1,0 +1,1925 @@
+{
+  "data": {
+    "planConnection": {
+      "edges": [
+        {
+          "node": {
+            "duration": 2347,
+            "end": "2024-05-17T13:14:08-07:00",
+            "legs": [
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 442.8,
+                "duration": 369.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:41:10-07:00"
+                },
+                "from": {
+                  "arrival": null,
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:35:01-07:00"
+                  },
+                  "lat": 47.575837,
+                  "lon": -122.339414,
+                  "name": "Origin"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 42,
+                  "points": "}ckaHbkuiV`@@?[?sDE??E?E?A?A?cB?c@?C?M?C?{@B??C?G?W?K?S?CAMBC?c@?y@?_A?gA?a@?C?U?K?yBAE?CCA@C@]?[?Cq@??H"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:35:01-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 19.15,
+                    "exit": null,
+                    "lat": 47.5758346,
+                    "lon": -122.3392181,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 423.64,
+                    "exit": null,
+                    "lat": 47.5756624,
+                    "lon": -122.3392227,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:41:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:41:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "transitLeg": false
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [
+                  {
+                    "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
+                    "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
+                    "effectiveEndDate": 1727649000,
+                    "effectiveStartDate": 1711924200
+                  }
+                ],
+                "distance": 2322.8,
+                "duration": 410.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:48:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:41:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:41:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "headsign": "Downtown Seattle Via 35th Ave SW",
+                "legGeometry": {
+                  "length": 41,
+                  "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "21"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:41:10-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:48:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:48:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 7187.77,
+                "duration": 1380.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:11:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:48:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:48:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "headsign": "Shoreline Greenwood",
+                "legGeometry": {
+                  "length": 195,
+                  "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "5"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:48:00-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 204.29,
+                "duration": 188.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:14:08-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 20,
+                  "points": "}bzaHjyviVG??A@q@FILTFNNRLNHEJHFHt@l@d@V\\JNBNBB?L?\\?"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:11:00-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 25.71,
+                    "exit": null,
+                    "lat": 47.6525198,
+                    "lon": -122.3466171,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 40.3,
+                    "exit": null,
+                    "lat": 47.6524649,
+                    "lon": -122.3463029,
+                    "relativeDirection": "HARD_RIGHT",
+                    "stayOn": false,
+                    "streetName": "Bridge Way North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 6.19,
+                    "exit": null,
+                    "lat": 47.6522039,
+                    "lon": -122.3466732,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "Winslow Place North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 132.1,
+                    "exit": null,
+                    "lat": 47.652151,
+                    "lon": -122.3466476,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:14:08-07:00"
+                  },
+                  "departure": null,
+                  "lat": 47.651048,
+                  "lon": -122.347234,
+                  "name": "Destination"
+                },
+                "transitLeg": false
+              }
+            ],
+            "start": "2024-05-17T12:35:01-07:00",
+            "walkDistance": 647.09
+          }
+        },
+        {
+          "node": {
+            "duration": 2676,
+            "end": "2024-05-17T13:24:08-07:00",
+            "legs": [
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 1080.24,
+                "duration": 872.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:54:04-07:00"
+                },
+                "from": {
+                  "arrival": null,
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:39:32-07:00"
+                  },
+                  "lat": 47.575837,
+                  "lon": -122.339414,
+                  "name": "Origin"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 51,
+                  "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mCLAB@@A@A`E??ED[B]H??_@?aC@wB?gA?w@?i@?M?K?I?W@iH?u@?_B?g@S?W?oA@W?gA@?g@p@??P"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:39:32-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 26.0,
+                    "exit": null,
+                    "lat": 47.5758346,
+                    "lon": -122.3392181,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 361.7,
+                    "exit": null,
+                    "lat": 47.5756008,
+                    "lon": -122.3392243,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "South Hanford Street"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 146.76,
+                    "exit": null,
+                    "lat": 47.5755789,
+                    "lon": -122.3344026,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 5.48,
+                    "exit": null,
+                    "lat": 47.5744409,
+                    "lon": -122.3340608,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": true,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 374.98,
+                    "exit": null,
+                    "lat": 47.5743917,
+                    "lon": -122.334064,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "South Horton Street"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 122.3,
+                    "exit": null,
+                    "lat": 47.5743713,
+                    "lon": -122.3290654,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "4th Avenue South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 15.3,
+                    "exit": null,
+                    "lat": 47.5754711,
+                    "lon": -122.3290854,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "service road"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 27.71,
+                    "exit": null,
+                    "lat": 47.5754712,
+                    "lon": -122.3288814,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": true,
+                    "streetName": "sidewalk"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:54:04-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:54:04-07:00"
+                  },
+                  "lat": 47.575222,
+                  "lon": -122.328972,
+                  "name": "4th Ave S & S Hanford St"
+                },
+                "transitLeg": false
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 2016.14,
+                "duration": 356.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:00:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:54:04-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:54:04-07:00"
+                  },
+                  "lat": 47.575222,
+                  "lon": -122.328972,
+                  "name": "4th Ave S & S Hanford St"
+                },
+                "headsign": "Downtown Seattle South Park",
+                "legGeometry": {
+                  "length": 28,
+                  "points": "c`kaHtksiV{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "132"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:54:04-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:00:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:00:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 7187.72,
+                "duration": 1260.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:21:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:00:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:00:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "headsign": "Carkeek Park",
+                "legGeometry": {
+                  "length": 189,
+                  "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "28"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:00:00-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:21:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:21:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 204.29,
+                "duration": 188.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:24:08-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:21:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:21:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 20,
+                  "points": "}bzaHjyviVG??A@q@FILTFNNRLNHEJHFHt@l@d@V\\JNBNBB?L?\\?"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:21:00-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 25.71,
+                    "exit": null,
+                    "lat": 47.6525198,
+                    "lon": -122.3466171,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 40.3,
+                    "exit": null,
+                    "lat": 47.6524649,
+                    "lon": -122.3463029,
+                    "relativeDirection": "HARD_RIGHT",
+                    "stayOn": false,
+                    "streetName": "Bridge Way North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 6.19,
+                    "exit": null,
+                    "lat": 47.6522039,
+                    "lon": -122.3466732,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "Winslow Place North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 132.1,
+                    "exit": null,
+                    "lat": 47.652151,
+                    "lon": -122.3466476,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:24:08-07:00"
+                  },
+                  "departure": null,
+                  "lat": 47.651048,
+                  "lon": -122.347234,
+                  "name": "Destination"
+                },
+                "transitLeg": false
+              }
+            ],
+            "start": "2024-05-17T12:39:32-07:00",
+            "walkDistance": 1284.53
+          }
+        },
+        {
+          "node": {
+            "duration": 2407,
+            "end": "2024-05-17T13:29:08-07:00",
+            "legs": [
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 442.8,
+                "duration": 369.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:55:10-07:00"
+                },
+                "from": {
+                  "arrival": null,
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:49:01-07:00"
+                  },
+                  "lat": 47.575837,
+                  "lon": -122.339414,
+                  "name": "Origin"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 42,
+                  "points": "}ckaHbkuiV`@@?[?sDE??E?E?A?A?cB?c@?C?M?C?{@B??C?G?W?K?S?CAMBC?c@?y@?_A?gA?a@?C?U?K?yBAE?CCA@C@]?[?Cq@??H"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:49:01-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 19.15,
+                    "exit": null,
+                    "lat": 47.5758346,
+                    "lon": -122.3392181,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 423.64,
+                    "exit": null,
+                    "lat": 47.5756624,
+                    "lon": -122.3392227,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:55:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:55:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "transitLeg": false
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [
+                  {
+                    "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
+                    "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
+                    "effectiveEndDate": 1727649000,
+                    "effectiveStartDate": 1711924200
+                  }
+                ],
+                "distance": 2322.8,
+                "duration": 410.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:02:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:55:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T12:55:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "headsign": "Downtown Seattle Via 35th Ave SW",
+                "legGeometry": {
+                  "length": 41,
+                  "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "21"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T12:55:10-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:02:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:02:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 7187.77,
+                "duration": 1440.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:26:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:02:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:02:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "headsign": "Shoreline Greenwood",
+                "legGeometry": {
+                  "length": 195,
+                  "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "5"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:02:00-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:26:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:26:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 204.29,
+                "duration": 188.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:29:08-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:26:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:26:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 20,
+                  "points": "}bzaHjyviVG??A@q@FILTFNNRLNHEJHFHt@l@d@V\\JNBNBB?L?\\?"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:26:00-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 25.71,
+                    "exit": null,
+                    "lat": 47.6525198,
+                    "lon": -122.3466171,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 40.3,
+                    "exit": null,
+                    "lat": 47.6524649,
+                    "lon": -122.3463029,
+                    "relativeDirection": "HARD_RIGHT",
+                    "stayOn": false,
+                    "streetName": "Bridge Way North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 6.19,
+                    "exit": null,
+                    "lat": 47.6522039,
+                    "lon": -122.3466732,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "Winslow Place North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 132.1,
+                    "exit": null,
+                    "lat": 47.652151,
+                    "lon": -122.3466476,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:29:08-07:00"
+                  },
+                  "departure": null,
+                  "lat": 47.651048,
+                  "lon": -122.347234,
+                  "name": "Destination"
+                },
+                "transitLeg": false
+              }
+            ],
+            "start": "2024-05-17T12:49:01-07:00",
+            "walkDistance": 647.09
+          }
+        },
+        {
+          "node": {
+            "duration": 2407,
+            "end": "2024-05-17T13:45:08-07:00",
+            "legs": [
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 442.8,
+                "duration": 369.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:11:10-07:00"
+                },
+                "from": {
+                  "arrival": null,
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:05:01-07:00"
+                  },
+                  "lat": 47.575837,
+                  "lon": -122.339414,
+                  "name": "Origin"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 42,
+                  "points": "}ckaHbkuiV`@@?[?sDE??E?E?A?A?cB?c@?C?M?C?{@B??C?G?W?K?S?CAMBC?c@?y@?_A?gA?a@?C?U?K?yBAE?CCA@C@]?[?Cq@??H"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:05:01-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 19.15,
+                    "exit": null,
+                    "lat": 47.5758346,
+                    "lon": -122.3392181,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 423.64,
+                    "exit": null,
+                    "lat": 47.5756624,
+                    "lon": -122.3392227,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "transitLeg": false
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [
+                  {
+                    "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
+                    "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
+                    "effectiveEndDate": 1727649000,
+                    "effectiveStartDate": 1711924200
+                  }
+                ],
+                "distance": 2322.8,
+                "duration": 410.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:18:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:11:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "headsign": "Downtown Seattle Via 35th Ave SW",
+                "legGeometry": {
+                  "length": 41,
+                  "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "21"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:11:10-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:18:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:18:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 7187.77,
+                "duration": 1440.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:42:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:18:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:18:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "headsign": "Shoreline Greenwood",
+                "legGeometry": {
+                  "length": 195,
+                  "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "5"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:18:00-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:42:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:42:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 204.29,
+                "duration": 188.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:45:08-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:42:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:42:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 20,
+                  "points": "}bzaHjyviVG??A@q@FILTFNNRLNHEJHFHt@l@d@V\\JNBNBB?L?\\?"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:42:00-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 25.71,
+                    "exit": null,
+                    "lat": 47.6525198,
+                    "lon": -122.3466171,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 40.3,
+                    "exit": null,
+                    "lat": 47.6524649,
+                    "lon": -122.3463029,
+                    "relativeDirection": "HARD_RIGHT",
+                    "stayOn": false,
+                    "streetName": "Bridge Way North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 6.19,
+                    "exit": null,
+                    "lat": 47.6522039,
+                    "lon": -122.3466732,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "Winslow Place North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 132.1,
+                    "exit": null,
+                    "lat": 47.652151,
+                    "lon": -122.3466476,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:45:08-07:00"
+                  },
+                  "departure": null,
+                  "lat": 47.651048,
+                  "lon": -122.347234,
+                  "name": "Destination"
+                },
+                "transitLeg": false
+              }
+            ],
+            "start": "2024-05-17T13:05:01-07:00",
+            "walkDistance": 647.09
+          }
+        },
+        {
+          "node": {
+            "duration": 2676,
+            "end": "2024-05-17T13:54:08-07:00",
+            "legs": [
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 1080.24,
+                "duration": 872.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:24:04-07:00"
+                },
+                "from": {
+                  "arrival": null,
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:09:32-07:00"
+                  },
+                  "lat": 47.575837,
+                  "lon": -122.339414,
+                  "name": "Origin"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 51,
+                  "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mCLAB@@A@A`E??ED[B]H??_@?aC@wB?gA?w@?i@?M?K?I?W@iH?u@?_B?g@S?W?oA@W?gA@?g@p@??P"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:09:32-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 26.0,
+                    "exit": null,
+                    "lat": 47.5758346,
+                    "lon": -122.3392181,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 361.7,
+                    "exit": null,
+                    "lat": 47.5756008,
+                    "lon": -122.3392243,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "South Hanford Street"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 146.76,
+                    "exit": null,
+                    "lat": 47.5755789,
+                    "lon": -122.3344026,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 5.48,
+                    "exit": null,
+                    "lat": 47.5744409,
+                    "lon": -122.3340608,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": true,
+                    "streetName": "path"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 374.98,
+                    "exit": null,
+                    "lat": 47.5743917,
+                    "lon": -122.334064,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "South Horton Street"
+                  },
+                  {
+                    "absoluteDirection": "NORTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 122.3,
+                    "exit": null,
+                    "lat": 47.5743713,
+                    "lon": -122.3290654,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "4th Avenue South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 15.3,
+                    "exit": null,
+                    "lat": 47.5754711,
+                    "lon": -122.3290854,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "service road"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 27.71,
+                    "exit": null,
+                    "lat": 47.5754712,
+                    "lon": -122.3288814,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": true,
+                    "streetName": "sidewalk"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:24:04-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:24:04-07:00"
+                  },
+                  "lat": 47.575222,
+                  "lon": -122.328972,
+                  "name": "4th Ave S & S Hanford St"
+                },
+                "transitLeg": false
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 2016.14,
+                "duration": 356.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:30:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:24:04-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:24:04-07:00"
+                  },
+                  "lat": 47.575222,
+                  "lon": -122.328972,
+                  "name": "4th Ave S & S Hanford St"
+                },
+                "headsign": "Downtown Seattle South Park",
+                "legGeometry": {
+                  "length": 28,
+                  "points": "c`kaHtksiV{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "132"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:24:04-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:30:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:30:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 7187.72,
+                "duration": 1260.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:51:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:30:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:30:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "headsign": "Carkeek Park",
+                "legGeometry": {
+                  "length": 189,
+                  "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "28"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:30:00-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:51:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:51:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 204.29,
+                "duration": 188.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:54:08-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:51:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:51:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 20,
+                  "points": "}bzaHjyviVG??A@q@FILTFNNRLNHEJHFHt@l@d@V\\JNBNBB?L?\\?"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:51:00-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 25.71,
+                    "exit": null,
+                    "lat": 47.6525198,
+                    "lon": -122.3466171,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 40.3,
+                    "exit": null,
+                    "lat": 47.6524649,
+                    "lon": -122.3463029,
+                    "relativeDirection": "HARD_RIGHT",
+                    "stayOn": false,
+                    "streetName": "Bridge Way North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 6.19,
+                    "exit": null,
+                    "lat": 47.6522039,
+                    "lon": -122.3466732,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "Winslow Place North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 132.1,
+                    "exit": null,
+                    "lat": 47.652151,
+                    "lon": -122.3466476,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:54:08-07:00"
+                  },
+                  "departure": null,
+                  "lat": 47.651048,
+                  "lon": -122.347234,
+                  "name": "Destination"
+                },
+                "transitLeg": false
+              }
+            ],
+            "start": "2024-05-17T13:09:32-07:00",
+            "walkDistance": 1284.53
+          }
+        },
+        {
+          "node": {
+            "duration": 2407,
+            "end": "2024-05-17T13:59:08-07:00",
+            "legs": [
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 442.8,
+                "duration": 369.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:25:10-07:00"
+                },
+                "from": {
+                  "arrival": null,
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:19:01-07:00"
+                  },
+                  "lat": 47.575837,
+                  "lon": -122.339414,
+                  "name": "Origin"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 42,
+                  "points": "}ckaHbkuiV`@@?[?sDE??E?E?A?A?cB?c@?C?M?C?{@B??C?G?W?K?S?CAMBC?c@?y@?_A?gA?a@?C?U?K?yBAE?CCA@C@]?[?Cq@??H"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:19:01-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 19.15,
+                    "exit": null,
+                    "lat": 47.5758346,
+                    "lon": -122.3392181,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "East Marginal Way South"
+                  },
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 423.64,
+                    "exit": null,
+                    "lat": 47.5756624,
+                    "lon": -122.3392227,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:25:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:25:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "transitLeg": false
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [
+                  {
+                    "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
+                    "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
+                    "effectiveEndDate": 1727649000,
+                    "effectiveStartDate": 1711924200
+                  }
+                ],
+                "distance": 2322.8,
+                "duration": 410.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:32:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:25:10-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:25:10-07:00"
+                  },
+                  "lat": 47.575924,
+                  "lon": -122.334106,
+                  "name": "1st Ave S & S Hanford St"
+                },
+                "headsign": "Downtown Seattle Via 35th Ave SW",
+                "legGeometry": {
+                  "length": 41,
+                  "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "21"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:25:10-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:32:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:32:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": {
+                  "name": "Metro Transit"
+                },
+                "alerts": [],
+                "distance": 7187.77,
+                "duration": 1440.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:56:00-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:32:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:32:00-07:00"
+                  },
+                  "lat": 47.593342,
+                  "lon": -122.328957,
+                  "name": "4th Ave S & S Royal Brougham Way"
+                },
+                "headsign": "Shoreline Greenwood",
+                "legGeometry": {
+                  "length": 195,
+                  "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
+                },
+                "mode": "BUS",
+                "realTime": false,
+                "route": {
+                  "color": null,
+                  "longName": null,
+                  "shortName": "5"
+                },
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:32:00-07:00"
+                },
+                "steps": [],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:56:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:56:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "transitLeg": true
+              },
+              {
+                "agency": null,
+                "alerts": [],
+                "distance": 204.29,
+                "duration": 188.0,
+                "end": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:59:08-07:00"
+                },
+                "from": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:56:00-07:00"
+                  },
+                  "departure": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:56:00-07:00"
+                  },
+                  "lat": 47.652473,
+                  "lon": -122.346619,
+                  "name": "Aurora Ave N & N 38th St"
+                },
+                "headsign": null,
+                "legGeometry": {
+                  "length": 20,
+                  "points": "}bzaHjyviVG??A@q@FILTFNNRLNHEJHFHt@l@d@V\\JNBNBB?L?\\?"
+                },
+                "mode": "WALK",
+                "realTime": false,
+                "route": null,
+                "start": {
+                  "estimated": null,
+                  "scheduledTime": "2024-05-17T13:56:00-07:00"
+                },
+                "steps": [
+                  {
+                    "absoluteDirection": "EAST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 25.71,
+                    "exit": null,
+                    "lat": 47.6525198,
+                    "lon": -122.3466171,
+                    "relativeDirection": "DEPART",
+                    "stayOn": false,
+                    "streetName": "sidewalk"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 40.3,
+                    "exit": null,
+                    "lat": 47.6524649,
+                    "lon": -122.3463029,
+                    "relativeDirection": "HARD_RIGHT",
+                    "stayOn": false,
+                    "streetName": "Bridge Way North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTH",
+                    "area": false,
+                    "bogusName": false,
+                    "distance": 6.19,
+                    "exit": null,
+                    "lat": 47.6522039,
+                    "lon": -122.3466732,
+                    "relativeDirection": "LEFT",
+                    "stayOn": false,
+                    "streetName": "Winslow Place North"
+                  },
+                  {
+                    "absoluteDirection": "SOUTHWEST",
+                    "area": false,
+                    "bogusName": true,
+                    "distance": 132.1,
+                    "exit": null,
+                    "lat": 47.652151,
+                    "lon": -122.3466476,
+                    "relativeDirection": "RIGHT",
+                    "stayOn": false,
+                    "streetName": "path"
+                  }
+                ],
+                "to": {
+                  "arrival": {
+                    "estimated": null,
+                    "scheduledTime": "2024-05-17T13:59:08-07:00"
+                  },
+                  "departure": null,
+                  "lat": 47.651048,
+                  "lon": -122.347234,
+                  "name": "Destination"
+                },
+                "transitLeg": false
+              }
+            ],
+            "start": "2024-05-17T13:19:01-07:00",
+            "walkDistance": 647.09
+          }
+        }
+      ],
+      "routingErrors": []
+    }
+  }
+}
