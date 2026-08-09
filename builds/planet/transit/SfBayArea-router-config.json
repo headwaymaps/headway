@@ -1,0 +1,16 @@
+{
+  "updaters": [
+    {
+      "feedId": "headway-53",
+      "type": "stop-time-updater",
+      "frequency": "60s",
+      "url": "https://api.bart.gov/gtfsrt/tripupdate.aspx"
+    },
+    {
+      "feedId": "headway-53",
+      "type": "real-time-alerts",
+      "frequency": "300s",
+      "url": "https://api.bart.gov/gtfsrt/alerts.aspx"
+    }
+  ]
+}
