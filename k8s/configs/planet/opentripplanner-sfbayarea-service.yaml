@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opentripplanner-sfbayarea
+spec:
+  selector:
+    app: opentripplanner-sfbayarea
+  ports:
+    - protocol: TCP
+      name: service
+      port: 8000

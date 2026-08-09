@@ -46,7 +46,12 @@ if [ -f "$PELIAS_CONFIG_FILE" ]; then
     PELIAS_CONFIG_JSON=$(cat $PELIAS_CONFIG_FILE)
 elif [ -f "$EXISTING_DEPLOYMENT_CONFIG" ]; then
     echo "Warning: ${PELIAS_CONFIG_FILE} not found; extracting pelias config from existing ${EXISTING_DEPLOYMENT_CONFIG}"
-    PELIAS_CONFIG_JSON=$(python3 -c "import yaml, sys; d=yaml.safe_load(sys.stdin); print(d['data']['pelias-config-json'], end='')" < "$EXISTING_DEPLOYMENT_CONFIG")
+    # Grab the `pelias-config-json: |` block scalar and strip its 4 space indent.
+    PELIAS_CONFIG_JSON=$(awk '
+        in_block && NF && !/^    / { exit }
+        in_block                   { sub(/^    /, ""); print }
+        /^  pelias-config-json: \|$/ { in_block = 1 }
+    ' "$EXISTING_DEPLOYMENT_CONFIG")
 else
     echo "Missing pelias config file: ${PELIAS_CONFIG_FILE} and no existing rendered output to fall back on"
     exit 1
