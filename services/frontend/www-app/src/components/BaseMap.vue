@@ -5,8 +5,21 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import ScaleControl from 'src/ui/ScaleControl';
-import maplibregl, {
+import {
   AttributionControl,
+  Map as MaplibreMap,
+  NavigationControl,
+  setWorkerUrl,
+} from 'maplibre-gl';
+// As of maplibre-gl 6.0.0, the worker imports a sibling `maplibre-gl-shared.mjs`
+// chunk. `?worker&url` bundles those imports into the emitted worker; a plain
+// `?url` would copy the file verbatim, leaving the sibling import to 404.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+setWorkerUrl(maplibreWorkerUrl);
+import type {
+  ColorSpecification,
+  DataDrivenPropertyValueSpecification,
+  ExpressionSpecification,
   FitBoundsOptions,
   FlyToOptions,
   LayerSpecification,
@@ -32,10 +45,10 @@ import env from 'src/utils/env';
 import WrapperControl from 'src/ui/WrapperControl';
 import LocationControl from 'src/ui/LocationControl';
 
-export let map: maplibregl.Map | null = null;
+export let map: MaplibreMap | null = null;
 const mapContainerId = 'map';
 
-async function loadMap(): Promise<maplibregl.Map> {
+async function loadMap(): Promise<MaplibreMap> {
   let initialCenter: LngLatLike = [0, 0];
   let initialZoom = 1;
 
@@ -50,12 +63,21 @@ async function loadMap(): Promise<maplibregl.Map> {
 
   const mapOptions: MapOptions = {
     container: mapContainerId,
-    style: '/tileserver/styles/basic/style.json', // style URL
+    style: '/tileserver/style/basic-v2',
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
     attributionControl: false,
     canvasContextAttributes: {
       antialias: true,
+    },
+    transformRequest: (url, resourceType) => {
+      if (resourceType === 'Tile' && url.includes('areamap')) {
+        return {
+          url,
+          headers: { Accept: 'application/vnd.maplibre-tile' },
+        };
+      }
+      return { url };
     },
   };
 
@@ -77,7 +99,7 @@ async function loadMap(): Promise<maplibregl.Map> {
     mapOptions.maxBounds = maxBounds;
   }
 
-  map = new maplibregl.Map(mapOptions);
+  map = new MaplibreMap(mapOptions);
   return map;
 }
 
@@ -211,7 +233,7 @@ export default defineComponent({
     });
     env.geolocation.register(geolocate);
 
-    const nav = new maplibregl.NavigationControl({
+    const nav = new NavigationControl({
       visualizePitch: true,
       showCompass: true,
       showZoom: true,
@@ -257,8 +279,8 @@ export default defineComponent({
     });
     map.on('mouseup', () => clearAllTimeouts());
     map.on('mousemove', () => clearAllTimeouts());
-    map.on('touchup', () => clearAllTimeouts());
     map.on('touchend', () => clearAllTimeouts());
+    map.on('touchcancel', () => clearAllTimeouts());
     map.on('move', () => clearAllTimeouts());
     map.on(
       'moveend',
@@ -350,27 +372,19 @@ export default defineComponent({
       // Add 3-D buildings
       const render3DZoomLevel = 16;
       type LerpableValue =
-        | maplibregl.ExpressionSpecification
-        | maplibregl.ColorSpecification
-        | number;
+        ExpressionSpecification | ColorSpecification | number;
       function zoomLerp<T>(
         unzoomedValue: LerpableValue,
         zoomedValue: LerpableValue,
-      ): maplibregl.DataDrivenPropertyValueSpecification<T> {
+      ): DataDrivenPropertyValueSpecification<T> {
         return [
           'interpolate',
           ['linear'],
           ['zoom'],
           render3DZoomLevel,
-          // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
-          // we can delete this lint exception after upgrading
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          unzoomedValue as any,
+          unzoomedValue,
           render3DZoomLevel + 0.5,
-          // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
-          // we can delete this lint exception after upgrading
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          zoomedValue as any,
+          zoomedValue,
         ];
       }
 
@@ -393,22 +407,16 @@ export default defineComponent({
             // reduced the brightness here to compensate. What we want is an imperceptible transition between 2d and 3d
             // as the user zooms in.
             'fill-extrusion-color': 'hsl(40, 5.5%, 87%)',
-            'fill-extrusion-height':
-              zoomLerp<maplibregl.ExpressionSpecification>(0, [
-                '*',
-                ['get', 'render_height'],
-                heightDampeningFactor,
-                // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
-                // we can delete this lint exception after upgrading
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ]) as any,
-            'fill-extrusion-base': zoomLerp<maplibregl.ExpressionSpecification>(
-              0,
-              ['*', ['get', 'render_min_height'], heightDampeningFactor],
-              // This is a bug in maplibregl's types, fixed in 3.0.0 https://github.com/maplibre/maplibre-gl-js/pull/1890
-              // we can delete this lint exception after upgrading
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ) as any,
+            'fill-extrusion-height': zoomLerp<number>(0, [
+              '*',
+              ['get', 'render_height'],
+              heightDampeningFactor,
+            ]),
+            'fill-extrusion-base': zoomLerp<number>(0, [
+              '*',
+              ['get', 'render_min_height'],
+              heightDampeningFactor,
+            ]),
           },
         },
         // add 3-d building layer behind any symbol layer
@@ -424,7 +432,7 @@ export default defineComponent({
     });
   },
   methods: {
-    ensureMapLoaded(fn: (map: maplibregl.Map) => void) {
+    ensureMapLoaded(fn: (map: MaplibreMap) => void) {
       const mapCapture = map;
       if (mapCapture && this.loaded) {
         fn(mapCapture);
@@ -477,7 +485,7 @@ export default defineComponent({
         return false;
       } else {
         this.layers.splice(index, 1);
-        this.ensureMapLoaded((map: maplibregl.Map) => {
+        this.ensureMapLoaded((map: MaplibreMap) => {
           map.removeLayer(layerId.toString());
           map.removeSource(layerId.toString());
         });
@@ -529,7 +537,7 @@ export default defineComponent({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (newLayer as any).id = sourceKey;
       }
-      this.ensureMapLoaded((map: maplibregl.Map) => {
+      this.ensureMapLoaded((map: MaplibreMap) => {
         if (map.getLayer(sourceKey)) {
           map.removeLayer(sourceKey);
         }
@@ -627,7 +635,7 @@ export default defineComponent({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       listener: (ev: any) => void,
     ) {
-      this.ensureMapLoaded((map: maplibregl.Map) => {
+      this.ensureMapLoaded((map: MaplibreMap) => {
         map.on(type, layerId.toString(), listener);
       });
     },

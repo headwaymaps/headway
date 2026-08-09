@@ -61,16 +61,22 @@ run_jq_test() {
 }
 
 # Helper function to check binary content
+# Optional 5th arg: value for a request `Accept` header (for content negotiation).
 run_binary_test() {
     local test_name=$1
     local url=$2
     local expected_content_type=$3
     local min_size=${4:-100}
+    local accept=${5:-}
 
     echo -n "  Testing $test_name... "
 
     # Make request and save response
-    response=$(curl -s -w "\n%{http_code}\n%{content_type}\n%{size_download}" "$url")
+    local curl_args=(-s -w "\n%{http_code}\n%{content_type}\n%{size_download}")
+    if [ -n "$accept" ]; then
+        curl_args+=(-H "Accept: $accept")
+    fi
+    response=$(curl "${curl_args[@]}" "$url")
 
     # Parse response
     http_code=$(echo "$response" | tail -n 3 | head -n 1)

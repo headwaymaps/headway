@@ -22,6 +22,7 @@ http {
                  'request_length=$request_length '
                  'status=$status bytes_sent=$bytes_sent '
                  'body_bytes_sent=$body_bytes_sent '
+                 'content_type=$upstream_http_content_type '
                  'referer=$http_referer '
                  'http_host=$http_host '
                  'user_agent="$http_user_agent" '
@@ -62,7 +63,7 @@ http {
       # Legacy tileserver-gl style URL (pre-Martin)
       # Remove once old clients are phased out
       location = /tileserver/styles/basic/style.json {
-        return 301 $forwarded_proto://$http_host/tileserver/style/basic;
+        return 301 $forwarded_proto://$http_host/tileserver/style/basic-v1;
       }
 
       # Martin will construct a URL relative to the request with these headers
@@ -91,7 +92,7 @@ http {
       add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 
-    location ~* \.(?:css|js|jpg|png|svg|woff|woff2)$ {
+    location ~* \.(?:css|js|mjs|jpg|png|svg|woff|woff2)$ {
       expires 30d;
       # We aggressively cache assets, since our asset URLs contain a
       # cache-buster

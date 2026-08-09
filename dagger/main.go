@@ -19,7 +19,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Headway struct {
@@ -158,7 +157,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 
 	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
 
-	pmtiles, err := h.Pmtiles(ctx)
+	pmtiles, err := h.Pmtiles(ctx, "mvt")
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
@@ -241,19 +240,19 @@ func (h *Headway) TileserverInitContainer(ctx context.Context) *dagger.Container
 }
 
 func martinBinary() *dagger.File {
-	const martinVersion = "1.8.2"
-	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites"
+	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites,mlt"
 
 	// To build from source (e.g. for debugging a fork), set this to true
 	const buildFromSource = true
 	if buildFromSource {
+		// WithEnvVariable("CACHE_BUSTER", time.Now().String()).
 		return rustContainer("git").
-			WithEnvVariable("CACHE_BUSTER", time.Now().String()).
-			WithExec([]string{"git", "clone", "--branch", "mkirk/relative-source-urls", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
+			WithExec([]string{"git", "clone", "--branch", "mkirk/tilejson-encoding-2026-07-30", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
 			WithWorkdir("/martin").
 			WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
 			File("target/release/martin")
 	} else {
+		const martinVersion = "1.10.1"
 		return rustContainer().
 			WithExec([]string{"cargo", "install", "--locked", "--version", martinVersion, "--no-default-features", "--features", martinFeatures, "martin"}).
 			File("/usr/local/cargo/bin/martin")
@@ -273,7 +272,7 @@ func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Containe
 }
 
 // Builds maptiles using Planetiler
-func (h *Headway) Pmtiles(ctx context.Context) (*dagger.File, error) {
+func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File, error) {
 
 	if h.OSMExport == nil || h.OSMExport.File == nil {
 		panic("Headway.OSMExport.File must be set to build pmtiles")
@@ -307,8 +306,12 @@ func (h *Headway) Pmtiles(ctx context.Context) (*dagger.File, error) {
 	entrypoint = append(entrypoint,
 		"--osm_path=/data/data.osm.pbf",
 		"--force",
+		fmt.Sprintf("--tile-format=%s", tileFormat),
 		fmt.Sprintf("--output=%s", output),
 	)
+	if tileFormat == "mlt" {
+		entrypoint = append(entrypoint, "--tile_compression=none")
+	}
 	if h.IsPlanetBuild {
 		container = container.WithExec(append(entrypoint,
 			"--bounds=planet",
@@ -499,8 +502,11 @@ func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container 
 func (h *Headway) WebBuild(ctx context.Context,
 	// +optional
 	branding string) *dagger.Directory {
+	srcDir := h.ServiceDir("frontend/www-app").
+		WithoutDirectory("dist").
+		WithoutDirectory("node_modules")
 	container := slimNodeContainer().
-		WithMountedDirectory("/www-app", h.ServiceDir("frontend/www-app")).
+		WithMountedDirectory("/www-app", srcDir).
 		WithWorkdir("/www-app")
 
 	if branding != "" {
@@ -510,8 +516,6 @@ func (h *Headway) WebBuild(ctx context.Context,
 	return container.
 		WithExec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts"}).
 		WithExec([]string{"yarn", "build"}).
-		// Strip devDependencies from final image
-		WithExec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts", "--prod"}).
 		Directory("/www-app/dist/spa")
 }
 
