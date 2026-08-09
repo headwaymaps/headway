@@ -26,6 +26,10 @@ fi
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
+# Idempotent, and bin/build runs it too - it's here so that running this script
+# standalone works on a tree where the artifact root is still the placeholder.
+bin/update-fetch-urls
+
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 
 USE_LOCAL_PBF=""
