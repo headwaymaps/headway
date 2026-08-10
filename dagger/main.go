@@ -15,6 +15,7 @@ package main
 import (
 	"context"
 	"dagger/headway/internal/dagger"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -192,6 +193,34 @@ func (o *OSMExport) Clip(ctx context.Context, bbox *Bbox) *OSMExport {
 		WithExec([]string{"osmium", "extract", "--bbox", bbox.CommaSeparated(), "--output", "/app/clipped.osm.pbf", "/app/data.osm.pbf"})
 
 	return &OSMExport{File: container.File("/app/clipped.osm.pbf")}
+}
+
+// clipMany extracts all regions from the input PBF in one osmium invocation.
+// The output names are relative to /app/clips and must be unique.
+func (o *OSMExport) clipMany(ctx context.Context, extracts []osmiumExtract) *dagger.Directory {
+	config, err := json.Marshal(struct {
+		Directory string          `json:"directory"`
+		Extracts  []osmiumExtract `json:"extracts"`
+	}{
+		Directory: "/app/clips",
+		Extracts:  extracts,
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal osmium extract config: %w", err))
+	}
+
+	container := slimContainer("osmium-tool").
+		WithExec([]string{"mkdir", "-p", "/app/clips"}).
+		WithMountedFile("/app/data.osm.pbf", o.File).
+		WithNewFile("/app/extracts.json", string(config)).
+		WithExec([]string{"osmium", "extract", "--config", "/app/extracts.json", "/app/data.osm.pbf"})
+
+	return container.Directory("/app/clips")
+}
+
+type osmiumExtract struct {
+	Output string    `json:"output"`
+	Bbox   []float64 `json:"bbox"`
 }
 
 /**

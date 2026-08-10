@@ -90,16 +90,16 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err != nil {
 		panic(fmt.Errorf("failed to get entries in transit feeds dir: %w", err))
 	}
-	// Each zone is built in its own goroutine. The work is lazy dagger DAG
-	// building, but several calls in here (Name, and BBox via OtpGraph and
-	// Elevations) block on the engine, and doing those sequentially is what used
-	// to serialize the zones against each other - zone N+1 couldn't start
-	// downloading until zone N's bbox came back.
+	// First prepare every zone concurrently. This produces all the bboxes that
+	// osmium needs for one multi-output extraction from the source PBF.
 	//
 	// Results are collected by index rather than appended, so the output
 	// directory is assembled in the same order no matter who finishes first.
 	// That keeps the returned Directory - and so the build cache - stable.
 	type zoneResult struct {
+		zone       *TransitZone
+		zoneBBox   *Bbox
+		clipName   string
 		gtfsName   string
 		gtfsFile   *dagger.File
 		graphName  string
@@ -131,20 +131,58 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			}
 			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, buildDate, gtfsApiKeys))
 
-			// TODO: make an arg or config or something... or just always clip?
-			// Any harm besides slowing things down a little?
-			// In practice it seems pretty quick compared to the subsequent work done with the output,
-			// so maybe it's not worth complicating things here.
-			clipToGtfs := true
-
 			name := zone.Name(groupCtx)
-			results[i] = zoneResult{
-				gtfsName:   fmt.Sprintf("%s.gtfs.tar.zst", name),
-				gtfsFile:   compressDir(zone.GTFSDir),
-				graphName:  fmt.Sprintf("%s.graph.obj.zst", name),
-				graphFile:  compressFile(zone.OtpGraph(groupCtx, clipToGtfs)),
-				elevations: zone.Elevations(groupCtx),
+			bbox, err := zone.BBox(groupCtx)
+			if err != nil {
+				return fmt.Errorf("failed to get bbox for transit zone %q: %w", name, err)
 			}
+			results[i] = zoneResult{
+				zone:      zone,
+				zoneBBox:  bbox,
+				clipName:  fmt.Sprintf("%s.osm.pbf", name),
+				gtfsName:  fmt.Sprintf("%s.gtfs.tar.zst", name),
+				gtfsFile:  compressDir(zone.GTFSDir),
+				graphName: fmt.Sprintf("%s.graph.obj.zst", name),
+			}
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return output.WithFile(
+			fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate),
+			compressDir(elevations),
+		), nil
+	}
+
+	extracts := make([]osmiumExtract, len(results))
+	for i, result := range results {
+		bbox := result.zoneBBox
+		extracts[i] = osmiumExtract{
+			Output: result.clipName,
+			Bbox:   []float64{bbox.Left, bbox.Bottom, bbox.Right, bbox.Top},
+		}
+	}
+	clippedOSM := h.OSMExport.clipMany(ctx, extracts)
+
+	// Graph builds remain concurrent, but each now consumes its pre-extracted
+	// PBF instead of causing another full scan of the source PBF.
+	group, groupCtx = errgroup.WithContext(ctx)
+	group.SetLimit(maxConcurrentZones)
+	for i := range results {
+		group.Go(func() (err error) {
+			result := &results[i]
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("transit zone %q failed: %v", result.clipName, r)
+				}
+			}()
+
+			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
+			result.graphFile = compressFile(result.zone.otpGraph(groupCtx, osmExport))
+			result.elevations = result.zone.Elevations(groupCtx)
 			return nil
 		})
 	}
@@ -347,6 +385,10 @@ func (t *TransitZone) OtpGraph(ctx context.Context, clipToGtfs bool) *dagger.Fil
 	if clipToGtfs {
 		osmExport = t.ClippedOsmExport(ctx)
 	}
+	return t.otpGraph(ctx, osmExport)
+}
+
+func (t *TransitZone) otpGraph(ctx context.Context, osmExport *OSMExport) *dagger.File {
 
 	if t.GTFSDir == nil {
 		panic("TransitZone.GTFSDir must be set to build OTP graph, call `WithGTFSDir` first")
