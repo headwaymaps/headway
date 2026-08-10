@@ -38,7 +38,16 @@ type TransitZone struct {
 //
 // +cache="never"
 func (h *Headway) BuildTransit(ctx context.Context,
-	transitConfigDir *dagger.Directory) (*dagger.Directory, error) {
+	transitConfigDir *dagger.Directory,
+	// Env-file (KEY=VALUE lines) of API keys for feeds whose CSV row sets
+	// urls.authentication_type, named HEADWAY_GTFS_API_KEY_<mdb_source_id>.
+	//
+	// This has to be passed explicitly: dagger sandboxes module code, so it
+	// can't read the host environment and there's no way to pick these up
+	// implicitly. bin/build-transit passes `--gtfs-api-keys file://$PWD/.bin-env`.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret) (*dagger.Directory, error) {
 
 	// UTC so the day boundary doesn't depend on where the build runs - this
 	// date is a cache key, not just a label.
@@ -67,7 +76,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		if otpBuildConfig != nil {
 			zone = zone.WithOtpBuildConfig(ctx, otpBuildConfig)
 		}
-		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx, buildDate))
+		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx, buildDate, gtfsApiKeys))
 		output = output.WithFile(fmt.Sprintf("%s.gtfs.tar.zst", zone.Name(ctx)), compressDir(zone.GTFSDir))
 		// TODO: make an arg or config or something... or just always clip?
 		// Any harm besides slowing things down a little?
@@ -135,23 +144,35 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 // current.
 //
 // +cache="24h"
-func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string) *dagger.Directory {
+func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
+	// See BuildTransit.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret) *dagger.Directory {
 	servicesDir := t.Headway.ServiceDir("gtfs")
 
 	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")
 
 	container := dag.Container().
 		From("python:3")
-	return WithAptPackages(container, "zip").
+	container = WithAptPackages(container, "zip").
 		WithExec([]string{"pip", "install", "requests"}).
 		WithMountedDirectory("/app", servicesDir).
 		WithWorkdir("/app").
 		WithMountedFile("/usr/local/bin/assume-bikes-allowed", assumeBikesAllowed).
-		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds).
+		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds)
+	if gtfsApiKeys != nil {
+		container = container.WithMountedSecret(GtfsApiKeysPath, gtfsApiKeys)
+	}
+	return container.
 		WithExec([]string{"sh", "-c", "./download_gtfs_feeds.py --output=downloaded < gtfs_feeds.csv"}).
 		WithExec([]string{"sh", "-c", "./build_gtfs.sh --input downloaded --output ./output"}).
 		Directory("./output")
 }
+
+// Where BuildGtfsDir mounts the GTFS API key env-file for download_gtfs_feeds.py
+// to read. Mounted as a secret so the keys stay out of the build cache and logs.
+const GtfsApiKeysPath = "/run/secrets/gtfs-api-keys"
 
 func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	container := slimContainer("unzip").
