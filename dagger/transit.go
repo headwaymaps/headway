@@ -6,7 +6,14 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
+
+// Zones built at once by BuildTransit when not overridden. Each additional zone
+// is another concurrent OTP graph build competing for RAM, so this trades peak
+// memory for wall clock.
+const defaultMaxConcurrentZones = 3
 
 // ===
 // Transit
@@ -47,7 +54,20 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	// implicitly. bin/build-transit passes `--gtfs-api-keys file://$PWD/.bin-env`.
 	//
 	// +optional
-	gtfsApiKeys *dagger.Secret) (*dagger.Directory, error) {
+	gtfsApiKeys *dagger.Secret,
+	// How many zones to build concurrently. Zones are independent, so this is
+	// mostly free parallelism - but each one runs its own OTP graph build, and
+	// those are memory hungry at planet scale, so peak memory scales with it.
+	//
+	// Defaults to 3. Pass 1 to get the old sequential behavior back, e.g. when
+	// bisecting a failure.
+	//
+	// +optional
+	maxConcurrentZones int) (*dagger.Directory, error) {
+
+	if maxConcurrentZones <= 0 {
+		maxConcurrentZones = defaultMaxConcurrentZones
+	}
 
 	// UTC so the day boundary doesn't depend on where the build runs - this
 	// date is a cache key, not just a label.
@@ -70,22 +90,72 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err != nil {
 		panic(fmt.Errorf("failed to get entries in transit feeds dir: %w", err))
 	}
-	for _, entry := range transitFeedsFiles {
-		transitFeedsFile := transitFeedsDir.File(entry)
-		zone := h.TransitZone(ctx, transitFeedsFile, buildDate)
-		if otpBuildConfig != nil {
-			zone = zone.WithOtpBuildConfig(ctx, otpBuildConfig)
-		}
-		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx, buildDate, gtfsApiKeys))
-		output = output.WithFile(fmt.Sprintf("%s.gtfs.tar.zst", zone.Name(ctx)), compressDir(zone.GTFSDir))
-		// TODO: make an arg or config or something... or just always clip?
-		// Any harm besides slowing things down a little?
-		// In practice it seems pretty quick compared to the subsequent work done with the output,
-		// so maybe it's not worth complicating things here.
-		clipToGtfs := true
-		otpGraph := zone.OtpGraph(ctx, clipToGtfs)
-		output = output.WithFile(fmt.Sprintf("%s.graph.obj.zst", zone.Name(ctx)), compressFile(otpGraph))
-		elevations = elevations.WithDirectory("./", zone.Elevations(ctx))
+	// Each zone is built in its own goroutine. The work is lazy dagger DAG
+	// building, but several calls in here (Name, and BBox via OtpGraph and
+	// Elevations) block on the engine, and doing those sequentially is what used
+	// to serialize the zones against each other - zone N+1 couldn't start
+	// downloading until zone N's bbox came back.
+	//
+	// Results are collected by index rather than appended, so the output
+	// directory is assembled in the same order no matter who finishes first.
+	// That keeps the returned Directory - and so the build cache - stable.
+	type zoneResult struct {
+		gtfsName   string
+		gtfsFile   *dagger.File
+		graphName  string
+		graphFile  *dagger.File
+		elevations *dagger.Directory
+	}
+	results := make([]zoneResult, len(transitFeedsFiles))
+
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(maxConcurrentZones)
+
+	for i, entry := range transitFeedsFiles {
+		group.Go(func() (err error) {
+			// Most of the helpers below report failure by panicking. That was
+			// survivable when this ran on the main goroutine; from a worker it
+			// would take the whole process down mid-flight, with nothing saying
+			// which zone was at fault. Convert to an error so errgroup can
+			// cancel the siblings and the zone gets named.
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("transit zone %q failed: %v", entry, r)
+				}
+			}()
+
+			transitFeedsFile := transitFeedsDir.File(entry)
+			zone := h.TransitZone(groupCtx, transitFeedsFile, buildDate)
+			if otpBuildConfig != nil {
+				zone = zone.WithOtpBuildConfig(groupCtx, otpBuildConfig)
+			}
+			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, buildDate, gtfsApiKeys))
+
+			// TODO: make an arg or config or something... or just always clip?
+			// Any harm besides slowing things down a little?
+			// In practice it seems pretty quick compared to the subsequent work done with the output,
+			// so maybe it's not worth complicating things here.
+			clipToGtfs := true
+
+			name := zone.Name(groupCtx)
+			results[i] = zoneResult{
+				gtfsName:   fmt.Sprintf("%s.gtfs.tar.zst", name),
+				gtfsFile:   compressDir(zone.GTFSDir),
+				graphName:  fmt.Sprintf("%s.graph.obj.zst", name),
+				graphFile:  compressFile(zone.OtpGraph(groupCtx, clipToGtfs)),
+				elevations: zone.Elevations(groupCtx),
+			}
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	for _, result := range results {
+		output = output.WithFile(result.gtfsName, result.gtfsFile)
+		output = output.WithFile(result.graphName, result.graphFile)
+		elevations = elevations.WithDirectory("./", result.elevations)
 	}
 	output = output.WithFile(fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate), compressDir(elevations))
 
