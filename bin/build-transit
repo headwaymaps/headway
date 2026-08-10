@@ -56,5 +56,8 @@ cat <<EOS
 Transit artifacts written to data/${HEADWAY_AREA}/transit, with dated filenames.
 To serve them locally, link the latest ones:
     TRANSIT_DATA_ROOT=./data bin/link-latest-transit ${CONFIG_DIR}
+
+To publish them to the asset host:
+    bin/publish-data ${CONFIG_DIR} [--host remote.host.com]
 EOS
 
