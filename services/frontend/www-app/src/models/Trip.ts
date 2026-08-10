@@ -107,9 +107,51 @@ export default class Trip {
     return this.alerts.length > 0;
   }
 
+  /// Agencies often publish several unrelated alerts under one boilerplate header (BART sends
+  /// everything as "BART.gov Alert"), and a trip can ride the same route twice, so we group by
+  /// header and drop exact repeats. The details live in each alert's descriptionText.
+  get alertGroups(): TransitAlertGroup[] {
+    const groups: TransitAlertGroup[] = [];
+    const groupsByHeader: Map<string, TransitAlertGroup> = new Map();
+
+    for (const alert of this.alerts) {
+      let group;
+      if (alert.headerText === undefined) {
+        // An alert with no header has nothing to group on, so it stands alone.
+        group = { headerText: undefined, alerts: [] as TransitAlert[] };
+        groups.push(group);
+      } else {
+        group = groupsByHeader.get(alert.headerText);
+        if (!group) {
+          group = {
+            headerText: alert.headerText,
+            alerts: [] as TransitAlert[],
+          };
+          groupsByHeader.set(alert.headerText, group);
+          groups.push(group);
+        }
+      }
+
+      const isRepeat = group.alerts.some(
+        (existing) => existing.descriptionText === alert.descriptionText,
+      );
+      if (!isRepeat) {
+        group.alerts.push(alert);
+      }
+    }
+
+    return groups;
+  }
+
   get firstTransitLeg(): TripLeg | undefined {
     return this.legs.slice(0, 2).find((leg) => leg.transitLeg);
   }
+}
+
+/// Alerts sharing a header, presented as one collapsible row.
+export interface TransitAlertGroup {
+  headerText?: string;
+  alerts: TransitAlert[];
 }
 
 export class TripLeg {

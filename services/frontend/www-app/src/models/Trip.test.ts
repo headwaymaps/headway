@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import Trip from './Trip';
 import {
+  TransitAlert,
   TransitVehicleMode,
   TravelmuxItinerary,
   TravelmuxLeg,
@@ -88,5 +89,71 @@ describe('legs', () => {
     expect(t.legs[0]?.startTime.toISOString()).toEqual(
       '2024-05-17T19:35:01.000Z',
     );
+  });
+});
+
+describe('alertGroups', () => {
+  function alertingLeg(alerts: TransitAlert[]): TravelmuxLeg {
+    const l = leg(TravelmuxMode.Transit, 5000);
+    l.transitLeg!.alerts = alerts;
+    return l;
+  }
+
+  const scheduleChange = {
+    headerText: 'BART.gov Alert',
+    descriptionText: "BART's schedule has changed.",
+    url: 'http://www.bart.gov/schedules/advisories',
+  };
+  const busBridge = {
+    headerText: 'BART.gov Alert',
+    descriptionText: 'Free buses will replace trains this weekend.',
+  };
+  const elevator = {
+    headerText: 'Elevator outage',
+    descriptionText: 'The Powell St elevator is out of service.',
+  };
+
+  test('collects alerts sharing a header under one group, in first-seen order', () => {
+    const t = trip([
+      alertingLeg([scheduleChange, elevator, busBridge]),
+      leg(TravelmuxMode.Walk, 100),
+    ]);
+
+    expect(t.alertGroups).toEqual([
+      {
+        headerText: 'BART.gov Alert',
+        alerts: [scheduleChange, busBridge],
+      },
+      { headerText: 'Elevator outage', alerts: [elevator] },
+    ]);
+  });
+
+  test('drops repeats when a trip rides the same route twice', () => {
+    const t = trip([
+      alertingLeg([scheduleChange, busBridge]),
+      leg(TravelmuxMode.Walk, 100),
+      alertingLeg([scheduleChange, busBridge]),
+    ]);
+
+    expect(t.alertGroups).toEqual([
+      { headerText: 'BART.gov Alert', alerts: [scheduleChange, busBridge] },
+    ]);
+  });
+
+  test('keeps headerless alerts apart - they have nothing to group on', () => {
+    const first = { descriptionText: 'Reroute via Broadway.' };
+    const second = { descriptionText: 'Stop closed.' };
+    const t = trip([alertingLeg([first, second])]);
+
+    expect(t.alertGroups).toEqual([
+      { headerText: undefined, alerts: [first] },
+      { headerText: undefined, alerts: [second] },
+    ]);
+  });
+
+  test('has no groups when nothing is alerting', () => {
+    const t = trip([leg(TravelmuxMode.Walk, 100)]);
+    expect(t.hasAlerts).toBe(false);
+    expect(t.alertGroups).toEqual([]);
   });
 });
