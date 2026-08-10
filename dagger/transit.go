@@ -221,27 +221,38 @@ func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 	gtfsApiKeys *dagger.Secret) *dagger.Directory {
 	servicesDir := t.Headway.ServiceDir("gtfs")
 
-	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")
+	gtfout := t.Headway.Gtfout(ctx)
 
-	container := dag.Container().
-		From("python:3")
-	container = WithAptPackages(container, "zip").
-		WithExec([]string{"pip", "install", "requests"}).
+	container := slimContainer("ca-certificates", "zip", "unzip").
 		WithMountedDirectory("/app", servicesDir).
 		WithWorkdir("/app").
-		WithMountedFile("/usr/local/bin/assume-bikes-allowed", assumeBikesAllowed).
+		WithMountedFile("/usr/local/bin/assume-bikes-allowed", gtfout.File("assume-bikes-allowed")).
+		WithMountedFile("/usr/local/bin/download-feeds", gtfout.File("download-feeds")).
 		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds)
+
+	downloadArgs := []string{"download-feeds", "--feeds", "gtfs_feeds.csv", "--output", "downloaded"}
 	if gtfsApiKeys != nil {
 		container = container.WithMountedSecret(GtfsApiKeysPath, gtfsApiKeys)
+		downloadArgs = append(downloadArgs, "--api-keys", GtfsApiKeysPath)
 	}
+
 	return container.
-		WithExec([]string{"sh", "-c", "./download_gtfs_feeds.py --output=downloaded < gtfs_feeds.csv"}).
+		WithExec(downloadArgs).
 		WithExec([]string{"sh", "-c", "./build_gtfs.sh --input downloaded --output ./output"}).
 		Directory("./output")
 }
 
-// Where BuildGtfsDir mounts the GTFS API key env-file for download_gtfs_feeds.py
-// to read. Mounted as a secret so the keys stay out of the build cache and logs.
+// Where the GTFS API key env-file is mounted for the feed tools to read.
+//
+// Feeds whose DMFR record has an `authorization` block need a key to be fetched
+// at all - both to measure them during discovery and to download them when
+// building a zone. The file holds KEY=VALUE lines named after the feed's
+// Onestop ID, e.g. HEADWAY_GTFS_API_KEY_F_9Q8Y_SFMTA; see api_key_env_var in
+// services/gtfs/gtfout/src/api_keys.rs.
+//
+// It arrives as a secret, so the keys stay out of the build cache and logs.
+// It has to be passed in rather than read from the host environment because
+// dagger sandboxes module code.
 const GtfsApiKeysPath = "/run/secrets/gtfs-api-keys"
 
 func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
@@ -261,14 +272,56 @@ func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	return ParseBboxStr(bboxStr)
 }
 
-// Downloads GTFS mobility database CSV
-func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
-	downloadUrl := getEnvWithDefault("HEADWAY_MOBILITYDB_URL", "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media")
-	return downloadFile(downloadUrl)
+// Clones the Transitland Atlas, the catalog we discover GTFS feeds from.
+//
+// Pinned to a ref so a discovery run is reproducible; override
+// HEADWAY_TRANSITLAND_ATLAS_REF to pick up newly cataloged agencies.
+func (h *Headway) TransitlandAtlas(ctx context.Context) *dagger.Directory {
+	url := getEnvWithDefault("HEADWAY_TRANSITLAND_ATLAS_URL", "https://github.com/transitland/transitland-atlas.git")
+	ref := getEnvWithDefault("HEADWAY_TRANSITLAND_ATLAS_REF", "main")
+	return dag.Git(url).Branch(ref).Tree()
 }
 
-// Enumerates GTFS feeds for a given area by filtering the mobility database
-func (h *Headway) NearbyGtfsFeeds(ctx context.Context) *dagger.File {
+// Enumerates GTFS feeds serving an area, from the Transitland Atlas.
+//
+// The atlas has no bounding boxes - unlike the MobilityDatabase this replaced -
+// so discovery downloads the candidate feeds and measures where their stops
+// are. See services/gtfs/gtfout/src/bin/discover-feeds.rs for why that's the
+// only reliable answer, and how the candidate set is narrowed first.
+func (h *Headway) NearbyGtfsFeeds(ctx context.Context,
+	// See BuildTransit. Feeds needing a key can't be measured without one, so
+	// without this they're reported as unmeasurable rather than discovered.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret) *dagger.File {
+	return h.discoverFeeds(ctx, gtfsApiKeys).File("/app/nearby_gtfs_feeds.csv")
+}
+
+// The OTP router-config.json of GTFS-RT updaters for an area's feeds.
+//
+// Produced by the same discovery run as NearbyGtfsFeeds - dagger reuses the
+// exec, so asking for both costs one pass. Realtime feeds are matched to the
+// static feeds they update through shared operators; see
+// services/gtfs/gtfout/src/realtime.rs.
+//
+// Regenerate this after curating the feed CSV: updaters are only emitted for
+// feeds discovery found, so a feed you delete from the CSV keeps its updaters
+// until you re-run.
+func (h *Headway) NearbyGtfsRealtimeConfig(ctx context.Context,
+	// See BuildTransit.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret) *dagger.File {
+	return h.discoverFeeds(ctx, gtfsApiKeys).File("/app/router-config.json")
+}
+
+// Runs feed discovery for the area, leaving both outputs in /app.
+//
+// Measurements live in a dagger cache volume: derived data, so a local build
+// artifact rather than something we commit, but keeping it across runs is what
+// makes re-running this affordable - a warm run is a spatial query rather than
+// thousands of downloads.
+func (h *Headway) discoverFeeds(ctx context.Context, gtfsApiKeys *dagger.Secret) *dagger.Container {
 	if h.Area == "" {
 		panic("Area is required for GTFS enumeration")
 	}
@@ -278,17 +331,34 @@ func (h *Headway) NearbyGtfsFeeds(ctx context.Context) *dagger.File {
 		panic(fmt.Errorf("failed to get bounding box for area %s: %w", h.Area, err))
 	}
 
-	mobilityDb := h.GtfsGetMobilitydb(ctx)
-	servicesDir := h.ServiceDir("gtfs")
+	countryCodes, err := h.CountryCodes(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get country codes for area %s: %w", h.Area, err))
+	}
 
-	container := dag.Container().
-		From("python:3").
-		WithMountedDirectory("/app", servicesDir).
-		WithMountedFile("/app/sources.csv", mobilityDb).
-		WithWorkdir("/app").
-		WithExec([]string{"sh", "-c", fmt.Sprintf("./filter_feeds.py --bbox='%s' < sources.csv > nearby_gtfs_feeds.csv", bbox.SpaceSeparated())})
+	container := slimContainer("ca-certificates").
+		WithMountedFile("/usr/local/bin/discover-feeds", h.Gtfout(ctx).File("discover-feeds")).
+		WithMountedDirectory("/atlas", h.TransitlandAtlas(ctx)).
+		WithMountedCache("/cache", dag.CacheVolume("headway-gtfs-measurements")).
+		WithWorkdir("/app")
 
-	return container.File("/app/nearby_gtfs_feeds.csv")
+	args := []string{
+		"discover-feeds",
+		"--atlas", "/atlas",
+		"--bbox", bbox.SpaceSeparated(),
+		"--extents", "/cache/feed-extents.gpkg",
+		"--output", "/app/nearby_gtfs_feeds.csv",
+		"--router-config", "/app/router-config.json",
+	}
+	if countryCodes != "" {
+		args = append(args, "--countries", countryCodes)
+	}
+	if gtfsApiKeys != nil {
+		container = container.WithMountedSecret(GtfsApiKeysPath, gtfsApiKeys)
+		args = append(args, "--api-keys", GtfsApiKeysPath)
+	}
+
+	return container.WithExec(args)
 }
 
 // Builds Rust GTFS processing tools

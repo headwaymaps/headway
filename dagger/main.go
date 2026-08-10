@@ -403,6 +403,30 @@ func (h *Headway) BBox(ctx context.Context) (*Bbox, error) {
 	return ParseBboxStr(bboxStr)
 }
 
+// Country codes for a given area from areas.csv, e.g. "US" or "US,CA".
+//
+// Returns "" for areas that don't list any, which callers should treat as "no
+// country constraint" rather than "no countries".
+func (h *Headway) CountryCodes(ctx context.Context) (string, error) {
+	areasFile := h.ServicesDir.File("areas.csv")
+
+	area := h.Area
+	if area == "" {
+		return "", fmt.Errorf("Area is required to get country codes")
+	}
+
+	container := slimContainer().
+		WithMountedFile("/areas.csv", areasFile).
+		WithExec([]string{"sh", "-c", fmt.Sprintf("test $(grep '^%s,' /areas.csv | wc -l) -eq 1", area)}).
+		WithExec([]string{"sh", "-c", fmt.Sprintf("grep '^%s,' /areas.csv | cut -d',' -f2", area)})
+
+	out, err := container.Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get country codes for area %s: %w", area, err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (h *Headway) Elevations(ctx context.Context) *dagger.Directory {
 	bbox, err := h.BBox(ctx)
 	if err != nil {

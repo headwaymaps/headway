@@ -32,13 +32,28 @@ TRANSIT_DIR="${CONFIG_DIR}/transit/gtfs-feeds"
 mkdir -p "$TRANSIT_DIR"
 
 OUTPUT_FILE="${TRANSIT_DIR}/${HEADWAY_AREA}.gtfs_feeds.csv"
+# The realtime config sits beside the other per-zone transit config, which is
+# where bin/k8s-generate looks for it.
+ROUTER_CONFIG_FILE="${CONFIG_DIR}/transit/${HEADWAY_AREA}-router-config.json"
+
+# Feeds that require an API key can't be measured without one, so pass the same
+# env-file bin/build-transit uses. Discovery still works without it - those
+# feeds are just reported as unmeasurable rather than discovered.
+GTFS_API_KEYS=""
+if [ -f "${APP_ROOT}/.bin-env" ]; then
+    GTFS_API_KEYS="--gtfs-api-keys file://${APP_ROOT}/.bin-env"
+fi
 
 echo "Finding nearby GTFS feeds for ${HEADWAY_AREA}..."
 echo "Output will be written to: ${OUTPUT_FILE}"
 
-dagger -c "with-area ${HEADWAY_AREA} | nearby-gtfs-feeds | export ${OUTPUT_FILE}"
+# Both outputs come from one discovery run; dagger reuses the exec between them.
+dagger -c "with-area ${HEADWAY_AREA} | nearby-gtfs-feeds ${GTFS_API_KEYS} | export ${OUTPUT_FILE}"
+dagger -c "with-area ${HEADWAY_AREA} | nearby-gtfs-realtime-config ${GTFS_API_KEYS} | export ${ROUTER_CONFIG_FILE}"
 
 echo ""
 echo "GTFS feeds list created at: ${OUTPUT_FILE}"
-echo "Review and edit this file to curate which feeds to use for transit routing."
+echo "GTFS-RT updater config created at: ${ROUTER_CONFIG_FILE}"
+echo "Review and edit these files to curate which feeds to use for transit routing."
+echo "Re-run this script after curating to drop realtime updaters for feeds you removed."
 echo "Then run: bin/build-transit ${CONFIG_DIR}"

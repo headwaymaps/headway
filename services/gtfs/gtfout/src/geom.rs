@@ -51,6 +51,22 @@ impl Rect {
         }
     }
 
+    pub fn min(&self) -> Point {
+        self.min
+    }
+
+    pub fn max(&self) -> Point {
+        self.max
+    }
+
+    /// Whether the two rectangles share any area. Touching edges count.
+    pub fn intersects(&self, other: &Rect) -> bool {
+        self.min.x() <= other.max.x()
+            && self.max.x() >= other.min.x()
+            && self.min.y() <= other.max.y()
+            && self.max.y() >= other.min.y()
+    }
+
     pub fn bbox_fmt(&self) -> String {
         let left = self.min.x();
         let bottom = self.min.y();
@@ -58,5 +74,38 @@ impl Rect {
         let top = self.max.y();
 
         format!("{left} {bottom} {right} {top}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rect(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Rect {
+        Rect::new(Point::new(min_x, min_y), Point::new(max_x, max_y))
+    }
+
+    #[test]
+    fn overlapping_rects_intersect() {
+        assert!(rect(0.0, 0.0, 2.0, 2.0).intersects(&rect(1.0, 1.0, 3.0, 3.0)));
+    }
+
+    #[test]
+    fn contained_rect_intersects() {
+        assert!(rect(0.0, 0.0, 10.0, 10.0).intersects(&rect(4.0, 4.0, 5.0, 5.0)));
+        assert!(rect(4.0, 4.0, 5.0, 5.0).intersects(&rect(0.0, 0.0, 10.0, 10.0)));
+    }
+
+    #[test]
+    fn touching_edges_intersect() {
+        assert!(rect(0.0, 0.0, 1.0, 1.0).intersects(&rect(1.0, 0.0, 2.0, 1.0)));
+    }
+
+    #[test]
+    fn disjoint_rects_do_not_intersect() {
+        // Apart in x only, y only, and both.
+        assert!(!rect(0.0, 0.0, 1.0, 1.0).intersects(&rect(2.0, 0.0, 3.0, 1.0)));
+        assert!(!rect(0.0, 0.0, 1.0, 1.0).intersects(&rect(0.0, 2.0, 1.0, 3.0)));
+        assert!(!rect(0.0, 0.0, 1.0, 1.0).intersects(&rect(5.0, 5.0, 6.0, 6.0)));
     }
 }
