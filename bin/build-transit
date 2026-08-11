@@ -26,6 +26,20 @@ fi
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
+# Idempotent, and bin/build runs it too - it's here so that running this script
+# standalone works on a tree where the artifact root is still the placeholder.
+bin/update-fetch-urls
+
+# Feeds whose CSV row sets urls.authentication_type need an API key, kept in
+# .bin-env (which is gitignored) as HEADWAY_GTFS_API_KEY_<mdb_source_id>.
+#
+# It has to be handed to dagger as an explicit secret: module code runs
+# sandboxed, so exporting these into our own environment would not reach it.
+GTFS_API_KEYS=""
+if [ -f .bin-env ]; then
+    GTFS_API_KEYS="--gtfs-api-keys file://${APP_ROOT}/.bin-env"
+fi
+
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 
 USE_LOCAL_PBF=""
@@ -34,7 +48,7 @@ if [[ -f $INPUT_PBF ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-dagger -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} | export 'data/${HEADWAY_AREA}/transit'"
+dagger -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} ${GTFS_API_KEYS} | export 'data/${HEADWAY_AREA}/transit'"
 
 set +x
 cat <<EOS
@@ -42,5 +56,8 @@ cat <<EOS
 Transit artifacts written to data/${HEADWAY_AREA}/transit, with dated filenames.
 To serve them locally, link the latest ones:
     TRANSIT_DATA_ROOT=./data bin/link-latest-transit ${CONFIG_DIR}
+
+To publish them to the asset host:
+    bin/publish-data ${CONFIG_DIR} [--host remote.host.com]
 EOS
 

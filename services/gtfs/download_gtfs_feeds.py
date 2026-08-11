@@ -8,10 +8,152 @@ import requests
 import shutil
 import tempfile
 import sys
+import zipfile
 
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+
+# How long to wait on any single feed download. Some agency servers regenerate
+# the zip on demand, so this is generous.
+DOWNLOAD_TIMEOUT_SECONDS = 300
+
+
+# Env-file of API keys mounted as a secret by the dagger build. Dagger sandboxes
+# module code, so it can't forward host env vars - the keys have to arrive as a
+# file. Falls back to the ambient environment when running outside the build.
+GTFS_API_KEYS_PATH = "/run/secrets/gtfs-api-keys"
+
+
+def api_key_env_var(row):
+    """Env var holding the API key for feeds that require one.
+
+    Keyed by mdb_source_id since that's the only stable identifier in the CSV,
+    e.g. HEADWAY_GTFS_API_KEY_2455 for AC Transit.
+    """
+    return "HEADWAY_GTFS_API_KEY_" + row["mdb_source_id"]
+
+
+def load_api_keys():
+    """API keys from the mounted secret, overlaid on the environment."""
+    keys = dict(os.environ)
+    if not os.path.isfile(GTFS_API_KEYS_PATH):
+        return keys
+
+    with open(GTFS_API_KEYS_PATH) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            name, value = line.split("=", 1)
+            # Tolerate `export FOO=bar` and quoted values, since this is
+            # typically a shell env-file like .bin-env.
+            name = name.removeprefix("export ").strip()
+            keys[name] = value.strip().strip("'\"")
+    return keys
+
+
+API_KEYS = {}
+
+
+def authenticated_request_args(row):
+    """Query params and headers needed to fetch `urls.direct_download`.
+
+    Returns None when the feed needs a key we don't have, which tells the
+    caller to skip this URL rather than fetch an error page.
+
+    `urls.authentication_type` follows the MobilityDatabase convention:
+    empty/0 = none, 1 = API key as a query param, 2 = API key as a header.
+    Either way `urls.api_key_parameter_name` names the param or header.
+    """
+    auth_type = (row.get("urls.authentication_type") or "0").strip()
+    if auth_type in ("", "0"):
+        return {}, {}
+
+    api_key = API_KEYS.get(api_key_env_var(row))
+    if not api_key:
+        return None
+
+    param_name = row.get("urls.api_key_parameter_name") or "api_key"
+    if auth_type == "1":
+        return {param_name: api_key}, {}
+    elif auth_type == "2":
+        return {}, {param_name: api_key}
+    else:
+        eprint("Unknown urls.authentication_type", auth_type, "- treating as unauthenticated")
+        return {}, {}
+
+
+def candidate_urls(row):
+    """The URLs to try, best first.
+
+    `urls.direct_download` is the agency's own endpoint and is authoritative.
+    `urls.latest` is the MobilityDatabase's mirror, which lags upstream - it has
+    served feeds months past their end_date - so it's only a fallback for when
+    the agency URL is dead or needs a key we don't have.
+    """
+    direct_download = (row.get("urls.direct_download") or "").strip()
+    if direct_download:
+        auth = authenticated_request_args(row)
+        if auth is None:
+            eprint(
+                "Skipping urls.direct_download for",
+                row["provider"],
+                "- it needs an API key; set",
+                api_key_env_var(row),
+                "to use it. Falling back to the (possibly stale) mirror.",
+            )
+        else:
+            params, headers = auth
+            yield ("urls.direct_download", direct_download, params, headers)
+
+    latest = (row.get("urls.latest") or "").strip()
+    if latest:
+        yield ("urls.latest", latest, {}, {})
+
+
+def download_feed(row, zipfile_path):
+    """Fetch a feed into zipfile_path, trying each candidate URL in turn.
+
+    Every failure mode here used to be silent: the response body was written
+    straight to a .zip with no status check, so a 404 page became a "zip" that
+    only blew up later in unpack_archive with nothing pointing at the culprit.
+    """
+    errors = []
+    for source, url, params, headers in candidate_urls(row):
+        eprint("Downloading feed for", row["provider"], "from", source, url)
+        try:
+            response = requests.get(
+                url, params=params, headers=headers, timeout=DOWNLOAD_TIMEOUT_SECONDS
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            eprint("  failed:", e)
+            errors.append(f"{source} ({url}): {e}")
+            continue
+
+        with open(zipfile_path, "wb") as f:
+            f.write(response.content)
+
+        # A 200 is not proof of a feed: some hosts serve an HTML error page or a
+        # JSON "no such object" body with a success status.
+        if not zipfile.is_zipfile(zipfile_path):
+            preview = response.content[:200]
+            eprint("  failed: response is not a zip archive:", preview)
+            errors.append(f"{source} ({url}): not a zip archive")
+            continue
+
+        return source
+
+    raise RuntimeError(
+        "Could not download GTFS feed for "
+        + row["provider"]
+        + " (mdb_source_id "
+        + row["mdb_source_id"]
+        + "). Tried:\n  "
+        + "\n  ".join(errors or ["no download URLs in the CSV row"])
+    )
 
 
 def main():
@@ -24,6 +166,9 @@ def main():
     args = parser.parse_args()
 
     eprint("args", args)
+
+    global API_KEYS
+    API_KEYS = load_api_keys()
 
     output_dir = args.output
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -40,10 +185,7 @@ def main():
             unzipped_path = tmpdir + "/" + unzipped_name
             zipfile_path = tmpdir + "/" + unzipped_name + ".zip"
 
-            with open(zipfile_path, "wb") as f:
-                eprint("Downloading feed for", row["provider"], "to", zipfile_path)
-                response = requests.get(row["urls.latest"])
-                f.write(response.content)
+            download_feed(row, zipfile_path)
 
             eprint("Unzipping", zipfile_path, "to", unzipped_path)
             shutil.unpack_archive(zipfile_path, unzipped_path)

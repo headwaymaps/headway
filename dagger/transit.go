@@ -6,7 +6,14 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
+
+// Zones built at once by BuildTransit when not overridden. Each additional zone
+// is another concurrent OTP graph build competing for RAM, so this trades peak
+// memory for wall clock.
+const defaultMaxConcurrentZones = 3
 
 // ===
 // Transit
@@ -38,7 +45,29 @@ type TransitZone struct {
 //
 // +cache="never"
 func (h *Headway) BuildTransit(ctx context.Context,
-	transitConfigDir *dagger.Directory) (*dagger.Directory, error) {
+	transitConfigDir *dagger.Directory,
+	// Env-file (KEY=VALUE lines) of API keys for feeds whose CSV row sets
+	// urls.authentication_type, named HEADWAY_GTFS_API_KEY_<mdb_source_id>.
+	//
+	// This has to be passed explicitly: dagger sandboxes module code, so it
+	// can't read the host environment and there's no way to pick these up
+	// implicitly. bin/build-transit passes `--gtfs-api-keys file://$PWD/.bin-env`.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret,
+	// How many zones to build concurrently. Zones are independent, so this is
+	// mostly free parallelism - but each one runs its own OTP graph build, and
+	// those are memory hungry at planet scale, so peak memory scales with it.
+	//
+	// Defaults to 3. Pass 1 to get the old sequential behavior back, e.g. when
+	// bisecting a failure.
+	//
+	// +optional
+	maxConcurrentZones int) (*dagger.Directory, error) {
+
+	if maxConcurrentZones <= 0 {
+		maxConcurrentZones = defaultMaxConcurrentZones
+	}
 
 	// UTC so the day boundary doesn't depend on where the build runs - this
 	// date is a cache key, not just a label.
@@ -61,22 +90,110 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err != nil {
 		panic(fmt.Errorf("failed to get entries in transit feeds dir: %w", err))
 	}
-	for _, entry := range transitFeedsFiles {
-		transitFeedsFile := transitFeedsDir.File(entry)
-		zone := h.TransitZone(ctx, transitFeedsFile, buildDate)
-		if otpBuildConfig != nil {
-			zone = zone.WithOtpBuildConfig(ctx, otpBuildConfig)
+	// First prepare every zone concurrently. This produces all the bboxes that
+	// osmium needs for one multi-output extraction from the source PBF.
+	//
+	// Results are collected by index rather than appended, so the output
+	// directory is assembled in the same order no matter who finishes first.
+	// That keeps the returned Directory - and so the build cache - stable.
+	type zoneResult struct {
+		zone       *TransitZone
+		zoneBBox   *Bbox
+		clipName   string
+		gtfsName   string
+		gtfsFile   *dagger.File
+		graphName  string
+		graphFile  *dagger.File
+		elevations *dagger.Directory
+	}
+	results := make([]zoneResult, len(transitFeedsFiles))
+
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(maxConcurrentZones)
+
+	for i, entry := range transitFeedsFiles {
+		group.Go(func() (err error) {
+			// Most of the helpers below report failure by panicking. That was
+			// survivable when this ran on the main goroutine; from a worker it
+			// would take the whole process down mid-flight, with nothing saying
+			// which zone was at fault. Convert to an error so errgroup can
+			// cancel the siblings and the zone gets named.
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("transit zone %q failed: %v", entry, r)
+				}
+			}()
+
+			transitFeedsFile := transitFeedsDir.File(entry)
+			zone := h.TransitZone(groupCtx, transitFeedsFile, buildDate)
+			if otpBuildConfig != nil {
+				zone = zone.WithOtpBuildConfig(groupCtx, otpBuildConfig)
+			}
+			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, buildDate, gtfsApiKeys))
+
+			name := zone.Name(groupCtx)
+			bbox, err := zone.BBox(groupCtx)
+			if err != nil {
+				return fmt.Errorf("failed to get bbox for transit zone %q: %w", name, err)
+			}
+			results[i] = zoneResult{
+				zone:      zone,
+				zoneBBox:  bbox,
+				clipName:  fmt.Sprintf("%s.osm.pbf", name),
+				gtfsName:  fmt.Sprintf("%s.gtfs.tar.zst", name),
+				gtfsFile:  compressDir(zone.GTFSDir),
+				graphName: fmt.Sprintf("%s.graph.obj.zst", name),
+			}
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return output.WithFile(
+			fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate),
+			compressDir(elevations),
+		), nil
+	}
+
+	extracts := make([]osmiumExtract, len(results))
+	for i, result := range results {
+		bbox := result.zoneBBox
+		extracts[i] = osmiumExtract{
+			Output: result.clipName,
+			Bbox:   []float64{bbox.Left, bbox.Bottom, bbox.Right, bbox.Top},
 		}
-		zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx, buildDate))
-		output = output.WithFile(fmt.Sprintf("%s.gtfs.tar.zst", zone.Name(ctx)), compressDir(zone.GTFSDir))
-		// TODO: make an arg or config or something... or just always clip?
-		// Any harm besides slowing things down a little?
-		// In practice it seems pretty quick compared to the subsequent work done with the output,
-		// so maybe it's not worth complicating things here.
-		clipToGtfs := true
-		otpGraph := zone.OtpGraph(ctx, clipToGtfs)
-		output = output.WithFile(fmt.Sprintf("%s.graph.obj.zst", zone.Name(ctx)), compressFile(otpGraph))
-		elevations = elevations.WithDirectory("./", zone.Elevations(ctx))
+	}
+	clippedOSM := h.OSMExport.clipMany(ctx, extracts)
+
+	// Graph builds remain concurrent, but each now consumes its pre-extracted
+	// PBF instead of causing another full scan of the source PBF.
+	group, groupCtx = errgroup.WithContext(ctx)
+	group.SetLimit(maxConcurrentZones)
+	for i := range results {
+		group.Go(func() (err error) {
+			result := &results[i]
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("transit zone %q failed: %v", result.clipName, r)
+				}
+			}()
+
+			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
+			result.graphFile = compressFile(result.zone.otpGraph(groupCtx, osmExport))
+			result.elevations = result.zone.Elevations(groupCtx)
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	for _, result := range results {
+		output = output.WithFile(result.gtfsName, result.gtfsFile)
+		output = output.WithFile(result.graphName, result.graphFile)
+		elevations = elevations.WithDirectory("./", result.elevations)
 	}
 	output = output.WithFile(fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate), compressDir(elevations))
 
@@ -135,23 +252,35 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 // current.
 //
 // +cache="24h"
-func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string) *dagger.Directory {
+func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
+	// See BuildTransit.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret) *dagger.Directory {
 	servicesDir := t.Headway.ServiceDir("gtfs")
 
 	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")
 
 	container := dag.Container().
 		From("python:3")
-	return WithAptPackages(container, "zip").
+	container = WithAptPackages(container, "zip").
 		WithExec([]string{"pip", "install", "requests"}).
 		WithMountedDirectory("/app", servicesDir).
 		WithWorkdir("/app").
 		WithMountedFile("/usr/local/bin/assume-bikes-allowed", assumeBikesAllowed).
-		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds).
+		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds)
+	if gtfsApiKeys != nil {
+		container = container.WithMountedSecret(GtfsApiKeysPath, gtfsApiKeys)
+	}
+	return container.
 		WithExec([]string{"sh", "-c", "./download_gtfs_feeds.py --output=downloaded < gtfs_feeds.csv"}).
 		WithExec([]string{"sh", "-c", "./build_gtfs.sh --input downloaded --output ./output"}).
 		Directory("./output")
 }
+
+// Where BuildGtfsDir mounts the GTFS API key env-file for download_gtfs_feeds.py
+// to read. Mounted as a secret so the keys stay out of the build cache and logs.
+const GtfsApiKeysPath = "/run/secrets/gtfs-api-keys"
 
 func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	container := slimContainer("unzip").
@@ -256,6 +385,10 @@ func (t *TransitZone) OtpGraph(ctx context.Context, clipToGtfs bool) *dagger.Fil
 	if clipToGtfs {
 		osmExport = t.ClippedOsmExport(ctx)
 	}
+	return t.otpGraph(ctx, osmExport)
+}
+
+func (t *TransitZone) otpGraph(ctx context.Context, osmExport *OSMExport) *dagger.File {
 
 	if t.GTFSDir == nil {
 		panic("TransitZone.GTFSDir must be set to build OTP graph, call `WithGTFSDir` first")
