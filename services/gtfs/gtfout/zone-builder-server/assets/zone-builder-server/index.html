@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transit zone builder server</title>
+<link href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #f6f7f9;
+    --border: #d8dce2;
+    --text: #1a1d21;
+    --muted: #5c6570;
+    --accent: #1f6feb;
+    --warn: #9a6700;
+    --live: #1a7f37;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216;
+      --panel: #171b21;
+      --border: #2b323b;
+      --text: #e6e9ee;
+      --muted: #9aa4b1;
+      --accent: #4c8dff;
+      --warn: #d9a441;
+      --live: #3fb950;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  /* min-width overrides flex's auto minimum, which is the map canvas's own
+     width - without it the two side panels can't claim their share. */
+  #map { flex: 1; min-width: 0; position: relative; }
+  #map.drawing canvas { cursor: crosshair; }
+
+  #panel {
+    width: 420px;
+    max-width: 30vw;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0 0 4px; font-size: 15px; }
+  header p { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+  .controls { display: flex; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  button {
+    font: inherit;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.active { border-color: var(--accent); color: var(--accent); }
+
+  #summary { padding: 8px 16px; color: var(--muted); font-size: 12.5px; border-bottom: 1px solid var(--border); }
+
+  #feeds { flex: 1; overflow-y: auto; padding: 4px 0; margin: 0; list-style: none; }
+  #feeds li { border-bottom: 1px solid var(--border); }
+  #feeds label { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 9px 16px; cursor: pointer; }
+  #feeds label:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .provider { font-weight: 600; }
+  .meta { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .big { color: var(--warn); }
+  .auth {
+    display: inline-block; margin-left: 6px; padding: 0 6px;
+    border: 1px solid var(--warn); border-radius: 10px;
+    color: var(--warn); font-size: 11px;
+  }
+  .outside {
+    display: inline-block; margin-left: 6px; padding: 0 6px;
+    border: 1px solid var(--muted); border-radius: 10px;
+    color: var(--muted); font-size: 11px; font-weight: 400;
+  }
+  .rt { margin-top: 3px; font-size: 12px; color: var(--muted); }
+  .rt-tag {
+    display: inline-block; margin-right: 4px; padding: 0 6px;
+    border: 1px solid var(--live); border-radius: 10px;
+    color: var(--live); font-size: 11px;
+  }
+  /* The JSON column. Same furniture as #panel, so the two read as a pair. */
+  #json-pane {
+    width: 460px;
+    max-width: 34vw;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+  }
+  #json {
+    flex: 1;
+    font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    width: 100%; resize: none;
+    padding: 8px 12px; border: none;
+    background: var(--bg); color: var(--text);
+  }
+  #json.invalid { background: color-mix(in srgb, var(--warn) 12%, var(--bg)); }
+  footer {
+    padding: 12px 16px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; align-items: center; justify-content: flex-end;
+  }
+  footer .count { color: var(--muted); font-size: 12.5px; margin-right: auto; }
+
+  /* The drawn rectangle lives as a DOM overlay rather than a map layer, so it
+     can carry resize handles. It's reprojected on every map move. */
+  #box {
+    position: absolute; z-index: 1; display: none;
+    border: 2px dashed var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    cursor: move;
+  }
+  #box.drawing { pointer-events: none; }
+  .handle {
+    position: absolute; width: 11px; height: 11px;
+    background: var(--bg); border: 2px solid var(--accent); border-radius: 2px;
+  }
+  #box.drawing .handle { display: none; }
+  .handle[data-h="nw"] { top: -6px; left: -6px; cursor: nwse-resize; }
+  .handle[data-h="n"]  { top: -6px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+  .handle[data-h="ne"] { top: -6px; right: -6px; cursor: nesw-resize; }
+  .handle[data-h="e"]  { top: 50%; right: -6px; margin-top: -6px; cursor: ew-resize; }
+  .handle[data-h="se"] { bottom: -6px; right: -6px; cursor: nwse-resize; }
+  .handle[data-h="s"]  { bottom: -6px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+  .handle[data-h="sw"] { bottom: -6px; left: -6px; cursor: nesw-resize; }
+  .handle[data-h="w"]  { top: 50%; left: -6px; margin-top: -6px; cursor: ew-resize; }
+
+  /* Covers the whole window during a file drag, so there's no small target. */
+  #drop {
+    position: fixed; inset: 0; z-index: 10; display: none;
+    align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    font-size: 18px; font-weight: 600; color: var(--text);
+  }
+  #drop.over { display: flex; }
+
+  /* Sits over the map as a tool, styled to read as one of MapLibre's own
+     controls. Top right, because the zoom and compass controls take top left. */
+  #draw {
+    position: absolute; top: 10px; right: 10px; z-index: 1;
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg);
+    box-shadow: 0 0 0 2px rgba(0,0,0,.1);
+    border: none; border-radius: 4px;
+  }
+  #draw svg { width: 16px; height: 16px; }
+  #draw.active { background: var(--accent); color: #fff; }
+  #draw.active svg { color: #fff; }
+  .empty { padding: 24px 16px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="drop">Drop a zone.json to reopen it</div>
+
+<div id="map">
+  <div id="box">
+    <div class="handle" data-h="nw"></div><div class="handle" data-h="n"></div>
+    <div class="handle" data-h="ne"></div><div class="handle" data-h="e"></div>
+    <div class="handle" data-h="se"></div><div class="handle" data-h="s"></div>
+    <div class="handle" data-h="sw"></div><div class="handle" data-h="w"></div>
+  </div>
+  <button id="draw" title="Draw an area to search (Esc to cancel)">
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="2.5" y="3.5" width="11" height="9" rx="1"
+            fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/>
+    </svg>
+    <span>Draw area</span>
+  </button>
+</div>
+
+<div id="panel">
+  <header>
+    <h1>Transit zone builder server</h1>
+    <p>Drag a box over your transit zone, then uncheck what you don't want.
+       Drop a saved <code>zone.json</code> anywhere to reopen it.</p>
+  </header>
+
+  <div class="controls">
+    <button id="all">Select all</button>
+    <button id="none">Select none</button>
+  </div>
+
+  <div id="summary">No area drawn yet.</div>
+  <ul id="feeds"><li class="empty">Drag a box on the map to see the feeds it touches.</li></ul>
+
+  <footer>
+    <span class="count" id="count"></span>
+  </footer>
+</div>
+
+<!-- The document gets a column of its own rather than a drawer under the list,
+     because it's read alongside the picking rather than after it: ticking a feed
+     is supposed to visibly change it. Saving lives here too, next to the thing
+     it saves. -->
+<div id="json-pane">
+  <header>
+    <h1>Zone JSON</h1>
+    <p>Editable, credentials included — what you download is exactly this.</p>
+  </header>
+  <textarea id="json" spellcheck="false"
+    placeholder="Draw an area and tick some feeds."></textarea>
+  <footer>
+    <button id="download" class="primary" disabled>Download zone JSON</button>
+  </footer>
+</div>
+
+<script type="module">
+// MapLibre 6 ships ESM only - no UMD bundle to load into a global - so this has
+// to be a module, the import has to name the .mjs explicitly, and there is no
+// default export to reach for: everything is a named one.
+import { Map, NavigationControl, ScaleControl }
+  from 'https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs';
+
+// Substituted by the server from --map-style.
+const STYLE_URL = '__MAP_STYLE__';
+
+const map = new Map({
+  container: 'map',
+  style: STYLE_URL,
+  center: [-122.33, 47.6],
+  zoom: 8,
+});
+map.addControl(new NavigationControl(), 'top-left');
+map.addControl(new ScaleControl());
+
+const els = {
+  map: document.getElementById('map'),
+  box: document.getElementById('box'),
+  feeds: document.getElementById('feeds'),
+  summary: document.getElementById('summary'),
+  count: document.getElementById('count'),
+  download: document.getElementById('download'),
+  drop: document.getElementById('drop'),
+  json: document.getElementById('json'),
+  draw: document.getElementById('draw'),
+};
+
+let feeds = [];            // everything the last query returned
+let selected = new Set();  // feed_ids the user has opted into
+// Credentials are edited directly in the JSON pane rather than in their own
+// fields, so they're harvested back out of it before each regenerate.
+let area = null;           // [minLon, minLat, maxLon, maxLat] - the source of truth
+let drawing = true;
+
+// ---- the rectangle ---------------------------------------------------------
+// By hand rather than with a draw plugin: one rectangle is the only shape needed,
+// and it has to carry resize handles.
+//
+// `area` is geographic and authoritative; the overlay is a projection of it,
+// recomputed whenever the map moves so the box stays glued to the ground.
+
+let dragStart = null;   // in-progress draw
+let gesture = null;     // in-progress move/resize
+
+function setDrawing(on) {
+  drawing = on;
+  els.map.classList.toggle('drawing', on);
+  els.draw.classList.toggle('active', on);
+  els.draw.querySelector('span').textContent = on ? 'Drag a box…' : 'Draw area';
+  // Panning and box-dragging both want the left button, so they take turns.
+  map.dragPan[on ? 'disable' : 'enable']();
+}
+
+// Armed on load, since drawing is the first thing you do; it disarms itself
+// after one box so panning is the resting state.
+setDrawing(true);
+els.draw.onclick = () => setDrawing(!drawing);
+
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !drawing) return;
+  dragStart = null;
+  els.box.style.display = 'none';
+  setDrawing(false);
+});
+
+const canvas = map.getCanvasContainer();
+
+function pointOf(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+/// Positions the overlay from a screen-space rectangle.
+function placeBox(rect) {
+  els.box.style.display = 'block';
+  els.box.style.left = rect.x1 + 'px';
+  els.box.style.top = rect.y1 + 'px';
+  els.box.style.width = Math.max(0, rect.x2 - rect.x1) + 'px';
+  els.box.style.height = Math.max(0, rect.y2 - rect.y1) + 'px';
+}
+
+/// Reprojects `area` onto the screen. Called on every map move, so the box
+/// tracks the ground rather than the viewport.
+function renderBox() {
+  if (!area) {
+    els.box.style.display = 'none';
+    return;
+  }
+  const a = map.project([area[0], area[3]]);   // top-left: min lon, max lat
+  const b = map.project([area[2], area[1]]);
+  placeBox({ x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+}
+map.on('move', renderBox);
+
+function setArea(rect, requery = true) {
+  const a = map.unproject([rect.x1, rect.y1]);
+  const b = map.unproject([rect.x2, rect.y2]);
+  area = [
+    Math.min(a.lng, b.lng), Math.min(a.lat, b.lat),
+    Math.max(a.lng, b.lng), Math.max(a.lat, b.lat),
+  ];
+  renderBox();
+  if (requery) loadFeeds(feeds.length > 0);
+}
+
+// --- drawing a new box
+canvas.addEventListener('mousedown', (e) => {
+  if (!drawing || e.button !== 0) return;
+  dragStart = pointOf(e);
+  els.box.classList.add('drawing');
+  placeBox({ x1: dragStart.x, y1: dragStart.y, x2: dragStart.x, y2: dragStart.y });
+});
+
+// --- moving or resizing an existing one
+els.box.addEventListener('mousedown', (e) => {
+  if (drawing || e.button !== 0 || !area) return;
+  // Don't let the map pan underneath the gesture.
+  e.stopPropagation();
+  e.preventDefault();
+
+  const r = els.box.getBoundingClientRect();
+  const c = canvas.getBoundingClientRect();
+  gesture = {
+    handle: e.target.dataset.h || null,   // null means "move the whole box"
+    start: pointOf(e),
+    rect: {
+      x1: r.left - c.left, y1: r.top - c.top,
+      x2: r.right - c.left, y2: r.bottom - c.top,
+    },
+  };
+});
+
+window.addEventListener('mousemove', (e) => {
+  const p = pointOf(e);
+
+  if (dragStart) {
+    placeBox({
+      x1: Math.min(dragStart.x, p.x), y1: Math.min(dragStart.y, p.y),
+      x2: Math.max(dragStart.x, p.x), y2: Math.max(dragStart.y, p.y),
+    });
+    return;
+  }
+
+  if (!gesture) return;
+  const dx = p.x - gesture.start.x;
+  const dy = p.y - gesture.start.y;
+  const r = { ...gesture.rect };
+  const h = gesture.handle;
+
+  if (!h) {
+    r.x1 += dx; r.x2 += dx; r.y1 += dy; r.y2 += dy;
+  } else {
+    if (h.includes('w')) r.x1 += dx;
+    if (h.includes('e')) r.x2 += dx;
+    if (h.includes('n')) r.y1 += dy;
+    if (h.includes('s')) r.y2 += dy;
+  }
+  // Dragging a handle past the opposite edge flips the rectangle rather than
+  // inverting it; setArea sorts the corners anyway, but the preview shouldn't
+  // collapse to nothing on the way.
+  placeBox({
+    x1: Math.min(r.x1, r.x2), y1: Math.min(r.y1, r.y2),
+    x2: Math.max(r.x1, r.x2), y2: Math.max(r.y1, r.y2),
+  });
+  gesture.current = r;
+});
+
+window.addEventListener('mouseup', (e) => {
+  const p = pointOf(e);
+
+  if (dragStart) {
+    const start = dragStart;
+    dragStart = null;
+    els.box.classList.remove('drawing');
+
+    // A click, not a drag: cancel out rather than query a zero-size box, and
+    // leave existing results alone - losing a selection to a stray click stings.
+    if (Math.abs(p.x - start.x) < 4 && Math.abs(p.y - start.y) < 4) {
+      setDrawing(false);
+      renderBox();
+      return;
+    }
+
+    // One box per activation, or every later drag would silently redraw it.
+    setDrawing(false);
+    setArea({ x1: start.x, y1: start.y, x2: p.x, y2: p.y });
+    return;
+  }
+
+  if (!gesture) return;
+  const r = gesture.current;
+  gesture = null;
+  // No movement: a click on the box shouldn't cost a round trip.
+  if (r) setArea(r);
+});
+
+// ---- map layers ------------------------------------------------------------
+
+function rectFeature(bbox) {
+  const [w, s, e, n] = bbox;
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [[[w,s],[e,s],[e,n],[w,n],[w,s]]] },
+    properties: {},
+  };
+}
+
+map.on('load', () => {
+  map.addSource('extents', { type: 'geojson', data: emptyCollection() });
+  map.addLayer({
+    id: 'extent-line', type: 'line', source: 'extents',
+    paint: { 'line-color': '#e8a33d', 'line-width': 1.5, 'line-opacity': 0.9 },
+  });
+
+  // Added last so it draws over the selected outlines. Hovering answers "where
+  // is this one" for feeds that aren't selected and so have no outline at all -
+  // which is most of them, now that selection is opt-in.
+  map.addSource('hover', { type: 'geojson', data: emptyCollection() });
+  map.addLayer({
+    id: 'hover-fill', type: 'fill', source: 'hover',
+    paint: { 'fill-color': '#e8a33d', 'fill-opacity': 0.15 },
+  });
+  map.addLayer({
+    id: 'hover-line', type: 'line', source: 'hover',
+    paint: { 'line-color': '#e8a33d', 'line-width': 2.5 },
+  });
+
+  // Anything drawn while the style was still loading wrote to a source that
+  // didn't exist yet and was dropped. Vector tiles take seconds, so drawing
+  // before then is easy to do - and the outlines would silently never appear.
+  // This also covers a restore that finished before the style did.
+  drawExtents();
+});
+
+
+/// Reopens whatever was last in the pane, if anything.
+function restoreSaved() {
+  let saved;
+  try { saved = localStorage.getItem(SAVED_ZONE); } catch { return; }
+  if (!saved) return;
+
+  let zone;
+  try {
+    zone = JSON.parse(saved);
+  } catch (err) {
+    // Left in the pane rather than discarded: a document that doesn't parse is
+    // still someone's work, credentials included, and it's usually one stray
+    // character from being valid again. Deleting it is their call.
+    els.json.value = saved;
+    els.json.classList.add('invalid');
+    els.download.disabled = true;
+    els.summary.textContent = `Restored zone isn't valid JSON: ${err.message}`;
+    return;
+  }
+  openZone(zone, 'Restored zone');
+}
+
+function emptyCollection() { return { type: 'FeatureCollection', features: [] }; }
+
+// Above this, a feed covers more ground than a large country and is almost
+// certainly a national operator rather than the local service you drew for.
+// Switzerland is 41,000 km²; Puget Sound is about 15,000.
+const BIG_M2 = 50_000e6;
+
+/// Square meters as km², which is the unit a service area is actually read in.
+function areaLabel(m2) {
+  const km2 = m2 / 1e6;
+  return `${km2 < 10 ? km2.toFixed(1) : Math.round(km2).toLocaleString()} km²`;
+}
+
+function highlight(feed) {
+  const src = map.getSource('hover');
+  if (!src) return;
+  src.setData(feed
+    ? { type: 'FeatureCollection', features: [rectFeature(feed.bbox)] }
+    : emptyCollection());
+}
+
+// Only checked feeds are outlined, so unchecking shows up on the map.
+function drawExtents() {
+  const src = map.getSource('extents');
+  if (!src) return;
+  src.setData({
+    type: 'FeatureCollection',
+    features: feeds.filter(f => selected.has(f.feed_id)).map(f => rectFeature(f.bbox)),
+  });
+}
+
+// ---- data ------------------------------------------------------------------
+
+async function loadFeeds(keep = false) {
+  els.summary.textContent = 'Searching…';
+  try {
+    render(await queryFeeds(area), keep);
+  } catch (e) {
+    els.summary.textContent = 'Query failed: ' + e.message;
+  }
+}
+
+/// Feed ids that are selected but no longer intersect the box. Tracked so the
+/// list can say why they're there.
+let outside = new Set();
+
+/// Renders the result list.
+///
+/// Nothing is selected by default: feeds are opt-in. Drawing an area proposes
+/// candidates, it doesn't choose them - the whole point of curating is that a
+/// box over a metro area also catches national operators and neighbouring
+/// counties you don't want. A re-query keeps what you've already picked and
+/// leaves newly covered feeds unticked.
+///
+/// A pick also survives the box moving off it. Resizing is how you explore -
+/// nudge the edge, see what appears - and a nudge that silently dropped a
+/// deliberate choice would make the document quietly wrong, in the direction
+/// nobody checks. Those feeds stay in the list, ticked and marked, so removing
+/// one stays an act rather than a side effect.
+///
+/// `extra` is for feeds that belong in the list without being in this query's
+/// results - reopening a zone whose picks the box no longer covers.
+function render(list, keep = false, extra = []) {
+  const previous = keep ? selected : new Set();
+
+  const found = new Set(list.map(f => f.feed_id));
+  const kept = [...feeds, ...extra]
+    .filter(f => previous.has(f.feed_id) && !found.has(f.feed_id))
+    .filter((f, i, all) => all.findIndex(o => o.feed_id === f.feed_id) === i);
+  outside = new Set(kept.map(f => f.feed_id));
+
+  // Merged back into the server's order rather than appended, so a feed doesn't
+  // jump position for having briefly left the box. That order is relevance to
+  // the drawn area; a feed the box has moved off has no relevance to it any
+  // more, so those go last - keeping the order they came in, which sort's
+  // stability gives us for free.
+  const rank = (feed) => outside.has(feed.feed_id) ? -1 : (feed.relevance ?? -1);
+  feeds = [...list, ...kept].sort((a, b) => rank(b) - rank(a));
+  selected = new Set(feeds.filter(f => previous.has(f.feed_id)).map(f => f.feed_id));
+
+  if (area) {
+    els.summary.textContent =
+      `${list.length} feed${list.length === 1 ? '' : 's'} intersect ` +
+      area.map(n => n.toFixed(4)).join(' ') + ' - tick the ones you want' +
+      (kept.length ? `, plus ${kept.length} you picked outside it` : '');
+  }
+
+  els.feeds.innerHTML = '';
+  if (!feeds.length) {
+    els.feeds.innerHTML = '<li class="empty">Nothing here. Try a bigger box, or check the index covers this part of the world.</li>';
+    updateCount();
+    drawExtents();
+    return;
+  }
+
+  for (const feed of feeds) {
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selected.has(feed.feed_id);
+    cb.onchange = () => {
+      cb.checked ? selected.add(feed.feed_id) : selected.delete(feed.feed_id);
+      updateCount();
+      drawExtents();
+    };
+
+    const text = document.createElement('div');
+    const provider = document.createElement('div');
+    provider.className = 'provider';
+    provider.textContent = feed.provider;
+    // Says why a feed is listed that the current box doesn't touch, so it reads
+    // as kept on purpose rather than as a stale row.
+    if (outside.has(feed.feed_id)) {
+      const tag = document.createElement('span');
+      tag.className = 'outside';
+      tag.textContent = 'outside the box';
+      provider.appendChild(tag);
+    }
+    if (feed.authorization_type) {
+      const tag = document.createElement('span');
+      tag.className = 'auth';
+      tag.textContent = 'needs ' + feed.authorization_type;
+      provider.appendChild(tag);
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    // Flagged rather than hidden: sometimes you do want Amtrak.
+    const big = feed.area_m2 > BIG_M2;
+    meta.innerHTML =
+      `<span${big ? ' class="big"' : ''}>${big ? '⚠ ' : ''}${areaLabel(feed.area_m2)}</span> · ` +
+      `${feed.feed_id}`;
+
+    text.append(provider, meta);
+
+    li.onmouseenter = () => highlight(feed);
+    li.onmouseleave = () => highlight(null);
+
+    // Realtime rides along with the static feed rather than being selectable on
+    // its own: it has no extent, so there is no such thing as realtime "in" an
+    // area independent of the schedule it updates.
+    if (feed.realtime.length) {
+      const rt = document.createElement('div');
+      rt.className = 'rt';
+      const kinds = new Set(feed.realtime.flatMap(r => r.kinds));
+      const needsKey = feed.realtime.some(r => r.authorization_type);
+      rt.innerHTML =
+        [...kinds].map(k => `<span class="rt-tag">${k}</span>`).join('') +
+        (needsKey ? '<span class="auth">realtime needs a credential</span>' : '');
+      text.append(rt);
+    }
+
+
+    label.append(cb, text);
+    li.append(label);
+    els.feeds.append(li);
+  }
+
+  updateCount();
+  drawExtents();
+}
+
+function updateCount() {
+  const live = feeds.filter(f => selected.has(f.feed_id) && f.realtime.length).length;
+  els.count.textContent =
+    `${selected.size} of ${feeds.length} selected` + (live ? `, ${live} with realtime` : '');
+  refreshJson();
+}
+
+/// Pulls the credentials back out of whatever is currently in the pane.
+///
+/// Regenerating would otherwise wipe a token the moment you ticked another feed,
+/// which is the one thing that would make editing them there unusable.
+function harvestCredentials() {
+  const creds = {};
+  let zone;
+  try { zone = JSON.parse(els.json.value); } catch { return creds; }
+
+  for (const feed of (zone && zone.feeds) || []) {
+    if (feed.authorization && feed.authorization.credential) {
+      creds[feed.feed_onestop_id] = feed.authorization.credential;
+    }
+    for (const rt of feed.realtime || []) {
+      if (rt.authorization && rt.authorization.credential) {
+        creds[rt.feed_onestop_id] = rt.authorization.credential;
+      }
+    }
+  }
+  return creds;
+}
+
+/// Rebuilds the JSON pane from the current state.
+///
+/// Server-side so the pane shows exactly the document the schema produces rather
+/// than the page's guess at it, and so hand edits are made against the real
+/// thing. Any state change overwrites the box, so it's a last look before
+/// saving rather than somewhere to keep work.
+let jsonRequest = 0;
+/// Set while the pane is driving the UI, so the two directions can't chase each
+/// other: without it, applying an edit would regenerate the pane and overwrite
+/// what you were typing.
+let applyingJson = false;
+
+/// Where the pane is mirrored between visits.
+///
+/// A zone is minutes of work and the credentials in it are typed by hand, so
+/// losing it to a stray reload is worse than the small surprise of coming back
+/// to a page that isn't blank. The pane is mirrored exactly, empty included:
+/// reopening should be where you left off, not one state before it.
+const SAVED_ZONE = 'zone-builder-server.zone';
+
+function remember(text) {
+  // Storage is unavailable in private windows and can be full; neither is a
+  // reason to break the page it's backing up.
+  try {
+    if (text.trim()) localStorage.setItem(SAVED_ZONE, text);
+    else localStorage.removeItem(SAVED_ZONE);
+  } catch { /* not worth reporting */ }
+}
+
+async function refreshJson() {
+  if (applyingJson) return;
+  els.download.disabled = selected.size === 0;
+  if (!area || selected.size === 0) {
+    els.json.value = '';
+    remember('');
+    return;
+  }
+
+  // Requests can land out of order when you tick quickly; only the newest wins.
+  const mine = ++jsonRequest;
+  const res = await fetch('/api/zone', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      bbox: area.join(','), feed_ids: selectedIds(), credentials: harvestCredentials(),
+    }),
+  });
+  if (mine !== jsonRequest) return;
+
+  els.json.value = res.ok ? await res.text() : `// ${await res.text()}`;
+  els.json.classList.remove('invalid');
+  if (res.ok) remember(els.json.value);
+}
+
+// The binding runs both ways: ticking a feed rewrites the pane, and editing the
+// pane moves the rectangle and reticks the list. Invalid JSON is left alone
+// rather than fought over - you're mid-keystroke, not wrong.
+els.json.oninput = () => {
+  let zone = null;
+  try { zone = JSON.parse(els.json.value); } catch { /* still typing */ }
+
+  els.json.classList.toggle('invalid', !zone);
+  els.download.disabled = !zone || !els.json.value.trim();
+  // Only once it parses: half-typed JSON isn't a zone worth coming back to.
+  if (zone) {
+    remember(els.json.value);
+    applyJson(zone);
+  }
+};
+
+/// Pushes an edited document back onto the map and the list.
+function applyJson(zone) {
+  applyingJson = true;
+  try {
+    const b = zone.bounds;
+    if (b && [b.min_lon, b.min_lat, b.max_lon, b.max_lat].every(v => typeof v === 'number')) {
+      area = [b.min_lon, b.min_lat, b.max_lon, b.max_lat];
+      renderBox();
+    }
+
+    // Only feeds the current query returned can be ticked; naming one outside
+    // the drawn area is the file's business, not something the list can show.
+    const wanted = new Set((zone.feeds || []).map(f => f.feed_onestop_id));
+    selected = new Set(feeds.filter(f => wanted.has(f.feed_id)).map(f => f.feed_id));
+    els.feeds.querySelectorAll('input[type=checkbox]').forEach((cb, i) => {
+      cb.checked = selected.has(feeds[i].feed_id);
+    });
+
+    updateCount();
+    drawExtents();
+  } finally {
+    applyingJson = false;
+  }
+}
+
+document.getElementById('all').onclick = () => {
+  selected = new Set(feeds.map(f => f.feed_id));
+  els.feeds.querySelectorAll('input').forEach(cb => cb.checked = true);
+  updateCount();
+  drawExtents();
+};
+
+document.getElementById('none').onclick = () => {
+  selected.clear();
+  els.feeds.querySelectorAll('input').forEach(cb => cb.checked = false);
+  updateCount();
+  drawExtents();
+};
+
+// In listed order, so the CSV reads biggest-first like the panel.
+function selectedIds() {
+  return feeds.filter(f => selected.has(f.feed_id)).map(f => f.feed_id);
+}
+
+function save(text, filename) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// The pane is the source of truth for the download - editing it is the point.
+els.download.onclick = () => save(els.json.value, 'zone.json');
+
+// ---- reopening a saved zone ------------------------------------------------
+// The file is the whole state: where you were looking, what you'd picked, and
+// the credentials you'd collected. Parsed here rather than server-side because
+// nothing about it needs the index.
+
+for (const type of ['dragenter', 'dragover']) {
+  window.addEventListener(type, (e) => {
+    if (![...e.dataTransfer.types].includes('Files')) return;
+    e.preventDefault();
+    els.drop.classList.add('over');
+  });
+}
+for (const type of ['dragleave', 'drop']) {
+  window.addEventListener(type, (e) => {
+    // dragleave fires on every child; only the one leaving the window counts.
+    if (type === 'dragleave' && e.relatedTarget) return;
+    els.drop.classList.remove('over');
+  });
+}
+
+window.addEventListener('drop', async (e) => {
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  e.preventDefault();
+
+  let zone;
+  try {
+    zone = JSON.parse(await file.text());
+  } catch (err) {
+    els.summary.textContent = `${file.name} isn't JSON: ${err.message}`;
+    return;
+  }
+  openZone(zone, file.name);
+});
+
+async function openZone(zone, name) {
+  const b = zone && zone.bounds;
+  if (!b || [b.min_lon, b.min_lat, b.max_lon, b.max_lat].some(v => typeof v !== 'number')) {
+    els.summary.textContent = `${name} has no bounds - is it a zone file?`;
+    return;
+  }
+
+  // Seed the pane with the file, so its credentials survive the requery below:
+  // refreshJson harvests them straight back out of here.
+  els.json.value = JSON.stringify(zone, null, 2);
+
+  area = [b.min_lon, b.min_lat, b.max_lon, b.max_lat];
+  setDrawing(false);
+  map.fitBounds([[b.min_lon, b.min_lat], [b.max_lon, b.max_lat]], { padding: 60, duration: 0 });
+  renderBox();
+
+  const wanted = new Set((zone.feeds || []).map(f => f.feed_onestop_id));
+  let list, named;
+  try {
+    [list, named] = await Promise.all([
+      queryFeeds(area),
+      // The file can name feeds the box doesn't touch - keeping a pick when the
+      // box moves off it is the whole point - so they're fetched by id rather
+      // than by any box. The file says which feeds; the index says where they
+      // are, which is the half that may have changed since it was saved.
+      queryFeedsByIds([...wanted]),
+    ]);
+  } catch (e) {
+    els.summary.textContent = 'Query failed: ' + e.message;
+    return;
+  }
+
+  const found = new Set(list.map(f => f.feed_id));
+  const outsideBox = named.filter(f => !found.has(f.feed_id));
+
+  selected = new Set(wanted);
+  render(list, true, outsideBox);
+  els.feeds.querySelectorAll('input[type=checkbox]').forEach((cb, i) => {
+    cb.checked = selected.has(feeds[i].feed_id);
+  });
+
+  // What's left is a feed the index can't produce at all - it would vanish from
+  // the zone on the next save, so say so rather than quietly drop it.
+  const missing = [...wanted].filter(id => !feeds.some(f => f.feed_id === id));
+  els.summary.textContent =
+    `${name}: ${selected.size} of ${wanted.size} feeds restored` +
+    (outsideBox.length ? `, ${outsideBox.length} outside the box` : '') +
+    (missing.length ? ` - missing ${missing.join(', ')}` : '');
+
+  updateCount();
+  drawExtents();
+}
+
+async function queryFeeds(bbox) {
+  if (!bbox) return [];
+  return get('/api/feeds-by-bbox?bbox=' + bbox.join(','));
+}
+
+async function queryFeedsByIds(ids) {
+  if (!ids.length) return [];
+  return get('/api/feeds/' + ids.map(encodeURIComponent).join(','));
+}
+
+async function get(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// Kicked off last, once everything it touches is defined, and deliberately not
+// waiting on the map: the style comes off a remote tileserver, and a slow or
+// unreachable one shouldn't be what stands between you and the zone you were
+// working on. Camera moves queue up, and the outlines are redrawn on style load.
+restoreSaved();
+</script>
+</body>
+</html>

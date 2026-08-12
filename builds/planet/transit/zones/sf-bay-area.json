@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -123.05377,
+    "min_lat": 36.97492,
+    "max_lon": -120.95269,
+    "max_lat": 39.09981
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-sf~bay~area~rg",
+      "provider": "f-sf~bay~area~rg",
+      "url": "http://api.511.org/transit/datafeeds?operator_id=RG",
+      "authorization": {
+        "type": "replace_url",
+        "credential": ""
+      }
+    }
+  ],
+  "router_config": {
+    "updaters": [
+      {
+        "feedId": "headway-f-sf~bay~area~rg",
+        "type": "real-time-alerts",
+        "frequency": "300s",
+        "url": "https://api.511.org/Transit/servicealerts?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
+      },
+      {
+        "feedId": "headway-f-sf~bay~area~rg",
+        "type": "stop-time-updater",
+        "frequency": "60s",
+        "url": "https://api.511.org/Transit/TripUpdates?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
+      },
+      {
+        "feedId": "headway-f-sf~bay~area~rg",
+        "type": "vehicle-positions",
+        "frequency": "60s",
+        "url": "https://api.511.org/Transit/VehiclePositions?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
+      }
+    ]
+  }
+}

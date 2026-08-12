@@ -2,6 +2,7 @@
 *.swp
 *.osm.pbf
 *.mbtiles
+target/
 **/.DS_Store
 data/*
 .env

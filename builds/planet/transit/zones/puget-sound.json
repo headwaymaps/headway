@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -123.2654221233932,
+    "min_lat": 46.93304,
+    "max_lon": -121.601001,
+    "max_lat": 48.999226
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-c28-washingtonstateferries",
+      "provider": "Washington State Ferries",
+      "url": "https://business.wsdot.wa.gov/Transit/csv_files/wsf/google_transit.zip"
+    },
+    {
+      "feed_onestop_id": "f-skagit~wa~us",
+      "provider": "Skagit Transit",
+      "url": "https://strweb.skagittransit.org/GTFS/google_transit.zip"
+    },
+    {
+      "feed_onestop_id": "f-c23-metrokingcounty",
+      "provider": "King County Marine Divison",
+      "url": "http://metro.kingcounty.gov/GTFS/google_transit.zip"
+    },
+    {
+      "feed_onestop_id": "f-c29-communitytransit",
+      "provider": "Community Transit",
+      "url": "https://www.communitytransit.org/docs/default-source/open-data/gtfs/current.zip?sfvrsn=1968d0e2_118"
+    },
+    {
+      "feed_onestop_id": "f-c28-whatcomtransportationauthority",
+      "provider": "Whatcom Transportation Authority",
+      "url": "https://github.com/whatcomtrans/publicwtadata/raw/master/GTFS/wta_gtfs_latest.zip"
+    },
+    {
+      "feed_onestop_id": "f-c22-mason~wa~us",
+      "provider": "Mason Transit Authority",
+      "url": "https://data.trilliumtransit.com/gtfs/mason-wa-us/mason-wa-us.zip"
+    },
+    {
+      "feed_onestop_id": "f-c23-soundtransit",
+      "provider": "Sound Transit",
+      "url": "https://gtfs.sound.obaweb.org/prod/40_gtfs.zip"
+    },
+    {
+      "feed_onestop_id": "f-c28-islandtransit",
+      "provider": "Island Transit",
+      "url": "https://data.trilliumtransit.com/gtfs/islandtransit-wa-us/islandtransit-wa-us.zip"
+    },
+    {
+      "feed_onestop_id": "f-c22-piercetransit~soundtransit",
+      "provider": "Pierce Transit",
+      "url": "https://gtfs.sound.obaweb.org/prod/3_gtfs.zip"
+    },
+    {
+      "feed_onestop_id": "f-c22y-kitsaptransit",
+      "provider": "Kitsap Transit",
+      "url": "https://pride.kitsaptransit.com/gtfs/google_transit.zip"
+    },
+    {
+      "feed_onestop_id": "f-c22e-intercitytransit",
+      "provider": "Intercity Transit",
+      "url": "https://its.rideralerts.com/InfoPoint/GTFS-Zip.ashx"
+    },
+    {
+      "feed_onestop_id": "f-lummitransit~wa~us",
+      "provider": "f-lummitransit~wa~us",
+      "url": "https://data.trilliumtransit.com/gtfs/lummitransit-wa-us/lummitransit-wa-us.zip"
+    },
+    {
+      "feed_onestop_id": "f-c290-everetttransit",
+      "provider": "Everett Transit",
+      "url": "https://everett.mapstrat.com/current/google_transit.zip"
+    },
+    {
+      "feed_onestop_id": "f-muckleshoot~wa~us",
+      "provider": "Muckleshoot Tribal Transit",
+      "url": "https://muckleshoottransit.ridesystems.net/Secure/Admin/Reports/GTFSDownload.aspx"
+    },
+    {
+      "feed_onestop_id": "f-piercecountyferries~wa~us",
+      "provider": "Pierce County Ferries",
+      "url": "https://data.trilliumtransit.com/gtfs/piercecountyferries-wa-us/piercecountyferries-wa-us.zip"
+    },
+    {
+      "feed_onestop_id": "f-tulaliptransit~wa~us",
+      "provider": "f-tulaliptransit~wa~us",
+      "url": "https://data.trilliumtransit.com/gtfs/tulaliptransit-wa-us/tulaliptransit-wa-us.zip"
+    },
+    {
+      "feed_onestop_id": "f-seattlemonorail~wa~us",
+      "provider": "f-seattlemonorail~wa~us",
+      "url": "https://github.com/Seattle-Monorail-Services/gtfs/raw/refs/heads/main/96_gtfs.zip"
+    }
+  ],
+  "router_config": {
+    "updaters": [
+      {
+        "feedId": "headway-1080",
+        "type": "stop-time-updater",
+        "frequency": "60s",
+        "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
+      },
+      {
+        "feedId": "headway-1080",
+        "type": "real-time-alerts",
+        "frequency": "300s",
+        "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+      }
+    ]
+  }
+}

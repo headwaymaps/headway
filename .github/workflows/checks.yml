@@ -76,10 +76,7 @@ jobs:
       - run: yarn format-check
       - run: yarn tsc
       - run: yarn test
-  travelmux_checks:
-    defaults:
-      run:
-        working-directory: services/travelmux
+  rust_checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -93,35 +90,12 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            services/travelmux/target/
+            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo fmt --all --check
-      - run: cargo clippy --all-features
-      - run: cargo test --all-targets
-      - run: cargo build --release
-  gtfout:
-    defaults:
-      run:
-        working-directory: services/gtfs/gtfout
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/travelmux/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo fmt --all --check
-      - run: cargo clippy --all-targets --all-features
-      - run: cargo test --all-targets --all-features
-      - run: cargo build --release
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo test --workspace --all-targets
+      - run: cargo build --workspace --release --all-features
   integration_tests:
     name: Integration Tests
     runs-on: ubuntu-latest

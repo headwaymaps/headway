@@ -32,6 +32,20 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:${HEADWAY_CONTAINER_TAG}
+          # API keys for authenticated GTFS-RT feeds. router-config.json refers
+          # to them as ${HEADWAY_GTFS_API_KEY_*}, which OTP substitutes from its
+          # environment before parsing - so the config stays committable and
+          # the credential lives only here.
+          #
+          # Optional: a zone with no authenticated realtime feeds needs no
+          # secret, and shouldn't fail to start for want of one. Create it with
+          # a key per variable named in the query-gtfs-index output, e.g.
+          #   kubectl create secret generic otp-${TRANSIT_AREA}-gtfs-api-keys \
+          #     --from-literal=HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT=...
+          envFrom:
+            - secretRef:
+                name: otp-${TRANSIT_AREA}-gtfs-api-keys
+                optional: true
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory

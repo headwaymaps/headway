@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -118.9437484,
+    "min_lat": 32.8000296,
+    "max_lon": -117.6447219,
+    "max_lat": 34.8225441
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-9qh-metrolinktrains",
+      "provider": "Metrolink",
+      "url": "https://metrolinktrains.com/globalassets/about/gtfs/gtfs.zip"
+    },
+    {
+      "feed_onestop_id": "f-9q5-metro~losangeles",
+      "provider": "f-9q5-metro~losangeles",
+      "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip"
+    },
+    {
+      "feed_onestop_id": "f-9q5-ladot",
+      "provider": "Los Angeles Department of Transportation",
+      "url": "https://ladotbus.com/gtfs"
+    },
+    {
+      "feed_onestop_id": "f-9q5-metro~losangeles~rail",
+      "provider": "f-9q5-metro~losangeles~rail",
+      "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip"
+    },
+    {
+      "feed_onestop_id": "f-9qh1-foothilltransit",
+      "provider": "Foothill Transit",
+      "url": "https://foothilltransit.rideralerts.com/myStop/GTFS-Zip.ashx"
+    },
+    {
+      "feed_onestop_id": "f-laxflyaway",
+      "provider": "LAX Flyaway",
+      "url": "https://laxflyaway.transloc.com/Secure/Admin/Reports/GTFSDownload.aspx"
+    },
+    {
+      "feed_onestop_id": "f-9q5c-bigbluebus",
+      "provider": "f-9q5c-bigbluebus",
+      "url": "http://gtfs.bigbluebus.com/current.zip"
+    },
+    {
+      "feed_onestop_id": "f-9q5f-pasadenatransit",
+      "provider": "Pasadena Transit",
+      "url": "https://rt.pasadenatransit.net/rtt/public/resource/gtfs.zip"
+    },
+    {
+      "feed_onestop_id": "f-9q5f7-burbankbus",
+      "provider": "Burbank Bus",
+      "url": "https://rideburbankbus.com/gtfs"
+    },
+    {
+      "feed_onestop_id": "f-lax~flyaway",
+      "provider": "f-lax~flyaway",
+      "url": "https://laxtransportation.ridesystems.net/Secure/Admin/Reports/GTFSDownload.aspx"
+    }
+  ],
+  "router_config": {
+    "updaters": []
+  }
+}

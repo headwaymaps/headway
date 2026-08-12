@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+  "services/gtfs/gtfout/zone-builder-server",
+  "services/gtfs/gtfout",
+  "services/gtfs/zone",
+  "services/travelmux",
+]
+
+[workspace.dependencies]
+transit-zone = { path = "services/gtfs/zone" }

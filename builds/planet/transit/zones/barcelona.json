@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": 1.802,
+    "min_lat": 41.23,
+    "max_lon": 2.479,
+    "max_lat": 41.618
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-sp3e-authosa~mohnsl~oliverassl~rosanbussl~solerisauret~sgmt~tc",
+      "provider": "f-sp3e-authosa~mohnsl~oliverassl~rosanbussl~solerisauret~sgmt~tc",
+      "url": "http://www.ambmobilitat.cat/OpenData/google_transit.zip"
+    },
+    {
+      "feed_onestop_id": "f-tram~tbx",
+      "provider": "f-tram~tbx",
+      "url": "https://opendata.tram.cat/GTFS/zip/TBX.zip"
+    },
+    {
+      "feed_onestop_id": "f-tram~tbs",
+      "provider": "f-tram~tbs",
+      "url": "https://opendata.tram.cat/GTFS/zip/TBS.zip"
+    }
+  ],
+  "router_config": {
+    "updaters": []
+  }
+}

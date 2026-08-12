@@ -1,11 +1,10 @@
-use gtfout::{
-    geom::{Point, Rect},
-    Result,
-};
+use gtfout::{geom::RectExt, Result};
 
 use std::path::PathBuf;
 
+use geo::{coord, Rect};
 use serde::Deserialize;
+
 #[derive(Debug, Deserialize)]
 struct GTFSPoint {
     shape_pt_lon: f64,
@@ -23,13 +22,13 @@ fn main() -> Result<()> {
 
 fn compute_bbox(gtfs_dirs: Vec<PathBuf>) -> Result<Rect> {
     let mut bbox: Option<Rect> = None;
-    let mut first_point: Option<Point> = None;
+    let mut first_point: Option<geo::Coord> = None;
     let mut num_points = 0;
 
     let mut expand_bbox = |mut reader: csv::Reader<_>| -> Result<()> {
         for result in reader.deserialize() {
             let record: GTFSPoint = result?;
-            let point = Point::new(record.shape_pt_lon, record.shape_pt_lat);
+            let point = coord! { x: record.shape_pt_lon, y: record.shape_pt_lat };
             num_points += 1;
 
             match (&mut bbox, &mut first_point) {
@@ -60,8 +59,8 @@ mod tests {
     fn test_1() {
         let actual = compute_bbox(vec!["data/mock_gtfs_1".into()]).unwrap();
         let expected = Rect::new(
-            Point::new(-122.366249, 47.599201),
-            Point::new(-122.281769, 47.64312),
+            coord! { x: -122.366249, y: 47.599201 },
+            coord! { x: -122.281769, y: 47.64312 },
         );
         assert_eq!(actual, expected);
     }
@@ -70,8 +69,8 @@ mod tests {
     fn test_2() {
         let actual = compute_bbox(vec!["data/mock_gtfs_2".into()]).unwrap();
         let expected = Rect::new(
-            Point::new(-118.4467287702, 34.0636633497),
-            Point::new(-118.4371927733, 34.0764316858),
+            coord! { x: -118.4467287702, y: 34.0636633497 },
+            coord! { x: -118.4371927733, y: 34.0764316858 },
         );
         assert_eq!(actual, expected);
     }
@@ -81,8 +80,8 @@ mod tests {
         let actual =
             compute_bbox(vec!["data/mock_gtfs_1".into(), "data/mock_gtfs_2".into()]).unwrap();
         let expected = Rect::new(
-            Point::new(-122.366249, 34.0636633497),
-            Point::new(-118.4371927733, 47.64312),
+            coord! { x: -122.366249, y: 34.0636633497 },
+            coord! { x: -118.4371927733, y: 47.64312 },
         );
         assert_eq!(actual, expected);
     }

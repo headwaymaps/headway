@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"dagger/headway/internal/dagger"
 	"fmt"
 	"strings"
@@ -26,7 +27,10 @@ type TransitZone struct {
 	// scheme, which is what keeps the two honest with each other: the feeds are
 	// fetched at most once per day, and the date in the name is by construction
 	// the day they were fetched.
-	BuildDate      string
+	BuildDate string
+	// The zone's configuration: `transit/zones/<zone>.json`, as the zone builder
+	// writes it. The file name is the zone name, and the document carries the
+	// feeds, their credentials and the realtime config.
 	TransitFeeds   *dagger.File
 	GTFSDir        *dagger.Directory
 	OSMExport      *OSMExport
@@ -40,12 +44,13 @@ type TransitZone struct {
 // +cache="never"
 func (h *Headway) BuildTransit(ctx context.Context,
 	transitConfigDir *dagger.Directory,
-	// Env-file (KEY=VALUE lines) of API keys for feeds whose CSV row sets
-	// urls.authentication_type, named HEADWAY_GTFS_API_KEY_<mdb_source_id>.
+	// YAML config of credentials for feeds that need one, as a `feeds:` table
+	// keyed by Onestop ID. See GtfsCredentialsPath.
 	//
 	// This has to be passed explicitly: dagger sandboxes module code, so it
 	// can't read the host environment and there's no way to pick these up
-	// implicitly. bin/build-transit passes `--gtfs-api-keys file://$PWD/.bin-env`.
+	// implicitly. bin/build-transit passes
+	// `--gtfs-api-keys file://$PWD/gtfs-credentials.yaml`.
 	//
 	// +optional
 	gtfsApiKeys *dagger.Secret,
@@ -70,7 +75,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 
 	output := dag.Directory()
 
-	transitFeedsDir := transitConfigDir.Directory("gtfs-feeds")
+	transitFeedsDir := transitConfigDir.Directory("zones")
 
 	otpBuildConfig := (*dagger.File)(nil)
 	otpConfigExists, err := transitConfigDir.Exists(ctx, "otp-build-config.json")
@@ -209,6 +214,14 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	return output, nil
 }
 
+func zoneFileContents(ctx context.Context, zoneFile *dagger.File) string {
+	contents, err := zoneFile.Contents(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to read transit zone file: %w", err))
+	}
+	return contents
+}
+
 func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File, buildDate string) *TransitZone {
 	return &TransitZone{
 		Headway:      h,
@@ -222,7 +235,7 @@ func (t *TransitZone) ZoneName(ctx context.Context) string {
 	if err != nil {
 		panic(fmt.Errorf("failed to get transit feeds name: %w", err))
 	}
-	return strings.TrimSuffix(fileName, ".gtfs_feeds.csv")
+	return strings.TrimSuffix(fileName, ".json")
 }
 
 func (t *TransitZone) WithOtpBuildConfig(ctx context.Context, otpBuildConfig *dagger.File) *TransitZone {
@@ -276,28 +289,61 @@ func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 	gtfsApiKeys *dagger.Secret) *dagger.Directory {
 	servicesDir := t.Headway.ServiceDir("gtfs")
 
-	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")
+	gtfout := t.Headway.Gtfout(ctx)
 
-	container := dag.Container().
-		From("python:3")
-	container = WithAptPackages(container, "zip").
-		WithExec([]string{"pip", "install", "requests"}).
+	container := slimContainer("ca-certificates", "zip", "unzip").
 		WithMountedDirectory("/app", servicesDir).
 		WithWorkdir("/app").
-		WithMountedFile("/usr/local/bin/assume-bikes-allowed", assumeBikesAllowed).
-		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds)
+		WithMountedFile("/usr/local/bin/assume-bikes-allowed", gtfout.File("assume-bikes-allowed")).
+		WithMountedFile("/usr/local/bin/download-feeds", gtfout.File("download-feeds"))
+
+	// Mounted as a secret: a picked zone file holds literal feed credentials, so
+	// it stays out of the build cache and the logs the way gtfs-credentials.yaml
+	// does.
+	//
+	// A secret's contents are excluded from the exec cache key - that's what
+	// keeping them out of the cache means - so the name has to carry the digest.
+	// Without it, editing a zone in place leaves every field of this exec
+	// identical and the old feeds get served from cache.
+	contents := zoneFileContents(ctx, t.TransitFeeds)
+	container = container.WithMountedSecret(zoneFilePath, dag.SetSecret(
+		fmt.Sprintf("transit-zone-%s-%x", t.ZoneName(ctx), sha256.Sum256([]byte(contents))),
+		contents,
+	))
+	downloadArgs := []string{"download-feeds", "--zone", zoneFilePath, "--output", "downloaded"}
+
+	// A committed zone has the credential fields but not the credentials, so the
+	// config still has somewhere to be useful. A zone you filled in yourself
+	// carries its own and overrides these.
 	if gtfsApiKeys != nil {
-		container = container.WithMountedSecret(GtfsApiKeysPath, gtfsApiKeys)
+		container = container.WithMountedSecret(GtfsCredentialsPath, gtfsApiKeys)
+		downloadArgs = append(downloadArgs, "--config", GtfsCredentialsPath)
 	}
+
 	return container.
-		WithExec([]string{"sh", "-c", "./download_gtfs_feeds.py --output=downloaded < gtfs_feeds.csv"}).
+		WithExec(downloadArgs).
 		WithExec([]string{"sh", "-c", "./build_gtfs.sh --input downloaded --output ./output"}).
 		Directory("./output")
 }
 
-// Where BuildGtfsDir mounts the GTFS API key env-file for download_gtfs_feeds.py
-// to read. Mounted as a secret so the keys stay out of the build cache and logs.
-const GtfsApiKeysPath = "/run/secrets/gtfs-api-keys"
+// Where the GTFS credential config is mounted for the feed tools to read.
+//
+// Feeds whose DMFR record has an `authorization` block need a credential to be
+// fetched at all - both to measure them for the index and to download them when
+// building a zone. The file is YAML: a `feeds:` table keyed by Onestop ID. See
+// services/gtfs/gtfout/src/feed_config.rs, and `--write-config-template` for
+// generating one.
+//
+// It arrives as a secret, so the credentials stay out of the build cache and
+// logs. It has to be passed in rather than read from the host environment
+// because dagger sandboxes module code.
+const GtfsCredentialsPath = "/run/secrets/gtfs-credentials.yaml"
+
+// Where a zone file is mounted for download-feeds to read.
+//
+// Beside the credentials config, and for the same reason: a zone file carries
+// the feeds' credentials inline, so it's a secret too.
+const zoneFilePath = "/run/secrets/zone.json"
 
 func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	container := slimContainer("unzip").
@@ -316,34 +362,99 @@ func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	return ParseBboxStr(bboxStr)
 }
 
-// Downloads GTFS mobility database CSV
-func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
-	downloadUrl := getEnvWithDefault("HEADWAY_MOBILITYDB_URL", "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media")
-	return downloadFile(downloadUrl)
+// Clones the Transitland Atlas, the catalog we discover GTFS feeds from.
+//
+// Pinned to a ref so a discovery run is reproducible; override
+// HEADWAY_TRANSITLAND_ATLAS_REF to pick up newly cataloged agencies.
+func (h *Headway) TransitlandAtlas(ctx context.Context) *dagger.Directory {
+	url := getEnvWithDefault("HEADWAY_TRANSITLAND_ATLAS_URL", "https://github.com/transitland/transitland-atlas.git")
+	ref := getEnvWithDefault("HEADWAY_TRANSITLAND_ATLAS_REF", "main")
+	return dag.Git(url).Branch(ref).Tree()
 }
 
-// Enumerates GTFS feeds for a given area by filtering the mobility database
-func (h *Headway) NearbyGtfsFeeds(ctx context.Context) *dagger.File {
-	if h.Area == "" {
-		panic("Area is required for GTFS enumeration")
+// Where the feed-extents index lives inside the discovery containers.
+const gtfsIndexPath = "/cache/feed-extents.gpkg"
+
+// The spatial index of measured GTFS feed extents, for whoever wants the file
+// itself; building or refreshing it is a side effect of asking.
+//
+// Derived data, so it lives in a cache volume rather than git - but it's
+// occasionally useful to pull out and inspect with QGIS.
+func (h *Headway) GtfsIndex(ctx context.Context,
+	// See BuildTransit.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret) *dagger.File {
+	return h.gtfsIndex(ctx, gtfsApiKeys).
+		WithExec([]string{"cp", gtfsIndexPath, "/app/feed-extents.gpkg"}).
+		File("/app/feed-extents.gpkg")
+}
+
+// A credentials config template listing the feeds that still need one,
+// annotated with how each authenticates and where to request a token.
+//
+// Save it as gtfs-credentials.yaml at the repo root and the build scripts pass
+// it through automatically. Passing the credentials you already have carries
+// them into the generated file, so regenerating never loses them.
+func (h *Headway) GtfsCredentialsTemplate(ctx context.Context,
+	// See BuildTransit.
+	//
+	// +optional
+	gtfsApiKeys *dagger.Secret) *dagger.File {
+	container := h.gtfsIndex(ctx, gtfsApiKeys)
+
+	args := []string{
+		"write-gtfs-index",
+		"--atlas-path", "/atlas",
+		"--out", gtfsIndexPath,
+		// --all names the scope even though --dry-run means nothing is fetched:
+		// it's the whole catalog's credentials we're reporting on.
+		"--all",
+		"--dry-run",
+		"--write-config-template", "/app/gtfs-credentials.yaml",
+	}
+	if gtfsApiKeys != nil {
+		// Same file in and out, which is what makes regenerating non-destructive.
+		args = append(args, "--config", GtfsCredentialsPath)
 	}
 
-	bbox, err := h.BBox(ctx)
-	if err != nil {
-		panic(fmt.Errorf("failed to get bounding box for area %s: %w", h.Area, err))
+	return container.WithExec(args).File("/app/gtfs-credentials.yaml")
+}
+
+// Builds or refreshes the index of measured feed extents.
+//
+// It covers the whole atlas rather than one area. That costs a full download
+// pass the first time, but it's what makes the index mean something on its own:
+// built per-area into a shared cache, what a query returned depended on which
+// areas had been built before it.
+//
+// The cache volume is what makes this a one-off. Locked sharing because the
+// index is SQLite, which takes a single writer.
+func (h *Headway) gtfsIndex(ctx context.Context, gtfsApiKeys *dagger.Secret) *dagger.Container {
+	// libsqlite3 because the index is a GeoPackage, which is SQLite; the gtfout
+	// binaries link it dynamically.
+	container := slimContainer("ca-certificates", "libsqlite3-0").
+		WithMountedFile("/usr/local/bin/write-gtfs-index", h.Gtfout(ctx).File("write-gtfs-index")).
+		WithMountedDirectory("/atlas", h.TransitlandAtlas(ctx)).
+		WithMountedCache("/cache", dag.CacheVolume("headway-gtfs-feed-index"), dagger.ContainerWithMountedCacheOpts{
+			Sharing: dagger.CacheSharingModeLocked,
+		}).
+		WithWorkdir("/app")
+
+	args := []string{
+		"write-gtfs-index",
+		"--atlas-path", "/atlas",
+		"--out", gtfsIndexPath,
+		// The index backing every zone's query has to cover the whole catalog;
+		// see the comment on this function.
+		"--all",
+	}
+	if gtfsApiKeys != nil {
+		container = container.WithMountedSecret(GtfsCredentialsPath, gtfsApiKeys)
+		args = append(args, "--config", GtfsCredentialsPath)
 	}
 
-	mobilityDb := h.GtfsGetMobilitydb(ctx)
-	servicesDir := h.ServiceDir("gtfs")
-
-	container := dag.Container().
-		From("python:3").
-		WithMountedDirectory("/app", servicesDir).
-		WithMountedFile("/app/sources.csv", mobilityDb).
-		WithWorkdir("/app").
-		WithExec([]string{"sh", "-c", fmt.Sprintf("./filter_feeds.py --bbox='%s' < sources.csv > nearby_gtfs_feeds.csv", bbox.SpaceSeparated())})
-
-	return container.File("/app/nearby_gtfs_feeds.csv")
+	return container.WithExec(args)
 }
 
 // Builds Rust GTFS processing tools
@@ -351,13 +462,13 @@ func (h *Headway) NearbyGtfsFeeds(ctx context.Context) *dagger.File {
 //
 //	dagger -c 'gtfout | file assume-bikes-allowed | export ./assume-bikes-allowed'
 func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
-	sourceDir := h.ServiceDir("gtfs/gtfout")
 	container := rustContainer().
-		WithMountedDirectory("/gtfout", sourceDir).
-		WithWorkdir("/gtfout").
-		WithExec([]string{"cargo", "build", "--release"})
+		// The cargo workspace root, not just services/gtfs.
+		WithMountedDirectory("/repo", h.RepoDir).
+		WithWorkdir("/repo").
+		WithExec([]string{"cargo", "build", "--release", "--package", "gtfout"})
 
-	return container.Directory("/gtfout/target/release")
+	return container.Directory("/repo/target/release")
 }
 
 // Converts elevation HGT files to TIF format

@@ -1,0 +1,238 @@
+#!/bin/bash
+#
+# Load the GTFS API tokens an area's realtime updaters need into Kubernetes.
+#
+# A zone's updaters refer to credentials as ${HEADWAY_GTFS_API_KEY_...}, which
+# OTP substitutes from its environment before parsing the config. That keeps the
+# config committable, but it means the values have to reach the pod some other
+# way - this script puts them in the Secret the deployment reads.
+#
+# Each area gets only the tokens its own updaters actually reference, so a
+# cluster never holds credentials for zones it doesn't serve.
+
+set -e
+set -o pipefail
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
+
+function usage() {
+cat << EOF
+usage: $0 <config-dir> [options]
+
+Reads tokens from an env-file of KEY=VALUE lines - the same one the build uses -
+and creates one Secret per transit area.
+
+options:
+  --env-file FILE   where to read tokens from (default: .bin-env)
+  --namespace NS    kubectl namespace
+  --dry-run         show what would be created, and change nothing
+  --yes             don't prompt before writing to the cluster
+
+examples:
+    $0 builds/planet
+    $0 builds/planet --dry-run
+    $0 builds/Seattle --env-file ~/secrets/headway.env --namespace headway
+EOF
+}
+
+if [ $# -lt 1 ]; then
+    usage
+    exit 1
+fi
+
+CONFIG_DIR="$1"
+shift
+
+ENV_FILE="${APP_ROOT}/.bin-env"
+NAMESPACE=""
+DRY_RUN=""
+ASSUME_YES=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --env-file) ENV_FILE="$2"; shift 2 ;;
+        --namespace) NAMESPACE="$2"; shift 2 ;;
+        --dry-run) DRY_RUN=1; shift ;;
+        --yes) ASSUME_YES=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
+    esac
+done
+
+if [ ! -d "$CONFIG_DIR" ]; then
+    echo "Config dir '$CONFIG_DIR' doesn't exist" >&2
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    cat >&2 << EOF
+No token file at $ENV_FILE
+
+Create one with a line per credential, named as discovery reported it:
+    HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT=your-token
+EOF
+    exit 1
+fi
+
+source bin/_source-env.sh "$CONFIG_DIR"
+source bin/_zone-file.sh
+
+KUBECTL=(kubectl)
+if [ -n "$NAMESPACE" ]; then
+    KUBECTL+=(--namespace "$NAMESPACE")
+fi
+
+# Reads one variable out of the env-file. Deliberately not `source`d: that would
+# execute whatever is in there, and these files hold other projects' settings.
+#
+# awk rather than sed because BSD sed has no \+ or \? in a basic regex, so the
+# obvious one-liner matches nothing at all on macOS. Matching on the exact name
+# before the first "=" also keeps FOO from matching FOO_RT.
+function token_for() {
+    local name="$1"
+    awk -v name="$name" '
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            sub(/^export[[:space:]]+/, "", line)
+            eq = index(line, "=")
+            if (eq == 0) next
+            if (substr(line, 1, eq - 1) != name) next
+            value = substr(line, eq + 1)
+            sub(/[[:space:]]+$/, "", value)
+            if (value ~ /^".*"$/ || value ~ /^'"'"'.*'"'"'$/) {
+                value = substr(value, 2, length(value) - 2)
+            }
+            found = value
+        }
+        END { if (found != "") print found }
+    ' "$ENV_FILE"
+}
+
+# The ${VAR} placeholders an area's updaters expect OTP to substitute.
+#
+# Read from the updaters rather than from the whole zone file: the static half
+# of a zone can hold a literal credential, and that one is the build's business,
+# not the cluster's.
+#
+# `|| true` because an area with no authenticated feeds is the normal case, and
+# grep's "no matches" exit status would otherwise take the script down with
+# `set -e`.
+function required_vars() {
+    local zone_file="$1"
+    { zone_router_config "$zone_file" | grep -o '\${[A-Z0-9_]*}' || true; } \
+        | tr -d '${}' \
+        | sort -u
+}
+
+missing_total=0
+planned=()
+
+# The zones a config serves are the zone files it has - the same enumeration
+# bin/build-transit and the dagger module do, so a zone can't be built and then
+# silently miss its credentials here.
+for zone_file in "${CONFIG_DIR}"/transit/zones/*.json; do
+    [ -e "$zone_file" ] || continue
+    zone=$(basename "$zone_file" .json)
+
+    vars=$(required_vars "$zone_file")
+    if [ -z "$vars" ]; then
+        echo "${zone}: no credentials needed"
+        continue
+    fi
+
+    secret_name="otp-${zone}-gtfs-api-keys"
+
+    args=()
+    missing=()
+    for var in $vars; do
+        value=$(token_for "$var")
+        if [ -z "$value" ]; then
+            missing+=("$var")
+        else
+            args+=("--from-literal=${var}=${value}")
+        fi
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "${zone}: MISSING from $(basename "$ENV_FILE"): ${missing[*]}" >&2
+        missing_total=$((missing_total + ${#missing[@]}))
+    fi
+
+    if [ ${#args[@]} -eq 0 ]; then
+        continue
+    fi
+
+    # Only ever report variable names. Printing a value here would put it in
+    # terminal scrollback and CI logs, which is the thing we're avoiding.
+    echo "${zone}: ${secret_name} <- ${#args[@]} token(s)"
+    for var in $vars; do
+        case " ${missing[*]} " in
+            *" $var "*) ;;
+            *) echo "    $var" ;;
+        esac
+    done
+
+    planned+=("$secret_name")
+    if [ -z "$DRY_RUN" ]; then
+        SECRET_ARGS=("${args[@]}")
+        SECRET_NAME="$secret_name"
+    fi
+done
+
+if [ ${#planned[@]} -eq 0 ]; then
+    echo "Nothing to import."
+    [ "$missing_total" -gt 0 ] && exit 1
+    exit 0
+fi
+
+if [ -n "$DRY_RUN" ]; then
+    echo
+    echo "--dry-run: nothing was written."
+    exit 0
+fi
+
+# Writing to whichever cluster kubectl currently points at is easy to do by
+# accident, so say where before doing it.
+context=$("${KUBECTL[@]}" config current-context 2>/dev/null || echo "unknown")
+echo
+echo "About to write ${#planned[@]} secret(s) to context '${context}'${NAMESPACE:+ namespace '${NAMESPACE}'}."
+if [ -z "$ASSUME_YES" ] && [ -t 0 ]; then
+    read -r -p "Continue? [y/N] " reply
+    case "$reply" in
+        [yY]|[yY][eE][sS]) ;;
+        *) echo "Aborted."; exit 1 ;;
+    esac
+fi
+
+for zone_file in "${CONFIG_DIR}"/transit/zones/*.json; do
+    [ -e "$zone_file" ] || continue
+    zone=$(basename "$zone_file" .json)
+
+    vars=$(required_vars "$zone_file")
+    [ -n "$vars" ] || continue
+
+    secret_name="otp-${zone}-gtfs-api-keys"
+
+    args=()
+    for var in $vars; do
+        value=$(token_for "$var")
+        [ -n "$value" ] && args+=("--from-literal=${var}=${value}")
+    done
+    [ ${#args[@]} -gt 0 ] || continue
+
+    # create|apply rather than plain create, so re-running updates a rotated
+    # token instead of failing on an existing secret.
+    "${KUBECTL[@]}" create secret generic "$secret_name" \
+        "${args[@]}" \
+        --dry-run=client -o yaml \
+        | "${KUBECTL[@]}" apply -f -
+done
+
+if [ "$missing_total" -gt 0 ]; then
+    echo
+    echo "Imported what was available, but $missing_total token(s) were missing." >&2
+    echo "OTP substitutes nothing for those, and the updater will poll unauthenticated." >&2
+    exit 1
+fi

@@ -15,7 +15,7 @@ chrono = { version = "0.4.38", features = ["serde"] }
 chrono-tz = "0.10.0"
 cynic = { version = "3.14.0", features = ["http-reqwest"] }
 env_logger = "0.11.0"
-geo = "0.30.0"
+geo = "0.33.1"
 geojson = "0.24.0"
 georaster = "0.2.0"
 log = "0.4.17"
@@ -27,6 +27,7 @@ serde_repr = "0.1.18"
 thiserror = "2.0.12"
 url = "2.4.0"
 wkt = "0.14.0"
+transit-zone = { workspace = true }
 
 [dev-dependencies]
 reqwest = { version = "0.13.4", features = ["json", "stream", "blocking"] }

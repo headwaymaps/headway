@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+asset_dir="$repo_root/data/zone-builder"
+atlas_dir="$asset_dir/atlas"
+index_path="$asset_dir/feed-extents.gpkg"
+
+if [[ ! -d "$atlas_dir" || ! -f "$index_path" ]]; then
+    echo "zone-builder assets are missing from $asset_dir" >&2
+    echo "run bin/build-zone-builder-assets first" >&2
+    exit 1
+fi
+
+cd "$repo_root"
+cargo run --release --package zone-builder-server -- \
+    --gtfs-index "$index_path" \
+    --atlas-path "$atlas_dir" \
+    "$@"
