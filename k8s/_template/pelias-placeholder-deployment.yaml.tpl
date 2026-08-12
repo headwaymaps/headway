@@ -5,7 +5,15 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      # Surge a new pod before retiring the old one. On a version bump the two
+      # pods claim *different* PVCs, so the new one downloads its artifact while
+      # the old one keeps serving. On a same-version restart they share one
+      # ReadWriteOnce claim, which is allowed as long as they're on the same
+      # node - hence the podAffinity below.
+      maxSurge: 1
+      maxUnavailable: 0
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -16,6 +24,15 @@ spec:
         app: pelias-placeholder
       annotations:
     spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: pelias-placeholder
+                topologyKey: kubernetes.io/hostname
       initContainers:
         - name: init
           image: ghcr.io/headwaymaps/pelias-init:${HEADWAY_CONTAINER_TAG}

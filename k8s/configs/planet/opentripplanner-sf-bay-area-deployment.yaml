@@ -7,11 +7,30 @@ spec:
     matchLabels:
       app: opentripplanner-sf-bay-area
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Surge a new pod before retiring the old one. On a version bump the two
+      # pods claim *different* PVCs, so the new one downloads its artifact while
+      # the old one keeps serving. On a same-version restart they share one
+      # ReadWriteOnce claim, which is allowed as long as they're on the same
+      # node - hence the podAffinity below.
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: opentripplanner-sf-bay-area
     spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: opentripplanner-sf-bay-area
+                topologyKey: kubernetes.io/hostname
       initContainers:
         - name: init
           image: ghcr.io/headwaymaps/opentripplanner-init:maps-earth-latest
@@ -70,10 +89,5 @@ spec:
             failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi
+          persistentVolumeClaim:
+            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260727-0-12-0-2026-08-14

@@ -8,12 +8,29 @@ spec:
       app: ${OTP_ENDPOINT_NAME}
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      # Surge a new pod before retiring the old one. On a version bump the two
+      # pods claim *different* PVCs, so the new one downloads its artifact while
+      # the old one keeps serving. On a same-version restart they share one
+      # ReadWriteOnce claim, which is allowed as long as they're on the same
+      # node - hence the podAffinity below.
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: ${OTP_ENDPOINT_NAME}
     spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: ${OTP_ENDPOINT_NAME}
+                topologyKey: kubernetes.io/hostname
       initContainers:
         - name: init
           image: ghcr.io/headwaymaps/opentripplanner-init:${HEADWAY_CONTAINER_TAG}
@@ -73,4 +90,4 @@ spec:
       volumes:
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-${TRANSIT_AREA}-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}
+            claimName: opentripplanner-${TRANSIT_ZONE}-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${OTP_GRAPH_DATE}

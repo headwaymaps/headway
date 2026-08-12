@@ -4,6 +4,9 @@ metadata:
   name: pelias-elasticsearch
 spec:
   replicas: 1
+  # Elasticsearch takes an exclusive node.lock on its data directory, so we
+  # must fully stop the old pod before starting the new one - unlike the other
+  # PVC-backed deployments, which only ever read their volume.
   strategy:
     type: Recreate
   minReadySeconds: 10
@@ -18,7 +21,7 @@ spec:
       volumes:
         - name: elasticsearch-volume
           persistentVolumeClaim:
-            claimName: elasticsearch-maps-earth-planet-v1-260420-0-11-0
+            claimName: elasticsearch-maps-earth-planet-v1-260727-0-12-0
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

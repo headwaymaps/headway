@@ -1,7 +1,12 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: opentripplanner-seattle-seattle-latest-dev
+  name: opentripplanner-seattle-seattle-latest-dev-2026-08-14
+  labels:
+    app.kubernetes.io/part-of: headway
+    headway/area-tag: seattle-latest
+    headway/data-tag: dev
+    headway/graph-date: "2026-08-14"
 spec:
   accessModes: [ "ReadWriteOnce" ]
   resources:

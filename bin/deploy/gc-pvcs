@@ -1,0 +1,82 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/_pvc-lib.sh"
+
+function usage() {
+cat << EOF
+usage: $0 [-n NAMESPACE] [--apply]
+
+Deletes headway PersistentVolumeClaims that nothing references anymore - the
+volumes left behind after a planet version bump or a transit rebuild moved the
+deployments onto freshly-named claims.
+
+A PVC is kept if any Deployment/StatefulSet pod template names it, or if any pod
+that currently exists mounts it. Everything else is garbage.
+
+Dry run unless you pass --apply.
+
+examples:
+    $0                 # show what would be deleted
+    $0 --apply         # actually delete it
+    $0 -n maps --apply
+EOF
+}
+
+APPLY=0
+shift_by=$(pvc_lib_parse_namespace "$@")
+shift "$shift_by"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --apply) APPLY=1 ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage; exit 1 ;;
+    esac
+    shift
+done
+
+pvc_lib_require_deps
+
+in_use=$(in_use_claims)
+
+orphaned=()
+while IFS=$'\t' read -r name capacity phase _created area_tag data_tag; do
+    [ -n "$name" ] || continue
+    if ! grep -qxF "$name" <<< "$in_use"; then
+        orphaned+=("$name")
+        printf '  %-12s %-8s %s  area=%s data=%s\n' \
+            "$capacity" "$phase" "$name" "$area_tag" "$data_tag"
+    fi
+done < <(headway_pvcs)
+
+if [ "${#orphaned[@]}" -eq 0 ]; then
+    echo "Nothing to collect - every headway PVC is still referenced."
+    exit 0
+fi
+
+echo ""
+if [ "$APPLY" -ne 1 ]; then
+    echo "${#orphaned[@]} PVC(s) above are unreferenced. Re-run with --apply to delete them."
+    exit 0
+fi
+
+for pvc in "${orphaned[@]}"; do
+    echo "Deleting ${pvc}..."
+    "${KUBECTL[@]}" delete pvc "$pvc"
+done
+
+# Whether that actually freed any disk depends on the PV's reclaim policy. Under
+# `Retain` the PV sticks around in `Released` still holding the data, and has to
+# be deleted separately.
+released=$("${KUBECTL[@]}" get pv -o json \
+    | jq -r '.items[] | select(.status.phase == "Released") | .metadata.name')
+
+if [ -n "$released" ]; then
+    echo ""
+    echo "WARNING: these PersistentVolumes are Released but still exist, so their"
+    echo "disk is not reclaimed (reclaim policy is probably Retain):"
+    sed 's/^/  /' <<< "$released"
+    echo "Delete them with: kubectl delete pv <name>"
+fi

@@ -1,69 +1,45 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
-APP_ROOT=$(git rev-parse --show-toplevel)
-cd "$APP_ROOT"
+source "$(dirname "${BASH_SOURCE[0]}")/_pvc-lib.sh"
 
 function usage() {
 cat << EOF
-usage: $0 <config-dir>
+usage: $0 [-n NAMESPACE]
 
-Lists headway PersistentVolumeClaims in the current kubectl context, marking
-each as [current] or [stale] relative to the given config's data/area tags.
+Lists headway PersistentVolumeClaims, marking each as [in-use] or [orphaned]
+depending on whether anything in the cluster still references it.
 
-example:
-    $0 builds/Seattle
+Delete the orphaned ones with bin/deploy/gc-pvcs --apply
 EOF
 }
 
-if [ ! $# -eq 1 ]; then
+shift_by=$(pvc_lib_parse_namespace "$@")
+shift "$shift_by"
+
+if [ $# -gt 0 ]; then
     usage
     exit 1
 fi
 
-CONFIG_DIR="$1"
+pvc_lib_require_deps
 
-if [ -z "$HEADWAY_DATA_TAG" ]; then
-    source "bin/_headway_version.sh"
-fi
-
-source bin/_source-env.sh "$CONFIG_DIR"
-
-DATA_SAFE=$(echo "$HEADWAY_DATA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
-AREA_SAFE=$(echo "$HEADWAY_AREA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
-CURRENT_SUFFIX="${AREA_SAFE}-${DATA_SAFE}"
-
-echo "Config:      ${CONFIG_DIR}"
-echo "DATA_TAG:    ${HEADWAY_DATA_TAG}"
-echo "AREA_TAG:    ${HEADWAY_AREA_TAG}"
-echo "PVC suffix:  ${CURRENT_SUFFIX}"
-echo ""
-
-HEADWAY_PVC_PATTERN='^(valhalla|tileserver|elasticsearch|placeholder|opentripplanner)-'
-
-pvcs=$(kubectl get pvc --no-headers \
-    -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,CAPACITY:.spec.resources.requests.storage' \
-    2>/dev/null) || true
-
-if [ -z "$pvcs" ]; then
-    echo "No PVCs found (or kubectl not configured)."
-    exit 0
-fi
+in_use=$(in_use_claims)
 
 found=0
-while IFS= read -r line; do
-    name=$(echo "$line" | awk '{print $1}')
-    if echo "$name" | grep -qE "$HEADWAY_PVC_PATTERN"; then
-        found=1
-        if [[ "$name" == *"-${CURRENT_SUFFIX}" ]]; then
-            printf "  [current]  %s\n" "$line"
-        else
-            printf "  [stale]    %s\n" "$line"
-        fi
+while IFS=$'\t' read -r name capacity phase created area_tag data_tag; do
+    [ -n "$name" ] || continue
+    found=1
+    if grep -qxF "$name" <<< "$in_use"; then
+        status="[in-use]  "
+    else
+        status="[orphaned]"
     fi
-done <<< "$pvcs"
+    printf '  %s %-12s %-8s %s\n' "$status" "$capacity" "$phase" "$name"
+    printf '             area=%s data=%s created=%s\n' "$area_tag" "$data_tag" "$created"
+done < <(headway_pvcs)
 
 if [ "$found" -eq 0 ]; then
-    echo "  No headway PVCs found."
+    echo "No headway PVCs found (nothing labeled ${HEADWAY_PVC_SELECTOR})."
 fi

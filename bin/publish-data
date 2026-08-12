@@ -111,3 +111,10 @@ for pid in ${upload_pids[*]}; do
 done
 
 echo "Return codes: ${rets[*]}"
+
+echo ""
+echo "Then, to deploy: bin/k8s-generate ${CONFIG_DIR} <output-dir> && kubectl apply -f <output-dir>"
+echo "Artifacts get a volume per version, so this only re-downloads what actually changed."
+echo "Once you're happy with the rollout, reclaim the superseded volumes:"
+echo "    bin/deploy/gc-pvcs          # what would be deleted"
+echo "    bin/deploy/gc-pvcs --apply"

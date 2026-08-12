@@ -77,6 +77,46 @@ bin/reset-services builds/Amsterdam
 
 This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `builds/<area>/.env` file.
 
+## Kubernetes data volumes
+
+Every service that needs map data mounts a PersistentVolumeClaim whose name encodes the version of the data it holds — `HEADWAY_AREA_TAG` (which contains the planet version) plus `HEADWAY_DATA_TAG`, and for transit, the graph's build date as well. Since data artifacts are immutable once downloaded, this means:
+
+- Restarting a deployment without changing any data reuses the existing volume. The init container sees the artifact is already there and exits immediately, so `kubectl rollout restart` takes seconds instead of re-downloading hundreds of gigabytes.
+- Bumping the planet version changes the claim names, so the new pods provision empty volumes and download into them while the old pods keep serving.
+
+### Deploying a new planet version
+
+```sh
+bin/update-planet-version                        # bumps builds/planet/.env
+bin/build builds/planet
+bin/publish-data builds/planet --host <asset-host>
+bin/k8s-generate builds/planet k8s/configs/planet
+kubectl apply -f k8s/configs/planet
+```
+
+### Deploying a transit rebuild
+
+Transit graphs are rebuilt more often than the planet, so the area/data tags alone don't distinguish one graph from the next. The claim name includes the graph's build date as well, so each graph gets its own volume rather than an OTP pod reusing one that already holds an older graph:
+
+```sh
+bin/build-transit builds/planet
+bin/publish-data builds/planet --host <asset-host>
+bin/k8s-generate builds/planet k8s/configs/planet
+kubectl apply -f k8s/configs/planet
+```
+
+### Reclaiming old volumes
+
+Volumes accumulate: each planet bump and each transit rebuild leaves the previous one behind. That's deliberate — it's what makes a rollback instant. Once you're happy with a rollout, collect them:
+
+```sh
+bin/deploy/show-pvcs        # what exists, and whether anything still uses it
+bin/deploy/gc-pvcs          # dry run
+bin/deploy/gc-pvcs --apply  # delete
+```
+
+`gc-pvcs` deletes any headway-labeled PVC that no Deployment references and no running pod mounts, so it can't remove a volume that's actually in use. If your PVs use the `Retain` reclaim policy, it warns that the released PVs still need deleting before the disk is actually freed.
+
 ## Full-planet considerations
 
 See [FULL_PLANET.md](./FULL_PLANET.md).

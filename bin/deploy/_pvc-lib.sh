@@ -1,0 +1,63 @@
+#!/bin/bash
+# Shared helpers for inspecting headway's PersistentVolumeClaims. Sourced, not run.
+#
+# Data artifacts are immutable and every distinct version of one gets its own
+# PVC, so "is this volume still needed?" is answered by asking the cluster who
+# references it - never by parsing the PVC's name. That keeps this working as
+# naming changes (e.g. transit PVCs carry a graph date that the area/data tags
+# don't).
+
+HEADWAY_PVC_SELECTOR="app.kubernetes.io/part-of=headway"
+
+KUBECTL=(kubectl)
+
+function pvc_lib_parse_namespace() {
+    # Consumes a leading `-n <ns>` / `--namespace <ns>` if present. Callers pass
+    # "$@" and then shift by the returned count.
+    if [ "${1:-}" = "-n" ] || [ "${1:-}" = "--namespace" ]; then
+        if [ -z "${2:-}" ]; then
+            echo "$1 requires a namespace" >&2
+            exit 1
+        fi
+        KUBECTL+=(--namespace "$2")
+        echo 2
+    else
+        echo 0
+    fi
+}
+
+function pvc_lib_require_deps() {
+    if ! command -v jq > /dev/null; then
+        echo "jq is required (brew install jq)" >&2
+        exit 1
+    fi
+    if ! "${KUBECTL[@]}" version > /dev/null 2>&1; then
+        echo "can't reach the cluster; check your kubectl context and VPN" >&2
+        exit 1
+    fi
+}
+
+# Every claim name spoken for, whether by a workload's pod template or by a pod
+# that exists right now. The latter matters during a rollout: the outgoing pod
+# still holds the old claim even though no Deployment names it anymore.
+function in_use_claims() {
+    {
+        "${KUBECTL[@]}" get deployments,statefulsets -o json \
+            | jq -r '.items[].spec.template.spec.volumes[]?.persistentVolumeClaim.claimName // empty'
+        "${KUBECTL[@]}" get pods -o json \
+            | jq -r '.items[].spec.volumes[]?.persistentVolumeClaim.claimName // empty'
+    } | sort -u
+}
+
+# name <TAB> capacity <TAB> phase <TAB> created <TAB> area-tag <TAB> data-tag
+function headway_pvcs() {
+    "${KUBECTL[@]}" get pvc -l "$HEADWAY_PVC_SELECTOR" -o json | jq -r '
+        .items[]
+        | [ .metadata.name,
+            (.spec.resources.requests.storage // "?"),
+            (.status.phase // "?"),
+            (.metadata.creationTimestamp // "?"),
+            (.metadata.labels["headway/area-tag"] // "-"),
+            (.metadata.labels["headway/data-tag"] // "-") ]
+        | @tsv'
+}

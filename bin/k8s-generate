@@ -78,6 +78,11 @@ $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 STAGING_DIR=$(mktemp -d)
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
+# Pull the YYYY-MM-DD out of a `...-YYYY-MM-DD.graph.obj.zst` path.
+function graph_date_from_path() {
+    echo "$1" | sed -nE 's/.*-([0-9]{4}-[0-9]{2}-[0-9]{2})\.graph\.obj\.zst$/\1/p'
+}
+
 function render_template() {
     local template_file=$1
     local output="${2:-$(basename $template_file | sed 's/\.tpl$//')}"
@@ -113,6 +118,16 @@ function generate_otp() {
 
     export OTP_GRAPH_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${graph_path}"
     export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_ZONE}"
+
+    # The graph's own version, so each one gets a distinct claim. Otherwise the
+    # OTP init container would short-circuit on a volume that already holds an
+    # older graph and never pick up the rebuild.
+    export OTP_GRAPH_DATE
+    OTP_GRAPH_DATE=$(graph_date_from_path "$graph_path")
+    if [ -z "$OTP_GRAPH_DATE" ]; then
+        log "Can't read a build date out of otp-graph path '${graph_path}' for ${TRANSIT_ZONE}"
+        exit 1
+    fi
 
     local router_config_file="${CONFIG_DIR}/transit/${TRANSIT_ZONE}-router-config.json"
     if [ -f "$router_config_file" ]; then

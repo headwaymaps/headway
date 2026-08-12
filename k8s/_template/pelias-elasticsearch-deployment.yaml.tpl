@@ -4,6 +4,9 @@ metadata:
   name: pelias-elasticsearch
 spec:
   replicas: 1
+  # Elasticsearch takes an exclusive node.lock on its data directory, so we
+  # must fully stop the old pod before starting the new one - unlike the other
+  # PVC-backed deployments, which only ever read their volume.
   strategy:
     type: Recreate
   minReadySeconds: 10
