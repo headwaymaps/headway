@@ -12,7 +12,12 @@ csv = "1.2.1"
 geo = "0.33.1"
 geo-types = { version = "0.7.20", features = ["serde"] }
 geohash = "0.13.2"
-geopackage = "0.8.0"
+# `bundled` compiles SQLite in rather than linking the system one. The binaries
+# are built in a rust image and then mounted, one at a time, into whatever slim
+# container needs them - so a dynamic libsqlite3 makes every one of those
+# containers need the package installed, and the ones that don't fail at
+# startup with a linker error rather than at build time.
+geopackage = { version = "0.8.0", features = ["bundled"] }
 log = "0.4.19"
 pretty_env_logger = "0.5.0"
 reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls", "charset", "http2", "query"] }
