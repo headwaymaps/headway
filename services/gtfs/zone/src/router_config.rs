@@ -142,3 +142,146 @@ pub fn required_env_vars(updaters: &[Updater]) -> BTreeSet<String> {
         .map(str::to_owned)
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::zone::{Bounds, RealtimeUrls, Zone, ZoneFeed};
+
+    fn zone(realtime: Vec<ZoneRealtime>) -> Zone {
+        Zone {
+            version: crate::zone::VERSION,
+            bounds: Bounds {
+                min_lon: -122.5,
+                min_lat: 47.3,
+                max_lon: -122.0,
+                max_lat: 47.8,
+            },
+            feeds: vec![ZoneFeed {
+                feed_onestop_id: "f-c23-kcm".to_owned(),
+                provider: "King County Metro".to_owned(),
+                url: "https://example.com/kcm.zip".to_owned(),
+                authorization: None,
+                realtime,
+            }],
+        }
+    }
+
+    fn realtime(urls: RealtimeUrls, authorization: Option<ZoneAuth>) -> ZoneRealtime {
+        ZoneRealtime {
+            feed_onestop_id: "f-c23-kcm~rt".to_owned(),
+            urls,
+            authorization,
+        }
+    }
+
+    fn auth(kind: &str, param_name: Option<&str>) -> ZoneAuth {
+        ZoneAuth {
+            kind: kind.to_owned(),
+            param_name: param_name.map(str::to_owned),
+            info_url: None,
+            credential: String::new(),
+        }
+    }
+
+    /// One updater per stream the feed publishes, all pointed at the static feed
+    /// they update - that id is how OTP joins them to the graph.
+    #[test]
+    fn each_stream_becomes_its_own_updater() {
+        let urls = RealtimeUrls {
+            trip_updates: Some("https://example.com/tu.pb".to_owned()),
+            alerts: Some("https://example.com/a.pb".to_owned()),
+            vehicle_positions: None,
+        };
+        let (config, skipped) = zone(vec![realtime(urls, None)]).router_config();
+
+        assert!(skipped.is_empty());
+        let kinds: Vec<&str> = config.updaters.iter().map(|u| u.kind.as_str()).collect();
+        assert_eq!(kinds, ["real-time-alerts", "stop-time-updater"]);
+        assert!(config
+            .updaters
+            .iter()
+            .all(|u| u.feed_id == "headway-f-c23-kcm"));
+    }
+
+    /// The credential is a reference, not a value: OTP substitutes it from its
+    /// own environment, because this ends up in a ConfigMap.
+    #[test]
+    fn a_query_param_credential_is_appended_as_a_placeholder() {
+        let urls = RealtimeUrls {
+            trip_updates: Some("https://example.com/tu.pb?agency=1".to_owned()),
+            ..Default::default()
+        };
+        let auth = Some(auth("query_param", Some("key")));
+        let (config, _) = zone(vec![realtime(urls, auth)]).router_config();
+
+        // `&` rather than `?`, since the URL already had a query string.
+        assert_eq!(
+            config.updaters[0].url,
+            "https://example.com/tu.pb?agency=1&key=${HEADWAY_GTFS_API_KEY_F_C23_KCM_RT}"
+        );
+        assert_eq!(
+            required_env_vars(&config.updaters),
+            BTreeSet::from(["HEADWAY_GTFS_API_KEY_F_C23_KCM_RT".to_owned()])
+        );
+    }
+
+    #[test]
+    fn a_header_credential_lands_in_the_headers_map() {
+        let urls = RealtimeUrls {
+            alerts: Some("https://example.com/a.pb".to_owned()),
+            ..Default::default()
+        };
+        let auth = Some(auth("header", Some("Authorization")));
+        let (config, _) = zone(vec![realtime(urls, auth)]).router_config();
+
+        let headers = config.updaters[0].headers.as_ref().unwrap();
+        assert_eq!(
+            headers["Authorization"],
+            "${HEADWAY_GTFS_API_KEY_F_C23_KCM_RT}"
+        );
+        assert_eq!(config.updaters[0].url, "https://example.com/a.pb");
+    }
+
+    /// OTP has nowhere to put basic auth, so the feed is dropped - but a dropped
+    /// feed has to be reported, or realtime just quietly goes missing.
+    #[test]
+    fn a_feed_otp_cannot_authenticate_is_skipped_by_name() {
+        let urls = RealtimeUrls {
+            alerts: Some("https://example.com/a.pb".to_owned()),
+            ..Default::default()
+        };
+        let auth = Some(auth("basic_auth", Some("Authorization")));
+        let (config, skipped) = zone(vec![realtime(urls, auth)]).router_config();
+
+        assert!(config.updaters.is_empty());
+        assert_eq!(skipped.len(), 1);
+        assert_eq!(skipped[0].feed_id, "f-c23-kcm~rt");
+        assert!(skipped[0].reason.contains("basic_auth"));
+    }
+
+    /// An authorization block with no parameter name can't be turned into a
+    /// request, so it's the same story as an unsupported type.
+    #[test]
+    fn authentication_missing_its_parameter_name_is_skipped() {
+        let urls = RealtimeUrls {
+            alerts: Some("https://example.com/a.pb".to_owned()),
+            ..Default::default()
+        };
+        let auth = Some(auth("query_param", Some("   ")));
+        let (_, skipped) = zone(vec![realtime(urls, auth)]).router_config();
+
+        assert_eq!(skipped.len(), 1);
+        assert!(skipped[0].reason.contains("parameter name"));
+    }
+
+    /// A zone with no realtime gets no `updaters` key at all, which is what lets
+    /// bin/k8s-generate tell "no realtime" from "realtime, currently empty".
+    #[test]
+    fn a_zone_without_realtime_renders_an_empty_config() {
+        let (config, skipped) = zone(vec![]).router_config();
+
+        assert!(skipped.is_empty());
+        assert_eq!(serde_json::to_string(&config).unwrap(), "{}");
+    }
+}

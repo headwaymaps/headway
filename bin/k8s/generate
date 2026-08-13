@@ -41,6 +41,13 @@ export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-latest}"
 
 source bin/_source-env.sh "$CONFIG_DIR"
 source bin/_zone-file.sh
+
+# Used to read the artifact manifest, and to tell a zone with realtime from one
+# without.
+if ! command -v jq > /dev/null; then
+    echo "jq is required to generate the k8s configs" >&2
+    exit 1
+fi
 export HEADWAY_DATA_TAG_SAFE=$(echo "$HEADWAY_DATA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
 export HEADWAY_AREA_TAG_SAFE=$(echo "$HEADWAY_AREA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
 set -a
@@ -186,12 +193,13 @@ function generate_otp() {
     #
     # A zone with no realtime at all takes the empty branch below rather than
     # rendering an empty `updaters` array, so a zone that never had realtime
-    # config doesn't acquire one here.
+    # config doesn't acquire one here. `// []` because a config with no updaters
+    # serializes as `{}` rather than as an empty list.
     local zone_file router_config=""
     zone_file=$(zone_file_for "$CONFIG_DIR" "$TRANSIT_ZONE")
     if [ -n "$zone_file" ]; then
         router_config=$(zone_router_config "$zone_file")
-        if [ "$(jq '.updaters | length' <<< "$router_config")" = "0" ]; then
+        if [ "$(jq '(.updaters // []) | length' <<< "$router_config")" = "0" ]; then
             router_config=""
         fi
     fi

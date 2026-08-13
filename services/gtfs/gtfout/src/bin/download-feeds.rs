@@ -205,7 +205,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     const ZONE_JSON: &str = r#"{
-      "version": 2,
+      "version": 1,
       "bounds": { "min_lon": -122.5, "min_lat": 47.3, "max_lon": -122.0, "max_lat": 47.8 },
       "feeds": [
         {

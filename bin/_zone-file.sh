@@ -1,9 +1,9 @@
 # Finding a transit zone's config and reading the realtime half of it.
 #
 # A zone lives at <config-dir>/transit/zones/<zone>.json, written by the feed
-# picker. It carries the feeds, their credentials, and the OTP updaters that
-# serve them - so everything the deployment scripts used to read out of a
-# separate <Zone>-router-config.json is now a field in there.
+# picker. It carries the feeds and their credentials; the OTP updaters that
+# serve them are derived from it on demand, so the separate
+# <Zone>-router-config.json the deployment scripts used to read is gone.
 
 # The zone file for a zone, or nothing if the config has none.
 #
@@ -24,15 +24,21 @@ function zone_file_for() {
 
 # A zone's OTP router-config.json, on stdout.
 #
-# jq rather than a grep: this is a nested JSON object, and the deployment pastes
-# it into a ConfigMap verbatim, so it has to come out as JSON rather than as
-# whatever lines happened to match.
+# Rendered from the zone rather than read out of it: the updaters are a function
+# of the realtime feeds hanging off the zone's static ones, so storing them too
+# would just be a copy to keep in step. The cost is a cargo build in the deploy
+# path - transit-zone is deliberately serde-and-csv only, so it's a quick one,
+# and it's a no-op on every call after the first.
+#
+# The binary's own diagnostics (a realtime feed OTP can't be given a credential
+# for) go to stderr, so what lands in the ConfigMap is only ever the JSON.
 function zone_router_config() {
     local zone_file="$1"
 
-    if ! command -v jq > /dev/null; then
-        echo "jq is required to read the realtime config out of ${zone_file}" >&2
+    if ! command -v cargo > /dev/null; then
+        echo "cargo is required to render the realtime config from ${zone_file}" >&2
         exit 1
     fi
-    jq '.router_config // {"updaters": []}' "$zone_file"
+    cargo run --release --quiet --package transit-zone --bin zone-router-config \
+        -- --zone "$zone_file"
 }

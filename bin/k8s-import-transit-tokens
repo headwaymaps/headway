@@ -175,10 +175,6 @@ for zone_file in "${CONFIG_DIR}"/transit/zones/*.json; do
     done
 
     planned+=("$secret_name")
-    if [ -z "$DRY_RUN" ]; then
-        SECRET_ARGS=("${args[@]}")
-        SECRET_NAME="$secret_name"
-    fi
 done
 
 if [ ${#planned[@]} -eq 0 ]; then

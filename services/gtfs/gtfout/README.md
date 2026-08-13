@@ -142,10 +142,10 @@ own: GTFS-RT feeds carry no stops, so there's no such thing as realtime "in" an
 area independent of the schedule it updates. They reach a zone by hanging off a
 static feed, matched through an operator the two share.
 
-The OTP updaters those realtime feeds generate are part of the zone document, as
-`router_config`. There's no separate realtime download: the zone file is the
-whole configuration, and `bin/k8s/generate` lifts that section straight into the
-ConfigMap.
+The OTP updaters those realtime feeds generate aren't part of the zone document
+— they're derived from it, by `zone-router-config`, at the point something needs
+them. There's no separate realtime download either: the zone file is the whole
+input, and `bin/k8s/generate` renders the updaters out of it into the ConfigMap.
 
 That operator join is loose in places — Coach USA's national record pulls in a
 Wisconsin realtime feed for a Bay Area query, for instance — which is another
@@ -170,9 +170,9 @@ Notes:
 ## The zone file
 
 What the picker produces is a zone: an area, the feeds serving it, the
-credentials to fetch them, and the realtime config for serving them. One file,
-`zone.json`, defined in [`src/zone.rs`](src/zone.rs) — Rust is where the schema
-lives because Rust is what parses it.
+credentials to fetch them, and the realtime endpoints that update them. One
+file, `zone.json`, defined in [`../zone/src/zone.rs`](../zone/src/zone.rs) —
+Rust is where the schema lives because Rust is what parses it.
 
 ```json
 {
@@ -189,7 +189,10 @@ lives because Rust is what parses it.
       "realtime": [
         {
           "feed_onestop_id": "f-c23-kingcountymetro~rt",
-          "kinds": ["trip updates", "alerts"],
+          "urls": {
+            "trip_updates": "https://…/trip-updates",
+            "alerts": "https://…/alerts"
+          },
           "authorization": {
             "type": "header",
             "param_name": "Authorization",
@@ -199,17 +202,7 @@ lives because Rust is what parses it.
         }
       ]
     }
-  ],
-  "router_config": {
-    "updaters": [
-      {
-        "feedId": "headway-f-c23-kingcountymetro",
-        "type": "stop-time-updater",
-        "frequency": "60s",
-        "url": "https://…/trip-updates?key=${HEADWAY_GTFS_API_KEY_F_C23_KINGCOUNTYMETRO_RT}"
-      }
-    ]
-  }
+  ]
 }
 ```
 
@@ -225,12 +218,11 @@ lives because Rust is what parses it.
 | `feeds[].url` | Where the archive is fetched from. |
 | `feeds[].authorization` | Present only when the feed needs a credential. |
 | `feeds[].realtime[]` | GTFS-RT feeds updating this one. Omitted when there are none. |
-| `feeds[].realtime[].kinds` | Which streams it publishes: `trip updates`, `vehicle positions`, `alerts`. |
+| `feeds[].realtime[].urls` | Where to poll each stream it publishes: `trip_updates`, `vehicle_positions`, `alerts`. Only the ones it has. |
 | `authorization.type` | `query_param`, `header` or `replace_url`, from DMFR. |
 | `authorization.param_name` | The parameter or header the credential goes in. |
 | `authorization.info_url` | Where to request one, when the atlas says. |
 | `authorization.credential` | The credential itself — blank until you fill it in. |
-| `router_config` | OTP's `router-config.json`: `{"updaters": [...]}`, credentials as `${VAR}`. |
 
 A few things about it worth knowing before the two consumers below make sense:
 
@@ -250,21 +242,24 @@ A few things about it worth knowing before the two consumers below make sense:
   says which feeds, not where they were the day it was written.
 - **Realtime hangs off the static feed it updates.** It has no extent, so this
   nesting is the only way it reaches a zone.
-- **`router_config` is OTP's file verbatim**, derived from those realtime
-  entries but stored rather than left to be regenerated — it's the half a
-  deployment consumes, and the half worth hand-editing (dropping a chatty
-  stream, slowing a frequency).
+- **The OTP updaters are not in here.** They're a function of these realtime
+  entries — one updater per stream, per endpoint — so storing them too would be
+  a second copy of the same facts, free to drift when you edit the feed list.
+  `zone-router-config` renders them on demand instead. The cost is that there's
+  nothing to hand-edit: dropping a chatty stream or slowing a frequency means
+  changing the zone (or the renderer), not the output.
 - **`credential` is blank rather than absent when unsupplied**, so the field
   shows up in the file as something to fill in.
 - **The credentials are literal, the updaters' are not.** A `${VAR}` in an
   updater is substituted by OTP from its own environment. The two halves have
   different destinations: one is a build input, the other ends up in a
-  ConfigMap, so only the first can hold a value. See [`src/api_keys.rs`](src/api_keys.rs)
-  for how the variable is named.
+  ConfigMap, so only the first can hold a value. See
+  [`../zone/src/api_keys.rs`](../zone/src/api_keys.rs) for how the variable is
+  named.
 - **A filled-in zone file is not safe to commit**, because the keys are in it. A
   zone with its credentials left blank is — that's how the ones in this repo are
-  checked in, with the keys in `gtfs-credentials.yaml` instead. The
-  `router_config` is safe either way, which is the point of the placeholders.
+  checked in, with the keys in `gtfs-credentials.yaml` instead. The rendered
+  updaters are safe either way, which is the point of the placeholders.
 - **`version` is bumped when a field changes meaning**, so a reader can refuse a
   file it would misinterpret rather than quietly build the wrong zone.
 
@@ -289,14 +284,21 @@ dagger. See [BUILD.md](../../../BUILD.md).
 ### Use 2: configuring the OTP nodes
 
 Serving a zone means an OTP process with the graph loaded and a
-`router-config.json` telling it where to poll for realtime. That file is the
-zone's `router_config`, lifted out as-is — `updaters` keyed by the same
-`headway-<onestop-id>` the graph was built with, which is how OTP knows which
-static feed a stream updates. Nothing regenerates it at deploy time, so what you
-reviewed in the picker is what runs.
+`router-config.json` telling it where to poll for realtime. That file comes from
+`zone-router-config --zone <zone.json>`, which renders the zone's realtime
+entries into `updaters` keyed by the same `headway-<onestop-id>` the graph was
+built with — which is how OTP knows which static feed a stream updates.
 
-In Kubernetes, `bin/k8s/generate` reads that section out of the zone file and
-renders it into a ConfigMap per zone
+```sh
+cargo run -p transit-zone --bin zone-router-config -- --zone builds/planet/transit/zones/puget-sound.json
+```
+
+A realtime feed it can't write an updater for — `basic_auth`, which OTP has
+nowhere to put, or an `authorization` block missing its `param_name` — is named
+on stderr with the reason, and left out. The JSON on stdout is the whole file.
+
+In Kubernetes, `bin/k8s/generate` runs that against the zone file and renders
+the result into a ConfigMap per zone
 (`k8s/configs/<config>/opentripplanner-<zone>-config.yaml`) as `router-config-json`
 alongside `graph-url`; `services/otp/init.sh` writes it out from
 `$OTP_ROUTER_CONFIG_JSON` at startup. Realtime credentials are deployed
@@ -322,7 +324,8 @@ lints the name as a k8s object name, since it also names the OTP deployment.
 | dagger / `bin/build-transit` | every `transit/zones/*.json`, one build per file |
 | `download-feeds` | the zone file, via `--zone` |
 | credentials | the zone's own, with `gtfs-credentials.yaml` filling in any it leaves blank |
-| `bin/k8s/generate` | the zone's `router_config`, into the OTP ConfigMap |
+| `zone-router-config` | the zone's realtime entries, rendered as OTP's `router-config.json` |
+| `bin/k8s/generate` | that rendering, into the OTP ConfigMap |
 | `bin/k8s-import-transit-tokens` | the `${VAR}` names in those updaters, to load the matching Secret |
 
 **Credentials decide whether a zone is committable.** The zone files in this
@@ -339,6 +342,7 @@ mounts every zone file as a secret rather than guessing which kind it has.
 | `zone-builder-server` | The map that turns that index into a zone file. |
 | `download-feeds` | Fetches and repacks a zone's feeds, for a zone build. |
 | `gtfs-bbox` | Computes the bbox of a set of unpacked GTFS directories. |
+| `zone-router-config` | Renders a zone's OTP `router-config.json`. In `transit-zone`, so the deploy path doesn't build the atlas tools. |
 | `assume-bikes-allowed` | Rewrites a feed to permit bikes, for zones whose data omits it. |
 
 ## Development

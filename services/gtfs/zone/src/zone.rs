@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Bumped when a field changes meaning, so readers refuse configurations they
 /// would otherwise silently misinterpret.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Zone {

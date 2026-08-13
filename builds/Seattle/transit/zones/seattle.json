@@ -1,32 +1,53 @@
 {
   "version": 1,
   "bounds": {
-    "min_lon": -123.34349413394264,
-    "min_lat": 46.98525920572797,
-    "max_lon": -121.54976470946555,
-    "max_lat": 48.47018450349594
+    "min_lon": -123.47553276919476,
+    "min_lat": 46.80322421686799,
+    "max_lon": -121.64517431353556,
+    "max_lat": 48.23134518798071
   },
   "feeds": [
     {
+      "feed_onestop_id": "f-c28-washingtonstateferries",
+      "provider": "Washington State Ferries",
+      "url": "https://business.wsdot.wa.gov/Transit/csv_files/wsf/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-wsf~rt",
+          "urls": {
+            "trip_updates": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/95.pb",
+            "vehicle_positions": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/95.pb",
+            "alerts": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/95.pb"
+          },
+          "authorization": {
+            "type": "query_param",
+            "param_name": "key",
+            "info_url": "https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd",
+            "credential": ""
+          }
+        }
+      ]
+    },
+    {
       "feed_onestop_id": "f-c23-metrokingcounty",
-      "provider": "King County Marine Divison",
+      "provider": "King County Marine Divison, King County Metro, City of Seattle",
       "url": "http://metro.kingcounty.gov/GTFS/google_transit.zip",
       "realtime": [
         {
           "feed_onestop_id": "f-kingcountymetro~rt",
-          "kinds": [
-            "trip updates",
-            "vehicle positions",
-            "alerts"
-          ]
+          "urls": {
+            "trip_updates": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+            "vehicle_positions": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb",
+            "alerts": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+          }
         },
         {
           "feed_onestop_id": "f-seattlestreetcar~rt",
-          "kinds": [
-            "trip updates",
-            "vehicle positions",
-            "alerts"
-          ]
+          "urls": {
+            "trip_updates": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+            "vehicle_positions": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb",
+            "alerts": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+          }
         }
       ]
     },
@@ -37,11 +58,11 @@
       "realtime": [
         {
           "feed_onestop_id": "f-soundtransit~rt",
-          "kinds": [
-            "trip updates",
-            "vehicle positions",
-            "alerts"
-          ],
+          "urls": {
+            "trip_updates": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/40.pb",
+            "vehicle_positions": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/40.pb",
+            "alerts": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/40.pb"
+          },
           "authorization": {
             "type": "query_param",
             "param_name": "key",
@@ -51,45 +72,5 @@
         }
       ]
     }
-  ],
-  "router_config": {
-    "updaters": [
-      {
-        "feedId": "headway-f-c23-metrokingcounty",
-        "type": "real-time-alerts",
-        "frequency": "300s",
-        "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
-      },
-      {
-        "feedId": "headway-f-c23-metrokingcounty",
-        "type": "stop-time-updater",
-        "frequency": "60s",
-        "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
-      },
-      {
-        "feedId": "headway-f-c23-metrokingcounty",
-        "type": "vehicle-positions",
-        "frequency": "60s",
-        "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb"
-      },
-      {
-        "feedId": "headway-f-c23-soundtransit",
-        "type": "real-time-alerts",
-        "frequency": "300s",
-        "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
-      },
-      {
-        "feedId": "headway-f-c23-soundtransit",
-        "type": "stop-time-updater",
-        "frequency": "60s",
-        "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
-      },
-      {
-        "feedId": "headway-f-c23-soundtransit",
-        "type": "vehicle-positions",
-        "frequency": "60s",
-        "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
-      }
-    ]
-  }
+  ]
 }
