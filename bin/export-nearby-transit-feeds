@@ -31,7 +31,10 @@ source bin/_source-env.sh "$CONFIG_DIR"
 TRANSIT_DIR="${CONFIG_DIR}/transit/gtfs-feeds"
 mkdir -p "$TRANSIT_DIR"
 
-OUTPUT_FILE="${TRANSIT_DIR}/${HEADWAY_AREA}.gtfs_feeds.csv"
+# The zone name is the filename, and it ends up as a k8s object name, so mint it
+# in the spelling those require - see the lint in bin/build-transit.
+ZONE_NAME=$(echo "$HEADWAY_AREA" | sed -E 's/([a-z0-9])([A-Z])/\1-\2/g' | tr '[:upper:]_' '[:lower:]-')
+OUTPUT_FILE="${TRANSIT_DIR}/${ZONE_NAME}.gtfs_feeds.csv"
 
 echo "Finding nearby GTFS feeds for ${HEADWAY_AREA}..."
 echo "Output will be written to: ${OUTPUT_FILE}"

@@ -16,12 +16,6 @@ source bin/_source-env.sh "$CONFIG_DIR"
 
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
 
-if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
-    # The build writes dated transit artifacts - link the latest ones to the names
-    # docker compose serves them from.
-    TRANSIT_DATA_ROOT=./data "$APP_ROOT/bin/link-latest-transit" "$CONFIG_DIR"
-fi
-
 echo "========================================"
 echo "Headway Integration Test Runner"
 echo "========================================"

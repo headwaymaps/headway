@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opentripplanner-pugetsound
+  name: opentripplanner-puget-sound
 spec:
   selector:
     matchLabels:
-      app: opentripplanner-pugetsound
+      app: opentripplanner-puget-sound
   replicas: 1
   template:
     metadata:
       labels:
-        app: opentripplanner-pugetsound
+        app: opentripplanner-puget-sound
     spec:
       initContainers:
         - name: init
@@ -23,17 +23,12 @@ spec:
             - name: OTP_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
-                  name: otp-pugetsound-config
+                  name: otp-puget-sound-config
                   key: graph-url
-            - name: OTP_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-pugetsound-config
-                  key: otp-config-json
             - name: OTP_ROUTER_CONFIG_JSON
               valueFrom:
                 configMapKeyRef:
-                  name: otp-pugetsound-config
+                  name: otp-puget-sound-config
                   key: router-config-json
           resources:
             limits:

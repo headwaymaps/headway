@@ -20,22 +20,19 @@ This is what CI uses. Services are automatically cleaned up when tests complete.
 When iterating on tests, keep services running between test runs:
 
 ```bash
-# 1. Link the latest transit artifacts (only needed after a fresh bin/build-transit)
-TRANSIT_DATA_ROOT=./data bin/link-latest-transit builds/Bogota
-
-# 2. Start services once
+# 1. Start services once
 bin/start-services --no-follow-logs builds/Bogota
 
-# 3. Wait for services to be ready
+# 2. Wait for services to be ready
 bin/wait-for-services
 
-# 4. Run tests (can repeat this step)
+# 3. Run tests (can repeat this step)
 ./tests/integration/run-tests.sh
 
 # Edit test scripts and re-run as needed...
 ./tests/integration/run-tests.sh
 
-# 5. Stop services when done
+# 4. Stop services when done
 # BEWARE: This will destroy your headway docker volumes.
 bin/stop-and-remove-services builds/Bogota
 ```

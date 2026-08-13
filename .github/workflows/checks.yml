@@ -171,10 +171,6 @@ jobs:
           path: .
       - name: Load Docker images
         run: gunzip -c docker-images.tar.gz | docker load
-      # The build writes dated transit artifacts; link the latest to the names
-      # docker compose serves them from (as run-integration-tests.sh does).
-      - name: Link transit artifacts
-        run: TRANSIT_DATA_ROOT=./data bin/link-latest-transit builds/Bogota
       - name: Start services
         run: bin/start-services --no-follow-logs builds/Bogota
       - name: Wait for services

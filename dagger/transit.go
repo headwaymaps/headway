@@ -27,11 +27,6 @@ type TransitZone struct {
 	// scheme, which is what keeps the two honest with each other: the feeds are
 	// fetched at most once per day, and the date in the name is by construction
 	// the day they were fetched.
-	//
-	// Published builds accumulate side by side as e.g.
-	// planet-puget_sound-2026-07-28.graph.obj.zst, and bin/link-latest-transit
-	// parses the date back out to symlink the newest one to
-	// PugetSound.graph.obj.zst.
 	BuildDate      string
 	TransitFeeds   *dagger.File
 	GTFSDir        *dagger.Directory

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd $APP_ROOT
@@ -28,6 +28,10 @@ fi
 CONFIG_DIR="$1"
 OUTPUT_DIR="$2"
 
+function log() {
+    echo $@ 1>&2
+}
+
 if [ -z "$HEADWAY_DATA_TAG" ]; then
     source "bin/_headway_version.sh"
 fi
@@ -40,12 +44,19 @@ set -a
 source ".bin-env"
 set +a
 
+MANIFEST="${CONFIG_DIR}/artifacts.json"
+if [ ! -f "$MANIFEST" ]; then
+    log "missing ${MANIFEST}"
+    log 'run `bin/artifacts --pin` on the build machine'
+    exit 1
+fi
+
 EXISTING_DEPLOYMENT_CONFIG="${OUTPUT_DIR}/deployment-config.yaml"
 PELIAS_CONFIG_FILE="data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
 if [ -f "$PELIAS_CONFIG_FILE" ]; then
     PELIAS_CONFIG_JSON=$(cat $PELIAS_CONFIG_FILE)
 elif [ -f "$EXISTING_DEPLOYMENT_CONFIG" ]; then
-    echo "Warning: ${PELIAS_CONFIG_FILE} not found; extracting pelias config from existing ${EXISTING_DEPLOYMENT_CONFIG}"
+    log "Warning: ${PELIAS_CONFIG_FILE} not found; extracting pelias config from existing ${EXISTING_DEPLOYMENT_CONFIG}"
     # Grab the `pelias-config-json: |` block scalar and strip its 4 space indent.
     PELIAS_CONFIG_JSON=$(awk '
         in_block && NF && !/^    / { exit }
@@ -53,7 +64,7 @@ elif [ -f "$EXISTING_DEPLOYMENT_CONFIG" ]; then
         /^  pelias-config-json: \|$/ { in_block = 1 }
     ' "$EXISTING_DEPLOYMENT_CONFIG")
 else
-    echo "Missing pelias config file: ${PELIAS_CONFIG_FILE} and no existing rendered output to fall back on"
+    log "Missing pelias config file: ${PELIAS_CONFIG_FILE} and no existing rendered output to fall back on"
     exit 1
 fi
 
@@ -61,62 +72,57 @@ indent4() { while IFS= read -r line; do printf '    %s\n' "$line"; done; }
 export PELIAS_CONFIG_JSON_YAML="|
 $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 
+# Render to a staging dir and swap once everything succeeds
+STAGING_DIR=$(mktemp -d)
+trap 'rm -rf "$STAGING_DIR"' EXIT
+
 function render_template() {
     local template_file=$1
     local output="${2:-$(basename $template_file | sed 's/\.tpl$//')}"
 
-    envsubst < "$template_file" > "${OUTPUT_DIR}/${output}"
+    envsubst < "$template_file" > "${STAGING_DIR}/${output}"
 }
 
 set -o nounset
 
-mkdir -p "$OUTPUT_DIR"
-rm -f "${OUTPUT_DIR}"/*
+export ELEVATION_ARTIFACT_URL=""
+elevation_path=$(jq -r '.elevation // empty' "$MANIFEST")
+if [ -n "$elevation_path" ]; then
+    ELEVATION_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${elevation_path}"
+fi
 
 function generate_transit() {
   local otp_endpoints=""
   local separator=", "
-  for headway_transit_area in $HEADWAY_TRANSIT_AREAS; do
-      local otp_endpoint_name=$(generate_otp $headway_transit_area);
+  local transit_zone graph_path otp_endpoint_name
 
+  while IFS=$'\t' read -r transit_zone graph_path; do
+      otp_endpoint_name=$(generate_otp "$transit_zone" "$graph_path")
       otp_endpoints+="${separator}\"http://${otp_endpoint_name}:8000\""
-  done
+  done < <(jq -r '."otp-graphs" // {} | to_entries[] | [.key, .value] | @tsv' "$MANIFEST")
 
   export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
 
-function log() {
-    echo $@ 1>&2
-}
-
 function generate_otp() {
-    local headway_transit_area=$1
-    if [ -z "$headway_transit_area" ]; then
-        echo "must specify headway_transit_area to $0"
-        exit 1
-    fi
+    export TRANSIT_ZONE=$1
+    local graph_path=$2
 
-    # Lowercase transit area for idiomatic k8s names
-    export TRANSIT_AREA=$(echo $headway_transit_area | tr '[:upper:]' '[:lower:]')
-    export OTP_GRAPH_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${headway_transit_area}.graph.obj.zst"
-    export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_AREA}"
+    export OTP_GRAPH_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${graph_path}"
+    export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_ZONE}"
 
-    local router_config_file="${CONFIG_DIR}/transit/${headway_transit_area}-router-config.json"
+    local router_config_file="${CONFIG_DIR}/transit/${TRANSIT_ZONE}-router-config.json"
     if [ -f "$router_config_file" ]; then
+        router_config_json=$(cat "$router_config_file")
         export OTP_ROUTER_CONFIG_JSON_YAML="|
-$(indent4 < "$router_config_file")"
+$(indent4 <<< "$router_config_json")"
     else
-        # blank keys or "null" keys don't appear in the config map
-        # which causes an error in pod creation
         export OTP_ROUTER_CONFIG_JSON_YAML='""'
     fi
 
-    export OTP_CONFIG_JSON_YAML="|
-$(indent4 < "services/otp/otp-config.json")"
-
     for file in k8s/_template/opentripplanner*.tpl; do
-        output=$(basename "$file" | sed 's/\.tpl$//' | sed "s/AREA/${TRANSIT_AREA}/")
+        output=$(basename "$file" | sed 's/\.tpl$//' | sed "s/ZONE/${TRANSIT_ZONE}/")
         render_template "$file" "$output"
     done
     echo "$OTP_ENDPOINT_NAME"
@@ -139,4 +145,9 @@ for file in k8s/_template/!(opentripplanner*|travelmux*).tpl
 do
     render_template $file
 done
+
+# Everything rendered - now it's safe to replace the previous output.
+mkdir -p "$OUTPUT_DIR"
+rm -f "${OUTPUT_DIR}"/*
+cp "${STAGING_DIR}"/* "${OUTPUT_DIR}/"
 

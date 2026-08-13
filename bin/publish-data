@@ -48,58 +48,56 @@ function kill_uploads() {
 trap kill_uploads EXIT
 
 function upload() {
-  local input_glob=$1
+  local file=$1
   local output_prefix=$2
 
-  local input_path_glob="${DATA_ROOT}/${HEADWAY_AREA}/${input_glob}"
-  if ! ls $input_path_glob 1> /dev/null 2>&1; then
-    echo "target file doesn't exist: '${input_path_glob}'"
+  local input_path="${DATA_ROOT}/${HEADWAY_AREA}/${file}"
+  if [ ! -f "$input_path" ]; then
+    echo "pinned in ${MANIFEST} but not built here: ${file}"
     exit 1
   fi
 
-  for input_path in $input_path_glob; do
-    local resource="${output_prefix}/$(basename "$input_path")"
-    local output_path="${OUTPUT_DIR}/${resource}"
+  # The asset host mirrors data/<Area>, so a manifest value is the path here,
+  # under /bootstrap in compose, and in the URLs bin/k8s-generate renders.
+  local resource="${output_prefix}/${file}"
+  local output_path="${OUTPUT_DIR}/${resource}"
 
-    set -o nounset
-    if [ -z "$HOST" ]; then
-        echo "Copying ${input_path} -> ${output_path}"
-        mkdir -p "$(dirname $output_path)"
-        cp "$input_path" "$output_path"
-    else
-        echo "Sycning ${input_path} -> ${HOST}:${output_path}"
-        ssh "$HOST" mkdir -p "$(dirname $output_path)"
-        rsync -av --progress -e ssh "$input_path" "${HOST}:${output_path}"
-    fi
-  done
+  set -o nounset
+  if [ -z "$HOST" ]; then
+      echo "Copying ${input_path} -> ${output_path}"
+      mkdir -p "$(dirname $output_path)"
+      cp "$input_path" "$output_path"
+  else
+      echo "Sycning ${input_path} -> ${HOST}:${output_path}"
+      ssh "$HOST" mkdir -p "$(dirname $output_path)"
+      rsync -av --progress -e ssh "$input_path" "${HOST}:${output_path}"
+  fi
 }
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
 if [ -z "$HEADWAY_DATA_TAG" ]; then
-    explicit_data_tag=0
     source "${REPO_ROOT}/bin/_headway_version.sh"
-else 
-    explicit_data_tag=1
 fi
 export HEADWAY_DATA_TAG
 
 set -o nounset
 
-upload "${HEADWAY_AREA}.valhalla.tar.zst"      "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "${HEADWAY_AREA}.elasticsearch.tar.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "${HEADWAY_AREA}.pmtiles"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "${HEADWAY_AREA}.placeholder.tar.zst"   "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "${HEADWAY_AREA}.osm.pbf"               "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+MANIFEST="${CONFIG_DIR}/artifacts.json"
+if [ ! -f "$MANIFEST" ]; then
+  echo "No pinned manifest at ${MANIFEST}"
+  echo "Run bin/artifacts --pin ${CONFIG_DIR}"
+  exit 1
+fi
 
-# Upload transit
-upload "transit/${HEADWAY_AREA}*.graph.obj.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "transit/${HEADWAY_AREA}*.gtfs.tar.zst"  "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-upload "transit/${HEADWAY_AREA}*.elevation-tifs.tar.zst" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+for file in $("${REPO_ROOT}/bin/artifacts" files "$CONFIG_DIR"); do
+  upload "$file" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+done
 
-# These files are generic across all areas
-upload "terrain.mbtiles" "${HEADWAY_DATA_TAG}"
-upload "landcover.mbtiles" "${HEADWAY_DATA_TAG}"
+# Generic across all areas, so they sit above the area directory.
+for file in $("${REPO_ROOT}/bin/artifacts" shared-files "$CONFIG_DIR"); do
+  upload "$file" "${HEADWAY_DATA_TAG}"
+done
 
 rets=()
 for pid in ${upload_pids[*]}; do
@@ -113,11 +111,3 @@ for pid in ${upload_pids[*]}; do
 done
 
 echo "Return codes: ${rets[*]}"
-
-echo "Next, on $HOST..."
-# Todo: just do it automatically
-if [ "$explicit_data_tag" -eq 1 ]; then
-echo "Do you want to 'HEADWAY_DATA_TAG=${HEADWAY_DATA_TAG} bin/link-latest-transit ${CONFIG_DIR}' next?"
-else
-echo "Do you want to 'bin/link-latest-transit ${CONFIG_DIR}' next?"
-fi

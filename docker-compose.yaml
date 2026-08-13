@@ -31,7 +31,7 @@ services:
     image: ghcr.io/headwaymaps/travelmux-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/transit/${HEADWAY_AREA}.elevation-tifs.tar.zst
+      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_ELEVATION_FILE}
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "travelmux_data:/data/:rw"

@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: opentripplanner-sfbayarea
+  name: opentripplanner-puget-sound
 spec:
   selector:
-    app: opentripplanner-sfbayarea
+    app: opentripplanner-puget-sound
   ports:
     - protocol: TCP
       name: service

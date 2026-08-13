@@ -15,6 +15,6 @@ data:
   areamap-source-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.pmtiles
   valhalla-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.valhalla.tar.zst
   placeholder-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.placeholder.tar.zst
-  elasticsearch-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar.zst${OTP_GRAPHS_YAML}
-  elevation-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elevation-tifs.tar.zst
+  elasticsearch-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar.zst
+  elevation-artifact-url: "${ELEVATION_ARTIFACT_URL}"
   pelias-config-json: ${PELIAS_CONFIG_JSON_YAML}

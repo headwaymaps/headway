@@ -20,7 +20,3 @@ fi
 if [ -n "$OTP_ROUTER_CONFIG_JSON" ]; then
     echo "$OTP_ROUTER_CONFIG_JSON" > /data/router-config.json
 fi
-
-if [ -n "$OTP_CONFIG_JSON" ]; then
-    echo "$OTP_CONFIG_JSON" > /data/otp-config.json
-fi

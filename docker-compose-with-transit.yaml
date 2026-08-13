@@ -31,7 +31,7 @@ services:
     image: ghcr.io/headwaymaps/opentripplanner-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.graph.obj.zst
+      OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_OTP_GRAPH_FILE}
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "opentripplanner_data:/data/:rw"
@@ -56,7 +56,7 @@ services:
     image: ghcr.io/headwaymaps/travelmux-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elevation-tifs.tar.zst
+      TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_ELEVATION_FILE}
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "travelmux_data:/data/:rw"

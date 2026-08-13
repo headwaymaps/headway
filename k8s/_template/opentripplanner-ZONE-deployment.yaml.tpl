@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opentripplanner-pugetsound
+  name: ${OTP_ENDPOINT_NAME}
 spec:
   selector:
     matchLabels:
-      app: opentripplanner-pugetsound
+      app: ${OTP_ENDPOINT_NAME}
   replicas: 1
   template:
     metadata:
       labels:
-        app: opentripplanner-pugetsound
+        app: ${OTP_ENDPOINT_NAME}
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/opentripplanner-init:maps-earth-dev
+          image: ghcr.io/headwaymaps/opentripplanner-init:${HEADWAY_CONTAINER_TAG}
           imagePullPolicy: Always
           volumeMounts:
             - name: opentripplanner-volume
@@ -23,17 +23,12 @@ spec:
             - name: OTP_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
-                  name: otp-pugetsound-config
+                  name: otp-${TRANSIT_ZONE}-config
                   key: graph-url
-            - name: OTP_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-pugetsound-config
-                  key: otp-config-json
             - name: OTP_ROUTER_CONFIG_JSON
               valueFrom:
                 configMapKeyRef:
-                  name: otp-pugetsound-config
+                  name: otp-${TRANSIT_ZONE}-config
                   key: router-config-json
           resources:
             limits:
@@ -42,7 +37,7 @@ spec:
               memory: 128Mi
       containers:
         - name: main
-          image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
+          image: ghcr.io/headwaymaps/opentripplanner:${HEADWAY_CONTAINER_TAG}
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory
