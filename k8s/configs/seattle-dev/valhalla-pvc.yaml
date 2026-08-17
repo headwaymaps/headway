@@ -4,8 +4,6 @@ metadata:
   name: valhalla-seattle-latest-dev
   labels:
     app.kubernetes.io/part-of: headway
-    headway/area-tag: seattle-latest
-    headway/data-tag: dev
 spec:
   accessModes: [ "ReadWriteOnce" ]
   resources:

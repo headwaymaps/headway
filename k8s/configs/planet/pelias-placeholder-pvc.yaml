@@ -4,8 +4,6 @@ metadata:
   name: placeholder-maps-earth-planet-v1-260727-0-12-0
   labels:
     app.kubernetes.io/part-of: headway
-    headway/area-tag: maps-earth-planet-v1-260727
-    headway/data-tag: 0-12-0
 spec:
   accessModes: [ "ReadWriteOnce" ]
   resources:

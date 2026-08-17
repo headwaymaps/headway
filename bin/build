@@ -45,4 +45,4 @@ if [ -d "$TRANSIT_CONFIG_DIR" ]; then
     bin/build-transit "$CONFIG_DIR"
 fi
 
-echo "Next, run: ./bin/revert-fetch-urls && ./bin/k8s-regenerate-all"
+echo "Next, run: ./bin/revert-fetch-urls && ./bin/k8s/regenerate-all"

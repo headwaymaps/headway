@@ -12,9 +12,9 @@ spec:
     rollingUpdate:
       # Surge a new pod before retiring the old one. On a version bump the two
       # pods claim *different* PVCs, so the new one downloads its artifact while
-      # the old one keeps serving. On a same-version restart they share one
-      # ReadWriteOnce claim, which is allowed as long as they're on the same
-      # node - hence the podAffinity below.
+      # the old one keeps serving. On a same-version restart the two pods share
+      # one ReadWriteOnce claim, which is fine: they only read it, and the
+      # scheduler will only place the new pod where that volume can attach.
       maxSurge: 1
       maxUnavailable: 0
   template:
@@ -22,15 +22,6 @@ spec:
       labels:
         app: opentripplanner-puget-sound
     spec:
-      affinity:
-        podAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: opentripplanner-puget-sound
-                topologyKey: kubernetes.io/hostname
       initContainers:
         - name: init
           image: ghcr.io/headwaymaps/opentripplanner-init:maps-earth-dev

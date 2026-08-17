@@ -58,7 +58,7 @@ function upload() {
   fi
 
   # The asset host mirrors data/<Area>, so a manifest value is the path here,
-  # under /bootstrap in compose, and in the URLs bin/k8s-generate renders.
+  # under /bootstrap in compose, and in the URLs bin/k8s/generate renders.
   local resource="${output_prefix}/${file}"
   local output_path="${OUTPUT_DIR}/${resource}"
 
@@ -113,8 +113,8 @@ done
 echo "Return codes: ${rets[*]}"
 
 echo ""
-echo "Then, to deploy: bin/k8s-generate ${CONFIG_DIR} <output-dir> && kubectl apply -f <output-dir>"
+echo "Then, to deploy: bin/k8s/generate ${CONFIG_DIR} <output-dir> && kubectl apply -f <output-dir>"
 echo "Artifacts get a volume per version, so this only re-downloads what actually changed."
 echo "Once you're happy with the rollout, reclaim the superseded volumes:"
-echo "    bin/deploy/gc-pvcs          # what would be deleted"
-echo "    bin/deploy/gc-pvcs --apply"
+echo "    bin/k8s/unused-volumes <namespace>           # what would be deleted"
+echo "    bin/k8s/unused-volumes <namespace> --delete"

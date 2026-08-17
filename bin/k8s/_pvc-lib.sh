@@ -9,21 +9,10 @@
 
 HEADWAY_PVC_SELECTOR="app.kubernetes.io/part-of=headway"
 
-KUBECTL=(kubectl)
+KUBECTL=()
 
-function pvc_lib_parse_namespace() {
-    # Consumes a leading `-n <ns>` / `--namespace <ns>` if present. Callers pass
-    # "$@" and then shift by the returned count.
-    if [ "${1:-}" = "-n" ] || [ "${1:-}" = "--namespace" ]; then
-        if [ -z "${2:-}" ]; then
-            echo "$1 requires a namespace" >&2
-            exit 1
-        fi
-        KUBECTL+=(--namespace "$2")
-        echo 2
-    else
-        echo 0
-    fi
+function pvc_lib_set_namespace() {
+    KUBECTL=(kubectl --namespace "$1")
 }
 
 function pvc_lib_require_deps() {
@@ -49,15 +38,13 @@ function in_use_claims() {
     } | sort -u
 }
 
-# name <TAB> capacity <TAB> phase <TAB> created <TAB> area-tag <TAB> data-tag
+# name <TAB> capacity <TAB> phase <TAB> created
 function headway_pvcs() {
     "${KUBECTL[@]}" get pvc -l "$HEADWAY_PVC_SELECTOR" -o json | jq -r '
         .items[]
         | [ .metadata.name,
             (.spec.resources.requests.storage // "?"),
             (.status.phase // "?"),
-            (.metadata.creationTimestamp // "?"),
-            (.metadata.labels["headway/area-tag"] // "-"),
-            (.metadata.labels["headway/data-tag"] // "-") ]
+            (.metadata.creationTimestamp // "?") ]
         | @tsv'
 }

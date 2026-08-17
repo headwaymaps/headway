@@ -40,6 +40,8 @@ if [ -n "$modified_files" ]; then
    exit 1
 fi
 echo "ready to roll"
+
+trap 'bin/revert-fetch-urls' EXIT
 bin/update-fetch-urls
 
 if [ "$DEV_FLAG" = true ]; then
