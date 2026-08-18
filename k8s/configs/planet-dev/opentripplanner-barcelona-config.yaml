@@ -3,8 +3,6 @@ kind: ConfigMap
 metadata:
   name: otp-barcelona-config
 data:
-  graph-url: https://data.example.com/0.12.0/maps-earth-planet-v1.260727/Barcelona.graph.obj.zst
-  otp-config-json: |
-    {}
+  graph-url: https://data.example.com/0.12.0/maps-earth-planet-v1.260727/transit/maps-earth-planet-v1.260727-barcelona-2026-08-14.graph.obj.zst
   router-config-json: ""
 

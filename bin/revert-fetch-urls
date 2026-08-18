@@ -1,0 +1,6 @@
+#!/bin/bash
+# Undo bin/update-fetch-urls, putting the placeholder artifact root back.
+set -e
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+exec "$APP_ROOT/bin/update-fetch-urls" --revert

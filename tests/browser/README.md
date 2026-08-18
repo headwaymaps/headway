@@ -17,7 +17,6 @@ the fixtures are Bogota landmarks and the transit test assumes
 Start a stack first, exactly as for the integration tests:
 
 ```bash
-TRANSIT_DATA_ROOT=./data bin/link-latest-transit builds/Bogota   # after a fresh bin/build-transit
 bin/start-services --no-follow-logs builds/Bogota
 bin/wait-for-services
 ```

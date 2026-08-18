@@ -44,14 +44,12 @@ This approach will download all the mapping data you need automatically, but onl
 1. Pick a metro area from the list above, like "Amsterdam" or "Denver". These values are case-sensitive. In all the examples, replace "Amsterdam" with your metro area of choice.
 2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, review and edit `builds/Amsterdam/.env`. Bogota is configured for transit routing, so unless you're setting that up too (step 4), delete the copied `builds/Amsterdam/transit` directory and unset `HEADWAY_ENABLE_TRANSIT_ROUTING`.
 3. Execute `bin/build builds/Amsterdam` to build data artifacts
-4. (Optional) Set up transit routing. Note: This dramatically increases hardware requirements for large metro areas.
+4. (Optional) Set up transit routing. Note: This increases hosting requirements for large metro areas - you'll want at least 4GB RAM extra for a medium sized city's transit service.
    1. Find nearby transit schedules by running `bin/export-nearby-transit-feeds builds/Amsterdam`
-   2. Examine `builds/Amsterdam/transit/gtfs-feeds/Amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
+   2. Examine `builds/Amsterdam/transit/gtfs-feeds/amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
    3. Build transit routing with `bin/build-transit builds/Amsterdam`
-   4. Transit artifacts are built with dated names, so link the ones to serve: `TRANSIT_DATA_ROOT=./data bin/link-latest-transit builds/Amsterdam`. Re-run this after each `bin/build-transit`.
-5. Start services from the build directory by running: `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml up -d`. With transit routing, use `../../docker-compose-with-transit.yaml` instead - or `bin/start-services builds/Amsterdam`, which picks the compose file based on `HEADWAY_ENABLE_TRANSIT_ROUTING`.
-6. This will bring up the headway stack with a web frontend on port 8080.
-7. (For https and non-default port use only) reverse-proxy traffic to port 8080.
+5. Run `bin/start-services builds/Amsterdam`. This will bring up the Headway stack with a web frontend on port 8080.
+  1. (Optional for https and non-default port use only) reverse-proxy traffic to port 8080.
 
 That's it!
 
@@ -65,9 +63,17 @@ The process is largely the same as above. After downloading your OSM extract, mo
 
 ## Docker-compose restarts
 
-Because Headway's docker-compose configuration uses init containers to populate a docker volume containing internal data, rebuilding the data for a metro area won't update existing containers. It's necessary to run `docker compose down --volumes` to re-initialize the data in the init containers.
+Rebuilding the data for a metro area won't update existing containers.
 
-When running docker compose commands, make sure to run them from the build directory (e.g., `cd builds/Amsterdam && docker compose -f ../../docker-compose.yaml down --volumes`) so they use the correct `.env` file, or use the integration test helper: `tests/integration/stop-and-remove-services builds/Amsterdam`
+```
+# delete all existing docker data volumes and containers
+bin/stop-and-remove-services builds/Amsterdam
+# start the services again, which will pull in fresh data
+bin/start-services builds/Amsterdam
+
+# or both in a single command
+bin/reset-services builds/Amsterdam
+```
 
 This is necessary whenever you rebuild the data for a metro area, or change which area you're serving data for in the `builds/<area>/.env` file.
 

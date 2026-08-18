@@ -3,9 +3,7 @@ kind: ConfigMap
 metadata:
   name: otp-seattle-config
 data:
-  graph-url: https://data.example.com/dev/seattle-latest/Seattle.graph.obj.zst
-  otp-config-json: |
-    {}
+  graph-url: https://data.example.com/dev/seattle-latest/transit/Seattle-seattle-2026-08-14.graph.obj.zst
   router-config-json: |
     {
       "updaters": [

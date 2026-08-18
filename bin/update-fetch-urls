@@ -1,19 +1,45 @@
 #!/bin/bash
+# Point the committed artifact URLs at the real asset host, so a build's
+# rendered configs and feed URLs fetch from somewhere that exists.
+#
+# usage: $0 [--revert]
+#
+# This leaves the tree dirty. bin/revert-fetch-urls puts it back.
+
+set -e
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 
+REVERT=0
+if [ "${1:-}" = "--revert" ]; then
+    REVERT=1
+fi
+
+if [ ! -f "$APP_ROOT/.bin-env" ]; then
+    echo "Error: $APP_ROOT/.bin-env not found - see .bin-env-example" >&2
+    exit 1
+fi
+
 set -a
-source $APP_ROOT/.bin-env
+source "$APP_ROOT/.bin-env"
 set +a
 
 if [ -z "$HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT" ]; then
-    echo "set HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT in .bin-env"
+    echo "set HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT in .bin-env" >&2
     exit 1
 fi
 
 if [ -z "$DEPLOYMENT_ARTIFACT_ROOT" ]; then
-    echo "set DEPLOYMENT_ARTIFACT_ROOT in .bin-env"
+    echo "set DEPLOYMENT_ARTIFACT_ROOT in .bin-env" >&2
     exit 1
+fi
+
+if [ "$REVERT" -eq 1 ]; then
+    FROM="$DEPLOYMENT_ARTIFACT_ROOT"
+    TO="$HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT"
+else
+    FROM="$HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT"
+    TO="$DEPLOYMENT_ARTIFACT_ROOT"
 fi
 
 # Detect OS and set sed command
@@ -23,7 +49,6 @@ else
     SED_CMD="sed -i"
 fi
 
-# Use bash -c to execute sed with the proper syntax
-find $APP_ROOT/k8s/configs -type f -exec bash -c "$SED_CMD 's,${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT},${DEPLOYMENT_ARTIFACT_ROOT},' \"\$1\"" _ {} \;
-find $APP_ROOT/builds/*/transit -type f -exec bash -c "$SED_CMD 's,${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT},${DEPLOYMENT_ARTIFACT_ROOT},' \"\$1\"" _ {} \;
-bash -c "$SED_CMD 's,${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT},${DEPLOYMENT_ARTIFACT_ROOT},' services/pelias/generate_config/src/Area.ts"
+find "$APP_ROOT"/k8s/configs -type f -exec bash -c "$SED_CMD 's,${FROM},${TO},' \"\$1\"" _ {} \;
+find "$APP_ROOT"/builds/*/transit -type f -exec bash -c "$SED_CMD 's,${FROM},${TO},' \"\$1\"" _ {} \;
+bash -c "$SED_CMD 's,${FROM},${TO},' \"${APP_ROOT}/services/pelias/generate_config/src/Area.ts\""

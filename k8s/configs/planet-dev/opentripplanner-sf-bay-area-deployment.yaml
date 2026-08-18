@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opentripplanner-sfbayarea
+  name: opentripplanner-sf-bay-area
 spec:
   selector:
     matchLabels:
-      app: opentripplanner-sfbayarea
+      app: opentripplanner-sf-bay-area
   replicas: 1
   template:
     metadata:
       labels:
-        app: opentripplanner-sfbayarea
+        app: opentripplanner-sf-bay-area
     spec:
       initContainers:
         - name: init
@@ -23,17 +23,12 @@ spec:
             - name: OTP_ARTIFACT_URL
               valueFrom:
                 configMapKeyRef:
-                  name: otp-sfbayarea-config
+                  name: otp-sf-bay-area-config
                   key: graph-url
-            - name: OTP_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-sfbayarea-config
-                  key: otp-config-json
             - name: OTP_ROUTER_CONFIG_JSON
               valueFrom:
                 configMapKeyRef:
-                  name: otp-sfbayarea-config
+                  name: otp-sf-bay-area-config
                   key: router-config-json
           resources:
             limits:

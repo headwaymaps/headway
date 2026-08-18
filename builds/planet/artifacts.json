@@ -1,0 +1,24 @@
+{
+  "elasticsearch": "maps-earth-planet-v1.260727.elasticsearch.tar.zst",
+  "elevation": "transit/maps-earth-planet-v1.260727-2026-08-14.elevation-tifs.tar.zst",
+  "gtfs": {
+    "barcelona": "transit/maps-earth-planet-v1.260727-barcelona-2026-08-14.gtfs.tar.zst",
+    "los-angeles": "transit/maps-earth-planet-v1.260727-los-angeles-2026-08-14.gtfs.tar.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.260727-puget-sound-2026-08-14.gtfs.tar.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.260727-sf-bay-area-2026-08-14.gtfs.tar.zst"
+  },
+  "osm": "maps-earth-planet-v1.260727.osm.pbf",
+  "otp-graphs": {
+    "barcelona": "transit/maps-earth-planet-v1.260727-barcelona-2026-08-14.graph.obj.zst",
+    "los-angeles": "transit/maps-earth-planet-v1.260727-los-angeles-2026-08-14.graph.obj.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.260727-puget-sound-2026-08-14.graph.obj.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.260727-sf-bay-area-2026-08-14.graph.obj.zst"
+  },
+  "placeholder": "maps-earth-planet-v1.260727.placeholder.tar.zst",
+  "pmtiles": "maps-earth-planet-v1.260727.pmtiles",
+  "shared": {
+    "landcover": "landcover.mbtiles",
+    "terrain": "terrain.mbtiles"
+  },
+  "valhalla": "maps-earth-planet-v1.260727.valhalla.tar.zst"
+}

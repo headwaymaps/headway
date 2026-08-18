@@ -29,6 +29,15 @@ jobs:
           name: bogota-artifacts-${{ github.sha }}
           path: data/Bogota
           retention-days: 7
+      # The build re-pins artifacts.json to the names it just built, so the
+      # committed manifest is stale for dated artifacts (otp graphs, gtfs,
+      # elevation). Downstream jobs need this copy, not the checked-out one.
+      - name: Upload artifact manifest
+        uses: actions/upload-artifact@v5
+        with:
+          name: bogota-manifest-${{ github.sha }}
+          path: builds/Bogota/artifacts.json
+          retention-days: 7
   build_images:
     name: Build service images
     runs-on: ubuntu-latest
@@ -126,6 +135,11 @@ jobs:
         with:
           name: bogota-artifacts-${{ github.sha }}
           path: data/Bogota
+      - name: Download artifact manifest
+        uses: actions/download-artifact@v6
+        with:
+          name: bogota-manifest-${{ github.sha }}
+          path: builds/Bogota
       - name: Download Docker images
         uses: actions/download-artifact@v6
         with:
@@ -164,6 +178,11 @@ jobs:
         with:
           name: bogota-artifacts-${{ github.sha }}
           path: data/Bogota
+      - name: Download artifact manifest
+        uses: actions/download-artifact@v6
+        with:
+          name: bogota-manifest-${{ github.sha }}
+          path: builds/Bogota
       - name: Download Docker images
         uses: actions/download-artifact@v6
         with:
@@ -171,10 +190,6 @@ jobs:
           path: .
       - name: Load Docker images
         run: gunzip -c docker-images.tar.gz | docker load
-      # The build writes dated transit artifacts; link the latest to the names
-      # docker compose serves them from (as run-integration-tests.sh does).
-      - name: Link transit artifacts
-        run: TRANSIT_DATA_ROOT=./data bin/link-latest-transit builds/Bogota
       - name: Start services
         run: bin/start-services --no-follow-logs builds/Bogota
       - name: Wait for services

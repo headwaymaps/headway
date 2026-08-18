@@ -1,0 +1,18 @@
+{
+  "elasticsearch": "Seattle.elasticsearch.tar.zst",
+  "elevation": "transit/Seattle-2026-08-14.elevation-tifs.tar.zst",
+  "gtfs": {
+    "seattle": "transit/Seattle-seattle-2026-08-14.gtfs.tar.zst"
+  },
+  "osm": "Seattle.osm.pbf",
+  "otp-graphs": {
+    "seattle": "transit/Seattle-seattle-2026-08-14.graph.obj.zst"
+  },
+  "placeholder": "Seattle.placeholder.tar.zst",
+  "pmtiles": "Seattle.pmtiles",
+  "shared": {
+    "landcover": "landcover.mbtiles",
+    "terrain": "terrain.mbtiles"
+  },
+  "valhalla": "Seattle.valhalla.tar.zst"
+}

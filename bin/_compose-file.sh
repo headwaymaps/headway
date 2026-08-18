@@ -15,3 +15,6 @@ if [ -z "${COMPOSE_FILE:-}" ]; then
         COMPOSE_FILE=docker-compose.yaml
     fi
 fi
+
+export HEADWAY_OTP_GRAPH_FILE=$(bin/artifacts otp-graph "$CONFIG_DIR")
+export HEADWAY_ELEVATION_FILE=$(bin/artifacts elevation "$CONFIG_DIR")
