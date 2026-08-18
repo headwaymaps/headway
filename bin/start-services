@@ -51,12 +51,13 @@ echo "Area: ${HEADWAY_AREA}"
 echo "Data directory: data/${HEADWAY_AREA}"
 echo ""
 
-# Check if data directory exists
 if [ ! -d "data/${HEADWAY_AREA}" ]; then
     echo "Error: Data directory data/${HEADWAY_AREA} not found"
     echo "Please run: bin/build $CONFIG_DIR"
     exit 1
 fi
+
+bin/artifacts --verify "$CONFIG_DIR"
 
 # Start services - cd to build dir so docker-compose picks up the .env
 cd "$CONFIG_DIR"

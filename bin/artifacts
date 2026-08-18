@@ -14,10 +14,12 @@ that generates deploy config reads builds/<Area>/artifacts.json directly.
 usage: $0 <otp-graph|elevation> <build-config-dir>
        $0 <files|shared-files> <build-config-dir>
        $0 --pin <build-config-dir>
+       $0 --verify <build-config-dir>
 
-examples:
-    # pin the newest artifacts to builds/<Area>/artifacts.json
+examples: # pin the newest artifacts to builds/<Area>/artifacts.json
     \$0 --pin builds/Amsterdam
+    # check every pinned artifact is present in data/<Area>
+    \$0 --verify builds/Amsterdam
     # what the local compose stack mounts
     \$0 otp-graph builds/planet
 EOF
@@ -122,6 +124,35 @@ case "$COMMAND" in
 
         echo "Wrote ${MANIFEST}:" >&2
         cat "$MANIFEST" >&2
+        ;;
+    --verify)
+        # Ensure all pinned assets are present locally
+        AREA_DIR="data/${HEADWAY_AREA}"
+
+        if [ ! -f "$MANIFEST" ]; then
+            echo "Error: no ${MANIFEST}; run bin/build ${CONFIG_DIR}" >&2
+            exit 1
+        fi
+
+        missing=()
+        while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            [ -f "${AREA_DIR}/${file}" ] || missing+=("$file")
+        done < <(jq -r '.. | strings' "$MANIFEST")
+
+        if [ ${#missing[@]} -gt 0 ]; then
+            {
+                echo "Error: ${MANIFEST} pins ${#missing[@]} artifact(s) missing from ${AREA_DIR}:"
+                printf '  %s\n' "${missing[@]}"
+                echo
+                echo "The pinned names are stale, or the build didn't finish. Either rebuild"
+                echo "(bin/build ${CONFIG_DIR}), or re-pin what's already built"
+                echo "(bin/artifacts --pin ${CONFIG_DIR})."
+            } >&2
+            exit 1
+        fi
+
+        echo "All artifacts pinned by ${MANIFEST} are present in ${AREA_DIR}."
         ;;
     otp-graph)
         [ -f "$MANIFEST" ] || exit 0
