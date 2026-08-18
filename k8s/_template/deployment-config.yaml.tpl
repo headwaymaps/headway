@@ -10,11 +10,11 @@ data:
   www-about-link-text: "${HEADWAY_ABOUT_LINK_TEXT}"
   www-contact-url: "${HEADWAY_CONTACT_URL}"
   www-contact-link-text: "${HEADWAY_CONTACT_LINK_TEXT}"
-  terrain-source-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/terrain.mbtiles
-  landcover-source-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/landcover.mbtiles
-  areamap-source-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.pmtiles
-  valhalla-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.valhalla.tar.zst
-  placeholder-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.placeholder.tar.zst
-  elasticsearch-artifact-url: ${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${HEADWAY_AREA}.elasticsearch.tar.zst
+  terrain-source-url: ${TERRAIN_ARTIFACT_URL}
+  landcover-source-url: ${LANDCOVER_ARTIFACT_URL}
+  areamap-source-url: ${AREAMAP_ARTIFACT_URL}
+  valhalla-artifact-url: ${VALHALLA_ARTIFACT_URL}
+  placeholder-artifact-url: ${PLACEHOLDER_ARTIFACT_URL}
+  elasticsearch-artifact-url: ${ELASTICSEARCH_ARTIFACT_URL}
   elevation-artifact-url: "${ELEVATION_ARTIFACT_URL}"
   pelias-config-json: ${PELIAS_CONFIG_JSON_YAML}

@@ -95,9 +95,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		zone       *TransitZone
 		zoneBBox   *Bbox
 		clipName   string
-		gtfsName   string
+		gtfsStem   string
 		gtfsFile   *dagger.File
-		graphName  string
+		graphStem  string
 		graphFile  *dagger.File
 		elevations *dagger.Directory
 	}
@@ -135,9 +135,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 				zone:      zone,
 				zoneBBox:  bbox,
 				clipName:  fmt.Sprintf("%s.osm.pbf", name),
-				gtfsName:  fmt.Sprintf("%s.gtfs.tar.zst", name),
+				gtfsStem:  fmt.Sprintf("%s.gtfs", name),
 				gtfsFile:  compressDir(zone.GTFSDir),
-				graphName: fmt.Sprintf("%s.graph.obj.zst", name),
+				graphStem: fmt.Sprintf("%s.graph", name),
 			}
 			return nil
 		})
@@ -145,11 +145,16 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
+	elevationArtifact := func(elevations *dagger.Directory) hashedArtifact {
+		return hashedArtifact{
+			Stem: fmt.Sprintf("%s-%s.elevation-tifs", h.Area, buildDate),
+			Ext:  "tar.zst",
+			File: compressDir(elevations),
+		}
+	}
+
 	if len(results) == 0 {
-		return output.WithFile(
-			fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate),
-			compressDir(elevations),
-		), nil
+		return withHashedFiles(ctx, output, []hashedArtifact{elevationArtifact(elevations)})
 	}
 
 	extracts := make([]osmiumExtract, len(results))
@@ -185,14 +190,17 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		return nil, err
 	}
 
+	artifacts := make([]hashedArtifact, 0, 2*len(results)+1)
 	for _, result := range results {
-		output = output.WithFile(result.gtfsName, result.gtfsFile)
-		output = output.WithFile(result.graphName, result.graphFile)
+		artifacts = append(artifacts,
+			hashedArtifact{Stem: result.gtfsStem, Ext: "tar.zst", File: result.gtfsFile},
+			hashedArtifact{Stem: result.graphStem, Ext: "obj.zst", File: result.graphFile},
+		)
 		elevations = elevations.WithDirectory("./", result.elevations)
 	}
-	output = output.WithFile(fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate), compressDir(elevations))
+	artifacts = append(artifacts, elevationArtifact(elevations))
 
-	return output, nil
+	return withHashedFiles(ctx, output, artifacts)
 }
 
 func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File, buildDate string) *TransitZone {

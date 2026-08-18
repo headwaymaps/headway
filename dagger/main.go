@@ -20,6 +20,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Headway struct {
@@ -154,34 +156,37 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 		return nil, fmt.Errorf("Area is required")
 	}
 
-	output := dag.Directory()
-
-	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
-
 	pmtiles, err := h.Pmtiles(ctx, "mvt")
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
-	output = output.WithFile(h.Area+".pmtiles", pmtiles)
-
-	valhalla := h.ValhallaTiles(ctx)
-	output = output.WithFile(h.Area+".valhalla.tar.zst", valhalla.Compress())
-
-	pelias := h.Pelias(ctx)
-	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
-
-	elasticSearch := pelias.ElasticsearchData(ctx)
-	output = output.WithFile(h.Area+".elasticsearch.tar.zst", elasticSearch.Compress())
-
-	placeholder := pelias.PreparePlaceholder(ctx)
-	output = output.WithFile(h.Area+".placeholder.tar.zst", placeholder.Compress())
 
 	terrain, err := h.TileserverTerrain(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
 	}
-	output = output.WithFile("terrain.mbtiles", terrain.File("terrain.mbtiles"))
-	output = output.WithFile("landcover.mbtiles", terrain.File("landcover.mbtiles"))
+
+	valhalla := h.ValhallaTiles(ctx)
+	pelias := h.Pelias(ctx)
+	elasticSearch := pelias.ElasticsearchData(ctx)
+	placeholder := pelias.PreparePlaceholder(ctx)
+
+	output, err := withHashedFiles(ctx, dag.Directory(), []hashedArtifact{
+		{Stem: h.Area, Ext: "osm.pbf", File: h.OSMExport.File},
+		{Stem: h.Area, Ext: "pmtiles", File: pmtiles},
+		{Stem: h.Area, Ext: "valhalla.tar.zst", File: valhalla.Compress()},
+		{Stem: h.Area, Ext: "elasticsearch.tar.zst", File: elasticSearch.Compress()},
+		{Stem: h.Area, Ext: "placeholder.tar.zst", File: placeholder.Compress()},
+		{Stem: "terrain", Ext: "mbtiles", File: terrain.File("terrain.mbtiles")},
+		{Stem: "landcover", Ext: "mbtiles", File: terrain.File("landcover.mbtiles")},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Not content addressed: this is build config that the deploy scripts read
+	// back by name, not something served to clients.
+	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
 
 	return output, nil
 }
@@ -671,4 +676,71 @@ func compressFile(input *dagger.File) *dagger.File {
 		WithExec([]string{"sh", "-c", "zstd -T0 input"})
 
 	return container.File("input.zst")
+}
+
+// ===
+// Content addressed artifact names
+// ===
+
+// hashedArtifact is a file destined for the build output under a name that
+// includes a hash of its contents, e.g. "Seattle-<hash>.valhalla.tar.zst".
+// Naming artifacts by content means a name always refers to the same bytes, so
+// anything holding one - a pinned artifacts.json, a deploy config, an HTTP
+// cache - can't be silently handed different data later.
+type hashedArtifact struct {
+	// Everything before the hash, e.g. "Seattle"
+	Stem string
+	// Everything after it, without the leading dot, e.g. "valhalla.tar.zst"
+	Ext  string
+	File *dagger.File
+}
+
+// Truncated from blake3's 256 bits: still far more than enough to keep
+// artifacts distinct, and short enough to leave the names readable.
+const contentHashChars = 16
+
+// contentHash is blake3 of the file's bytes. b3sum is multi-threaded, so this
+// costs little next to producing the artifact in the first place, and dagger
+// caches it alongside the step that did.
+func contentHash(ctx context.Context, file *dagger.File) (string, error) {
+	stdout, err := slimContainer("b3sum").
+		WithMountedFile("/app/input", file).
+		WithExec([]string{"b3sum", "--no-names", "/app/input"}).
+		Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	hash := strings.TrimSpace(stdout)
+	if len(hash) < contentHashChars {
+		return "", fmt.Errorf("unexpected b3sum output: %q", stdout)
+	}
+	return hash[:contentHashChars], nil
+}
+
+// withHashedFiles adds each artifact to dir under its content addressed name.
+// The hashes are resolved concurrently: each one forces its file to be built,
+// and doing them one at a time would serialize the whole pipeline.
+func withHashedFiles(ctx context.Context, dir *dagger.Directory, artifacts []hashedArtifact) (*dagger.Directory, error) {
+	names := make([]string, len(artifacts))
+
+	group, groupCtx := errgroup.WithContext(ctx)
+	for i, artifact := range artifacts {
+		group.Go(func() error {
+			hash, err := contentHash(groupCtx, artifact.File)
+			if err != nil {
+				return fmt.Errorf("failed to hash %s.%s: %w", artifact.Stem, artifact.Ext, err)
+			}
+			names[i] = fmt.Sprintf("%s-%s.%s", artifact.Stem, hash, artifact.Ext)
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	for i, artifact := range artifacts {
+		dir = dir.WithFile(names[i], artifact.File)
+	}
+	return dir, nil
 }

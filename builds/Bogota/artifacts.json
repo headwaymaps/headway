@@ -1,18 +1,1 @@
-{
-  "elasticsearch": "Bogota.elasticsearch.tar.zst",
-  "elevation": "transit/Bogota-2026-08-14.elevation-tifs.tar.zst",
-  "gtfs": {
-    "bogota": "transit/Bogota-bogota-2026-08-14.gtfs.tar.zst"
-  },
-  "osm": "Bogota.osm.pbf",
-  "otp-graphs": {
-    "bogota": "transit/Bogota-bogota-2026-08-14.graph.obj.zst"
-  },
-  "placeholder": "Bogota.placeholder.tar.zst",
-  "pmtiles": "Bogota.pmtiles",
-  "shared": {
-    "landcover": "landcover.mbtiles",
-    "terrain": "terrain.mbtiles"
-  },
-  "valhalla": "Bogota.valhalla.tar.zst"
-}
+{}

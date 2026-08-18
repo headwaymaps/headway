@@ -78,9 +78,11 @@ $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 STAGING_DIR=$(mktemp -d)
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
-# Pull the YYYY-MM-DD out of a `...-YYYY-MM-DD.graph.obj.zst` path.
+# Pull the YYYY-MM-DD out of a `...-YYYY-MM-DD.graph-<hash>.obj.zst` path. The
+# hash is optional so manifests pinned before artifacts were content addressed
+# still work.
 function graph_date_from_path() {
-    echo "$1" | sed -nE 's/.*-([0-9]{4}-[0-9]{2}-[0-9]{2})\.graph\.obj\.zst$/\1/p'
+    echo "$1" | sed -nE 's/.*-([0-9]{4}-[0-9]{2}-[0-9]{2})\.graph(-[0-9a-f]+)?\.obj\.zst$/\1/p'
 }
 
 function render_template() {
@@ -92,10 +94,36 @@ function render_template() {
 
 set -o nounset
 
+# Artifact names carry a content hash, so every URL comes out of the manifest
+# rather than being spelled out in a template.
+function artifact_url() {
+    local prefix="$1" query="$2" path
+    path=$(jq -r "$query // empty" "$MANIFEST")
+    if [ -z "$path" ]; then
+        log "missing $query in ${MANIFEST}"
+        log 'run `bin/artifacts --pin` on the build machine'
+        exit 1
+    fi
+    echo "${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${prefix}/${path}"
+}
+
+AREA_PREFIX="${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+
+# terrain and landcover are generic across areas, so they sit above the area directory
+# Assigned on their own line: `export VAR=$(...)` would swallow the failure.
+export TERRAIN_ARTIFACT_URL LANDCOVER_ARTIFACT_URL AREAMAP_ARTIFACT_URL
+export VALHALLA_ARTIFACT_URL PLACEHOLDER_ARTIFACT_URL ELASTICSEARCH_ARTIFACT_URL
+TERRAIN_ARTIFACT_URL=$(artifact_url "${HEADWAY_DATA_TAG}" '.shared.terrain')
+LANDCOVER_ARTIFACT_URL=$(artifact_url "${HEADWAY_DATA_TAG}" '.shared.landcover')
+AREAMAP_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.pmtiles')
+VALHALLA_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.valhalla')
+PLACEHOLDER_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.placeholder')
+ELASTICSEARCH_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.elasticsearch')
+
 export ELEVATION_ARTIFACT_URL=""
 elevation_path=$(jq -r '.elevation // empty' "$MANIFEST")
 if [ -n "$elevation_path" ]; then
-    ELEVATION_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${elevation_path}"
+    ELEVATION_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/${elevation_path}"
 fi
 
 function generate_transit() {
