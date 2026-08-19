@@ -42,7 +42,10 @@ dagger --progress=plain -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUN
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 if [ -d "$TRANSIT_CONFIG_DIR" ]; then
+    # build-transit calls pin for us, once the transit artifacts have landed too.
     bin/build-transit "$CONFIG_DIR"
+else
+    bin/artifacts --pin "$CONFIG_DIR"
 fi
 
 echo "Next, run: ./bin/revert-fetch-urls && ./bin/k8s/regenerate-all"

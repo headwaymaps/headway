@@ -5,7 +5,6 @@ import (
 	"dagger/headway/internal/dagger"
 	"fmt"
 	"strings"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -64,9 +63,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		maxConcurrentZones = defaultMaxConcurrentZones
 	}
 
-	// UTC so the day boundary doesn't depend on where the build runs - this
-	// date is a cache key, not just a label.
-	buildDate := time.Now().UTC().Format("2006-01-02")
+	// Also a cache key for the GTFS download, not just a label.
+	buildDate := buildDate()
 
 	output := dag.Directory()
 
@@ -93,12 +91,11 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	// That keeps the returned Directory - and so the build cache - stable.
 	type zoneResult struct {
 		zone       *TransitZone
+		stem       string
 		zoneBBox   *Bbox
 		clipName   string
-		gtfsName   string
-		gtfsFile   *dagger.File
-		graphName  string
-		graphFile  *dagger.File
+		gtfs       *Artifact
+		graph      *Artifact
 		elevations *dagger.Directory
 	}
 	results := make([]zoneResult, len(transitFeedsFiles))
@@ -127,17 +124,17 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, buildDate, gtfsApiKeys))
 
 			name := zone.Name(groupCtx)
+			stem := zone.ArtifactStem(groupCtx)
 			bbox, err := zone.BBox(groupCtx)
 			if err != nil {
 				return fmt.Errorf("failed to get bbox for transit zone %q: %w", name, err)
 			}
 			results[i] = zoneResult{
-				zone:      zone,
-				zoneBBox:  bbox,
-				clipName:  fmt.Sprintf("%s.osm.pbf", name),
-				gtfsName:  fmt.Sprintf("%s.gtfs.tar.zst", name),
-				gtfsFile:  compressDir(zone.GTFSDir),
-				graphName: fmt.Sprintf("%s.graph.obj.zst", name),
+				zone:     zone,
+				stem:     stem,
+				zoneBBox: bbox,
+				clipName: fmt.Sprintf("%s.osm.pbf", name),
+				gtfs:     DirectoryArtifact(fmt.Sprintf("%s-gtfs", stem), zone.GTFSDir).Compress(),
 			}
 			return nil
 		})
@@ -145,11 +142,12 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
+	elevationStem := fmt.Sprintf("%s-elevation-tifs", h.Area)
+
 	if len(results) == 0 {
-		return output.WithFile(
-			fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate),
-			compressDir(elevations),
-		), nil
+		only := DirectoryArtifact(elevationStem, elevations).Compress()
+		only.Date = buildDate
+		return only.AddTo(ctx, output)
 	}
 
 	extracts := make([]osmiumExtract, len(results))
@@ -176,7 +174,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			}()
 
 			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
-			result.graphFile = compressFile(result.zone.otpGraph(groupCtx, osmExport))
+			graphStem := fmt.Sprintf("%s-graph", result.stem)
+			result.graph = FileArtifact(graphStem, "obj", result.zone.otpGraph(groupCtx, osmExport)).Compress()
 			result.elevations = result.zone.Elevations(groupCtx)
 			return nil
 		})
@@ -185,13 +184,28 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		return nil, err
 	}
 
+	artifacts := make([]*Artifact, 0, 2*len(results)+1)
 	for _, result := range results {
-		output = output.WithFile(result.gtfsName, result.gtfsFile)
-		output = output.WithFile(result.graphName, result.graphFile)
+		artifacts = append(artifacts, result.gtfs, result.graph)
 		elevations = elevations.WithDirectory("./", result.elevations)
 	}
-	output = output.WithFile(fmt.Sprintf("%s-%s.elevation-tifs.tar.zst", h.Area, buildDate), compressDir(elevations))
+	artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
 
+	// Same date for every zone in the build - see Build.
+	for _, artifact := range artifacts {
+		artifact.Date = buildDate
+	}
+
+	if err := buildAll(ctx, artifacts); err != nil {
+		return nil, err
+	}
+
+	for _, artifact := range artifacts {
+		output, err = artifact.AddTo(ctx, output)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return output, nil
 }
 
@@ -216,8 +230,16 @@ func (t *TransitZone) WithOtpBuildConfig(ctx context.Context, otpBuildConfig *da
 	return t
 }
 
+// Name identifies the zone's build, date included. It names intermediates
+// inside the build, where there's no Artifact to carry the date separately.
 func (t *TransitZone) Name(ctx context.Context) string {
 	return fmt.Sprintf("%s-%s-%s", t.Headway.Area, t.ZoneName(ctx), t.BuildDate)
+}
+
+// ArtifactStem identifies the zone without a date: published artifacts get
+// their date from the Artifact.
+func (t *TransitZone) ArtifactStem(ctx context.Context) string {
+	return fmt.Sprintf("%s-%s", t.Headway.Area, t.ZoneName(ctx))
 }
 
 func (t *TransitZone) ClippedOsmExport(ctx context.Context) *OSMExport {

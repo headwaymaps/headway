@@ -18,8 +18,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Headway struct {
@@ -30,23 +34,118 @@ type Headway struct {
 	Countries     string
 }
 
+// An Artifact is a build output together with the name it gets published
+// under. Exactly one of File or Directory is set.
+//
+// The name is kept as stem + extension rather than one string because both
+// compressing (appends to the extension) and content addressing (splices a hash
+// before it) insert text, and for a name like "Seattle-gtfs.tar.zst" there's no
+// single answer to where "the extension" starts.
 type Artifact struct {
+	// What the artifact is, e.g. "Seattle-valhalla". Only a date and hash
+	// follow, so this must identify the artifact on its own.
+	Stem string
+	// YYYY-MM-DD. Producers leave it unset: Build and BuildTransit stamp one
+	// date on the whole build.
+	Date string
+	// Everything after the hash, without the leading dot, e.g. "tar.zst"
+	Ext string
+
 	File      *dagger.File
 	Directory *dagger.Directory
 }
 
-func (a *Artifact) Compress() *dagger.File {
-	if a.File != nil {
-		if a.Directory != nil {
+func FileArtifact(stem string, ext string, file *dagger.File) *Artifact {
+	return &Artifact{Stem: stem, Ext: ext, File: file}
+}
+
+// A directory has no extension of its own: it only gets one once Compress has
+// turned it into a tarball.
+func DirectoryArtifact(stem string, directory *dagger.Directory) *Artifact {
+	return &Artifact{Stem: stem, Directory: directory}
+}
+
+// Compress returns the artifact as a single zstd compressed file, with the
+// extension extended to say so: ".zst" for a file, ".tar.zst" for a directory.
+func (a *Artifact) Compress() *Artifact {
+	if a.Directory != nil {
+		if a.File != nil {
 			panic("Artifact cannot have both File and Directory set")
 		}
-		return compressFile(a.File)
-	} else {
-		if a.Directory == nil {
-			panic("Artifact must have either File or Directory set")
-		}
-		return compressDir(a.Directory)
+		return &Artifact{Stem: a.Stem, Date: a.Date, Ext: join(".", a.Ext, "tar.zst"), File: compressDir(a.Directory)}
 	}
+	if a.File == nil {
+		panic("Artifact must have either File or Directory set")
+	}
+	return &Artifact{Stem: a.Stem, Date: a.Date, Ext: join(".", a.Ext, "zst"), File: compressFile(a.File)}
+}
+
+// AddTo adds the artifact to dir under its content addressed name. Only a file
+// artifact can be added: a directory has no single stream of bytes to hash, so
+// compress it first.
+func (a *Artifact) AddTo(ctx context.Context, dir *dagger.Directory) (*dagger.Directory, error) {
+	name, err := a.contentHashedName(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dir.WithFile(name, a.File), nil
+}
+
+// build forces the artifact to actually be produced, rather than left as a
+// lazy dagger query.
+func (a *Artifact) build(ctx context.Context) error {
+	var err error
+	if a.File != nil {
+		_, err = a.File.Sync(ctx)
+	} else {
+		_, err = a.Directory.Sync(ctx)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to build %s: %w", a.name(), err)
+	}
+	return nil
+}
+
+// buildDate is the day artifacts are published under, in UTC so the day
+// boundary doesn't depend on where the build runs. Callers must be
+// `+cache="never"`, or dagger freezes the date at whatever day it first ran.
+func buildDate() string {
+	return time.Now().UTC().Format("2006-01-02")
+}
+
+// build the artifacts concurrently.
+func buildAll(ctx context.Context, artifacts []*Artifact) error {
+	group, groupCtx := errgroup.WithContext(ctx)
+	for _, artifact := range artifacts {
+		group.Go(func() error { return artifact.build(groupCtx) })
+	}
+	return group.Wait()
+}
+
+func (a *Artifact) name() string {
+	return join(".", join("-", a.Stem, a.Date), a.Ext)
+}
+
+// contentHashedName is <stem>-<date>-<hash>.<ext>, e.g.
+// "Seattle-valhalla-2026-08-19-2f1c9ab7.tar.zst"
+func (a *Artifact) contentHashedName(ctx context.Context) (string, error) {
+	if a.File == nil {
+		return "", fmt.Errorf("cannot content hash directory artifact %q: compress it first", a.name())
+	}
+	if a.Date == "" {
+		return "", fmt.Errorf("artifact %q has no build date set", a.name())
+	}
+	hash, err := contentHash(ctx, a.File)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash %s: %w", a.name(), err)
+	}
+	name := join("-", a.Stem, a.Date, hash)
+	return join(".", name, a.Ext), nil
+}
+
+// join non-empty parts with separator
+func join(separator string, parts ...string) string {
+	return strings.Join(slices.DeleteFunc(parts, func(s string) bool { return s == "" }), separator)
 }
 
 type Bbox struct {
@@ -154,34 +253,52 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 		return nil, fmt.Errorf("Area is required")
 	}
 
-	output := dag.Directory()
-
-	output = output.WithFile(h.Area+".osm.pbf", h.OSMExport.File)
-
 	pmtiles, err := h.Pmtiles(ctx, "mvt")
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
-	output = output.WithFile(h.Area+".pmtiles", pmtiles)
-
-	valhalla := h.ValhallaTiles(ctx)
-	output = output.WithFile(h.Area+".valhalla.tar.zst", valhalla.Compress())
-
-	pelias := h.Pelias(ctx)
-	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
-
-	elasticSearch := pelias.ElasticsearchData(ctx)
-	output = output.WithFile(h.Area+".elasticsearch.tar.zst", elasticSearch.Compress())
-
-	placeholder := pelias.PreparePlaceholder(ctx)
-	output = output.WithFile(h.Area+".placeholder.tar.zst", placeholder.Compress())
 
 	terrain, err := h.TileserverTerrain(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
 	}
-	output = output.WithFile("terrain.mbtiles", terrain.File("terrain.mbtiles"))
-	output = output.WithFile("landcover.mbtiles", terrain.File("landcover.mbtiles"))
+
+	valhalla := h.ValhallaTiles(ctx)
+	pelias := h.Pelias(ctx)
+	elasticSearch := pelias.ElasticsearchData(ctx)
+	placeholder := pelias.PreparePlaceholder(ctx)
+
+	artifacts := []*Artifact{
+		FileArtifact(h.Area, "osm.pbf", h.OSMExport.File),
+		FileArtifact(h.Area, "pmtiles", pmtiles),
+		valhalla.Compress(),
+		elasticSearch.Compress(),
+		placeholder.Compress(),
+		FileArtifact("terrain", "mbtiles", terrain.File("terrain.mbtiles")),
+		FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")),
+	}
+
+	// One date for the whole build: the producers are cacheable, so a date
+	// stamped inside one would be whatever day that step first ran.
+	date := buildDate()
+	for _, artifact := range artifacts {
+		artifact.Date = date
+	}
+
+	if err := buildAll(ctx, artifacts); err != nil {
+		return nil, err
+	}
+
+	output := dag.Directory()
+	for _, artifact := range artifacts {
+		output, err = artifact.AddTo(ctx, output)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Not content addressed: the deploy scripts read this back by name.
+	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
 
 	return output, nil
 }
@@ -383,7 +500,7 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 		WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
 		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 
-	return &Artifact{Directory: container.Directory("/tiles")}
+	return DirectoryArtifact(h.Area+"-valhalla", container.Directory("/tiles"))
 }
 
 func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
@@ -671,4 +788,29 @@ func compressFile(input *dagger.File) *dagger.File {
 		WithExec([]string{"sh", "-c", "zstd -T0 input"})
 
 	return container.File("input.zst")
+}
+
+// ===
+// Content addressed artifact names
+// ===
+
+// Truncated from blake3's 256 bits. The hash only separates builds sharing a
+// stem and a date - a handful at most - so 32 bits is ample, and readable.
+const contentHashChars = 8
+
+// contentHash is blake3 of the file's bytes.
+func contentHash(ctx context.Context, file *dagger.File) (string, error) {
+	stdout, err := slimContainer("b3sum").
+		WithMountedFile("/app/input", file).
+		WithExec([]string{"b3sum", "--no-names", "/app/input"}).
+		Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	hash := strings.TrimSpace(stdout)
+	if len(hash) < contentHashChars {
+		return "", fmt.Errorf("unexpected b3sum output: %q", stdout)
+	}
+	return hash[:contentHashChars], nil
 }
