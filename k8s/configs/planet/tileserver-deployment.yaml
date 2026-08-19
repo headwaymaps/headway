@@ -79,10 +79,5 @@ spec:
             failureThreshold: 10
       volumes:
         - name: tileserver-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 200Gi
+          persistentVolumeClaim:
+            claimName: tileserver-maps-earth-planet-v1-260727-0-12-0

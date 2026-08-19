@@ -76,13 +76,8 @@ spec:
             failureThreshold: 10
       volumes:
         - name: placeholder-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 40Gi
+          persistentVolumeClaim:
+            claimName: placeholder-seattle-latest-dev
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

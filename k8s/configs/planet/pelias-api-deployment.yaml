@@ -8,10 +8,6 @@ spec:
   selector:
     matchLabels:
       app: pelias-api
-  strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
   template:
     metadata:
       labels:

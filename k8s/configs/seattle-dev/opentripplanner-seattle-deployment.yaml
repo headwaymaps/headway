@@ -70,10 +70,5 @@ spec:
             failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi
+          persistentVolumeClaim:
+            claimName: opentripplanner-seattle-seattle-latest-dev-2026-08-14

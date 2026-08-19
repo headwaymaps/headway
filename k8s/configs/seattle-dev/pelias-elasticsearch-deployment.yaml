@@ -4,6 +4,10 @@ metadata:
   name: pelias-elasticsearch
 spec:
   replicas: 1
+  # Elasticsearch takes an exclusive node.lock on its data dir, so the old pod
+  # must fully stop before the new one starts.
+  strategy:
+    type: Recreate
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -15,13 +19,8 @@ spec:
     spec:
       volumes:
         - name: elasticsearch-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 90Gi
+          persistentVolumeClaim:
+            claimName: elasticsearch-seattle-latest-dev
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

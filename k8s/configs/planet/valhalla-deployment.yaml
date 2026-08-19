@@ -46,10 +46,5 @@ spec:
               memory: 4Gi
       volumes:
         - name: valhalla-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 200Gi
+          persistentVolumeClaim:
+            claimName: valhalla-maps-earth-planet-v1-260727-0-12-0

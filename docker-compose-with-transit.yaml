@@ -163,7 +163,7 @@ services:
     command: [ "/bin/bash", "/app/init_placeholder.sh" ]
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
-      - "pelias_placeholder_data:/data/placeholder"
+      - "pelias_placeholder_data:/data"
   pelias-libpostal:
     image: pelias/libpostal-service
     restart: always
@@ -192,11 +192,12 @@ services:
     restart: always
     environment:
       PORT: 4100
+      PLACEHOLDER_DATA: /data/placeholder/
     networks:
       - pelias_backend
     volumes:
       - "pelias_config_data:/config:ro"
-      - "pelias_placeholder_data:/data/placeholder"
+      - "pelias_placeholder_data:/data"
     depends_on:
       pelias-config-init:
         condition: service_completed_successfully

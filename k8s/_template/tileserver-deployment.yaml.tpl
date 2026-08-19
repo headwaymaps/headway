@@ -79,10 +79,5 @@ spec:
             failureThreshold: 10
       volumes:
         - name: tileserver-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 200Gi
+          persistentVolumeClaim:
+            claimName: tileserver-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${TILESERVER_VOLUME_VERSION}
