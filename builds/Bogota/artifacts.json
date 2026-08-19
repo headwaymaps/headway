@@ -1,18 +1,18 @@
 {
-  "elasticsearch": "Bogota-elasticsearch-c554ed8ba72b3487.tar.zst",
-  "elevation": "transit/Bogota-2026-08-19-elevation-tifs-bdc3ef90ddb6359b.tar.zst",
+  "elasticsearch": "Bogota-elasticsearch-5a7161b720320fb6.tar.zst",
+  "elevation": "transit/Bogota-2026-08-19-elevation-tifs-7a7292c5c8934e5c.tar.zst",
   "gtfs": {
-    "bogota": "transit/Bogota-bogota-2026-08-19-gtfs-5c43d0d7be88eb24.tar.zst"
+    "bogota": "transit/Bogota-bogota-2026-08-19-gtfs-64f4239dd1fbe6a9.tar.zst"
   },
   "osm": "Bogota-1b1e52c9b28d552c.osm.pbf",
   "otp-graphs": {
-    "bogota": "transit/Bogota-bogota-2026-08-19-graph-2afcb2c0e4bc92be.obj.zst"
+    "bogota": "transit/Bogota-bogota-2026-08-19-graph-cf672c6aa060fe69.obj.zst"
   },
-  "placeholder": "Bogota-placeholder-0f2947f937837399.tar.zst",
+  "placeholder": "Bogota-placeholder-c9f4e8c17ed2121f.tar.zst",
   "pmtiles": "Bogota-a311dfc60993de51.pmtiles",
   "shared": {
     "landcover": "landcover-af6aa17e6fc9f429.mbtiles",
     "terrain": "terrain-d961012b975d4d3c.mbtiles"
   },
-  "valhalla": "Bogota-valhalla-469653e0f1f37778.tar.zst"
+  "valhalla": "Bogota-valhalla-ee057201594ee0b7.tar.zst"
 }
