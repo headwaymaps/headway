@@ -93,12 +93,11 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	// That keeps the returned Directory - and so the build cache - stable.
 	type zoneResult struct {
 		zone       *TransitZone
+		name       string
 		zoneBBox   *Bbox
 		clipName   string
-		gtfsStem   string
-		gtfsFile   *dagger.File
-		graphStem  string
-		graphFile  *dagger.File
+		gtfs       *Artifact
+		graph      *Artifact
 		elevations *dagger.Directory
 	}
 	results := make([]zoneResult, len(transitFeedsFiles))
@@ -132,12 +131,11 @@ func (h *Headway) BuildTransit(ctx context.Context,
 				return fmt.Errorf("failed to get bbox for transit zone %q: %w", name, err)
 			}
 			results[i] = zoneResult{
-				zone:      zone,
-				zoneBBox:  bbox,
-				clipName:  fmt.Sprintf("%s.osm.pbf", name),
-				gtfsStem:  fmt.Sprintf("%s.gtfs", name),
-				gtfsFile:  compressDir(zone.GTFSDir),
-				graphStem: fmt.Sprintf("%s.graph", name),
+				zone:     zone,
+				name:     name,
+				zoneBBox: bbox,
+				clipName: fmt.Sprintf("%s.osm.pbf", name),
+				gtfs:     DirectoryArtifact(fmt.Sprintf("%s-gtfs", name), zone.GTFSDir).Compress(),
 			}
 			return nil
 		})
@@ -145,16 +143,12 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
-	elevationArtifact := func(elevations *dagger.Directory) hashedArtifact {
-		return hashedArtifact{
-			Stem: fmt.Sprintf("%s-%s.elevation-tifs", h.Area, buildDate),
-			Ext:  "tar.zst",
-			File: compressDir(elevations),
-		}
-	}
+	elevationStem := fmt.Sprintf("%s-%s-elevation-tifs", h.Area, buildDate)
 
 	if len(results) == 0 {
-		return withHashedFiles(ctx, output, []hashedArtifact{elevationArtifact(elevations)})
+		return DirectoryArtifact(elevationStem, elevations).
+			Compress().
+			AddTo(ctx, output)
 	}
 
 	extracts := make([]osmiumExtract, len(results))
@@ -181,7 +175,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			}()
 
 			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
-			result.graphFile = compressFile(result.zone.otpGraph(groupCtx, osmExport))
+			graphStem := fmt.Sprintf("%s-graph", result.name)
+			result.graph = FileArtifact(graphStem, "obj", result.zone.otpGraph(groupCtx, osmExport)).Compress()
 			result.elevations = result.zone.Elevations(groupCtx)
 			return nil
 		})
@@ -190,17 +185,24 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		return nil, err
 	}
 
-	artifacts := make([]hashedArtifact, 0, 2*len(results)+1)
+	artifacts := make([]*Artifact, 0, 2*len(results)+1)
 	for _, result := range results {
-		artifacts = append(artifacts,
-			hashedArtifact{Stem: result.gtfsStem, Ext: "tar.zst", File: result.gtfsFile},
-			hashedArtifact{Stem: result.graphStem, Ext: "obj.zst", File: result.graphFile},
-		)
+		artifacts = append(artifacts, result.gtfs, result.graph)
 		elevations = elevations.WithDirectory("./", result.elevations)
 	}
-	artifacts = append(artifacts, elevationArtifact(elevations))
+	artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
 
-	return withHashedFiles(ctx, output, artifacts)
+	if err := buildAll(ctx, artifacts); err != nil {
+		return nil, err
+	}
+
+	for _, artifact := range artifacts {
+		output, err = artifact.AddTo(ctx, output)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return output, nil
 }
 
 func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File, buildDate string) *TransitZone {

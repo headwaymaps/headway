@@ -58,7 +58,7 @@ func (p *Pelias) PreparePlaceholder(ctx context.Context) *Artifact {
 	container := p.PeliasContainerFrom("pelias/placeholder:master").
 		WithMountedDirectory("/data/whosonfirst", p.DownloadWhosOnFirst(ctx)).
 		WithExec([]string{"bash", "-c", "./cmd/extract.sh && ./cmd/build.sh"})
-	return &Artifact{Directory: container.Directory("/data/placeholder")}
+	return DirectoryArtifact(p.Headway.Area+"-placeholder", container.Directory("/data/placeholder"))
 }
 
 func (p *Pelias) OpenAddressesIsEnabled(ctx context.Context) bool {
@@ -216,7 +216,7 @@ func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 		WithExec([]string{"cp", "-r", "/data-cache", "/export"}, dagger.ContainerWithExecOpts{UseEntrypoint: false}).
 		Directory("/export")
 
-	return &Artifact{Directory: directory}
+	return DirectoryArtifact(p.Headway.Area+"-elasticsearch", directory)
 }
 
 func (h *Headway) PeliasInitContainer(ctx context.Context) *dagger.Container {

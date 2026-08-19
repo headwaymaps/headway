@@ -42,7 +42,12 @@ dagger --progress=plain -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUN
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 if [ -d "$TRANSIT_CONFIG_DIR" ]; then
+    # Pins for us, once the transit artifacts have landed too.
     bin/build-transit "$CONFIG_DIR"
+else
+    # Artifact names carry a content hash, so a rebuild lands under a new name
+    # and the old pins go stale. Nothing downstream works until we re-pin.
+    bin/artifacts --pin "$CONFIG_DIR"
 fi
 
 echo "Next, run: ./bin/revert-fetch-urls && ./bin/k8s/regenerate-all"

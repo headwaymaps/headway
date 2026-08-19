@@ -32,23 +32,126 @@ type Headway struct {
 	Countries     string
 }
 
+// An Artifact is a build output together with the name it gets published
+// under. Exactly one of File or Directory is set.
+//
+// The name is carried as stem + extension rather than as one string because
+// both of the things we do to artifact names insert text: compressing appends
+// to the extension, and content addressing splices a hash in between. Doing
+// that by surgery on a whole filename means guessing where "the extension"
+// starts, and for a name like "Seattle-gtfs.tar.zst" there is no single answer.
 type Artifact struct {
+	// What the artifact is, e.g. "Seattle-valhalla" or
+	// "Seattle-puget-sound-2026-08-14-graph". The content hash goes on the end
+	// of this, so it needs to say which artifact it is on its own.
+	Stem string
+	// Everything after the hash, without the leading dot, e.g. "tar.zst"
+	Ext string
+
 	File      *dagger.File
 	Directory *dagger.Directory
 }
 
-func (a *Artifact) Compress() *dagger.File {
-	if a.File != nil {
-		if a.Directory != nil {
+func FileArtifact(stem string, ext string, file *dagger.File) *Artifact {
+	return &Artifact{Stem: stem, Ext: ext, File: file}
+}
+
+// A directory has no extension of its own: it only gets one once Compress has
+// turned it into a tarball.
+func DirectoryArtifact(stem string, directory *dagger.Directory) *Artifact {
+	return &Artifact{Stem: stem, Directory: directory}
+}
+
+// Compress returns the artifact as a single zstd compressed file, with the
+// extension extended to say so: ".zst" for a file, ".tar.zst" for a directory.
+func (a *Artifact) Compress() *Artifact {
+	if a.Directory != nil {
+		if a.File != nil {
 			panic("Artifact cannot have both File and Directory set")
 		}
-		return compressFile(a.File)
-	} else {
-		if a.Directory == nil {
-			panic("Artifact must have either File or Directory set")
-		}
-		return compressDir(a.Directory)
+		return FileArtifact(a.Stem, joinExt(a.Ext, "tar.zst"), compressDir(a.Directory))
 	}
+	if a.File == nil {
+		panic("Artifact must have either File or Directory set")
+	}
+	return FileArtifact(a.Stem, joinExt(a.Ext, "zst"), compressFile(a.File))
+}
+
+// AddTo adds the artifact to dir under its content addressed name. Only a file
+// artifact can be added: a directory has no single stream of bytes to hash, so
+// compress it first.
+func (a *Artifact) AddTo(ctx context.Context, dir *dagger.Directory) (*dagger.Directory, error) {
+	name, err := a.contentHashedName(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dir.WithFile(name, a.File), nil
+}
+
+// build forces the artifact to actually be produced, rather than left as a
+// query dagger has not been asked to run yet.
+func (a *Artifact) build(ctx context.Context) error {
+	var err error
+	if a.File != nil {
+		_, err = a.File.Sync(ctx)
+	} else {
+		_, err = a.Directory.Sync(ctx)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to build %s: %w", a.name(), err)
+	}
+	return nil
+}
+
+// buildAll builds the artifacts concurrently.
+//
+// Dagger parallelizes whatever is in a single request, but it can't overlap
+// work it hasn't been handed yet - and content addressing hands it the
+// artifacts one at a time, since resolving a hash into a filename blocks. So
+// hashing them in sequence would also *build* them in sequence. Getting every
+// query in flight first restores the overlap and leaves the hashing that
+// follows to run against finished bytes.
+func buildAll(ctx context.Context, artifacts []*Artifact) error {
+	group, groupCtx := errgroup.WithContext(ctx)
+	for _, artifact := range artifacts {
+		group.Go(func() error { return artifact.build(groupCtx) })
+	}
+	return group.Wait()
+}
+
+// name is what the artifact would be called without content addressing. It's
+// only used to describe the artifact in errors - nothing is published under it.
+func (a *Artifact) name() string {
+	return joinExt(a.Stem, a.Ext)
+}
+
+// contentHashedName is the artifact's name with a hash of its contents spliced
+// in, e.g. "Seattle-<hash>.valhalla.tar.zst".
+//
+// Naming artifacts by content means a name always refers to the same bytes, so
+// anything holding one - a pinned artifacts.json, a deploy config, an HTTP
+// cache - can't be silently handed different data later.
+func (a *Artifact) contentHashedName(ctx context.Context) (string, error) {
+	if a.File == nil {
+		return "", fmt.Errorf("cannot content hash directory artifact %q: compress it first", a.name())
+	}
+	hash, err := contentHash(ctx, a.File)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash %s: %w", a.name(), err)
+	}
+	return joinExt(fmt.Sprintf("%s-%s", a.Stem, hash), a.Ext), nil
+}
+
+// joinExt appends an extension, tolerating an empty base or extension so that
+// artifacts which are nothing but a stem don't end up with a trailing dot.
+func joinExt(base string, ext string) string {
+	if base == "" {
+		return ext
+	}
+	if ext == "" {
+		return base
+	}
+	return base + "." + ext
 }
 
 type Bbox struct {
@@ -171,17 +274,25 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 	elasticSearch := pelias.ElasticsearchData(ctx)
 	placeholder := pelias.PreparePlaceholder(ctx)
 
-	output, err := withHashedFiles(ctx, dag.Directory(), []hashedArtifact{
-		{Stem: h.Area, Ext: "osm.pbf", File: h.OSMExport.File},
-		{Stem: h.Area, Ext: "pmtiles", File: pmtiles},
-		{Stem: h.Area, Ext: "valhalla.tar.zst", File: valhalla.Compress()},
-		{Stem: h.Area, Ext: "elasticsearch.tar.zst", File: elasticSearch.Compress()},
-		{Stem: h.Area, Ext: "placeholder.tar.zst", File: placeholder.Compress()},
-		{Stem: "terrain", Ext: "mbtiles", File: terrain.File("terrain.mbtiles")},
-		{Stem: "landcover", Ext: "mbtiles", File: terrain.File("landcover.mbtiles")},
-	})
-	if err != nil {
+	artifacts := []*Artifact{
+		FileArtifact(h.Area, "osm.pbf", h.OSMExport.File),
+		FileArtifact(h.Area, "pmtiles", pmtiles),
+		valhalla.Compress(),
+		elasticSearch.Compress(),
+		placeholder.Compress(),
+		FileArtifact("terrain", "mbtiles", terrain.File("terrain.mbtiles")),
+		FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")),
+	}
+	if err := buildAll(ctx, artifacts); err != nil {
 		return nil, err
+	}
+
+	output := dag.Directory()
+	for _, artifact := range artifacts {
+		output, err = artifact.AddTo(ctx, output)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Not content addressed: this is build config that the deploy scripts read
@@ -388,7 +499,7 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 		WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
 		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 
-	return &Artifact{Directory: container.Directory("/tiles")}
+	return DirectoryArtifact(h.Area+"-valhalla", container.Directory("/tiles"))
 }
 
 func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
@@ -682,19 +793,6 @@ func compressFile(input *dagger.File) *dagger.File {
 // Content addressed artifact names
 // ===
 
-// hashedArtifact is a file destined for the build output under a name that
-// includes a hash of its contents, e.g. "Seattle-<hash>.valhalla.tar.zst".
-// Naming artifacts by content means a name always refers to the same bytes, so
-// anything holding one - a pinned artifacts.json, a deploy config, an HTTP
-// cache - can't be silently handed different data later.
-type hashedArtifact struct {
-	// Everything before the hash, e.g. "Seattle"
-	Stem string
-	// Everything after it, without the leading dot, e.g. "valhalla.tar.zst"
-	Ext  string
-	File *dagger.File
-}
-
 // Truncated from blake3's 256 bits: still far more than enough to keep
 // artifacts distinct, and short enough to leave the names readable.
 const contentHashChars = 16
@@ -716,31 +814,4 @@ func contentHash(ctx context.Context, file *dagger.File) (string, error) {
 		return "", fmt.Errorf("unexpected b3sum output: %q", stdout)
 	}
 	return hash[:contentHashChars], nil
-}
-
-// withHashedFiles adds each artifact to dir under its content addressed name.
-// The hashes are resolved concurrently: each one forces its file to be built,
-// and doing them one at a time would serialize the whole pipeline.
-func withHashedFiles(ctx context.Context, dir *dagger.Directory, artifacts []hashedArtifact) (*dagger.Directory, error) {
-	names := make([]string, len(artifacts))
-
-	group, groupCtx := errgroup.WithContext(ctx)
-	for i, artifact := range artifacts {
-		group.Go(func() error {
-			hash, err := contentHash(groupCtx, artifact.File)
-			if err != nil {
-				return fmt.Errorf("failed to hash %s.%s: %w", artifact.Stem, artifact.Ext, err)
-			}
-			names[i] = fmt.Sprintf("%s-%s.%s", artifact.Stem, hash, artifact.Ext)
-			return nil
-		})
-	}
-	if err := group.Wait(); err != nil {
-		return nil, err
-	}
-
-	for i, artifact := range artifacts {
-		dir = dir.WithFile(names[i], artifact.File)
-	}
-	return dir, nil
 }

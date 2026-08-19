@@ -90,9 +90,9 @@ case "$COMMAND" in
             manifest=$(jq --arg key "$key" --arg file "${path#"${AREA_DIR}/"}" '.[$key] = $file' <<< "$manifest")
         }
 
-        add_only_match valhalla      "${HEADWAY_AREA}-*.valhalla.tar.zst"
-        add_only_match elasticsearch "${HEADWAY_AREA}-*.elasticsearch.tar.zst"
-        add_only_match placeholder   "${HEADWAY_AREA}-*.placeholder.tar.zst"
+        add_only_match valhalla      "${HEADWAY_AREA}-valhalla-*.tar.zst"
+        add_only_match elasticsearch "${HEADWAY_AREA}-elasticsearch-*.tar.zst"
+        add_only_match placeholder   "${HEADWAY_AREA}-placeholder-*.tar.zst"
         add_only_match pmtiles       "${HEADWAY_AREA}-*.pmtiles"
         add_only_match osm           "${HEADWAY_AREA}-*.osm.pbf"
 
@@ -106,8 +106,8 @@ case "$COMMAND" in
             manifest=$(jq --argjson shared "$shared" '.shared = $shared' <<< "$manifest")
         fi
 
-        # Names look like <area>-<zone>-<date><infix>-<hash><suffix>, e.g.
-        # Seattle-puget-sound-2026-08-14.graph-2f1c9ab7.obj.zst
+        # Names look like <area>-<zone>-<date>-<infix>-<hash><suffix>, e.g.
+        # Seattle-puget-sound-2026-08-14-graph-2f1c9ab7.obj.zst
         #
         # Dated names sort oldest to newest, so the last write wins. Two builds
         # of the same zone on the same day can't be told apart that way, so
@@ -116,15 +116,15 @@ case "$COMMAND" in
             local key="$1" infix="$2" suffix="$3"
             local found="{}" dates="{}" path file rest zone date prev
 
-            for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*"${infix}-"*"$suffix"; do
+            for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*"-${infix}-"*"$suffix"; do
                 [ -f "$path" ] || continue
                 file=$(basename "$path")
 
                 rest=${file#"${HEADWAY_AREA}-"}
                 rest=${rest%"$suffix"}
-                rest=${rest%"$infix"-*}
+                rest=${rest%-"$infix"-*}
                 if [[ ! $rest =~ ^(.+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
-                    echo "Error: unexpected ${infix}${suffix} name: ${file}" >&2
+                    echo "Error: unexpected ${infix} name: ${file}" >&2
                     exit 1
                 fi
                 zone="${BASH_REMATCH[1]}"
@@ -149,17 +149,17 @@ case "$COMMAND" in
             fi
         }
 
-        add_dated_by_zone otp-graphs .graph .obj.zst
-        add_dated_by_zone gtfs .gtfs .tar.zst
+        add_dated_by_zone otp-graphs graph .obj.zst
+        add_dated_by_zone gtfs gtfs .tar.zst
 
         elevation=""
         elevation_date=""
-        for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*.elevation-tifs-*.tar.zst; do
+        for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*-elevation-tifs-*.tar.zst; do
             [ -f "$path" ] || continue
             file=$(basename "$path")
 
             rest=${file#"${HEADWAY_AREA}-"}
-            if [[ ! $rest =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})\. ]]; then
+            if [[ ! $rest =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})- ]]; then
                 echo "Error: unexpected elevation-tifs name: ${file}" >&2
                 exit 1
             fi

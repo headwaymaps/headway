@@ -78,11 +78,11 @@ $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 STAGING_DIR=$(mktemp -d)
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
-# Pull the YYYY-MM-DD out of a `...-YYYY-MM-DD.graph-<hash>.obj.zst` path. The
-# hash is optional so manifests pinned before artifacts were content addressed
-# still work.
+# Pull the YYYY-MM-DD out of a `...-YYYY-MM-DD-graph-<hash>.obj.zst` path. The
+# older `.graph.obj.zst` spelling is still accepted so manifests pinned before
+# artifacts were content addressed keep working.
 function graph_date_from_path() {
-    echo "$1" | sed -nE 's/.*-([0-9]{4}-[0-9]{2}-[0-9]{2})\.graph(-[0-9a-f]+)?\.obj\.zst$/\1/p'
+    echo "$1" | sed -nE 's/.*-([0-9]{4}-[0-9]{2}-[0-9]{2})[.-]graph(-[0-9a-f]+)?\.obj\.zst$/\1/p'
 }
 
 function render_template() {
