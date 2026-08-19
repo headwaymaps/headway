@@ -81,9 +81,12 @@ done
 
 # Whether that actually freed any disk depends on the PV's reclaim policy. Under
 # `Retain` the PV sticks around in `Released` still holding the data, and has to
-# be deleted separately.
-released=$("${KUBECTL[@]}" get pv -o json \
-    | jq -r '.items[] | select(.status.phase == "Released") | .metadata.name')
+# be deleted separately. PVs are cluster scoped, so this looks only at the ones
+# bound to claims from this namespace - the rest were never ours.
+released=$(kubectl get pv -o json \
+    | jq -r --arg ns "$NAMESPACE" '.items[]
+        | select(.status.phase == "Released" and .spec.claimRef.namespace == $ns)
+        | .metadata.name')
 
 if [ -n "$released" ]; then
     echo ""
