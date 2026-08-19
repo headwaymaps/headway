@@ -63,84 +63,100 @@ case "$COMMAND" in
 
         manifest="{}"
 
-        # Artifact names carry a blake3 content hash, so a rebuild lands next to
-        # what it replaced rather than overwriting it. Which of them to pin
-        # isn't ours to guess: say so and let the old one be deleted.
-        function only_match() {
-            local pattern="$1" matches=() path
-            for path in $pattern; do
-                [ -f "$path" ] && matches+=("$path")
+        # Every artifact is named <stem>-<date>-<hash>.<ext>, so one rule reads
+        # a version out of any of them: the date says which build is newer, and
+        # the hash keeps two builds of the same day from colliding.
+        #
+        # A rebuild therefore lands next to what it replaced rather than
+        # overwriting it. We pin the newest, but two builds of the same day are
+        # a tie the date can't break - say so and let one be deleted.
+        VERSION_RE='([0-9]{4}-[0-9]{2}-[0-9]{2})-[0-9a-f]+'
+
+        # Prints the newest match of <dir>/<prefix>-<version><suffix>, if any.
+        function latest_match() {
+            local dir="$1" prefix="$2" suffix="$3"
+            local path file version newest="" newest_date="" tied=""
+
+            for path in "${dir}/${prefix}-"*"${suffix}"; do
+                [ -f "$path" ] || continue
+                file=$(basename "$path")
+
+                version=${file#"${prefix}-"}
+                version=${version%"$suffix"}
+                if [[ ! $version =~ ^${VERSION_RE}$ ]]; then
+                    echo "Error: unexpected ${prefix} artifact name: ${file}" >&2
+                    exit 1
+                fi
+
+                if [[ "${BASH_REMATCH[1]}" > "$newest_date" ]]; then
+                    newest_date="${BASH_REMATCH[1]}"
+                    newest="$file"
+                    tied=""
+                elif [ "${BASH_REMATCH[1]}" = "$newest_date" ]; then
+                    tied="$file"
+                fi
             done
 
-            if [ ${#matches[@]} -gt 1 ]; then
+            if [ -n "$tied" ]; then
                 {
-                    echo "Error: ${#matches[@]} builds of ${pattern} to choose between:"
-                    printf '  %s\n' "${matches[@]}"
-                    echo "Delete the ones you don't want pinned, then run --pin again."
+                    echo "Error: two ${newest_date} builds of ${prefix} to choose between:"
+                    printf '  %s\n' "$newest" "$tied"
+                    echo "Delete the one you don't want pinned, then run --pin again."
                 } >&2
                 exit 1
             fi
-            echo "${matches[0]:-}"
+            echo "$newest"
         }
 
-        function add_only_match() {
-            local key="$1" pattern="$2" path
-            path=$(only_match "${AREA_DIR}/${pattern}")
-            [ -n "$path" ] || return 0
-            manifest=$(jq --arg key "$key" --arg file "${path#"${AREA_DIR}/"}" '.[$key] = $file' <<< "$manifest")
+        function add_latest() {
+            local key="$1" prefix="$2" suffix="$3" file
+            file=$(latest_match "$AREA_DIR" "$prefix" "$suffix")
+            [ -n "$file" ] || return 0
+            manifest=$(jq --arg key "$key" --arg file "$file" '.[$key] = $file' <<< "$manifest")
         }
 
-        add_only_match valhalla      "${HEADWAY_AREA}-valhalla-*.tar.zst"
-        add_only_match elasticsearch "${HEADWAY_AREA}-elasticsearch-*.tar.zst"
-        add_only_match placeholder   "${HEADWAY_AREA}-placeholder-*.tar.zst"
-        add_only_match pmtiles       "${HEADWAY_AREA}-*.pmtiles"
-        add_only_match osm           "${HEADWAY_AREA}-*.osm.pbf"
+        add_latest valhalla      "${HEADWAY_AREA}-valhalla"      .tar.zst
+        add_latest elasticsearch "${HEADWAY_AREA}-elasticsearch" .tar.zst
+        add_latest placeholder   "${HEADWAY_AREA}-placeholder"   .tar.zst
+        add_latest pmtiles       "${HEADWAY_AREA}"               .pmtiles
+        add_latest osm           "${HEADWAY_AREA}"               .osm.pbf
 
         shared="{}"
         for name in terrain landcover; do
-            path=$(only_match "${AREA_DIR}/${name}-*.mbtiles")
-            [ -n "$path" ] || continue
-            shared=$(jq --arg key "$name" --arg file "$(basename "$path")" '.[$key] = $file' <<< "$shared")
+            file=$(latest_match "$AREA_DIR" "$name" .mbtiles)
+            [ -n "$file" ] || continue
+            shared=$(jq --arg key "$name" --arg file "$file" '.[$key] = $file' <<< "$shared")
         done
         if [ "$shared" != "{}" ]; then
             manifest=$(jq --argjson shared "$shared" '.shared = $shared' <<< "$manifest")
         fi
 
-        # Names look like <area>-<zone>-<date>-<infix>-<hash><suffix>, e.g.
-        # Seattle-puget-sound-2026-08-14-graph-2f1c9ab7.obj.zst
+        # Transit artifacts are per zone, so the same rule runs once per zone -
+        # the zone name is the only part of the stem that isn't fixed.
         #
-        # Dated names sort oldest to newest, so the last write wins. Two builds
-        # of the same zone on the same day can't be told apart that way, so
-        # that's an error rather than a guess.
-        function add_dated_by_zone() {
-            local key="$1" infix="$2" suffix="$3"
-            local found="{}" dates="{}" path file rest zone date prev
+        #   Seattle-puget-sound-graph-2026-08-14-2f1c9ab7.obj.zst
+        function add_by_zone() {
+            local key="$1" kind="$2" suffix="$3"
+            local found="{}" path file zone zones=() seen
 
-            for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*"-${infix}-"*"$suffix"; do
+            for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*"-${kind}-"*"$suffix"; do
                 [ -f "$path" ] || continue
                 file=$(basename "$path")
 
-                rest=${file#"${HEADWAY_AREA}-"}
-                rest=${rest%"$suffix"}
-                rest=${rest%-"$infix"-*}
-                if [[ ! $rest =~ ^(.+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
-                    echo "Error: unexpected ${infix} name: ${file}" >&2
+                if [[ ! $file =~ ^${HEADWAY_AREA}-(.+)-${kind}-${VERSION_RE}${suffix//./\\.}$ ]]; then
+                    echo "Error: unexpected ${kind} artifact name: ${file}" >&2
                     exit 1
                 fi
                 zone="${BASH_REMATCH[1]}"
-                date="${BASH_REMATCH[2]}"
 
-                if [ "$(jq -r --arg zone "$zone" '.[$zone] // empty' <<< "$dates")" = "$date" ]; then
-                    prev=$(jq -r --arg zone "$zone" '.[$zone]' <<< "$found")
-                    {
-                        echo "Error: two ${date} builds of ${zone} to choose between:"
-                        printf '  %s\n' "${prev#transit/}" "$file"
-                        echo "Delete the one you don't want pinned, then run --pin again."
-                    } >&2
-                    exit 1
-                fi
+                seen=0
+                for z in "${zones[@]+"${zones[@]}"}"; do
+                    [ "$z" = "$zone" ] && seen=1
+                done
+                [ "$seen" -eq 1 ] && continue
+                zones+=("$zone")
 
-                dates=$(jq --arg zone "$zone" --arg date "$date" '.[$zone] = $date' <<< "$dates")
+                file=$(latest_match "$TRANSIT_DIR" "${HEADWAY_AREA}-${zone}-${kind}" "$suffix")
                 found=$(jq --arg zone "$zone" --arg file "transit/$file" '.[$zone] = $file' <<< "$found")
             done
 
@@ -149,31 +165,10 @@ case "$COMMAND" in
             fi
         }
 
-        add_dated_by_zone otp-graphs graph .obj.zst
-        add_dated_by_zone gtfs gtfs .tar.zst
+        add_by_zone otp-graphs graph .obj.zst
+        add_by_zone gtfs gtfs .tar.zst
 
-        elevation=""
-        elevation_date=""
-        for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*-elevation-tifs-*.tar.zst; do
-            [ -f "$path" ] || continue
-            file=$(basename "$path")
-
-            rest=${file#"${HEADWAY_AREA}-"}
-            if [[ ! $rest =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})- ]]; then
-                echo "Error: unexpected elevation-tifs name: ${file}" >&2
-                exit 1
-            fi
-            if [ "${BASH_REMATCH[1]}" = "$elevation_date" ]; then
-                {
-                    echo "Error: two ${elevation_date} elevation builds to choose between:"
-                    printf '  %s\n' "$elevation" "$file"
-                    echo "Delete the one you don't want pinned, then run --pin again."
-                } >&2
-                exit 1
-            fi
-            elevation_date="${BASH_REMATCH[1]}"
-            elevation="$file"
-        done
+        elevation=$(latest_match "$TRANSIT_DIR" "${HEADWAY_AREA}-elevation-tifs" .tar.zst)
         if [ -n "$elevation" ]; then
             manifest=$(jq --arg file "transit/$elevation" '.elevation = $file' <<< "$manifest")
         fi

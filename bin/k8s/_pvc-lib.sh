@@ -2,10 +2,10 @@
 # Shared helpers for inspecting headway's PersistentVolumeClaims. Sourced, not run.
 #
 # Data artifacts are immutable and every distinct version of one gets its own
-# PVC, so "is this volume still needed?" is answered by asking the cluster who
-# references it - never by parsing the PVC's name. That keeps this working as
-# naming changes (e.g. transit PVCs carry a graph date that the area/data tags
-# don't).
+# PVC, named `<service>-<area>-<data-tag>-<date>-<hash>`. "Is this volume still
+# needed?" is answered by asking the cluster who references it - never by
+# parsing that name. Nothing here needs to know how versions are spelled, which
+# is what keeps it working when the naming changes.
 
 HEADWAY_PVC_SELECTOR="app.kubernetes.io/part-of=headway"
 

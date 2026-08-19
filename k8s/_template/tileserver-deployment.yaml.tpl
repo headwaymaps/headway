@@ -90,4 +90,4 @@ spec:
       volumes:
         - name: tileserver-volume
           persistentVolumeClaim:
-            claimName: tileserver-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}
+            claimName: tileserver-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${TILESERVER_VOLUME_VERSION}

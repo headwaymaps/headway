@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -42,9 +43,13 @@ type Headway struct {
 // starts, and for a name like "Seattle-gtfs.tar.zst" there is no single answer.
 type Artifact struct {
 	// What the artifact is, e.g. "Seattle-valhalla" or
-	// "Seattle-puget-sound-2026-08-14-graph". The content hash goes on the end
-	// of this, so it needs to say which artifact it is on its own.
+	// "Seattle-puget-sound-graph". The date and hash go after this, so it needs
+	// to say which artifact it is on its own.
 	Stem string
+	// The build's date, YYYY-MM-DD. Producers leave this unset - the date
+	// belongs to the build as a whole, so Build and BuildTransit stamp it on
+	// once, right before publishing.
+	Date string
 	// Everything after the hash, without the leading dot, e.g. "tar.zst"
 	Ext string
 
@@ -69,12 +74,12 @@ func (a *Artifact) Compress() *Artifact {
 		if a.File != nil {
 			panic("Artifact cannot have both File and Directory set")
 		}
-		return FileArtifact(a.Stem, joinExt(a.Ext, "tar.zst"), compressDir(a.Directory))
+		return &Artifact{Stem: a.Stem, Date: a.Date, Ext: joinExt(a.Ext, "tar.zst"), File: compressDir(a.Directory)}
 	}
 	if a.File == nil {
 		panic("Artifact must have either File or Directory set")
 	}
-	return FileArtifact(a.Stem, joinExt(a.Ext, "zst"), compressFile(a.File))
+	return &Artifact{Stem: a.Stem, Date: a.Date, Ext: joinExt(a.Ext, "zst"), File: compressFile(a.File)}
 }
 
 // AddTo adds the artifact to dir under its content addressed name. Only a file
@@ -103,6 +108,14 @@ func (a *Artifact) build(ctx context.Context) error {
 	return nil
 }
 
+// buildDate is the day the artifacts are published under, in UTC so the day
+// boundary doesn't depend on where the build runs. Callers must be
+// `+cache="never"`, or dagger would freeze the date at whatever day the call
+// was first made.
+func buildDate() string {
+	return time.Now().UTC().Format("2006-01-02")
+}
+
 // buildAll builds the artifacts concurrently.
 //
 // Dagger parallelizes whatever is in a single request, but it can't overlap
@@ -122,24 +135,44 @@ func buildAll(ctx context.Context, artifacts []*Artifact) error {
 // name is what the artifact would be called without content addressing. It's
 // only used to describe the artifact in errors - nothing is published under it.
 func (a *Artifact) name() string {
-	return joinExt(a.Stem, a.Ext)
+	return joinExt(joinName(a.Stem, a.Date), a.Ext)
 }
 
-// contentHashedName is the artifact's name with a hash of its contents spliced
-// in, e.g. "Seattle-<hash>.valhalla.tar.zst".
+// contentHashedName is the artifact's published name:
 //
-// Naming artifacts by content means a name always refers to the same bytes, so
-// anything holding one - a pinned artifacts.json, a deploy config, an HTTP
-// cache - can't be silently handed different data later.
+//	<stem>-<date>-<hash>.<ext>, e.g. "Seattle-valhalla-2026-08-19-2f1c9ab7.tar.zst"
+//
+// Every exported artifact has this shape, which is what lets everything
+// downstream - pinning, deploy config, volume naming - read a version out of
+// any artifact with one rule instead of a regex per kind.
+//
+// The hash makes the name content addressed: a name always refers to the same
+// bytes, so anything holding one - a pinned artifacts.json, a deploy config, an
+// HTTP cache - can't be silently handed different data later. The date is there
+// because a bare hash tells you nothing about which build is newer.
 func (a *Artifact) contentHashedName(ctx context.Context) (string, error) {
 	if a.File == nil {
 		return "", fmt.Errorf("cannot content hash directory artifact %q: compress it first", a.name())
+	}
+	if a.Date == "" {
+		return "", fmt.Errorf("artifact %q has no build date set", a.name())
 	}
 	hash, err := contentHash(ctx, a.File)
 	if err != nil {
 		return "", fmt.Errorf("failed to hash %s: %w", a.name(), err)
 	}
-	return joinExt(fmt.Sprintf("%s-%s", a.Stem, hash), a.Ext), nil
+	return joinExt(joinName(joinName(a.Stem, a.Date), hash), a.Ext), nil
+}
+
+// joinName appends a dash separated component, tolerating an empty base.
+func joinName(base string, part string) string {
+	if base == "" {
+		return part
+	}
+	if part == "" {
+		return base
+	}
+	return base + "-" + part
 }
 
 // joinExt appends an extension, tolerating an empty base or extension so that
@@ -283,6 +316,15 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 		FileArtifact("terrain", "mbtiles", terrain.File("terrain.mbtiles")),
 		FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")),
 	}
+
+	// One date for the whole build, stamped here rather than by each producer:
+	// the producers are cacheable, so a date baked in down there would be
+	// whatever day the step was first run.
+	date := buildDate()
+	for _, artifact := range artifacts {
+		artifact.Date = date
+	}
+
 	if err := buildAll(ctx, artifacts); err != nil {
 		return nil, err
 	}
@@ -793,9 +835,10 @@ func compressFile(input *dagger.File) *dagger.File {
 // Content addressed artifact names
 // ===
 
-// Truncated from blake3's 256 bits: still far more than enough to keep
-// artifacts distinct, and short enough to leave the names readable.
-const contentHashChars = 16
+// Truncated from blake3's 256 bits. The hash only has to separate builds that
+// share a stem and a date, of which there are a handful at most, so 32 bits is
+// ample - and short enough to leave the names readable.
+const contentHashChars = 8
 
 // contentHash is blake3 of the file's bytes. b3sum is multi-threaded, so this
 // costs little next to producing the artifact in the first place, and dagger

@@ -21,7 +21,7 @@ spec:
       volumes:
         - name: elasticsearch-volume
           persistentVolumeClaim:
-            claimName: elasticsearch-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}
+            claimName: elasticsearch-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${ELASTICSEARCH_VOLUME_VERSION}
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

@@ -57,4 +57,4 @@ spec:
       volumes:
         - name: valhalla-volume
           persistentVolumeClaim:
-            claimName: valhalla-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}
+            claimName: valhalla-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${VALHALLA_VOLUME_VERSION}

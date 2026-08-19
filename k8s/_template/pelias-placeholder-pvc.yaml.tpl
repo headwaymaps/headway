@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: placeholder-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}
+  name: placeholder-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${PLACEHOLDER_VOLUME_VERSION}
   labels:
     app.kubernetes.io/part-of: headway
 spec:

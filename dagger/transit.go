@@ -5,7 +5,6 @@ import (
 	"dagger/headway/internal/dagger"
 	"fmt"
 	"strings"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -64,9 +63,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		maxConcurrentZones = defaultMaxConcurrentZones
 	}
 
-	// UTC so the day boundary doesn't depend on where the build runs - this
-	// date is a cache key, not just a label.
-	buildDate := time.Now().UTC().Format("2006-01-02")
+	// This date is a cache key for the GTFS download, not just a label, so the
+	// day boundary must not depend on where the build runs.
+	buildDate := buildDate()
 
 	output := dag.Directory()
 
@@ -93,7 +92,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	// That keeps the returned Directory - and so the build cache - stable.
 	type zoneResult struct {
 		zone       *TransitZone
-		name       string
+		stem       string
 		zoneBBox   *Bbox
 		clipName   string
 		gtfs       *Artifact
@@ -125,17 +124,21 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			}
 			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, buildDate, gtfsApiKeys))
 
+			// `name` carries the date because it names an intermediate file
+			// inside the build; `stem` doesn't, because published artifacts
+			// take their date from the Artifact itself.
 			name := zone.Name(groupCtx)
+			stem := zone.ArtifactStem(groupCtx)
 			bbox, err := zone.BBox(groupCtx)
 			if err != nil {
 				return fmt.Errorf("failed to get bbox for transit zone %q: %w", name, err)
 			}
 			results[i] = zoneResult{
 				zone:     zone,
-				name:     name,
+				stem:     stem,
 				zoneBBox: bbox,
 				clipName: fmt.Sprintf("%s.osm.pbf", name),
-				gtfs:     DirectoryArtifact(fmt.Sprintf("%s-gtfs", name), zone.GTFSDir).Compress(),
+				gtfs:     DirectoryArtifact(fmt.Sprintf("%s-gtfs", stem), zone.GTFSDir).Compress(),
 			}
 			return nil
 		})
@@ -143,12 +146,12 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
-	elevationStem := fmt.Sprintf("%s-%s-elevation-tifs", h.Area, buildDate)
+	elevationStem := fmt.Sprintf("%s-elevation-tifs", h.Area)
 
 	if len(results) == 0 {
-		return DirectoryArtifact(elevationStem, elevations).
-			Compress().
-			AddTo(ctx, output)
+		only := DirectoryArtifact(elevationStem, elevations).Compress()
+		only.Date = buildDate
+		return only.AddTo(ctx, output)
 	}
 
 	extracts := make([]osmiumExtract, len(results))
@@ -175,7 +178,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			}()
 
 			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
-			graphStem := fmt.Sprintf("%s-graph", result.name)
+			graphStem := fmt.Sprintf("%s-graph", result.stem)
 			result.graph = FileArtifact(graphStem, "obj", result.zone.otpGraph(groupCtx, osmExport)).Compress()
 			result.elevations = result.zone.Elevations(groupCtx)
 			return nil
@@ -191,6 +194,11 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		elevations = elevations.WithDirectory("./", result.elevations)
 	}
 	artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
+
+	// Same date for every zone in the build - see Build.
+	for _, artifact := range artifacts {
+		artifact.Date = buildDate
+	}
 
 	if err := buildAll(ctx, artifacts); err != nil {
 		return nil, err
@@ -226,8 +234,17 @@ func (t *TransitZone) WithOtpBuildConfig(ctx context.Context, otpBuildConfig *da
 	return t
 }
 
+// Name identifies the zone's build, date included. It names intermediates
+// inside the build, where there's no Artifact to carry the date separately.
 func (t *TransitZone) Name(ctx context.Context) string {
 	return fmt.Sprintf("%s-%s-%s", t.Headway.Area, t.ZoneName(ctx), t.BuildDate)
+}
+
+// ArtifactStem identifies the zone itself, without a date. Published artifacts
+// get their date from the Artifact, so that it lands in the one place every
+// artifact name carries it.
+func (t *TransitZone) ArtifactStem(ctx context.Context) string {
+	return fmt.Sprintf("%s-%s", t.Headway.Area, t.ZoneName(ctx))
 }
 
 func (t *TransitZone) ClippedOsmExport(ctx context.Context) *OSMExport {

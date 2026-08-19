@@ -87,7 +87,7 @@ spec:
       volumes:
         - name: placeholder-volume
           persistentVolumeClaim:
-            claimName: placeholder-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}
+            claimName: placeholder-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${PLACEHOLDER_VOLUME_VERSION}
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
