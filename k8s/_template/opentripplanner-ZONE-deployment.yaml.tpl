@@ -7,6 +7,15 @@ spec:
     matchLabels:
       app: ${OTP_ENDPOINT_NAME}
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Surge a new pod before retiring the old. On a version bump the two pods
+      # claim *different* PVCs, so the new one downloads its artifact while the
+      # old keeps serving. On a same-version restart they share one ReadWriteOnce
+      # claim: fine, since the scheduler only places them where it can attach.
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -70,10 +79,5 @@ spec:
             failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi
+          persistentVolumeClaim:
+            claimName: opentripplanner-${TRANSIT_ZONE}-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${OTP_VOLUME_VERSION}

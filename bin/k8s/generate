@@ -40,6 +40,8 @@ export HEADWAY_DATA_TAG
 export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-latest}"
 
 source bin/_source-env.sh "$CONFIG_DIR"
+export HEADWAY_DATA_TAG_SAFE=$(echo "$HEADWAY_DATA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
+export HEADWAY_AREA_TAG_SAFE=$(echo "$HEADWAY_AREA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
 set -a
 source ".bin-env"
 set +a
@@ -76,6 +78,26 @@ $(echo "$PELIAS_CONFIG_JSON" | indent4)"
 STAGING_DIR=$(mktemp -d)
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
+# The version of the data a volume holds, as `<date>-<hash>`, derived from the
+# names of the artifacts unpacked into it: the newest date, and a hash over the
+# exact set (the tileserver's volume holds three). A claim named with it changes
+# whenever its contents do - otherwise the init containers, which short-circuit
+# on a volume that already has data, would serve the old build forever.
+function volume_version() {
+    local names date hash
+    names=$(printf '%s\n' "$@" | sed 's#.*/##' | sort)
+
+    date=$(grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' <<< "$names" | sort | tail -1)
+    if [ -z "$date" ]; then
+        log "no version in artifact name(s): $*"
+        log 'these should look like <stem>-<date>-<hash>.<ext> - re-run `bin/artifacts --pin`'
+        exit 1
+    fi
+
+    hash=$(shasum <<< "$names" | cut -c1-8)
+    echo "${date}-${hash}"
+}
+
 function render_template() {
     local template_file=$1
     local output="${2:-$(basename $template_file | sed 's/\.tpl$//')}"
@@ -110,6 +132,15 @@ VALHALLA_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.valhalla')
 PLACEHOLDER_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.placeholder')
 ELASTICSEARCH_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.elasticsearch')
 
+# Superseded volumes stay until bin/k8s/unused-volumes collects them, which is
+# what makes a rollback instant.
+export TILESERVER_VOLUME_VERSION VALHALLA_VOLUME_VERSION
+export PLACEHOLDER_VOLUME_VERSION ELASTICSEARCH_VOLUME_VERSION
+TILESERVER_VOLUME_VERSION=$(volume_version "$AREAMAP_ARTIFACT_URL" "$TERRAIN_ARTIFACT_URL" "$LANDCOVER_ARTIFACT_URL")
+VALHALLA_VOLUME_VERSION=$(volume_version "$VALHALLA_ARTIFACT_URL")
+PLACEHOLDER_VOLUME_VERSION=$(volume_version "$PLACEHOLDER_ARTIFACT_URL")
+ELASTICSEARCH_VOLUME_VERSION=$(volume_version "$ELASTICSEARCH_ARTIFACT_URL")
+
 export ELEVATION_ARTIFACT_URL=""
 elevation_path=$(jq -r '.elevation // empty' "$MANIFEST")
 if [ -n "$elevation_path" ]; then
@@ -136,6 +167,9 @@ function generate_otp() {
 
     export OTP_GRAPH_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${graph_path}"
     export OTP_ENDPOINT_NAME="opentripplanner-${TRANSIT_ZONE}"
+
+    export OTP_VOLUME_VERSION
+    OTP_VOLUME_VERSION=$(volume_version "$graph_path")
 
     local router_config_file="${CONFIG_DIR}/transit/${TRANSIT_ZONE}-router-config.json"
     if [ -f "$router_config_file" ]; then
