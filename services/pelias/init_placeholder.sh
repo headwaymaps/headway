@@ -12,6 +12,10 @@ function install_artifact() {
     rm -fr "$STAGING_DIR"
     mkdir -p "$STAGING_DIR"
     tar --zstd -x -f - -C "$STAGING_DIR"
+    # If /data/placeholder already exists - an empty dir the image shipped, or
+    # the leftovers of a run that died after this point - `mv` would move the
+    # staging dir *inside* it rather than into its place.
+    rm -fr /data/placeholder
     mv "$STAGING_DIR" /data/placeholder
 }
 
