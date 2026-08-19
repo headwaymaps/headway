@@ -58,7 +58,7 @@ function upload() {
   fi
 
   # The asset host mirrors data/<Area>, so a manifest value is the path here,
-  # under /bootstrap in compose, and in the URLs bin/k8s-generate renders.
+  # under /bootstrap in compose, and in the URLs bin/k8s/generate renders.
   local resource="${output_prefix}/${file}"
   local output_path="${OUTPUT_DIR}/${resource}"
 
