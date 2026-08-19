@@ -11,7 +11,8 @@ Pin and look up build artifacts. This runs on the build machine: --pin reads
 data/<Area>, and the lookups exist for the local docker compose stack. Anything
 that generates deploy config reads builds/<Area>/artifacts.json directly.
 
-usage: $0 <otp-graph|elevation> <build-config-dir>
+usage: $0 <otp-graph|elevation|pmtiles|valhalla|elasticsearch|placeholder|osm> <build-config-dir>
+       $0 <terrain|landcover> <build-config-dir>
        $0 <files|shared-files> <build-config-dir>
        $0 --pin <build-config-dir>
        $0 --verify <build-config-dir>
@@ -62,45 +63,95 @@ case "$COMMAND" in
 
         manifest="{}"
 
-        function add_if_present() {
-            local key="$1" file="$2"
-            if [ -f "${AREA_DIR}/${file}" ]; then
-                manifest=$(jq --arg key "$key" --arg file "$file" '.[$key] = $file' <<< "$manifest")
+        # Artifacts are named <stem>-<date>-<hash>.<ext>, so a rebuild lands
+        # beside what it replaced rather than overwriting it. Pin the newest;
+        # two builds of the same day are a tie the date can't break.
+        VERSION_RE='([0-9]{4}-[0-9]{2}-[0-9]{2})-[0-9a-f]+'
+
+        # Prints the newest match of <dir>/<prefix>-<version><suffix>, if any.
+        function latest_match() {
+            local dir="$1" prefix="$2" suffix="$3"
+            local path file version newest="" newest_date="" tied=""
+
+            for path in "${dir}/${prefix}-"*"${suffix}"; do
+                [ -f "$path" ] || continue
+                file=$(basename "$path")
+
+                version=${file#"${prefix}-"}
+                version=${version%"$suffix"}
+                if [[ ! $version =~ ^${VERSION_RE}$ ]]; then
+                    echo "Error: unexpected ${prefix} artifact name: ${file}" >&2
+                    exit 1
+                fi
+
+                if [[ "${BASH_REMATCH[1]}" > "$newest_date" ]]; then
+                    newest_date="${BASH_REMATCH[1]}"
+                    newest="$file"
+                    tied=""
+                elif [ "${BASH_REMATCH[1]}" = "$newest_date" ]; then
+                    tied="$file"
+                fi
+            done
+
+            if [ -n "$tied" ]; then
+                {
+                    echo "Error: two ${newest_date} builds of ${prefix} to choose between:"
+                    printf '  %s\n' "$newest" "$tied"
+                    echo "Delete the one you don't want pinned, then run --pin again."
+                } >&2
+                exit 1
             fi
+            echo "$newest"
         }
 
-        add_if_present valhalla      "${HEADWAY_AREA}.valhalla.tar.zst"
-        add_if_present elasticsearch "${HEADWAY_AREA}.elasticsearch.tar.zst"
-        add_if_present placeholder   "${HEADWAY_AREA}.placeholder.tar.zst"
-        add_if_present pmtiles       "${HEADWAY_AREA}.pmtiles"
-        add_if_present osm           "${HEADWAY_AREA}.osm.pbf"
+        function add_latest() {
+            local key="$1" prefix="$2" suffix="$3" file
+            file=$(latest_match "$AREA_DIR" "$prefix" "$suffix")
+            [ -n "$file" ] || return 0
+            manifest=$(jq --arg key "$key" --arg file "$file" '.[$key] = $file' <<< "$manifest")
+        }
+
+        add_latest valhalla      "${HEADWAY_AREA}-valhalla"      .tar.zst
+        add_latest elasticsearch "${HEADWAY_AREA}-elasticsearch" .tar.zst
+        add_latest placeholder   "${HEADWAY_AREA}-placeholder"   .tar.zst
+        add_latest pmtiles       "${HEADWAY_AREA}"               .pmtiles
+        add_latest osm           "${HEADWAY_AREA}"               .osm.pbf
 
         shared="{}"
-        for file in terrain.mbtiles landcover.mbtiles; do
-            if [ -f "${AREA_DIR}/${file}" ]; then
-                shared=$(jq --arg key "${file%.mbtiles}" --arg file "$file" '.[$key] = $file' <<< "$shared")
-            fi
+        for name in terrain landcover; do
+            file=$(latest_match "$AREA_DIR" "$name" .mbtiles)
+            [ -n "$file" ] || continue
+            shared=$(jq --arg key "$name" --arg file "$file" '.[$key] = $file' <<< "$shared")
         done
         if [ "$shared" != "{}" ]; then
             manifest=$(jq --argjson shared "$shared" '.shared = $shared' <<< "$manifest")
         fi
 
-        # Dated names sort oldest to newest, so the last write wins.
-        function add_dated_by_zone() {
-            local key="$1" suffix="$2"
-            local found="{}" path file rest
+        # Like add_latest, but the stem carries a zone name:
+        #   Seattle-puget-sound-graph-2026-08-14-2f1c9ab7.obj.zst
+        function add_by_zone() {
+            local key="$1" kind="$2" suffix="$3"
+            local found="{}" path file zone zones=() seen
 
-            for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*"$suffix"; do
-                [ -e "$path" ] || continue
+            for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*"-${kind}-"*"$suffix"; do
+                [ -f "$path" ] || continue
                 file=$(basename "$path")
 
-                rest=${file#"${HEADWAY_AREA}-"}
-                rest=${rest%"$suffix"}
-                if [[ ! $rest =~ ^(.+)-([0-9]{4}-[0-9]{2}-[0-9]{2})$ ]]; then
-                    echo "Error: unexpected ${suffix} name: ${file}" >&2
+                if [[ ! $file =~ ^${HEADWAY_AREA}-(.+)-${kind}-${VERSION_RE}${suffix//./\\.}$ ]]; then
+                    echo "Error: unexpected ${kind} artifact name: ${file}" >&2
                     exit 1
                 fi
-                found=$(jq --arg zone "${BASH_REMATCH[1]}" --arg file "transit/$file" '.[$zone] = $file' <<< "$found")
+                zone="${BASH_REMATCH[1]}"
+
+                seen=0
+                for z in "${zones[@]+"${zones[@]}"}"; do
+                    [ "$z" = "$zone" ] && seen=1
+                done
+                [ "$seen" -eq 1 ] && continue
+                zones+=("$zone")
+
+                file=$(latest_match "$TRANSIT_DIR" "${HEADWAY_AREA}-${zone}-${kind}" "$suffix")
+                found=$(jq --arg zone "$zone" --arg file "transit/$file" '.[$zone] = $file' <<< "$found")
             done
 
             if [ "$found" != "{}" ]; then
@@ -108,14 +159,10 @@ case "$COMMAND" in
             fi
         }
 
-        add_dated_by_zone otp-graphs .graph.obj.zst
-        add_dated_by_zone gtfs .gtfs.tar.zst
+        add_by_zone otp-graphs graph .obj.zst
+        add_by_zone gtfs gtfs .tar.zst
 
-        elevation=""
-        for path in "${TRANSIT_DIR}/${HEADWAY_AREA}-"*.elevation-tifs.tar.zst; do
-            [ -e "$path" ] || continue
-            elevation=$(basename "$path")
-        done
+        elevation=$(latest_match "$TRANSIT_DIR" "${HEADWAY_AREA}-elevation-tifs" .tar.zst)
         if [ -n "$elevation" ]; then
             manifest=$(jq --arg file "transit/$elevation" '.elevation = $file' <<< "$manifest")
         fi
@@ -159,9 +206,13 @@ case "$COMMAND" in
         # docker compose runs a single OTP, so serve the first zone
         jq -r 'first(."otp-graphs"[]?) // empty' "$MANIFEST"
         ;;
-    elevation)
+    elevation|pmtiles|valhalla|elasticsearch|placeholder|osm)
         [ -f "$MANIFEST" ] || exit 0
-        jq -r '.elevation // empty' "$MANIFEST"
+        jq -r --arg key "$COMMAND" '.[$key] // empty' "$MANIFEST"
+        ;;
+    terrain|landcover)
+        [ -f "$MANIFEST" ] || exit 0
+        jq -r --arg key "$COMMAND" '.shared[$key]? // empty' "$MANIFEST"
         ;;
     files)
         # All artifacts for the deployment except `shared`,

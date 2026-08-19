@@ -3,11 +3,11 @@ services:
     image: ghcr.io/headwaymaps/tileserver-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      AREAMAP_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_AREA}.pmtiles
+      AREAMAP_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_PMTILES_FILE}
       AREAMAP_ARTIFACT_DEST: /data/tiles/areamap.pmtiles
-      TERRAIN_ARTIFACT_SOURCE: /bootstrap/terrain.mbtiles
+      TERRAIN_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_TERRAIN_FILE}
       TERRAIN_ARTIFACT_DEST: /data/tiles/terrain.mbtiles
-      LANDCOVER_ARTIFACT_SOURCE: /bootstrap/landcover.mbtiles
+      LANDCOVER_ARTIFACT_SOURCE: /bootstrap/${HEADWAY_LANDCOVER_FILE}
       LANDCOVER_ARTIFACT_DEST: /data/tiles/landcover.mbtiles
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
@@ -85,7 +85,7 @@ services:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "valhalla_data:/data/:rw"
     environment:
-      VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.valhalla.tar.zst
+      VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_VALHALLA_FILE}
     ulimits:
       nofile:
         soft: 8192
@@ -150,7 +150,7 @@ services:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.elasticsearch.tar.zst
+      ELASTICSEARCH_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_ELASTICSEARCH_FILE}
     command: [ "/bin/bash", "/app/init_elastic.sh" ]
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
@@ -159,7 +159,7 @@ services:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.placeholder.tar.zst
+      PLACEHOLDER_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_PLACEHOLDER_FILE}
     command: [ "/bin/bash", "/app/init_placeholder.sh" ]
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"

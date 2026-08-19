@@ -85,10 +85,35 @@ function render_template() {
 
 set -o nounset
 
+function artifact_url() {
+    local prefix="$1" query="$2" path
+    path=$(jq -r "$query // empty" "$MANIFEST")
+    if [ -z "$path" ]; then
+        log "missing $query in ${MANIFEST}"
+        log 'run `bin/artifacts --pin` on the build machine'
+        exit 1
+    fi
+    echo "${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${prefix}/${path}"
+}
+
+AREA_PREFIX="${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+
+# terrain and landcover are generic across areas, so they sit above the area directory
+# Assigned on their own line so `set -e` sees the substitution's exit status:
+# in `export VAR=$(...)` the status is export's, always 0.
+export TERRAIN_ARTIFACT_URL LANDCOVER_ARTIFACT_URL AREAMAP_ARTIFACT_URL
+export VALHALLA_ARTIFACT_URL PLACEHOLDER_ARTIFACT_URL ELASTICSEARCH_ARTIFACT_URL
+TERRAIN_ARTIFACT_URL=$(artifact_url "${HEADWAY_DATA_TAG}" '.shared.terrain')
+LANDCOVER_ARTIFACT_URL=$(artifact_url "${HEADWAY_DATA_TAG}" '.shared.landcover')
+AREAMAP_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.pmtiles')
+VALHALLA_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.valhalla')
+PLACEHOLDER_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.placeholder')
+ELASTICSEARCH_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.elasticsearch')
+
 export ELEVATION_ARTIFACT_URL=""
 elevation_path=$(jq -r '.elevation // empty' "$MANIFEST")
 if [ -n "$elevation_path" ]; then
-    ELEVATION_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}/${elevation_path}"
+    ELEVATION_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/${elevation_path}"
 fi
 
 function generate_transit() {
@@ -146,7 +171,6 @@ do
     render_template $file
 done
 
-# Everything rendered - now it's safe to replace the previous output.
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*
 cp "${STAGING_DIR}"/* "${OUTPUT_DIR}/"
