@@ -44,11 +44,11 @@ fi
 
 # Detect OS and set sed command
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    SED_CMD="sed -i ''"
+    SED_CMD=(sed -i '')
 else
-    SED_CMD="sed -i"
+    SED_CMD=(sed -i)
 fi
 
-find "$APP_ROOT"/k8s/configs -type f -exec bash -c "$SED_CMD 's,${FROM},${TO},' \"\$1\"" _ {} \;
-find "$APP_ROOT"/builds/*/transit -type f -exec bash -c "$SED_CMD 's,${FROM},${TO},' \"\$1\"" _ {} \;
-bash -c "$SED_CMD 's,${FROM},${TO},' \"${APP_ROOT}/services/pelias/generate_config/src/Area.ts\""
+find "$APP_ROOT"/k8s/configs "$APP_ROOT"/builds/*/transit -type f \
+    -exec "${SED_CMD[@]}" "s,${FROM},${TO}," {} +
+"${SED_CMD[@]}" "s,${FROM},${TO}," "${APP_ROOT}/services/pelias/generate_config/src/Area.ts"
