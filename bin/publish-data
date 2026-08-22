@@ -33,9 +33,7 @@ fi
 REPO_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${REPO_ROOT}/data"
 
-DATA_ROOT="${REPO_ROOT}/data"
-
-OUTPUT_DIR="/pool1/www/data.maps.earth"
+OUTPUT_DIR="/srv/www/data.maps.earth"
 
 upload_pids=()
 function kill_uploads() {
