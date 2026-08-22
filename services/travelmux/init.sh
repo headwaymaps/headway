@@ -21,7 +21,7 @@ if [ -f "$TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH" ]; then
     ls "$ELEVATION_TIFS_DIR"
 elif [ -n "$TRAVELMUX_ELEVATION_ARTIFACT_URL" ]; then
     echo "Downloading elevation artifact from URL: $TRAVELMUX_ELEVATION_ARTIFACT_URL"
-    wget --tries=100 --continue -O- "$TRAVELMUX_ELEVATION_ARTIFACT_URL" | zstd --decompress --stdout | tar -xf - -C "$ELEVATION_TIFS_DIR"
+    wget --tries=100 -O- "$TRAVELMUX_ELEVATION_ARTIFACT_URL" | zstd --decompress --stdout | tar -xf - -C "$ELEVATION_TIFS_DIR"
 else
     echo "No elevation artifact available. Skipping elevation data setup."
     echo "Set TRAVELMUX_ELEVATION_ARTIFACT_SOURCE_PATH or TRAVELMUX_ELEVATION_ARTIFACT_URL to provide elevation data."
