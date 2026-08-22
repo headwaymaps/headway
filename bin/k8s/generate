@@ -53,26 +53,34 @@ if [ ! -f "$MANIFEST" ]; then
     exit 1
 fi
 
-EXISTING_DEPLOYMENT_CONFIG="${OUTPUT_DIR}/deployment-config.yaml"
+# The pelias config is built on the build machine, but generate also runs on
+# machines that don't have data/ - so the last one seen is kept alongside the
+# pinned artifact manifest and used as the fallback. It lives here rather than
+# in OUTPUT_DIR because `kubectl apply -f <dir>` would try to apply a stray
+# .json as a manifest.
+PINNED_PELIAS_CONFIG="${CONFIG_DIR}/pelias.json"
 PELIAS_CONFIG_FILE="data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
 if [ -f "$PELIAS_CONFIG_FILE" ]; then
-    PELIAS_CONFIG_JSON=$(cat $PELIAS_CONFIG_FILE)
-elif [ -f "$EXISTING_DEPLOYMENT_CONFIG" ]; then
-    log "Warning: ${PELIAS_CONFIG_FILE} not found; extracting pelias config from existing ${EXISTING_DEPLOYMENT_CONFIG}"
-    # Grab the `pelias-config-json: |` block scalar and strip its 4 space indent.
-    PELIAS_CONFIG_JSON=$(awk '
-        in_block && NF && !/^    / { exit }
-        in_block                   { sub(/^    /, ""); print }
-        /^  pelias-config-json: \|$/ { in_block = 1 }
-    ' "$EXISTING_DEPLOYMENT_CONFIG")
+    PELIAS_CONFIG_JSON=$(cat "$PELIAS_CONFIG_FILE")
+    printf '%s\n' "$PELIAS_CONFIG_JSON" > "$PINNED_PELIAS_CONFIG"
+elif [ -f "$PINNED_PELIAS_CONFIG" ]; then
+    log "Warning: ${PELIAS_CONFIG_FILE} not found; falling back to ${PINNED_PELIAS_CONFIG}"
+    PELIAS_CONFIG_JSON=$(cat "$PINNED_PELIAS_CONFIG")
 else
-    log "Missing pelias config file: ${PELIAS_CONFIG_FILE} and no existing rendered output to fall back on"
+    log "Missing pelias config file: ${PELIAS_CONFIG_FILE} and no ${PINNED_PELIAS_CONFIG} to fall back on"
     exit 1
 fi
 
-indent4() { while IFS= read -r line; do printf '    %s\n' "$line"; done; }
-export PELIAS_CONFIG_JSON_YAML="|
-$(echo "$PELIAS_CONFIG_JSON" | indent4)"
+# A JSON blob inlined as an env value is a block scalar opened by `value: |`,
+# so its body sits 16 spaces in - two levels deeper than the ConfigMap key it
+# replaced.
+indent() {
+    local pad
+    pad=$(printf '%*s' "$1" '')
+    while IFS= read -r line; do printf '%s%s\n' "$pad" "$line"; done
+}
+export PELIAS_CONFIG_JSON_ENV="|
+$(indent 16 <<< "$PELIAS_CONFIG_JSON")"
 
 # Render to a staging dir and swap once everything succeeds
 STAGING_DIR=$(mktemp -d)
@@ -174,10 +182,10 @@ function generate_otp() {
     local router_config_file="${CONFIG_DIR}/transit/${TRANSIT_ZONE}-router-config.json"
     if [ -f "$router_config_file" ]; then
         router_config_json=$(cat "$router_config_file")
-        export OTP_ROUTER_CONFIG_JSON_YAML="|
-$(indent4 <<< "$router_config_json")"
+        export OTP_ROUTER_CONFIG_JSON_ENV="|
+$(indent 16 <<< "$router_config_json")"
     else
-        export OTP_ROUTER_CONFIG_JSON_YAML='""'
+        export OTP_ROUTER_CONFIG_JSON_ENV='""'
     fi
 
     for file in k8s/_template/opentripplanner*.tpl; do

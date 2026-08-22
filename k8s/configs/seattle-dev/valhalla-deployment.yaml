@@ -21,10 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: VALHALLA_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: valhalla-artifact-url
+              value: "https://data.example.com/dev/seattle-latest/Seattle-valhalla-2026-08-19-cf37274b.tar.zst"
           resources:
             limits:
               memory: 200Mi
@@ -47,4 +44,4 @@ spec:
       volumes:
         - name: valhalla-volume
           persistentVolumeClaim:
-            claimName: valhalla-seattle-latest-dev
+            claimName: valhalla-seattle-latest-dev-2026-08-19-446e7af3

@@ -1,54 +1,19 @@
 #!/bin/bash -e
+# Apply a namespace's rendered configs, then restart every deployment.
+#
+# The blanket restart is what picks up containers republished to the same
+# `:latest` tag, which leaves the manifest unchanged and so is invisible to
+# kubectl apply. It costs a restart of every pod, including ones nothing
+# changed about. If you only changed data or config, bin/k8s/apply-latest
+# restarts just the pods that need it.
 
-DEV_FLAG=false
+source "$(dirname "${BASH_SOURCE[0]}")/_deploy-lib.sh"
 
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-   case $1 in
-       --dev)
-           DEV_FLAG=true
-           shift
-           ;;
-       *)
-           if [ -z "$NAMESPACE" ]; then
-               NAMESPACE="$1"
-           else
-               echo "Unknown argument: $1"
-               exit 1
-           fi
-           shift
-           ;;
-   esac
-done
-
-if [ -z "$NAMESPACE" ]; then
-   echo "Usage: $0 <namespace> [--dev]"
-   echo "Examples:"
-   echo "  $0 planet"
-   echo "  $0 seattle --dev"
-   echo "  $0 planet --dev"
-   exit 1
-fi
-
-cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-
-modified_files="$(git diff --name-only)"
-if [ -n "$modified_files" ]; then
-   echo "$modified_files"
-   echo "👆 Modified files in local directory. Clean first."
-   echo "git co ."
-   exit 1
-fi
+deploy_lib_parse_args "$@"
+deploy_lib_require_clean_tree
 echo "ready to roll"
 
-trap 'bin/revert-fetch-urls' EXIT
-bin/update-fetch-urls
+deploy_lib_apply
 
-if [ "$DEV_FLAG" = true ]; then
-   (cd "k8s/configs/${NAMESPACE}-dev" && kubectl apply -f . -n "$NAMESPACE")
-else
-   (cd "k8s/configs/${NAMESPACE}" && kubectl apply -f . -n "$NAMESPACE")
-fi
 kubectl rollout restart deployment -n "$NAMESPACE"
 watch kubectl get pods -n "$NAMESPACE"
-

@@ -21,10 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: VALHALLA_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: valhalla-artifact-url
+              value: "${VALHALLA_ARTIFACT_URL}"
           resources:
             limits:
               memory: 200Mi

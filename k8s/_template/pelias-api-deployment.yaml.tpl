@@ -25,10 +25,7 @@ spec:
               mountPath: /config
           env:
             - name: PELIAS_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: pelias-config-json
+              value: ${PELIAS_CONFIG_JSON_ENV}
           command: ["/bin/bash", "-c", "/app/init_config.sh" ]
           resources:
             limits:

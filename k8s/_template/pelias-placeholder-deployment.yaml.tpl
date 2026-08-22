@@ -25,15 +25,9 @@ spec:
               mountPath: /config
           env:
             - name: PELIAS_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: pelias-config-json
+              value: ${PELIAS_CONFIG_JSON_ENV}
             - name: PLACEHOLDER_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: placeholder-artifact-url
+              value: "${PLACEHOLDER_ARTIFACT_URL}"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
           resources:
             limits:

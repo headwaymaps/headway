@@ -21,24 +21,15 @@ spec:
               mountPath: /data
           env:
             - name: TERRAIN_ARTIFACT_SOURCE
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: terrain-source-url
+              value: "${TERRAIN_ARTIFACT_URL}"
             - name: TERRAIN_ARTIFACT_DEST
               value: /data/tiles/terrain.mbtiles
             - name: LANDCOVER_ARTIFACT_SOURCE
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: landcover-source-url
+              value: "${LANDCOVER_ARTIFACT_URL}"
             - name: LANDCOVER_ARTIFACT_DEST
               value: /data/tiles/landcover.mbtiles
             - name: AREAMAP_ARTIFACT_SOURCE
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: areamap-source-url
+              value: "${AREAMAP_ARTIFACT_URL}"
             - name: AREAMAP_ARTIFACT_DEST
               value: /data/tiles/areamap.pmtiles
           resources:

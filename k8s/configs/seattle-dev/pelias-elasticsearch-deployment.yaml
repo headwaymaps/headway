@@ -20,7 +20,7 @@ spec:
       volumes:
         - name: elasticsearch-volume
           persistentVolumeClaim:
-            claimName: elasticsearch-seattle-latest-dev
+            claimName: elasticsearch-seattle-latest-dev-2026-08-20-1d0d2bbf
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
@@ -40,15 +40,78 @@ spec:
               mountPath: /config
           env:
             - name: PELIAS_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: pelias-config-json
+              value: |
+                {
+                  "logger": {
+                    "level": "info",
+                    "timestamp": false
+                  },
+                  "esclient": {
+                    "apiVersion": "7.5",
+                    "hosts": [
+                      {
+                        "host": "pelias-elasticsearch"
+                      }
+                    ]
+                  },
+                  "elasticsearch": {
+                    "settings": {
+                      "index": {
+                        "refresh_interval": "10s",
+                        "number_of_replicas": "0",
+                        "number_of_shards": "5"
+                      }
+                    }
+                  },
+                  "api": {
+                    "services": {
+                      "placeholder": {
+                        "url": "http://pelias-placeholder:4100"
+                      },
+                      "libpostal": {
+                        "url": "http://pelias-libpostal:4400"
+                      },
+                      "pip": {
+                        "url": "http://pelias-pip:4400"
+                      }
+                    }
+                  },
+                  "imports": {
+                    "adminLookup": {
+                      "enabled": true
+                    },
+                    "openstreetmap": {
+                      "leveldbpath": "/tmp",
+                      "datapath": "/data/openstreetmap",
+                      "import": [
+                        {
+                          "filename": "data.osm.pbf"
+                        }
+                      ]
+                    },
+                    "whosonfirst": {
+                      "datapath": "/data/whosonfirst",
+                      "importPostalcodes": true,
+                      "countryCode": [
+                        "US"
+                      ]
+                    },
+                    "polyline": {
+                      "datapath": "/data/polylines",
+                      "files": [
+                        "extract.0sv"
+                      ]
+                    },
+                    "openaddresses": {
+                      "datapath": "/data/openaddresses",
+                      "files": [
+                        "us/wa/king.csv"
+                      ]
+                    }
+                  }
+                }
             - name: ELASTICSEARCH_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: elasticsearch-artifact-url
+              value: "https://data.example.com/dev/seattle-latest/Seattle-elasticsearch-2026-08-20-6415d37d.tar.zst"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
           resources:
             limits:

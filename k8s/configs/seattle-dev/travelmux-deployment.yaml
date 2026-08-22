@@ -21,10 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: TRAVELMUX_ELEVATION_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: elevation-artifact-url
+              value: "https://data.example.com/dev/seattle-latest/transit/Seattle-elevation-tifs-2026-08-20-02e78309.tar.zst"
           resources:
             limits:
               memory: 128Mi

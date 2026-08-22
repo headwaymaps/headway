@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: elasticsearch-seattle-latest-dev
+  name: elasticsearch-seattle-latest-dev-2026-08-20-1d0d2bbf
   labels:
     app.kubernetes.io/part-of: headway
 spec:
