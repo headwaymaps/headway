@@ -5,6 +5,7 @@ set -o pipefail
 
 function extract_elastic() {
     # hardcoded in elasticsearch Dockerfile
+    local elasticsearch_user=1000
     local elasticsearch_group=1000
 
     local extract_dir=/tmp/elasticsearch.extract
@@ -18,6 +19,9 @@ function extract_elastic() {
 
     rm -fr /usr/share/elasticsearch/data/*
     mv "${extract_dir}"/* /usr/share/elasticsearch/data
+
+    chown -R "$elasticsearch_user:$elasticsearch_group" /usr/share/elasticsearch/data
+    chmod -R 'g+rwX' /usr/share/elasticsearch/data
 }
 
 if [ ! -z "$(find /usr/share/elasticsearch/data -type f)" ]; then
