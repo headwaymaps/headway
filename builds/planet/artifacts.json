@@ -1,24 +1,22 @@
 {
-  "elasticsearch": "maps-earth-planet-v1.260727.elasticsearch.tar.zst",
-  "elevation": "transit/maps-earth-planet-v1.260727-2026-08-14.elevation-tifs.tar.zst",
+  "elasticsearch": "maps-earth-planet-v1.260817-elasticsearch-2026-08-26-179bf527.tar.zst",
+  "elevation": "transit/maps-earth-planet-v1.260817-elevation-tifs-2026-08-29-4d1be4d0.tar.zst",
   "gtfs": {
-    "barcelona": "transit/maps-earth-planet-v1.260727-barcelona-2026-08-14.gtfs.tar.zst",
-    "los-angeles": "transit/maps-earth-planet-v1.260727-los-angeles-2026-08-14.gtfs.tar.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.260727-puget-sound-2026-08-14.gtfs.tar.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.260727-sf-bay-area-2026-08-14.gtfs.tar.zst"
+    "los-angeles": "transit/maps-earth-planet-v1.260817-los-angeles-gtfs-2026-08-29-e8688376.tar.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.260817-puget-sound-gtfs-2026-08-29-6f9354c2.tar.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.260817-sf-bay-area-gtfs-2026-08-29-e95f10df.tar.zst"
   },
-  "osm": "maps-earth-planet-v1.260727.osm.pbf",
+  "osm": "maps-earth-planet-v1.260817-2026-08-26-3b5bac88.osm.pbf",
   "otp-graphs": {
-    "barcelona": "transit/maps-earth-planet-v1.260727-barcelona-2026-08-14.graph.obj.zst",
-    "los-angeles": "transit/maps-earth-planet-v1.260727-los-angeles-2026-08-14.graph.obj.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.260727-puget-sound-2026-08-14.graph.obj.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.260727-sf-bay-area-2026-08-14.graph.obj.zst"
+    "los-angeles": "transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-08-29-4ddb0272.obj.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-08-29-a6bb5351.obj.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-08-29-2f919753.obj.zst"
   },
-  "placeholder": "maps-earth-planet-v1.260727.placeholder.tar.zst",
-  "pmtiles": "maps-earth-planet-v1.260727.pmtiles",
+  "placeholder": "maps-earth-planet-v1.260817-placeholder-2026-08-26-0c3310c0.tar.zst",
+  "pmtiles": "maps-earth-planet-v1.260817-2026-08-26-3121d137.pmtiles",
   "shared": {
-    "landcover": "landcover.mbtiles",
-    "terrain": "terrain.mbtiles"
+    "landcover": "landcover-2026-08-26-af6aa17e.mbtiles",
+    "terrain": "terrain-2026-08-26-d961012b.mbtiles"
   },
-  "valhalla": "maps-earth-planet-v1.260727.valhalla.tar.zst"
+  "valhalla": "maps-earth-planet-v1.260817-valhalla-2026-08-24-2c416821.tar.zst"
 }

@@ -21,15 +21,9 @@ spec:
               mountPath: /data
           env:
             - name: OTP_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-los-angeles-config
-                  key: graph-url
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-08-29-4ddb0272.obj.zst"
             - name: OTP_ROUTER_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-los-angeles-config
-                  key: router-config-json
+              value: ""
           resources:
             limits:
               memory: 128Mi
@@ -71,4 +65,4 @@ spec:
       volumes:
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-260727-0-12-0-2026-08-14
+            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-260817-0-12-0-2026-08-29-e415f8ce

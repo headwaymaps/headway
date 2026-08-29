@@ -21,15 +21,25 @@ spec:
               mountPath: /data
           env:
             - name: OTP_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-puget-sound-config
-                  key: graph-url
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-08-29-a6bb5351.obj.zst"
             - name: OTP_ROUTER_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-puget-sound-config
-                  key: router-config-json
+              value: |
+                {
+                  "updaters": [
+                    {
+                      "feedId": "headway-1080",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
+                    },
+                    {
+                      "feedId": "headway-1080",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+                    }
+                  ]
+                }
           resources:
             limits:
               memory: 128Mi
@@ -71,4 +81,4 @@ spec:
       volumes:
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260727-0-12-0-2026-08-14
+            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260817-0-12-0-2026-08-29-1ee998d1

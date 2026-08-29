@@ -110,9 +110,5 @@ done
 
 echo "Return codes: ${rets[*]}"
 
-echo ""
-echo "Then, to deploy: bin/k8s/generate ${CONFIG_DIR} <output-dir> && kubectl apply -f <output-dir>"
-echo "Artifacts get a volume per version, so this only re-downloads what actually changed."
-echo "Once you're happy with the rollout, reclaim the superseded volumes:"
-echo "    bin/k8s/unused-volumes <namespace>           # what would be deleted"
-echo "    bin/k8s/unused-volumes <namespace> --delete"
+echo "Publishing complete."
+echo "Next, deploy with `bin/k8s/rollout-latest` or `bin/k8s/apply-latest`
