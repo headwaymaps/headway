@@ -24,7 +24,7 @@ spec:
               value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-elevation-tifs-2026-08-29-4d1be4d0.tar.zst"
           resources:
             limits:
-              memory: 128Mi
+              memory: 512Mi
             requests:
               memory: 64Mi
       containers:
@@ -42,7 +42,7 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 256Mi
+              memory: 1Gi
             requests:
               memory: 128Mi
           livenessProbe:

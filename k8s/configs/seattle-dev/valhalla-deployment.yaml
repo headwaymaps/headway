@@ -24,7 +24,7 @@ spec:
               value: "https://data.example.com/dev/seattle-latest/Seattle-valhalla-2026-08-19-cf37274b.tar.zst"
           resources:
             limits:
-              memory: 200Mi
+              memory: 512Mi
             requests:
               memory: 100Mi
       containers:

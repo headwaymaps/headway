@@ -24,7 +24,7 @@ spec:
               value: "https://data.example.com/dev/seattle-latest/transit/Seattle-elevation-tifs-2026-08-20-02e78309.tar.zst"
           resources:
             limits:
-              memory: 128Mi
+              memory: 512Mi
             requests:
               memory: 64Mi
       containers:
@@ -42,7 +42,7 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 256Mi
+              memory: 1Gi
             requests:
               memory: 128Mi
           livenessProbe:
