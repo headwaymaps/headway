@@ -46,7 +46,7 @@ spec:
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
           resources:
             limits:
-              memory: 400Mi
+              memory: 1Gi
             requests:
               memory: 200Mi
       containers:
