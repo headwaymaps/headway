@@ -34,7 +34,7 @@ spec:
               value: /data/tiles/areamap.pmtiles
           resources:
             limits:
-              memory: 200Mi
+              memory: 512Mi
             requests:
               memory: 100Mi
       containers:

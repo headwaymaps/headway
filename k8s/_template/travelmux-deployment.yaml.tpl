@@ -24,7 +24,7 @@ spec:
               value: "${ELEVATION_ARTIFACT_URL}"
           resources:
             limits:
-              memory: 128Mi
+              memory: 512Mi
             requests:
               memory: 64Mi
       containers:
@@ -42,7 +42,7 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 256Mi
+              memory: 1Gi
             requests:
               memory: 128Mi
           livenessProbe:

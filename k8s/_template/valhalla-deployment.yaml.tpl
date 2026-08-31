@@ -24,7 +24,7 @@ spec:
               value: "${VALHALLA_ARTIFACT_URL}"
           resources:
             limits:
-              memory: 200Mi
+              memory: 512Mi
             requests:
               memory: 100Mi
       containers:
