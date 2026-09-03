@@ -245,7 +245,11 @@ impl PlanParams<'_> {
                 // consider cycling to/from and between stops.
                 let bike = self.modes.contains(&TravelMode::Bicycle);
                 PlanModesInput {
-                    direct: None,
+                    direct: Some(vec![if bike {
+                        PlanDirectMode::Bicycle
+                    } else {
+                        PlanDirectMode::Walk
+                    }]),
                     direct_only: None,
                     transit: Some(PlanTransitModesInput {
                         access: Some(vec![if bike {
@@ -1092,6 +1096,7 @@ mod tests {
         assert_eq!(vars["first"], 5);
         assert_eq!(vars["origin"]["location"]["coordinate"]["latitude"], 47.5);
         assert_eq!(vars["modes"]["transit"]["access"][0], "WALK");
+        assert_eq!(vars["modes"]["direct"][0], "WALK");
         assert_eq!(vars["dateTime"], serde_json::Value::Null);
     }
 
@@ -1101,6 +1106,8 @@ mod tests {
         assert_eq!(vars["modes"]["transit"]["access"][0], "BICYCLE");
         assert_eq!(vars["modes"]["transit"]["egress"][0], "BICYCLE");
         assert_eq!(vars["modes"]["transit"]["transfer"][0], "BICYCLE");
+        assert_eq!(vars["modes"]["direct"][0], "BICYCLE");
+        assert_eq!(vars["modes"]["directOnly"], serde_json::Value::Null);
     }
 
     #[test]
