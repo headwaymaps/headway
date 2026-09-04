@@ -21,7 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-08-29-a6bb5351.obj.zst"
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-09-03-721aea68.obj.zst"
             - name: OTP_ROUTER_CONFIG_JSON
               value: |
                 {
@@ -81,4 +81,4 @@ spec:
       volumes:
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260817-0-12-0-2026-08-29-1ee998d1
+            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260817-0-12-0-2026-09-03-20034558
