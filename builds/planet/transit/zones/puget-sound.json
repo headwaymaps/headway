@@ -10,27 +10,91 @@
     {
       "feed_onestop_id": "f-c28-washingtonstateferries",
       "provider": "Washington State Ferries",
-      "url": "https://business.wsdot.wa.gov/Transit/csv_files/wsf/google_transit.zip"
+      "url": "https://business.wsdot.wa.gov/Transit/csv_files/wsf/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-wsf~rt",
+          "urls": {
+            "trip_updates": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/95.pb",
+            "vehicle_positions": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/95.pb",
+            "alerts": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/95.pb"
+          },
+          "authorization": {
+            "type": "query_param",
+            "param_name": "key",
+            "info_url": "https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd",
+            "credential": ""
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-skagit~wa~us",
       "provider": "Skagit Transit",
-      "url": "https://strweb.skagittransit.org/GTFS/google_transit.zip"
+      "url": "https://strweb.skagittransit.org/GTFS/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-skagit~wa~us~rt",
+          "urls": {
+            "trip_updates": "https://strweb.skagittransit.org/GTFS/GTFS_TripUpdates.pb",
+            "vehicle_positions": "https://strweb.skagittransit.org/GTFS/GTFS_VehiclePositions.pb",
+            "alerts": "https://strweb.skagittransit.org/GTFS/GTFS_ServiceAlerts.pb"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-c23-metrokingcounty",
-      "provider": "King County Marine Divison",
-      "url": "http://metro.kingcounty.gov/GTFS/google_transit.zip"
+      "provider": "King County Marine Divison, King County Metro, City of Seattle",
+      "url": "http://metro.kingcounty.gov/GTFS/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-kingcountymetro~rt",
+          "urls": {
+            "trip_updates": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+            "vehicle_positions": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb",
+            "alerts": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+          }
+        },
+        {
+          "feed_onestop_id": "f-seattlestreetcar~rt",
+          "urls": {
+            "trip_updates": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+            "vehicle_positions": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb",
+            "alerts": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-c29-communitytransit",
       "provider": "Community Transit",
-      "url": "https://www.communitytransit.org/docs/default-source/open-data/gtfs/current.zip?sfvrsn=1968d0e2_118"
+      "url": "https://www.communitytransit.org/docs/default-source/open-data/gtfs/current.zip?sfvrsn=1968d0e2_118",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-c29-communitytransit~rt",
+          "urls": {
+            "trip_updates": "http://s3.amazonaws.com/commtrans-realtime-prod/tripupdates.pb",
+            "vehicle_positions": "http://s3.amazonaws.com/commtrans-realtime-prod/vehiclepositions.pb",
+            "alerts": "http://s3.amazonaws.com/commtrans-realtime-prod/alerts.pb"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-c28-whatcomtransportationauthority",
       "provider": "Whatcom Transportation Authority",
-      "url": "https://github.com/whatcomtrans/publicwtadata/raw/master/GTFS/wta_gtfs_latest.zip"
+      "url": "https://github.com/whatcomtrans/publicwtadata/raw/master/GTFS/wta_gtfs_latest.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-whatcomtransportationauthority~rt",
+          "urls": {
+            "trip_updates": "https://bustracker.ridewta.com/gtfsrt/trips",
+            "vehicle_positions": "https://bustracker.ridewta.com/gtfsrt/vehicles",
+            "alerts": "https://bustracker.ridewta.com/gtfsrt/alerts"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-c22-mason~wa~us",
@@ -40,7 +104,23 @@
     {
       "feed_onestop_id": "f-c23-soundtransit",
       "provider": "Sound Transit",
-      "url": "https://gtfs.sound.obaweb.org/prod/40_gtfs.zip"
+      "url": "https://gtfs.sound.obaweb.org/prod/40_gtfs.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-soundtransit~rt",
+          "urls": {
+            "trip_updates": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/40.pb",
+            "vehicle_positions": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/40.pb",
+            "alerts": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/40.pb"
+          },
+          "authorization": {
+            "type": "query_param",
+            "param_name": "key",
+            "info_url": "https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd",
+            "credential": ""
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-c28-islandtransit",
@@ -50,17 +130,53 @@
     {
       "feed_onestop_id": "f-c22-piercetransit~soundtransit",
       "provider": "Pierce Transit",
-      "url": "https://gtfs.sound.obaweb.org/prod/3_gtfs.zip"
+      "url": "https://gtfs.sound.obaweb.org/prod/3_gtfs.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-piercetransit~rt",
+          "urls": {
+            "trip_updates": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/3.pb",
+            "vehicle_positions": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/3.pb",
+            "alerts": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/3.pb"
+          },
+          "authorization": {
+            "type": "query_param",
+            "param_name": "key",
+            "info_url": "https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd",
+            "credential": ""
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-c22y-kitsaptransit",
       "provider": "Kitsap Transit",
-      "url": "https://pride.kitsaptransit.com/gtfs/google_transit.zip"
+      "url": "https://pride.kitsaptransit.com/gtfs/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-c22y-kitsaptransit~rt",
+          "urls": {
+            "trip_updates": "https://kttracker.com/gtfsrt/trips",
+            "vehicle_positions": "https://kttracker.com/gtfsrt/vehicles",
+            "alerts": "https://cdn.simplifytransit.com/kitsap-transit/alerts/service-alerts.pb"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-c22e-intercitytransit",
       "provider": "Intercity Transit",
-      "url": "https://its.rideralerts.com/InfoPoint/GTFS-Zip.ashx"
+      "url": "https://its.rideralerts.com/InfoPoint/GTFS-Zip.ashx",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-intercitytransit~rt",
+          "urls": {
+            "trip_updates": "https://its.rideralerts.com/InfoPoint/GTFS-Realtime.ashx?Type=TripUpdate",
+            "vehicle_positions": "https://its.rideralerts.com/InfoPoint/GTFS-Realtime.ashx?Type=VehiclePosition",
+            "alerts": "https://its.rideralerts.com/InfoPoint/GTFS-Realtime.ashx?Type=alert"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-lummitransit~wa~us",
@@ -70,7 +186,17 @@
     {
       "feed_onestop_id": "f-c290-everetttransit",
       "provider": "Everett Transit",
-      "url": "https://everett.mapstrat.com/current/google_transit.zip"
+      "url": "https://everett.mapstrat.com/current/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-everetttransit~rt",
+          "urls": {
+            "trip_updates": "https://everett.mapstrat.com/current/gtfrealtime_TripUpdates.bin",
+            "vehicle_positions": "https://everett.mapstrat.com/current/gtfrealtime_VehiclePositions.bin",
+            "alerts": "https://everett.mapstrat.com/current/gtfrealtime_ServiceAlerts.bin"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-muckleshoot~wa~us",
@@ -92,21 +218,5 @@
       "provider": "f-seattlemonorail~wa~us",
       "url": "https://github.com/Seattle-Monorail-Services/gtfs/raw/refs/heads/main/96_gtfs.zip"
     }
-  ],
-  "router_config": {
-    "updaters": [
-      {
-        "feedId": "headway-1080",
-        "type": "stop-time-updater",
-        "frequency": "60s",
-        "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
-      },
-      {
-        "feedId": "headway-1080",
-        "type": "real-time-alerts",
-        "frequency": "300s",
-        "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
-      }
-    ]
-  }
+  ]
 }

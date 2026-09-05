@@ -10,55 +10,194 @@
     {
       "feed_onestop_id": "f-9qh-metrolinktrains",
       "provider": "Metrolink",
-      "url": "https://metrolinktrains.com/globalassets/about/gtfs/gtfs.zip"
+      "url": "https://metrolinktrains.com/globalassets/about/gtfs/gtfs.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-metrolinktrains~rt",
+          "urls": {
+            "trip_updates": "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-trips",
+            "vehicle_positions": "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-vehicles",
+            "alerts": "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-alerts"
+          },
+          "authorization": {
+            "type": "header",
+            "param_name": "X-Api-Key",
+            "info_url": "https://metrolinktrains.com/about/gtfs/gtfs-rt-access/",
+            "credential": ""
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-9q5-metro~losangeles",
       "provider": "f-9q5-metro~losangeles",
-      "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip"
+      "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-metro~losangeles~alerts",
+          "urls": {
+            "alerts": "https://s3.amazonaws.com/la-alerts-prod/alerts.pb"
+          }
+        },
+        {
+          "feed_onestop_id": "f-metro~losangeles~bus~rt",
+          "urls": {
+            "trip_updates": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates",
+            "vehicle_positions": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
+          },
+          "authorization": {
+            "type": "header",
+            "param_name": "Authorization",
+            "info_url": "https://goswift.ly/realtime-api-key",
+            "credential": ""
+          }
+        },
+        {
+          "feed_onestop_id": "f-metro~losangeles~rail~rt",
+          "urls": {
+            "trip_updates": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+            "vehicle_positions": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
+          },
+          "authorization": {
+            "type": "header",
+            "param_name": "Authorization",
+            "info_url": "https://goswift.ly/realtime-api-key",
+            "credential": ""
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-9q5-ladot",
       "provider": "Los Angeles Department of Transportation",
-      "url": "https://ladotbus.com/gtfs"
+      "url": "https://ladotbus.com/gtfs",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-ladot~rt",
+          "urls": {
+            "trip_updates": "https://ladotbus.com/gtfs-rt/tripupdates",
+            "vehicle_positions": "https://ladotbus.com/gtfs-rt/vehiclepositions",
+            "alerts": "https://ladotbus.com/gtfs-rt/alerts"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-9q5-metro~losangeles~rail",
       "provider": "f-9q5-metro~losangeles~rail",
-      "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip"
+      "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-metro~losangeles~alerts",
+          "urls": {
+            "alerts": "https://s3.amazonaws.com/la-alerts-prod/alerts.pb"
+          }
+        },
+        {
+          "feed_onestop_id": "f-metro~losangeles~bus~rt",
+          "urls": {
+            "trip_updates": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates",
+            "vehicle_positions": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
+          },
+          "authorization": {
+            "type": "header",
+            "param_name": "Authorization",
+            "info_url": "https://goswift.ly/realtime-api-key",
+            "credential": ""
+          }
+        },
+        {
+          "feed_onestop_id": "f-metro~losangeles~rail~rt",
+          "urls": {
+            "trip_updates": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+            "vehicle_positions": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
+          },
+          "authorization": {
+            "type": "header",
+            "param_name": "Authorization",
+            "info_url": "https://goswift.ly/realtime-api-key",
+            "credential": ""
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-9qh1-foothilltransit",
       "provider": "Foothill Transit",
-      "url": "https://foothilltransit.rideralerts.com/myStop/GTFS-Zip.ashx"
+      "url": "https://foothilltransit.rideralerts.com/myStop/GTFS-Zip.ashx",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-foothilltransit~rt",
+          "urls": {
+            "trip_updates": "https://gtfs-rt.myavail.cloud/GtfsProtoBuf?FeedLabel=Foothill&FeedType=TripUpdates",
+            "vehicle_positions": "https://gtfs-rt.myavail.cloud/GtfsProtoBuf?FeedLabel=Foothill&FeedType=VehiclePositions",
+            "alerts": "https://gtfs-rt.myavail.cloud/GtfsProtoBuf?FeedLabel=Foothill&FeedType=Alerts"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-laxflyaway",
       "provider": "LAX Flyaway",
-      "url": "https://laxflyaway.transloc.com/Secure/Admin/Reports/GTFSDownload.aspx"
+      "url": "https://laxflyaway.transloc.com/Secure/Admin/Reports/GTFSDownload.aspx",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-laxflyaway~rt",
+          "urls": {
+            "vehicle_positions": "https://laxflyaway.transloc.com/subscriptions/gtfsrt/vehicles.ashx"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-9q5c-bigbluebus",
       "provider": "f-9q5c-bigbluebus",
-      "url": "http://gtfs.bigbluebus.com/current.zip"
+      "url": "http://gtfs.bigbluebus.com/current.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-bigbluebus~rt",
+          "urls": {
+            "trip_updates": "https://cleverapi.bigbluebus.com/gtfsrt/trips",
+            "vehicle_positions": "https://cleverapi.bigbluebus.com/gtfsrt/vehicles",
+            "alerts": "https://cleverapi.bigbluebus.com/gtfsrt/alerts"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-9q5f-pasadenatransit",
       "provider": "Pasadena Transit",
-      "url": "https://rt.pasadenatransit.net/rtt/public/resource/gtfs.zip"
+      "url": "https://rt.pasadenatransit.net/rtt/public/resource/gtfs.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-pasadenatransit~rt",
+          "urls": {
+            "trip_updates": "https://rt.pasadenatransit.net/rtt/public/utility/gtfsrealtime.aspx/tripupdate",
+            "vehicle_positions": "https://rt.pasadenatransit.net/rtt/public/utility/gtfsrealtime.aspx/vehicleposition",
+            "alerts": "https://rt.pasadenatransit.net/rtt/public/utility/gtfsrealtime.aspx/alert"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-9q5f7-burbankbus",
       "provider": "Burbank Bus",
-      "url": "https://rideburbankbus.com/gtfs"
+      "url": "https://rideburbankbus.com/gtfs",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-burbankbus~rt",
+          "urls": {
+            "trip_updates": "https://rideburbankbus.com/gtfs-rt/tripupdates",
+            "vehicle_positions": "https://rideburbankbus.com/gtfs-rt/vehiclepositions",
+            "alerts": "https://rideburbankbus.com/gtfs-rt/alerts"
+          }
+        }
+      ]
     },
     {
       "feed_onestop_id": "f-lax~flyaway",
       "provider": "f-lax~flyaway",
       "url": "https://laxtransportation.ridesystems.net/Secure/Admin/Reports/GTFSDownload.aspx"
     }
-  ],
-  "router_config": {
-    "updaters": []
-  }
+  ]
 }

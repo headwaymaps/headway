@@ -122,13 +122,35 @@ fn auth_credential(realtime: &ZoneRealtime, auth: &ZoneAuth) -> Result<Credentia
         .param_name
         .as_deref()
         .filter(|name| !name.trim().is_empty())
-        .ok_or_else(|| "authentication is missing its parameter name".to_owned())?
-        .to_owned();
+        .map(str::to_owned);
+
     match auth.kind.as_str() {
-        "query_param" => Ok(Credential::QueryParam { name, variable }),
-        "header" => Ok(Credential::Header { name, variable }),
+        // The catalogued URL is a placeholder the provider replaces when it
+        // issues a credential, and the atlas records no parameter name for it.
+        // The downloader resolves that the same way - a bare token goes on as
+        // `?api_key=`, because that's what 511 (the one feed in the atlas using
+        // this) actually documents. See `gtfout::measure`.
+        //
+        // Rendering nothing here instead would drop realtime for that feed
+        // silently, which is how the Bay Area's updaters went missing.
+        "replace_url" => Ok(Credential::QueryParam {
+            name: name.unwrap_or_else(|| "api_key".to_owned()),
+            variable,
+        }),
+        "query_param" => Ok(Credential::QueryParam {
+            name: name.ok_or_else(missing_param_name)?,
+            variable,
+        }),
+        "header" => Ok(Credential::Header {
+            name: name.ok_or_else(missing_param_name)?,
+            variable,
+        }),
         kind => Err(format!("unsupported authentication type {kind:?}")),
     }
+}
+
+fn missing_param_name() -> String {
+    "authentication is missing its parameter name".to_owned()
 }
 
 pub fn required_env_vars(updaters: &[Updater]) -> BTreeSet<String> {
@@ -273,6 +295,25 @@ mod tests {
 
         assert_eq!(skipped.len(), 1);
         assert!(skipped[0].reason.contains("parameter name"));
+    }
+
+    /// The 511 regional feed - the only `replace_url` in the atlas - records no
+    /// parameter name, and OTP still has to be told where to put the token.
+    /// Skipping it instead is how the Bay Area lost its realtime.
+    #[test]
+    fn a_replace_url_credential_falls_back_to_the_documented_parameter() {
+        let urls = RealtimeUrls {
+            trip_updates: Some("https://api.511.org/Transit/TripUpdates?agency=RG".to_owned()),
+            ..Default::default()
+        };
+        let auth = Some(auth("replace_url", None));
+        let (config, skipped) = zone(vec![realtime(urls, auth)]).router_config();
+
+        assert!(skipped.is_empty());
+        assert_eq!(config.updaters.len(), 1);
+        assert!(config.updaters[0]
+            .url
+            .ends_with("?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_C23_KCM_RT}"));
     }
 
     /// A zone with no realtime gets no `updaters` key at all, which is what lets

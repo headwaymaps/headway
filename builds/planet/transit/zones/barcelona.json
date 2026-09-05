@@ -22,8 +22,5 @@
       "provider": "f-tram~tbs",
       "url": "https://opendata.tram.cat/GTFS/zip/TBS.zip"
     }
-  ],
-  "router_config": {
-    "updaters": []
-  }
+  ]
 }
