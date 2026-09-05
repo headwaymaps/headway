@@ -27,16 +27,58 @@ spec:
                 {
                   "updaters": [
                     {
-                      "feedId": "headway-1330",
+                      "feedId": "headway-f-c23-metrokingcounty",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c23-metrokingcounty",
                       "type": "stop-time-updater",
-                      "frequencySec": 60,
+                      "frequency": "60s",
                       "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
                     },
                     {
-                      "feedId": "headway-1330",
+                      "feedId": "headway-f-c23-metrokingcounty",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c23-soundtransit",
                       "type": "real-time-alerts",
-                      "frequencySec": 300,
-                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+                      "frequency": "300s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c23-soundtransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c23-soundtransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c28-washingtonstateferries",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/95.pb?key=${HEADWAY_GTFS_API_KEY_F_WSF_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c28-washingtonstateferries",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/95.pb?key=${HEADWAY_GTFS_API_KEY_F_WSF_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c28-washingtonstateferries",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/95.pb?key=${HEADWAY_GTFS_API_KEY_F_WSF_RT}"
                     }
                   ]
                 }
@@ -48,6 +90,20 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
+          # API keys for authenticated GTFS-RT feeds. router-config.json refers
+          # to them as ${HEADWAY_GTFS_API_KEY_*}, which OTP substitutes from its
+          # environment before parsing - so the config stays committable and
+          # the credential lives only here.
+          #
+          # Optional: a zone with no authenticated realtime feeds needs no
+          # secret, and shouldn't fail to start for want of one. Create it with
+          # a key per variable named in the query-gtfs-index output, e.g.
+          #   kubectl create secret generic otp--gtfs-api-keys \
+          #     --from-literal=HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT=...
+          envFrom:
+            - secretRef:
+                name: otp--gtfs-api-keys
+                optional: true
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory

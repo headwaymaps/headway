@@ -27,16 +27,184 @@ spec:
                 {
                   "updaters": [
                     {
-                      "feedId": "headway-1080",
+                      "feedId": "headway-f-c22-piercetransit~soundtransit",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/3.pb?key=${HEADWAY_GTFS_API_KEY_F_PIERCETRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c22-piercetransit~soundtransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/3.pb?key=${HEADWAY_GTFS_API_KEY_F_PIERCETRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c22-piercetransit~soundtransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/3.pb?key=${HEADWAY_GTFS_API_KEY_F_PIERCETRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c22e-intercitytransit",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://its.rideralerts.com/InfoPoint/GTFS-Realtime.ashx?Type=alert"
+                    },
+                    {
+                      "feedId": "headway-f-c22e-intercitytransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://its.rideralerts.com/InfoPoint/GTFS-Realtime.ashx?Type=TripUpdate"
+                    },
+                    {
+                      "feedId": "headway-f-c22e-intercitytransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://its.rideralerts.com/InfoPoint/GTFS-Realtime.ashx?Type=VehiclePosition"
+                    },
+                    {
+                      "feedId": "headway-f-c22y-kitsaptransit",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://cdn.simplifytransit.com/kitsap-transit/alerts/service-alerts.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c22y-kitsaptransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://kttracker.com/gtfsrt/trips"
+                    },
+                    {
+                      "feedId": "headway-f-c22y-kitsaptransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://kttracker.com/gtfsrt/vehicles"
+                    },
+                    {
+                      "feedId": "headway-f-c23-metrokingcounty",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c23-metrokingcounty",
                       "type": "stop-time-updater",
                       "frequency": "60s",
                       "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
                     },
                     {
-                      "feedId": "headway-1080",
+                      "feedId": "headway-f-c23-metrokingcounty",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c23-soundtransit",
                       "type": "real-time-alerts",
                       "frequency": "300s",
-                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c23-soundtransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c23-soundtransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/40.pb?key=${HEADWAY_GTFS_API_KEY_F_SOUNDTRANSIT_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c28-washingtonstateferries",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/95.pb?key=${HEADWAY_GTFS_API_KEY_F_WSF_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c28-washingtonstateferries",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/95.pb?key=${HEADWAY_GTFS_API_KEY_F_WSF_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c28-washingtonstateferries",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/95.pb?key=${HEADWAY_GTFS_API_KEY_F_WSF_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-c28-whatcomtransportationauthority",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://bustracker.ridewta.com/gtfsrt/alerts"
+                    },
+                    {
+                      "feedId": "headway-f-c28-whatcomtransportationauthority",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://bustracker.ridewta.com/gtfsrt/trips"
+                    },
+                    {
+                      "feedId": "headway-f-c28-whatcomtransportationauthority",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://bustracker.ridewta.com/gtfsrt/vehicles"
+                    },
+                    {
+                      "feedId": "headway-f-c29-communitytransit",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "http://s3.amazonaws.com/commtrans-realtime-prod/alerts.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c29-communitytransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "http://s3.amazonaws.com/commtrans-realtime-prod/tripupdates.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c29-communitytransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "http://s3.amazonaws.com/commtrans-realtime-prod/vehiclepositions.pb"
+                    },
+                    {
+                      "feedId": "headway-f-c290-everetttransit",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://everett.mapstrat.com/current/gtfrealtime_ServiceAlerts.bin"
+                    },
+                    {
+                      "feedId": "headway-f-c290-everetttransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://everett.mapstrat.com/current/gtfrealtime_TripUpdates.bin"
+                    },
+                    {
+                      "feedId": "headway-f-c290-everetttransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://everett.mapstrat.com/current/gtfrealtime_VehiclePositions.bin"
+                    },
+                    {
+                      "feedId": "headway-f-skagit~wa~us",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://strweb.skagittransit.org/GTFS/GTFS_ServiceAlerts.pb"
+                    },
+                    {
+                      "feedId": "headway-f-skagit~wa~us",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://strweb.skagittransit.org/GTFS/GTFS_TripUpdates.pb"
+                    },
+                    {
+                      "feedId": "headway-f-skagit~wa~us",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://strweb.skagittransit.org/GTFS/GTFS_VehiclePositions.pb"
                     }
                   ]
                 }
@@ -48,6 +216,20 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
+          # API keys for authenticated GTFS-RT feeds. router-config.json refers
+          # to them as ${HEADWAY_GTFS_API_KEY_*}, which OTP substitutes from its
+          # environment before parsing - so the config stays committable and
+          # the credential lives only here.
+          #
+          # Optional: a zone with no authenticated realtime feeds needs no
+          # secret, and shouldn't fail to start for want of one. Create it with
+          # a key per variable named in the query-gtfs-index output, e.g.
+          #   kubectl create secret generic otp--gtfs-api-keys \
+          #     --from-literal=HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT=...
+          envFrom:
+            - secretRef:
+                name: otp--gtfs-api-keys
+                optional: true
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory

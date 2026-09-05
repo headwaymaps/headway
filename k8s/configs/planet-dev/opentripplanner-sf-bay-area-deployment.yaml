@@ -27,16 +27,22 @@ spec:
                 {
                   "updaters": [
                     {
-                      "feedId": "headway-53",
-                      "type": "stop-time-updater",
-                      "frequency": "60s",
-                      "url": "https://api.bart.gov/gtfsrt/tripupdate.aspx"
-                    },
-                    {
-                      "feedId": "headway-53",
+                      "feedId": "headway-f-sf~bay~area~rg",
                       "type": "real-time-alerts",
                       "frequency": "300s",
-                      "url": "https://api.bart.gov/gtfsrt/alerts.aspx"
+                      "url": "https://api.511.org/Transit/servicealerts?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-sf~bay~area~rg",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://api.511.org/Transit/TripUpdates?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-sf~bay~area~rg",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://api.511.org/Transit/VehiclePositions?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
                     }
                   ]
                 }
@@ -48,6 +54,20 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
+          # API keys for authenticated GTFS-RT feeds. router-config.json refers
+          # to them as ${HEADWAY_GTFS_API_KEY_*}, which OTP substitutes from its
+          # environment before parsing - so the config stays committable and
+          # the credential lives only here.
+          #
+          # Optional: a zone with no authenticated realtime feeds needs no
+          # secret, and shouldn't fail to start for want of one. Create it with
+          # a key per variable named in the query-gtfs-index output, e.g.
+          #   kubectl create secret generic otp--gtfs-api-keys \
+          #     --from-literal=HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT=...
+          envFrom:
+            - secretRef:
+                name: otp--gtfs-api-keys
+                optional: true
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory

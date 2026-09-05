@@ -23,7 +23,218 @@ spec:
             - name: OTP_ARTIFACT_URL
               value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-09-03-5bade966.obj.zst"
             - name: OTP_ROUTER_CONFIG_JSON
-              value: ""
+              value: |
+                {
+                  "updaters": [
+                    {
+                      "feedId": "headway-f-9q5-ladot",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://ladotbus.com/gtfs-rt/alerts"
+                    },
+                    {
+                      "feedId": "headway-f-9q5-ladot",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://ladotbus.com/gtfs-rt/tripupdates"
+                    },
+                    {
+                      "feedId": "headway-f-9q5-ladot",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://ladotbus.com/gtfs-rt/vehiclepositions"
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://s3.amazonaws.com/la-alerts-prod/alerts.pb"
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_RAIL_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_BUS_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_RAIL_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_BUS_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles~rail",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://s3.amazonaws.com/la-alerts-prod/alerts.pb"
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles~rail",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_RAIL_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles~rail",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_BUS_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles~rail",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_RAIL_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5-metro~losangeles~rail",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions",
+                      "headers": {
+                        "Authorization": "${HEADWAY_GTFS_API_KEY_F_METRO_LOSANGELES_BUS_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9q5c-bigbluebus",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://cleverapi.bigbluebus.com/gtfsrt/alerts"
+                    },
+                    {
+                      "feedId": "headway-f-9q5c-bigbluebus",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://cleverapi.bigbluebus.com/gtfsrt/trips"
+                    },
+                    {
+                      "feedId": "headway-f-9q5c-bigbluebus",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://cleverapi.bigbluebus.com/gtfsrt/vehicles"
+                    },
+                    {
+                      "feedId": "headway-f-9q5f-pasadenatransit",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://rt.pasadenatransit.net/rtt/public/utility/gtfsrealtime.aspx/alert"
+                    },
+                    {
+                      "feedId": "headway-f-9q5f-pasadenatransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://rt.pasadenatransit.net/rtt/public/utility/gtfsrealtime.aspx/tripupdate"
+                    },
+                    {
+                      "feedId": "headway-f-9q5f-pasadenatransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://rt.pasadenatransit.net/rtt/public/utility/gtfsrealtime.aspx/vehicleposition"
+                    },
+                    {
+                      "feedId": "headway-f-9q5f7-burbankbus",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://rideburbankbus.com/gtfs-rt/alerts"
+                    },
+                    {
+                      "feedId": "headway-f-9q5f7-burbankbus",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://rideburbankbus.com/gtfs-rt/tripupdates"
+                    },
+                    {
+                      "feedId": "headway-f-9q5f7-burbankbus",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://rideburbankbus.com/gtfs-rt/vehiclepositions"
+                    },
+                    {
+                      "feedId": "headway-f-9qh-metrolinktrains",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-alerts",
+                      "headers": {
+                        "X-Api-Key": "${HEADWAY_GTFS_API_KEY_F_METROLINKTRAINS_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9qh-metrolinktrains",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-trips",
+                      "headers": {
+                        "X-Api-Key": "${HEADWAY_GTFS_API_KEY_F_METROLINKTRAINS_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9qh-metrolinktrains",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-vehicles",
+                      "headers": {
+                        "X-Api-Key": "${HEADWAY_GTFS_API_KEY_F_METROLINKTRAINS_RT}"
+                      }
+                    },
+                    {
+                      "feedId": "headway-f-9qh1-foothilltransit",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://gtfs-rt.myavail.cloud/GtfsProtoBuf?FeedLabel=Foothill&FeedType=Alerts"
+                    },
+                    {
+                      "feedId": "headway-f-9qh1-foothilltransit",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://gtfs-rt.myavail.cloud/GtfsProtoBuf?FeedLabel=Foothill&FeedType=TripUpdates"
+                    },
+                    {
+                      "feedId": "headway-f-9qh1-foothilltransit",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://gtfs-rt.myavail.cloud/GtfsProtoBuf?FeedLabel=Foothill&FeedType=VehiclePositions"
+                    },
+                    {
+                      "feedId": "headway-f-laxflyaway",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://laxflyaway.transloc.com/subscriptions/gtfsrt/vehicles.ashx"
+                    }
+                  ]
+                }
           resources:
             limits:
               memory: 128Mi
@@ -32,6 +243,20 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-latest
+          # API keys for authenticated GTFS-RT feeds. router-config.json refers
+          # to them as ${HEADWAY_GTFS_API_KEY_*}, which OTP substitutes from its
+          # environment before parsing - so the config stays committable and
+          # the credential lives only here.
+          #
+          # Optional: a zone with no authenticated realtime feeds needs no
+          # secret, and shouldn't fail to start for want of one. Create it with
+          # a key per variable named in the query-gtfs-index output, e.g.
+          #   kubectl create secret generic otp--gtfs-api-keys \
+          #     --from-literal=HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT=...
+          envFrom:
+            - secretRef:
+                name: otp--gtfs-api-keys
+                optional: true
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory
