@@ -76,6 +76,20 @@ jobs:
       - run: yarn format-check
       - run: yarn tsc
       - run: yarn test
+  picker_checks:
+    defaults:
+      run:
+        working-directory: services/gtfs/gtfout/zone-builder-server
+    name: Zone picker checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --global yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn test
   rust_checks:
     runs-on: ubuntu-latest
     steps:

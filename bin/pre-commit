@@ -41,6 +41,7 @@ should_run() {
 should_run "dagger" && run_job "dagger fmt" bash -c "cd dagger && go fmt"
 should_run "frontend" && run_job "frontend checks" bash -c "cd services/frontend/www-app && yarn install && yarn quasar prepare && yarn fmt && yarn lint && yarn tsc && yarn test"
 should_run "rust" && run_job "Rust workspace checks" bash -c "cargo fmt --all && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --all-targets"
+should_run "picker" && run_job "zone picker checks" bash -c "cd services/gtfs/gtfout/zone-builder-server && yarn install && yarn test"
 should_run "pelias" && run_job "pelias config checks" bash -c "cd services/pelias/generate_config && yarn install && yarn fmt && yarn lint && yarn build"
 
 if [[ ${#pids[@]} -eq 0 ]]; then

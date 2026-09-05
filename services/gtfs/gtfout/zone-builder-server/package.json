@@ -1,0 +1,13 @@
+{
+  "name": "zone-builder-server-tests",
+  "private": true,
+  "description": "Tests for the zone picker page. The page itself ships inside the Rust binary; this is only the harness that drives it.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "jsdom": "^28.0.1",
+    "vitest": "^4.1.10"
+  }
+}
