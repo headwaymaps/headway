@@ -431,9 +431,10 @@ func (h *Headway) GtfsCredentialsTemplate(ctx context.Context,
 // The cache volume is what makes this a one-off. Locked sharing because the
 // index is SQLite, which takes a single writer.
 func (h *Headway) gtfsIndex(ctx context.Context, gtfsApiKeys *dagger.Secret) *dagger.Container {
-	// libsqlite3 because the index is a GeoPackage, which is SQLite; the gtfout
-	// binaries link it dynamically.
-	container := slimContainer("ca-certificates", "libsqlite3-0").
+	// The index is a GeoPackage, which is SQLite - but gtfout compiles it in
+	// (see the `bundled` feature in its Cargo.toml), so the container needs
+	// nothing for it beyond CA certificates to fetch the feeds over TLS.
+	container := slimContainer("ca-certificates").
 		WithMountedFile("/usr/local/bin/write-gtfs-index", h.Gtfout(ctx).File("write-gtfs-index")).
 		WithMountedDirectory("/atlas", h.TransitlandAtlas(ctx)).
 		WithMountedCache("/cache", dag.CacheVolume("headway-gtfs-feed-index"), dagger.ContainerWithMountedCacheOpts{

@@ -148,6 +148,60 @@ mod tests {
         assert_eq!(download_auth(&zone.feeds[0]).unwrap().kind, "query_param");
     }
 
+    /// The one seam between the picker and the build: the picker serializes a
+    /// zone, and every consumer downstream reads it back with `Zone::parse`.
+    /// Nothing else exercises both directions, so a field the schema serializes
+    /// but can't accept would only show up at deploy time.
+    #[test]
+    fn what_the_picker_writes_is_what_the_build_reads() {
+        let mut static_feed = feed("f-c23-kcm");
+        static_feed.authorization = Some(Authorization {
+            kind: "query_param".to_owned(),
+            param_name: Some("api_key".to_owned()),
+            info_url: Some("https://example.com/keys".to_owned()),
+        });
+        let mut rt = feed("f-c23-kcm~rt");
+        rt.spec = "gtfs-rt".to_owned();
+        rt.urls.realtime_trip_updates = Some("https://example.com/tu.pb".to_owned());
+
+        let bounds = Rect::new(coord! { x: -122.4, y: 47.4 }, coord! { x: -122.0, y: 47.8 });
+        let realtime = BTreeMap::from([("f-c23-kcm".to_owned(), vec![&rt])]);
+        let zone = assemble(&bounds, [&static_feed], &realtime, &HashMap::new());
+
+        // Serialized the way the server hands it to the browser, and parsed the
+        // way `bin/build-transit` and `zone-router-config` read it back.
+        let document = serde_json::to_string_pretty(&zone).unwrap();
+        let reloaded = Zone::parse(&document).expect("the build must accept what the picker wrote");
+
+        assert_eq!(reloaded.version, VERSION);
+        assert_eq!(reloaded.bounds.min_lon, -122.4);
+        assert_eq!(reloaded.feeds.len(), 1);
+        let reloaded_feed = &reloaded.feeds[0];
+        assert_eq!(reloaded_feed.feed_onestop_id, "f-c23-kcm");
+        assert_eq!(reloaded_feed.url, "https://example.com/f-c23-kcm.zip");
+        assert_eq!(
+            reloaded_feed
+                .authorization
+                .as_ref()
+                .unwrap()
+                .param_name
+                .as_deref(),
+            Some("api_key")
+        );
+        assert_eq!(reloaded_feed.realtime.len(), 1);
+
+        // And it renders the config the deployment pastes into the ConfigMap,
+        // keyed by the same feed id the graph is built with.
+        let (config, skipped) = reloaded.router_config();
+        assert!(skipped.is_empty());
+        assert_eq!(config.updaters.len(), 1);
+        assert_eq!(
+            config.updaters[0].feed_id,
+            transit_zone::feed_id::feed_id_for("f-c23-kcm")
+        );
+        assert_eq!(config.updaters[0].url, "https://example.com/tu.pb");
+    }
+
     #[test]
     fn an_unauthenticated_feed_has_nothing_for_the_downloader() {
         let rects = Rect::new(coord! { x: 0.0, y: 0.0 }, coord! { x: 1.0, y: 1.0 });
