@@ -10,7 +10,7 @@ elif [ -f "$OTP_ARTIFACT_SOURCE_PATH" ]; then
     cat "$OTP_ARTIFACT_SOURCE_PATH" | zstd --decompress --stdout > /data/graph.obj
 elif [ -n "$OTP_ARTIFACT_URL" ]; then
     echo "Downloading artifact"
-    wget --tries=100 --continue -O- "$OTP_ARTIFACT_URL" | zstd --decompress --stdout > /data/graph.obj.download
+    wget --tries=100 -O- "$OTP_ARTIFACT_URL" | zstd --decompress --stdout > /data/graph.obj.download
     mv /data/graph.obj.download /data/graph.obj
 else
     echo "No OTP artifact available."

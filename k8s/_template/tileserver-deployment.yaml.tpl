@@ -21,29 +21,20 @@ spec:
               mountPath: /data
           env:
             - name: TERRAIN_ARTIFACT_SOURCE
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: terrain-source-url
+              value: "${TERRAIN_ARTIFACT_URL}"
             - name: TERRAIN_ARTIFACT_DEST
               value: /data/tiles/terrain.mbtiles
             - name: LANDCOVER_ARTIFACT_SOURCE
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: landcover-source-url
+              value: "${LANDCOVER_ARTIFACT_URL}"
             - name: LANDCOVER_ARTIFACT_DEST
               value: /data/tiles/landcover.mbtiles
             - name: AREAMAP_ARTIFACT_SOURCE
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: areamap-source-url
+              value: "${AREAMAP_ARTIFACT_URL}"
             - name: AREAMAP_ARTIFACT_DEST
               value: /data/tiles/areamap.pmtiles
           resources:
             limits:
-              memory: 200Mi
+              memory: 512Mi
             requests:
               memory: 100Mi
       containers:
@@ -79,10 +70,5 @@ spec:
             failureThreshold: 10
       volumes:
         - name: tileserver-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 200Gi
+          persistentVolumeClaim:
+            claimName: tileserver-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${TILESERVER_VOLUME_VERSION}

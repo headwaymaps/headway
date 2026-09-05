@@ -25,19 +25,13 @@ spec:
               mountPath: /config
           env:
             - name: PELIAS_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: pelias-config-json
+              value: ${PELIAS_CONFIG_JSON_ENV}
             - name: PLACEHOLDER_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: placeholder-artifact-url
+              value: "${PLACEHOLDER_ARTIFACT_URL}"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
           resources:
             limits:
-              memory: 400Mi
+              memory: 1Gi
             requests:
               memory: 200Mi
       containers:
@@ -76,13 +70,8 @@ spec:
             failureThreshold: 10
       volumes:
         - name: placeholder-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 40Gi
+          persistentVolumeClaim:
+            claimName: placeholder-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${PLACEHOLDER_VOLUME_VERSION}
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

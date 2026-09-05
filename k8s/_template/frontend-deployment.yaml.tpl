@@ -30,35 +30,17 @@ spec:
               mountPath: /data
           env:
             - name: HEADWAY_BBOX
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: bbox
+              value: "${HEADWAY_BBOX}"
             - name: HEADWAY_ENABLE_TRANSIT_ROUTING
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: enable-transit-routing
+              value: "${HEADWAY_ENABLE_TRANSIT_ROUTING}"
             - name: HEADWAY_ABOUT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: www-about-url
+              value: "${HEADWAY_ABOUT_URL}"
             - name: HEADWAY_ABOUT_LINK_TEXT
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: www-about-link-text
+              value: "${HEADWAY_ABOUT_LINK_TEXT}"
             - name: HEADWAY_CONTACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: www-contact-url
+              value: "${HEADWAY_CONTACT_URL}"
             - name: HEADWAY_CONTACT_LINK_TEXT
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: www-contact-link-text
+              value: "${HEADWAY_CONTACT_LINK_TEXT}"
           resources:
             limits:
               memory: 100Mi
@@ -79,15 +61,9 @@ spec:
             - name: HEADWAY_PELIAS_URL
               value: http://pelias-api:4000
             - name: HEADWAY_PUBLIC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: public-url
+              value: "${HEADWAY_PUBLIC_URL}"
             - name: HEADWAY_ENABLE_TRANSIT_ROUTING
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: enable-transit-routing
+              value: "${HEADWAY_ENABLE_TRANSIT_ROUTING}"
           resources:
             limits:
               memory: 300Mi

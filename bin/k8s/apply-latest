@@ -1,0 +1,18 @@
+#!/bin/bash -e
+# Apply a namespace's rendered configs and nothing else.
+#
+# Pods restart only where the manifest actually changed - a new artifact URL or
+# volume version moves the pod template, so kubectl rolls exactly those pods and
+# leaves the rest serving. Republishing a container to the same `:latest` tag
+# leaves the manifest untouched and so isn't picked up here; use
+# bin/k8s/rollout-latest for that.
+
+source "$(dirname "${BASH_SOURCE[0]}")/_deploy-lib.sh"
+
+deploy_lib_parse_args "$@"
+deploy_lib_require_clean_tree
+echo "ready to apply"
+
+deploy_lib_apply
+
+watch kubectl get pods -n "$NAMESPACE"

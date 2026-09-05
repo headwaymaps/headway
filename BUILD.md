@@ -53,7 +53,7 @@ This approach will download all the mapping data you need automatically, but onl
 
 That's it!
 
-There are some experimental kubernetes configs in k8s/configs, but they are pretty specific to my own needs at this point.
+There are some experimental kubernetes configs in [k8s/](./k8s/), but they are pretty specific to my own needs at this point. See [k8s/README.md](./k8s/README.md) for how they're generated and deployed.
 
 ### Building Headway from your own OSM extract
 

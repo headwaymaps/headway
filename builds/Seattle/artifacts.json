@@ -1,18 +1,18 @@
 {
-  "elasticsearch": "Seattle.elasticsearch.tar.zst",
-  "elevation": "transit/Seattle-2026-08-14.elevation-tifs.tar.zst",
+  "elasticsearch": "Seattle-elasticsearch-2026-08-20-6415d37d.tar.zst",
+  "elevation": "transit/Seattle-elevation-tifs-2026-08-20-02e78309.tar.zst",
   "gtfs": {
-    "seattle": "transit/Seattle-seattle-2026-08-14.gtfs.tar.zst"
+    "seattle": "transit/Seattle-seattle-gtfs-2026-08-20-b5d015d2.tar.zst"
   },
-  "osm": "Seattle.osm.pbf",
+  "osm": "Seattle-2026-08-20-64eee382.osm.pbf",
   "otp-graphs": {
-    "seattle": "transit/Seattle-seattle-2026-08-14.graph.obj.zst"
+    "seattle": "transit/Seattle-seattle-graph-2026-08-20-a1b4fe0b.obj.zst"
   },
-  "placeholder": "Seattle.placeholder.tar.zst",
-  "pmtiles": "Seattle.pmtiles",
+  "placeholder": "Seattle-placeholder-2026-08-20-f5e32801.tar.zst",
+  "pmtiles": "Seattle-2026-08-20-c5109984.pmtiles",
   "shared": {
-    "landcover": "landcover.mbtiles",
-    "terrain": "terrain.mbtiles"
+    "landcover": "landcover-2026-08-20-af6aa17e.mbtiles",
+    "terrain": "terrain-2026-08-20-d961012b.mbtiles"
   },
-  "valhalla": "Seattle.valhalla.tar.zst"
+  "valhalla": "Seattle-valhalla-2026-08-19-cf37274b.tar.zst"
 }

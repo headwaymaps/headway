@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opentripplanner-seattle-seattle-latest-dev-2026-08-20-f21ba60d
+  labels:
+    app.kubernetes.io/part-of: headway
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi

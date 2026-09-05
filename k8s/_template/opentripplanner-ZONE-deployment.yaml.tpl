@@ -21,15 +21,9 @@ spec:
               mountPath: /data
           env:
             - name: OTP_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-${TRANSIT_ZONE}-config
-                  key: graph-url
+              value: "${OTP_GRAPH_URL}"
             - name: OTP_ROUTER_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-${TRANSIT_ZONE}-config
-                  key: router-config-json
+              value: ${OTP_ROUTER_CONFIG_JSON_ENV}
           resources:
             limits:
               memory: 128Mi
@@ -70,10 +64,5 @@ spec:
             failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi
+          persistentVolumeClaim:
+            claimName: opentripplanner-${TRANSIT_ZONE}-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${OTP_VOLUME_VERSION}

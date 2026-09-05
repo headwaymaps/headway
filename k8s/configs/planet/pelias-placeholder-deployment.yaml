@@ -25,19 +25,77 @@ spec:
               mountPath: /config
           env:
             - name: PELIAS_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: pelias-config-json
+              value: |
+                {
+                  "logger": {
+                    "level": "info",
+                    "timestamp": false
+                  },
+                  "esclient": {
+                    "apiVersion": "7.5",
+                    "hosts": [
+                      {
+                        "host": "pelias-elasticsearch"
+                      }
+                    ]
+                  },
+                  "elasticsearch": {
+                    "settings": {
+                      "index": {
+                        "refresh_interval": "10s",
+                        "number_of_replicas": "0",
+                        "number_of_shards": "5"
+                      }
+                    }
+                  },
+                  "api": {
+                    "services": {
+                      "placeholder": {
+                        "url": "http://pelias-placeholder:4100"
+                      },
+                      "libpostal": {
+                        "url": "http://pelias-libpostal:4400"
+                      },
+                      "pip": {
+                        "url": "http://pelias-pip:4400"
+                      }
+                    }
+                  },
+                  "imports": {
+                    "adminLookup": {
+                      "enabled": true
+                    },
+                    "openstreetmap": {
+                      "leveldbpath": "/tmp",
+                      "datapath": "/data/openstreetmap",
+                      "import": [
+                        {
+                          "filename": "data.osm.pbf"
+                        }
+                      ]
+                    },
+                    "whosonfirst": {
+                      "datapath": "/data/whosonfirst",
+                      "importPostalcodes": true
+                    },
+                    "polyline": {
+                      "datapath": "/data/polylines",
+                      "files": [
+                        "extract.0sv"
+                      ]
+                    },
+                    "openaddresses": {
+                      "datapath": "/data/openaddresses",
+                      "dataHost": "https://data.example.com/openaddresses"
+                    }
+                  }
+                }
             - name: PLACEHOLDER_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: placeholder-artifact-url
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/maps-earth-planet-v1.260817-placeholder-2026-08-26-0c3310c0.tar.zst"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
           resources:
             limits:
-              memory: 400Mi
+              memory: 1Gi
             requests:
               memory: 200Mi
       containers:
@@ -76,13 +134,8 @@ spec:
             failureThreshold: 10
       volumes:
         - name: placeholder-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 40Gi
+          persistentVolumeClaim:
+            claimName: placeholder-maps-earth-planet-v1-260817-0-12-0-2026-08-26-f393657b
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

@@ -33,9 +33,7 @@ fi
 REPO_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${REPO_ROOT}/data"
 
-DATA_ROOT="${REPO_ROOT}/data"
-
-OUTPUT_DIR="/pool1/www/data.maps.earth"
+OUTPUT_DIR="/srv/www/data.maps.earth"
 
 upload_pids=()
 function kill_uploads() {
@@ -111,3 +109,6 @@ for pid in ${upload_pids[*]}; do
 done
 
 echo "Return codes: ${rets[*]}"
+
+echo "Publishing complete."
+echo "Next, deploy with `bin/k8s/rollout-latest` or `bin/k8s/apply-latest`

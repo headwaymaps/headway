@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tileserver-seattle-latest-dev-2026-08-20-1546d033
+  labels:
+    app.kubernetes.io/part-of: headway
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 200Gi

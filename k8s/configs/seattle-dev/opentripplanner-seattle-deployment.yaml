@@ -21,15 +21,25 @@ spec:
               mountPath: /data
           env:
             - name: OTP_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-seattle-config
-                  key: graph-url
+              value: "https://data.example.com/dev/seattle-latest/transit/Seattle-seattle-graph-2026-08-20-a1b4fe0b.obj.zst"
             - name: OTP_ROUTER_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-seattle-config
-                  key: router-config-json
+              value: |
+                {
+                  "updaters": [
+                    {
+                      "feedId": "headway-1330",
+                      "type": "stop-time-updater",
+                      "frequencySec": 60,
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
+                    },
+                    {
+                      "feedId": "headway-1330",
+                      "type": "real-time-alerts",
+                      "frequencySec": 300,
+                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+                    }
+                  ]
+                }
           resources:
             limits:
               memory: 128Mi
@@ -70,10 +80,5 @@ spec:
             failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi
+          persistentVolumeClaim:
+            claimName: opentripplanner-seattle-seattle-latest-dev-2026-08-20-f21ba60d

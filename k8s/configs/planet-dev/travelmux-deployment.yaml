@@ -21,20 +21,17 @@ spec:
               mountPath: /data
           env:
             - name: TRAVELMUX_ELEVATION_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: deployment-config
-                  key: elevation-artifact-url
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-elevation-tifs-2026-09-03-3c9f2bbe.tar.zst"
           resources:
             limits:
-              memory: 128Mi
+              memory: 512Mi
             requests:
               memory: 64Mi
       containers:
         - name: main
           image: ghcr.io/headwaymaps/travelmux:maps-earth-dev
           imagePullPolicy: Always
-          args: ["http://valhalla:8002", "http://opentripplanner-barcelona:8000", "http://opentripplanner-los-angeles:8000", "http://opentripplanner-puget-sound:8000", "http://opentripplanner-sf-bay-area:8000"]
+          args: ["http://valhalla:8002", "http://opentripplanner-los-angeles:8000", "http://opentripplanner-puget-sound:8000", "http://opentripplanner-sf-bay-area:8000"]
           env:
             - name: ELEVATION_TIFS_DIR
               value: /data/elevation-tifs
@@ -45,7 +42,7 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 256Mi
+              memory: 1Gi
             requests:
               memory: 128Mi
           livenessProbe:

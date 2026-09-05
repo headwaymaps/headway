@@ -13,9 +13,15 @@ function download() {
         echo "Already have ${dest_path}."
     elif [[ $source_path == http* ]]; then
         echo "Downloading ${source_path}..."
-        wget --tries=100 --continue -O "${dest_path}.download" "$source_path"
-        local wget_status=$?
-        echo "wget exit code was: ${wget_status}"
+        # The volume outlives the pod, so a download interrupted by a crash or
+        # an eviction leaves a partial .download behind. Discard it and start
+        # over rather than resuming onto it: artifact URLs are content
+        # addressed, so re-fetching from zero costs bandwidth but can't splice
+        # two files together. `wget --continue` used to do exactly that --
+        # combined with -O it appends instead of resuming, which is how
+        # landcover.mbtiles turned into a malformed SQLite file.
+        rm -f "${dest_path}.download"
+        wget --tries=100 -O "${dest_path}.download" "$source_path"
         mv "${dest_path}.download" "$dest_path"
     elif [[ -n "$source_path" ]]; then
         echo "Copying ${source_path}..."

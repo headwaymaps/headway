@@ -21,15 +21,25 @@ spec:
               mountPath: /data
           env:
             - name: OTP_ARTIFACT_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-sf-bay-area-config
-                  key: graph-url
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-03-141eb55d.obj.zst"
             - name: OTP_ROUTER_CONFIG_JSON
-              valueFrom:
-                configMapKeyRef:
-                  name: otp-sf-bay-area-config
-                  key: router-config-json
+              value: |
+                {
+                  "updaters": [
+                    {
+                      "feedId": "headway-53",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://api.bart.gov/gtfsrt/tripupdate.aspx"
+                    },
+                    {
+                      "feedId": "headway-53",
+                      "type": "real-time-alerts",
+                      "frequency": "300s",
+                      "url": "https://api.bart.gov/gtfsrt/alerts.aspx"
+                    }
+                  ]
+                }
           resources:
             limits:
               memory: 128Mi
@@ -70,10 +80,5 @@ spec:
             failureThreshold: 20
       volumes:
         - name: opentripplanner-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi
+          persistentVolumeClaim:
+            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-12-0-2026-09-03-ff4145f9
