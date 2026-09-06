@@ -8,11 +8,11 @@ examples:
     # Copy to asset root on this host
     $0 builds/planet
     # Copy to asset root on remote host
-    $0 builds/planet --host maps-data.local
+    $0 builds/planet --host data.maps.internal
 
 Use an upload prefix other than what's in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev $0 builds/Seattle
-    HEADWAY_DATA_TAG=dev $0 builds/Seattle --host maps-data.local
+    HEADWAY_DATA_TAG=dev $0 builds/Seattle --host data.maps.internal
 EOF
 }
 
@@ -26,6 +26,7 @@ HOST=""
 if [ "$#" -eq 3 ]; then
     if [ "$2" != "--host" ]; then
         usage
+        exit 1
     fi
     HOST=$3
 fi
@@ -35,15 +36,14 @@ DATA_ROOT="${REPO_ROOT}/data"
 
 OUTPUT_DIR="/srv/www/data.maps.earth"
 
-upload_pids=()
-function kill_uploads() {
-  echo "Killing any in-progress uploads before exiting"
-  for pid in ${upload_pids[*]}; do
-    kill "${pid[*]}"
-  done
+# Run a command locally, or on $HOST if one was given.
+function run() {
+  if [ -z "$HOST" ]; then
+    "$@"
+  else
+    ssh "$HOST" "$@"
+  fi
 }
-
-trap kill_uploads EXIT
 
 function upload() {
   local file=$1
@@ -60,16 +60,15 @@ function upload() {
   local resource="${output_prefix}/${file}"
   local output_path="${OUTPUT_DIR}/${resource}"
 
-  set -o nounset
-  if [ -z "$HOST" ]; then
-      echo "Copying ${input_path} -> ${output_path}"
-      mkdir -p "$(dirname $output_path)"
-      cp "$input_path" "$output_path"
-  else
-      echo "Sycning ${input_path} -> ${HOST}:${output_path}"
-      ssh "$HOST" mkdir -p "$(dirname $output_path)"
-      rsync -av --progress -e ssh "$input_path" "${HOST}:${output_path}"
+  # rsync in both cases, so re-runs skip anything already copied.
+  local destination="${output_path}"
+  if [ -n "$HOST" ]; then
+    destination="${HOST}:${output_path}"
   fi
+
+  echo "Syncing ${input_path} -> ${destination}"
+  run mkdir -p "$(dirname "$output_path")"
+  rsync -av --partial --progress "$input_path" "$destination"
 }
 
 source bin/_source-env.sh "$CONFIG_DIR"
@@ -97,18 +96,5 @@ for file in $("${REPO_ROOT}/bin/artifacts" shared-files "$CONFIG_DIR"); do
   upload "$file" "${HEADWAY_DATA_TAG}"
 done
 
-rets=()
-for pid in ${upload_pids[*]}; do
-  wait $pid
-  status=$?
-  rets+=($status)
-  if [ ! $status ]; then
-    echo "error in upload"
-    exit $status
-  fi
-done
-
-echo "Return codes: ${rets[*]}"
-
 echo "Publishing complete."
-echo "Next, deploy with `bin/k8s/rollout-latest` or `bin/k8s/apply-latest`
+echo 'Next, deploy with `bin/k8s/rollout-latest` or `bin/k8s/apply-latest`'
