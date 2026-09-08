@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: main
-          image: pelias/libpostal-service:latest
+          image: pelias/libpostal-service:master
           ports:
             - containerPort: 4400
           resources:

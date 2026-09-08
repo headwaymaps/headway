@@ -36,7 +36,7 @@ spec:
               memory: 200Mi
       containers:
         - name: main
-          image: pelias/placeholder:latest
+          image: pelias/placeholder:master
           ports:
             - containerPort: 4100
           volumeMounts:
