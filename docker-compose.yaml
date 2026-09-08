@@ -137,7 +137,7 @@ services:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "pelias_placeholder_data:/data"
   pelias-libpostal:
-    image: pelias/libpostal-service
+    image: pelias/libpostal-service:master
     restart: always
     networks:
       - pelias_backend

@@ -430,6 +430,8 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute memory budget: %w", err)
 	}
+	// The script prints a JVM-style size like "12345M", with a trailing newline.
+	memoryBudget = strings.TrimSpace(memoryBudget)
 
 	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
 
@@ -454,13 +456,17 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 		entrypoint = append(entrypoint, "--tile_compression=none")
 	}
 	if h.IsPlanetBuild {
-		container = container.WithExec(append(entrypoint,
-			"--bounds=planet",
-			"--nodemap-type=array",
-			"--storage=mmap",
-			fmt.Sprintf("-Xmx%d", memoryBudget),
-			"-XX:MaxHeapFreeRatio=40",
-		))
+		// The image entrypoint is `java -cp ... com.onthegomap.planetiler.Main`, so
+		// JVM flags can't be appended as args - they'd be parsed as Planetiler's own
+		// args and ignored. This is a jib-built image, so it picks them up here.
+		// -XX:MaxHeapFreeRatio returns unused heap to the OS.
+		container = container.
+			WithEnvVariable("JAVA_TOOL_OPTIONS", fmt.Sprintf("-Xmx%s -XX:MaxHeapFreeRatio=40", memoryBudget)).
+			WithExec(append(entrypoint,
+				"--bounds=planet",
+				"--nodemap-type=array",
+				"--storage=mmap",
+			))
 	} else {
 		container = container.WithExec(entrypoint)
 	}
@@ -471,9 +477,14 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 /**
  * Valhalla
  */
+// Upstream publishes `latest` from master, so it moves whenever they merge.
+// Pinned by digest to keep tile builds reproducible: this is the master build
+// from 2026-09-08, which is 23 commits ahead of the 3.8.3 release.
+const valhallaImage = "ghcr.io/valhalla/valhalla@sha256:65f43014947d013f25f0e1bdf3c4096a190a50f2dbbedd6a66cabd4f9538a2c5"
+
 func valhallaBaseContainer() *dagger.Container {
 	return dag.Container().
-		From("ghcr.io/valhalla/valhalla:latest").
+		From(valhallaImage).
 		WithExec([]string{"useradd", "-s", "/usr/sbin/nologin", "valhalla"}).
 		WithUser("valhalla").
 		WithWorkdir("/tiles")

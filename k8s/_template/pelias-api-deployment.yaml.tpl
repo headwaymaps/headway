@@ -14,7 +14,7 @@ spec:
         app: pelias-api
         app-group: pelias-api
       annotations:
-        image: pelias/api:latest
+        image: pelias/api:master
     spec:
       initContainers:
         - name: init
@@ -34,7 +34,7 @@ spec:
               memory: 100Mi
       containers:
         - name: main
-          image: pelias/api:latest
+          image: pelias/api:master
           ports:
             - containerPort: 4000
           volumeMounts:
