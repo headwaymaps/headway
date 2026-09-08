@@ -430,6 +430,8 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute memory budget: %w", err)
 	}
+	// The script prints a JVM-style size like "12345M", with a trailing newline.
+	memoryBudget = strings.TrimSpace(memoryBudget)
 
 	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
 
@@ -454,13 +456,17 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 		entrypoint = append(entrypoint, "--tile_compression=none")
 	}
 	if h.IsPlanetBuild {
-		container = container.WithExec(append(entrypoint,
-			"--bounds=planet",
-			"--nodemap-type=array",
-			"--storage=mmap",
-			fmt.Sprintf("-Xmx%d", memoryBudget),
-			"-XX:MaxHeapFreeRatio=40",
-		))
+		// The image entrypoint is `java -cp ... com.onthegomap.planetiler.Main`, so
+		// JVM flags can't be appended as args - they'd be parsed as Planetiler's own
+		// args and ignored. This is a jib-built image, so it picks them up here.
+		// -XX:MaxHeapFreeRatio returns unused heap to the OS.
+		container = container.
+			WithEnvVariable("JAVA_TOOL_OPTIONS", fmt.Sprintf("-Xmx%s -XX:MaxHeapFreeRatio=40", memoryBudget)).
+			WithExec(append(entrypoint,
+				"--bounds=planet",
+				"--nodemap-type=array",
+				"--storage=mmap",
+			))
 	} else {
 		container = container.WithExec(entrypoint)
 	}
