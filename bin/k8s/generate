@@ -120,17 +120,6 @@ function render_template() {
 
 set -o nounset
 
-function artifact_url() {
-    local prefix="$1" query="$2" path
-    path=$(jq -r "$query // empty" "$MANIFEST")
-    if [ -z "$path" ]; then
-        log "missing $query in ${MANIFEST}"
-        log 'run `bin/artifacts --pin` on the build machine'
-        exit 1
-    fi
-    echo "${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${prefix}/${path}"
-}
-
 AREA_PREFIX="${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 
 # terrain and landcover are generic across areas, so they sit above the area directory
@@ -138,12 +127,12 @@ AREA_PREFIX="${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
 # in `export VAR=$(...)` the status is export's, always 0.
 export TERRAIN_ARTIFACT_URL LANDCOVER_ARTIFACT_URL AREAMAP_ARTIFACT_URL
 export VALHALLA_ARTIFACT_URL PLACEHOLDER_ARTIFACT_URL ELASTICSEARCH_ARTIFACT_URL
-TERRAIN_ARTIFACT_URL=$(artifact_url "${HEADWAY_DATA_TAG}" '.shared.terrain')
-LANDCOVER_ARTIFACT_URL=$(artifact_url "${HEADWAY_DATA_TAG}" '.shared.landcover')
-AREAMAP_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.pmtiles')
-VALHALLA_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.valhalla')
-PLACEHOLDER_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.placeholder')
-ELASTICSEARCH_ARTIFACT_URL=$(artifact_url "$AREA_PREFIX" '.elasticsearch')
+TERRAIN_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/$(bin/artifacts terrain "$CONFIG_DIR")"
+LANDCOVER_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/$(bin/artifacts landcover "$CONFIG_DIR")"
+AREAMAP_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/$(bin/artifacts pmtiles "$CONFIG_DIR")"
+VALHALLA_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/$(bin/artifacts valhalla "$CONFIG_DIR")"
+PLACEHOLDER_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/$(bin/artifacts placeholder "$CONFIG_DIR")"
+ELASTICSEARCH_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/$(bin/artifacts elasticsearch "$CONFIG_DIR")"
 
 # Superseded volumes stay until bin/k8s/unused-volumes collects them, which is
 # what makes a rollback instant.
@@ -155,7 +144,7 @@ PLACEHOLDER_VOLUME_VERSION=$(volume_version "$PLACEHOLDER_ARTIFACT_URL")
 ELASTICSEARCH_VOLUME_VERSION=$(volume_version "$ELASTICSEARCH_ARTIFACT_URL")
 
 export ELEVATION_ARTIFACT_URL=""
-elevation_path=$(jq -r '.elevation // empty' "$MANIFEST")
+elevation_path=$(bin/artifacts --optional elevation "$CONFIG_DIR")
 if [ -n "$elevation_path" ]; then
     ELEVATION_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/${elevation_path}"
 fi
@@ -163,12 +152,21 @@ fi
 function generate_transit() {
   local otp_endpoints=""
   local separator=", "
-  local transit_zone graph_path otp_endpoint_name
+  local otp_endpoint_name line
 
-  while IFS=$'\t' read -r transit_zone graph_path; do
-      otp_endpoint_name=$(generate_otp "$transit_zone" "$graph_path")
+  local zones=() graphs=()
+  while IFS= read -r line; do zones+=("$line"); done < <(bin/artifacts otp-zones "$CONFIG_DIR")
+  while IFS= read -r line; do graphs+=("$line"); done < <(bin/artifacts otp-graphs "$CONFIG_DIR")
+  if [ "${#zones[@]}" -ne "${#graphs[@]}" ]; then
+      log "otp-zones gave ${#zones[@]} zones but otp-graphs gave ${#graphs[@]} graphs"
+      exit 1
+  fi
+
+  local i
+  for i in "${!zones[@]}"; do
+      otp_endpoint_name=$(generate_otp "${zones[$i]}" "${graphs[$i]}")
       otp_endpoints+="${separator}\"http://${otp_endpoint_name}:8000\""
-  done < <(jq -r '."otp-graphs" // {} | to_entries[] | [.key, .value] | @tsv' "$MANIFEST")
+  done
 
   export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
