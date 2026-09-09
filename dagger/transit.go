@@ -28,10 +28,10 @@ type TransitZone struct {
 // Select today's feeds on every invocation.
 // +cache="never"
 func (h *Headway) BuildTransit(ctx context.Context,
-	// +ignore=["**/.env"]
+	// +ignore=["**/.env", "**/gtfs-secrets.json"]
 	transitConfigDir *dagger.Directory,
 	// +optional
-	gtfsApiKeys *dagger.Secret,
+	gtfsSecrets *dagger.Secret,
 	// +optional
 	maxConcurrentZones int) (*dagger.Directory, error) {
 
@@ -85,7 +85,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			if otpBuildConfig != nil {
 				zone = zone.WithOtpBuildConfig(groupCtx, otpBuildConfig)
 			}
-			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, gtfsDate, gtfsApiKeys))
+			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, gtfsDate, gtfsSecrets))
 
 			name := zone.Name(groupCtx)
 			stem := zone.ArtifactStem(groupCtx)
@@ -232,7 +232,7 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 // +cache="24h"
 func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 	// +optional
-	gtfsApiKeys *dagger.Secret) *dagger.Directory {
+	gtfsSecrets *dagger.Secret) *dagger.Directory {
 	servicesDir := t.Headway.ServiceDir("gtfs")
 
 	gtfout := t.Headway.Gtfout(ctx)
@@ -247,9 +247,9 @@ func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 
 	downloadArgs := []string{"download-feeds", "--zone", zoneFilePath, "--output", "downloaded"}
 
-	if gtfsApiKeys != nil {
-		container = container.WithMountedSecret(GtfsCredentialsPath, gtfsApiKeys)
-		downloadArgs = append(downloadArgs, "--credentials-file", GtfsCredentialsPath)
+	if gtfsSecrets != nil {
+		container = container.WithMountedSecret(GtfsSecretsPath, gtfsSecrets)
+		downloadArgs = append(downloadArgs, "--credentials-file", GtfsSecretsPath)
 	}
 
 	return container.
@@ -258,7 +258,9 @@ func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 		Directory("./output")
 }
 
-const GtfsCredentialsPath = "/run/secrets/gtfs-credentials.env"
+// gtfs-secrets.json, in transitland's secrets.json format, which is how gtfout
+// reads credentials.
+const GtfsSecretsPath = "/run/secrets/gtfs-secrets.json"
 
 const zoneFilePath = "/run/secrets/zone.json"
 
@@ -277,12 +279,6 @@ func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 		return nil, fmt.Errorf("failed to get bbox for transit zone %s: %w", t.Name(ctx), err)
 	}
 	return ParseBboxStr(bboxStr)
-}
-
-func (h *Headway) TransitlandAtlas(ctx context.Context) *dagger.Directory {
-	url := getEnvWithDefault("HEADWAY_TRANSITLAND_ATLAS_URL", "https://github.com/transitland/transitland-atlas.git")
-	ref := getEnvWithDefault("HEADWAY_TRANSITLAND_ATLAS_REF", "main")
-	return dag.Git(url).Branch(ref).Tree()
 }
 
 // Downloads the GTFS feed-extents index from the headway-data repository.
@@ -338,6 +334,7 @@ func (h *Headway) OtpServeContainer(ctx context.Context) *dagger.Container {
 
 func (h *Headway) OtpInitContainer(ctx context.Context) *dagger.Container {
 	return downloadContainer().
+		WithFile("/usr/local/bin/zone-router-config", h.Gtfout(ctx).File("zone-router-config")).
 		WithFile("/app/init.sh", h.ServiceDir("otp").File("init.sh")).
 		WithDefaultArgs([]string{"/app/init.sh"})
 }

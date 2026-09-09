@@ -6,6 +6,20 @@ PUBLISH=false
 TAGS="latest"
 BRANDING=""
 FILTERS=()
+DEFAULT_TARGETS=(
+  frontend
+  frontend-init
+  otp-init
+  otp
+  transit-zoner
+  pelias-init
+  tileserver
+  tileserver-init
+  travelmux-init
+  travelmux
+  valhalla-init
+  valhalla
+)
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -33,7 +47,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --branding B   Branding for web container (default: none)"
       echo ""
       echo "Examples:"
-      echo "  $0                              # Build all images"
+      echo "  $0                              # Build the default images"
       echo "  $0 tileserver                   # Build tileserver and tileserver-init"
       echo "  $0 tileserver headway           # Build tileserver, tileserver-init, headway, headway-init"
       echo "  $0 --tags dev                   # Export dev tag to local docker"
@@ -52,6 +66,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [ ${#FILTERS[@]} -eq 0 ]; then
+  FILTERS=("${DEFAULT_TARGETS[@]}")
+fi
 
 function should_build() {
   local container=$1
@@ -146,10 +164,18 @@ function build_image_tags() {
         build_image "$build_function" "$container" "$(addresses_for "$container")"
     }
 
+    # transit-zoner downloads its feed-extents index from headway-data. Point
+    # it at a local one - say, a fresh bin/build-gtfs-index run - to try that out.
+    local transit_zoner_args=""
+    if [ -n "${GTFS_INDEX_PATH:-}" ]; then
+        transit_zoner_args="--gtfs-index file://${GTFS_INDEX_PATH}"
+    fi
+
     build "frontend"        "web-serve-container ${web_branding_param}" "headway"
     build "frontend-init"   "web-init-container"                        "headway-init"
     build "otp-init"        "otp-init-container"                        "opentripplanner-init"
     build "otp"             "otp-serve-container"                       "opentripplanner"
+    build "transit-zoner"   "transit-zoner-serve-container ${transit_zoner_args}" "transit-zoner"
     build "pelias-init"     "pelias-init-container"                     "pelias-init"
     build "tileserver"      "tileserver-serve-container"                "tileserver"
     build "tileserver-init" "tileserver-init-container"                 "tileserver-init"

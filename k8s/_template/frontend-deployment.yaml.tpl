@@ -60,6 +60,8 @@ spec:
               value: http://tileserver:8000
             - name: HEADWAY_PELIAS_URL
               value: http://pelias-api:4000
+            - name: HEADWAY_TRANSIT_ZONER_URL
+              value: http://transit-zoner:8420
             - name: HEADWAY_PUBLIC_URL
               value: "${HEADWAY_PUBLIC_URL}"
             - name: HEADWAY_ENABLE_TRANSIT_ROUTING

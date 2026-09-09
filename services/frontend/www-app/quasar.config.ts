@@ -125,6 +125,19 @@ export default defineConfig((/* ctx */) => {
           // target: 'http://0.0.0.0:8000',
           // rewrite: (path) => path.replace(/^\/travelmux/, ''),
         },
+        // The /transit-zones page's API. Unlike the others this can't fall back
+        // to HEADWAY_HOST - transit-zoner is a build-time tool and isn't
+        // deployed there - so it points at a local stack. Bring one up with
+        // `bin/start-services`, or run the API alone with
+        // `services/gtfs/transit-zoner/start-dev-server` and use port 8420.
+        '/transit-zoner': {
+          changeOrigin: true,
+          target: 'http://localhost:8080',
+          // Talking to start-dev-server directly instead needs the prefix
+          // stripped, since the binary serves /api at its root:
+          // target: 'http://127.0.0.1:8420',
+          // rewrite: (path) => path.replace(/^\/transit-zoner/, ''),
+        },
       },
     },
 
