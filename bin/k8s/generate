@@ -20,7 +20,7 @@ Use containers and map-data version tags as specified in bin/_headway_version.sh
 Use containers from a tag other than what's in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev $0 builds/planet planet-dev
 
-Use containers and map-data version tags other than whats specified in bin/_headway_version.sh
+Use containers and map-data version tags other than what's specified in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 builds/Seattle seattle-dev
 EOF
 }
@@ -172,7 +172,6 @@ function generate_transit() {
   export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
-
 function check_zone_tokens() {
     local zone_file="$1"
 
@@ -195,7 +194,6 @@ function generate_otp() {
 
     export OTP_VOLUME_VERSION
     OTP_VOLUME_VERSION=$(volume_version "$graph_path")
-
     local zone_file router_config
     zone_file=$(zone_file_for "$CONFIG_DIR" "$TRANSIT_ZONE")
     if [ -z "$zone_file" ]; then
@@ -218,6 +216,8 @@ if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" = 1 ]; then
     generate_transit
 fi
 
+render_template "k8s/_template/transit-zoner-deployment.yaml.tpl"
+render_template "k8s/_template/transit-zoner-service.yaml.tpl"
 
 # NOTE: we *do* want to enable the travelmux *service*, regardless
 # of if transit routing is enabled - otherwise our nginx frontend will fail
@@ -228,7 +228,7 @@ fi
 render_template "k8s/_template/travelmux-service.yaml.tpl"
 
 shopt -s extglob
-for file in k8s/_template/!(opentripplanner*|travelmux*).tpl
+for file in k8s/_template/!(opentripplanner*|travelmux*|transit-zoner*).tpl
 do
     render_template "$file"
 done
