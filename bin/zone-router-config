@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+exec cargo run --release --quiet --package gtfout --bin zone-router-config -- "$@"

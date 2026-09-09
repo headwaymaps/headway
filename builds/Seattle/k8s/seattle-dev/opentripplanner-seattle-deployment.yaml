@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: opentripplanner-seattle
+      annotations:
+        # Roll the pod if the zone file changes
+        headway/zone-checksum: "fd5fb249cc15"
     spec:
       initContainers:
         - name: init
@@ -19,27 +22,17 @@ spec:
           volumeMounts:
             - name: opentripplanner-volume
               mountPath: /data
+            # The init container renders router-config.json from these two, so
+            # the live tokens stay out of this manifest.
+            - name: zone
+              mountPath: /run/config
+              readOnly: true
+            - name: gtfs-secrets
+              mountPath: /run/secrets
+              readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
               value: "https://data.example.com/dev/seattle-latest/transit/Seattle-seattle-graph-2026-08-20-a1b4fe0b.obj.zst"
-            - name: OTP_ROUTER_CONFIG_JSON
-              value: |
-                {
-                  "updaters": [
-                    {
-                      "feedId": "headway-1330",
-                      "type": "stop-time-updater",
-                      "frequencySec": 60,
-                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb"
-                    },
-                    {
-                      "feedId": "headway-1330",
-                      "type": "real-time-alerts",
-                      "frequencySec": 300,
-                      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
-                    }
-                  ]
-                }
           resources:
             limits:
               memory: 128Mi
@@ -50,7 +43,6 @@ spec:
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
           env:
             - name: "JAVA_OPTS"
-              # keep this in sync to be just under the resources.limits.memory
               value: "-Xmx5G"
           imagePullPolicy: Always
           ports:
@@ -60,7 +52,6 @@ spec:
               mountPath: /var/opentripplanner
           resources:
             limits:
-              # keep this in sync to be just above env.JAVA_OPTS.-Xmx
               memory: 5.25Gi
             requests:
               memory: 500Mi
@@ -79,6 +70,13 @@ spec:
             periodSeconds: 15
             failureThreshold: 20
       volumes:
+        - name: zone
+          configMap:
+            name: otp-seattle-zone
+        - name: gtfs-secrets
+          secret:
+            secretName: otp-seattle-gtfs-secrets
+            optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
             claimName: opentripplanner-seattle-seattle-latest-dev-2026-08-20-f21ba60d

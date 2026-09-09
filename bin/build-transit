@@ -25,48 +25,35 @@ EOS
 fi
 
 source bin/_source-env.sh "$CONFIG_DIR"
-
-# Idempotent, and bin/build runs it too - it's here so that running this script
-# standalone works on a tree where the artifact root is still the placeholder.
+source bin/_zone-file.sh
 bin/update-fetch-urls
 
-# Feeds whose CSV row sets urls.authentication_type need an API key, kept in
-# .bin-env (which is gitignored) as HEADWAY_GTFS_API_KEY_<mdb_source_id>.
-#
-# It has to be handed to dagger as an explicit secret: module code runs
-# sandboxed, so exporting these into our own environment would not reach it.
-GTFS_API_KEYS=""
-if [ -f .bin-env ]; then
-    GTFS_API_KEYS="--gtfs-api-keys file://${APP_ROOT}/.bin-env"
-fi
-
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
-
-# Each file in gtfs-feeds/ is built into a zone named after the file, and that
-# name is used verbatim from here on: it keys artifacts.json and it names the OTP
-# deployment, service and config map in k8s. So it has to be a valid k8s object
-# name - cheap to check, expensive to discover after a multi-hour build.
 function lint_zone_names() {
     set +x
     local found=0 zone file
-    for file in "${TRANSIT_CONFIG_DIR}"/gtfs-feeds/*.gtfs_feeds.csv; do
-        [ -e "$file" ] || continue
+    for file in $(zone_files_in "$CONFIG_DIR"); do
         found=1
-        zone=$(basename "$file" .gtfs_feeds.csv)
-        # 63 chars is the k8s limit, minus room for the "opentripplanner-" prefix.
+        zone=$(zone_name_for_file "$file")
         if [[ ! $zone =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || [ ${#zone} -gt 40 ]; then
-            echo "Error: ${file}: zone \"${zone}\" is not a valid k8s object name; rename it to lowercase letters, digits and dashes" >&2
+            echo "Error: ${file}: zone \"${zone}\" is not a valid k8s object name; rename its directory to lowercase letters, digits and dashes" >&2
             exit 1
         fi
     done
 
     if [ "$found" -eq 0 ]; then
-        echo "Error: no *.gtfs_feeds.csv in ${TRANSIT_CONFIG_DIR}/gtfs-feeds - nothing to build" >&2
+        echo "Error: no */zone.json in ${TRANSIT_CONFIG_DIR} - nothing to build" >&2
+        echo "Draw one with: services/gtfs/transit-zoner/start-dev-server" >&2
         exit 1
     fi
     set -x
 }
 lint_zone_names
+GTFS_SECRETS=""
+GTFS_SECRETS_FILE="${APP_ROOT}/gtfs-secrets.json"
+if [ -f "$GTFS_SECRETS_FILE" ]; then
+    GTFS_SECRETS="--gtfs-secrets file://${GTFS_SECRETS_FILE}"
+fi
 
 USE_LOCAL_PBF=""
 INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
@@ -74,7 +61,7 @@ if [[ -f $INPUT_PBF ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-dagger -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} ${GTFS_API_KEYS} | export 'data/${HEADWAY_AREA}/transit'"
+dagger -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} ${GTFS_SECRETS} | export 'data/${HEADWAY_AREA}/transit'"
 
 bin/artifacts --pin "$CONFIG_DIR"
 
@@ -89,4 +76,3 @@ This build rewrote the artifact URLs in place; to put them back:
 To publish the artifacts to the asset host:
     bin/publish-data ${CONFIG_DIR} [--host remote.host.com]
 EOS
-
