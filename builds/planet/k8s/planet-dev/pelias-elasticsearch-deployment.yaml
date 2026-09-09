@@ -100,8 +100,7 @@ spec:
                       ]
                     },
                     "openaddresses": {
-                      "datapath": "/data/openaddresses",
-                      "dataHost": "https://data.example.com/openaddresses"
+                      "datapath": "/data/openaddresses"
                     }
                   }
                 }

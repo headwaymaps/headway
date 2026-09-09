@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/pelias-init:maps-earth-latest
+          image: ghcr.io/headwaymaps/pelias-init:maps-earth-dev
           imagePullPolicy: Always
           volumeMounts:
             - name: placeholder-volume
@@ -85,8 +85,7 @@ spec:
                       ]
                     },
                     "openaddresses": {
-                      "datapath": "/data/openaddresses",
-                      "dataHost": "https://data.example.com/openaddresses"
+                      "datapath": "/data/openaddresses"
                     }
                   }
                 }

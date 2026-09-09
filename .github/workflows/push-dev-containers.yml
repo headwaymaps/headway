@@ -11,9 +11,9 @@ jobs:
     env:
       DAGGER_NO_NAG: 1
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Dagger
-        uses: dagger/dagger-for-github@v8.4.0
+        uses: dagger/dagger-for-github@v8.4.1
         with:
           version: "latest"
       - name: Docker login

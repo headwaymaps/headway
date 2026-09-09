@@ -8,23 +8,31 @@ cd "$APP_ROOT"
 function usage() {
   cat << EOF
 Pin and look up build artifacts. This runs on the build machine: --pin reads
-data/<Area>, and the lookups exist for the local docker compose stack. Anything
-that generates deploy config reads builds/<Area>/artifacts.json directly.
+data/<Area>, and the lookups serve both the local docker compose stack and
+bin/k8s/generate, so the manifest's shape is only known here.
 
-usage: $0 <otp-graph|elevation|pmtiles|valhalla|elasticsearch|placeholder|osm> <build-config-dir>
-       $0 <terrain|landcover> <build-config-dir>
+usage: $0 [--optional] <otp-graphs|otp-zones|elevation|pmtiles|valhalla|elasticsearch|placeholder|osm> <build-config-dir>
+       $0 [--optional] <terrain|landcover> <build-config-dir>
        $0 <files|shared-files> <build-config-dir>
        $0 --pin <build-config-dir>
        $0 --verify <build-config-dir>
+
+Named artifact lookups fail if the manifest or pin is missing. Use
+--optional for optional lookups. Collection lookups may return no entries.
+Lookups only read pins; --verify checks that the files exist locally.
 
 examples: # pin the newest artifacts to builds/<Area>/artifacts.json
     \$0 --pin builds/Amsterdam
     # check every pinned artifact is present in data/<Area>
     \$0 --verify builds/Amsterdam
-    # what the local compose stack mounts
-    \$0 otp-graph builds/planet
 EOF
 }
+
+OPTIONAL=0
+if [ "${1:-}" = --optional ]; then
+    OPTIONAL=1
+    shift
+fi
 
 COMMAND="${1:-}"
 CONFIG_DIR="${2:-}"
@@ -201,18 +209,31 @@ case "$COMMAND" in
 
         echo "All artifacts pinned by ${MANIFEST} are present in ${AREA_DIR}."
         ;;
-    otp-graph)
+    otp-zones)
+        # The zones this build has, one per line.
         [ -f "$MANIFEST" ] || exit 0
-        # docker compose runs a single OTP, so serve the first zone
-        jq -r 'first(."otp-graphs"[]?) // empty' "$MANIFEST"
+        jq -r '."otp-graphs" // {} | to_entries[] | .key' "$MANIFEST"
         ;;
-    elevation|pmtiles|valhalla|elasticsearch|placeholder|osm)
+    otp-graphs)
+        # Their graphs, one per line, in the same order as otp-zones
         [ -f "$MANIFEST" ] || exit 0
-        jq -r --arg key "$COMMAND" '.[$key] // empty' "$MANIFEST"
+        jq -r '."otp-graphs" // {} | to_entries[] | .value' "$MANIFEST"
         ;;
-    terrain|landcover)
-        [ -f "$MANIFEST" ] || exit 0
-        jq -r --arg key "$COMMAND" '.shared[$key]? // empty' "$MANIFEST"
+    elevation|pmtiles|valhalla|elasticsearch|placeholder|osm|terrain|landcover)
+        path=""
+        if [ -f "$MANIFEST" ]; then
+            case "$COMMAND" in
+                terrain|landcover) query='.shared[$key]? // empty' ;;
+                *) query='.[$key] // empty' ;;
+            esac
+            path=$(jq -r --arg key "$COMMAND" "$query" "$MANIFEST")
+        fi
+        if [ -z "$path" ]; then
+            [ "$OPTIONAL" -eq 1 ] && exit 0
+            echo "Error: missing ${COMMAND} in ${MANIFEST}; run bin/artifacts --pin ${CONFIG_DIR} on the build machine" >&2
+            exit 1
+        fi
+        printf '%s\n' "$path"
         ;;
     files)
         # All artifacts for the deployment except `shared`,
