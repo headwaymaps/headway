@@ -27,9 +27,10 @@ import (
 )
 
 type Headway struct {
-	Area          string
-	OSMExport     *OSMExport
-	ServicesDir   *dagger.Directory
+	Area      string
+	OSMExport *OSMExport
+	// The repository root.
+	RepoDir       *dagger.Directory
 	IsPlanetBuild bool
 	Countries     string
 }
@@ -199,9 +200,9 @@ type OSMExport struct {
 }
 
 func New(
-	// +defaultPath="./services"
-	servicesDir *dagger.Directory) *Headway {
-	return &Headway{ServicesDir: servicesDir}
+	// +defaultPath="./"
+	repoDir *dagger.Directory) *Headway {
+	return &Headway{RepoDir: repoDir}
 }
 
 func (h *Headway) WithArea(
@@ -227,11 +228,15 @@ func (h *Headway) WithArea(
 	return h
 }
 
-func (h *Headway) ServiceDir(subDirectory string) *dagger.Directory {
-	if h.ServicesDir == nil {
-		panic("Headway.ServicesDir was nil - did you start with `new`?")
+func (h *Headway) ServicesDir() *dagger.Directory {
+	if h.RepoDir == nil {
+		panic("Headway.RepoDir was nil - did you start with `new`?")
 	}
-	return h.ServicesDir.Directory(subDirectory)
+	return h.RepoDir.Directory("services")
+}
+
+func (h *Headway) ServiceDir(subDirectory string) *dagger.Directory {
+	return h.ServicesDir().Directory(subDirectory)
 }
 
 func getEnvWithDefault(envVariable, defaultValue string) string {
@@ -535,7 +540,7 @@ func (h *Headway) ValhallaServeContainer(ctx context.Context) *dagger.Container 
 
 // Extracts bounding box for a given area from areas.csv
 func (h *Headway) BBox(ctx context.Context) (*Bbox, error) {
-	areasFile := h.ServicesDir.File("areas.csv")
+	areasFile := h.ServicesDir().File("areas.csv")
 
 	// Area name to look up (must exist in areas.csv)
 	area := h.Area
@@ -609,20 +614,10 @@ func (h *Headway) LocalPBF(
 
 func (h *Headway) TravelmuxServer(ctx context.Context) *dagger.File {
 	return rustContainer().
-		WithWorkdir("app").
-		// This speeds up rebuilds of rust projects by caching the prebuilt
-		// dependencies in a separate docker layer. Without this, every change to
-		// the source requires re-downloading and re-building all the project deps,
-		// which takes a while.
-		// WithMountedFile("Cargo.toml", h.ServicesDir.Directory("travelmux").File("Cargo.toml")).
-		// WithMountedFile("Cargo.lock", h.ServicesDir.Directory("travelmux").File("Cargo.lock")).
-		// WithExec([]string{"mkdir", "-p", "src"}).
-		// WithExec([]string{"sh", "-c", "echo 'fn main() { /* dummy main to get cargo to build deps */ }' > src/main.rs"}).
-		// WithExec([]string{"cargo", "build", "--release"}).
-		// WithExec([]string{"rm", "src/main.rs"}).
-		WithMountedDirectory("/app", h.ServiceDir("travelmux")).
-		WithExec([]string{"cargo", "build", "--release"}).
-		File("target/release/travelmux-server")
+		WithMountedDirectory("/repo", h.RepoDir).
+		WithWorkdir("/repo").
+		WithExec([]string{"cargo", "build", "--release", "--package", "travelmux"}).
+		File("/repo/target/release/travelmux-server")
 }
 
 func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container {
