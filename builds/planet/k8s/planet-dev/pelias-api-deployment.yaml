@@ -1,41 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pelias-elasticsearch
+  name: pelias-api
 spec:
   replicas: 1
-  # Elasticsearch takes an exclusive node.lock on its data dir, so the old pod
-  # must fully stop before the new one starts.
-  strategy:
-    type: Recreate
   minReadySeconds: 10
   selector:
     matchLabels:
-      app: pelias-elasticsearch
+      app: pelias-api
   template:
     metadata:
       labels:
-        app: pelias-elasticsearch
+        app: pelias-api
+        app-group: pelias-api
+      annotations:
+        image: pelias/api:master
     spec:
-      volumes:
-        - name: elasticsearch-volume
-          persistentVolumeClaim:
-            claimName: elasticsearch-maps-earth-planet-v1-260817-0-12-0-2026-08-26-86f31e2b
-        - name: config-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Mi
       initContainers:
         - name: init
-          image: ghcr.io/headwaymaps/pelias-init:maps-earth-latest
+          image: ghcr.io/headwaymaps/pelias-init:maps-earth-dev
           imagePullPolicy: Always
           volumeMounts:
-            - name: elasticsearch-volume
-              mountPath: /usr/share/elasticsearch/data
             - name: config-volume
               mountPath: /config
           env:
@@ -100,48 +85,54 @@ spec:
                       ]
                     },
                     "openaddresses": {
-                      "datapath": "/data/openaddresses",
-                      "dataHost": "https://data.example.com/openaddresses"
+                      "datapath": "/data/openaddresses"
                     }
                   }
                 }
-            - name: ELASTICSEARCH_ARTIFACT_URL
-              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/maps-earth-planet-v1.260817-elasticsearch-2026-08-26-179bf527.tar.zst"
-          command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
+          command: ["/bin/bash", "-c", "/app/init_config.sh" ]
           resources:
             limits:
-              memory: 1Gi
-            requests:
               memory: 200Mi
+            requests:
+              memory: 100Mi
       containers:
         - name: main
-          image: pelias/elasticsearch:8.12.2-beta
+          image: pelias/api:master
+          ports:
+            - containerPort: 4000
           volumeMounts:
-            - name: elasticsearch-volume
-              mountPath: /usr/share/elasticsearch/data
             - name: config-volume
               mountPath: /config
-          ports:
-            - containerPort: 9200
           env:
-            - name: ES_JAVA_OPTS
-              value: "-Xmx8g"
+            - name: PELIAS_CONFIG
+              value: "/config/pelias.json"
+            - name: PORT
+              value: "4000"
           resources:
             limits:
-              memory: 16Gi
+              memory: 500Mi
             requests:
-              memory: 8Gi
+              memory: 100Mi
           livenessProbe:
             httpGet:
-              path: /
-              port: 9200
-            initialDelaySeconds: 15
-            periodSeconds: 15
-            failureThreshold: 50
+              path: /v1/
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
           readinessProbe:
             httpGet:
-              path: /_cluster/health?wait_for_status=yellow
-              port: 9200
-            initialDelaySeconds: 15
-            periodSeconds: 15
-            failureThreshold: 50
+              path: /v1/
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
+      volumes:
+        - name: config-volume
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 1Mi

@@ -3,11 +3,15 @@
 set -e
 
 APP_ROOT=$(git rev-parse --show-toplevel)
-cd $APP_ROOT
+cd "$APP_ROOT"
 
 function usage() {
 cat << EOF
-usage: $0 <config-dir> <output-dir>
+usage: $0 <build-dir> <namespace>
+
+Renders into <build-dir>/k8s/<namespace>, which is where the deploy scripts
+look for a namespace's manifests.
+
 examples:
 
 Use containers and map-data version tags as specified in bin/_headway_version.sh
@@ -25,11 +29,12 @@ if [ ! $# -eq 2 ]; then
     usage
     exit 1
 fi
-CONFIG_DIR="$1"
-OUTPUT_DIR="$2"
+CONFIG_DIR="${1%/}"
+NAMESPACE="$2"
+OUTPUT_DIR="${CONFIG_DIR}/k8s/${NAMESPACE}"
 
 function log() {
-    echo $@ 1>&2
+    echo "$@" >&2
 }
 
 if [ -z "$HEADWAY_DATA_TAG" ]; then
@@ -108,7 +113,7 @@ function volume_version() {
 
 function render_template() {
     local template_file=$1
-    local output="${2:-$(basename $template_file | sed 's/\.tpl$//')}"
+    local output="${2:-$(basename "$template_file" | sed 's/\.tpl$//')}"
 
     envsubst < "$template_file" > "${STAGING_DIR}/${output}"
 }
@@ -199,6 +204,7 @@ if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" = 1 ]; then
     generate_transit
 fi
 
+
 # NOTE: we *do* want to enable the travelmux *service*, regardless
 # of if transit routing is enabled - otherwise our nginx frontend will fail
 # to start up due to the inability to resolve DNS. A better solution might
@@ -210,10 +216,9 @@ render_template "k8s/_template/travelmux-service.yaml.tpl"
 shopt -s extglob
 for file in k8s/_template/!(opentripplanner*|travelmux*).tpl
 do
-    render_template $file
+    render_template "$file"
 done
 
 mkdir -p "$OUTPUT_DIR"
 rm -f "${OUTPUT_DIR}"/*
 cp "${STAGING_DIR}"/* "${OUTPUT_DIR}/"
-

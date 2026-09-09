@@ -39,20 +39,25 @@ function deploy_lib_parse_args() {
 
     cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 
+    local config_name="$NAMESPACE"
     if [ "$dev" = true ]; then
-        CONFIG_DIR="k8s/configs/${NAMESPACE}-dev"
-    else
-        CONFIG_DIR="k8s/configs/${NAMESPACE}"
+        config_name="${NAMESPACE}-dev"
     fi
 
-    if [ ! -d "$CONFIG_DIR" ]; then
-        echo "no rendered configs at ${CONFIG_DIR} - run bin/k8s/generate first" >&2
+    # Manifests are rendered into the build dir they came from, so finding a
+    # config means looking for it under every build.
+    local matches=(builds/*/k8s/"${config_name}")
+    if [ ! -d "${matches[0]}" ]; then
+        echo "no rendered configs named ${config_name} in builds/*/k8s - run bin/k8s/generate first" >&2
         exit 1
     fi
+    if [ "${#matches[@]}" -gt 1 ]; then
+        echo "${config_name} is rendered under more than one build: ${matches[*]}" >&2
+        exit 1
+    fi
+    CONFIG_DIR="${matches[0]}"
 }
 
-# update-fetch-urls dirties the tree and a trap puts it back, which can't tell
-# your edits from its own - so refuse to start from a dirty tree.
 function deploy_lib_require_clean_tree() {
     local modified_files
     modified_files="$(git diff --name-only)"
