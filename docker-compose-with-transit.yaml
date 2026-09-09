@@ -41,7 +41,14 @@ services:
   opentripplanner:
     image: ghcr.io/headwaymaps/opentripplanner:latest
     restart: always
-    env_file: builds/${HEADWAY_AREA:?}/.env
+    # The GTFS API keys this zone's realtime updaters refer to. HEADWAY_TRANSIT_ZONE
+    # is exported by bin/_compose-file.sh, which picks the same zone the graph
+    # above came from. The file is gitignored and absent on a fresh checkout, and
+    # a zone with no authenticated feeds needs none, so it's optional.
+    env_file:
+      - builds/${HEADWAY_AREA:?}/.env
+      - path: builds/${HEADWAY_AREA:?}/transit/${HEADWAY_TRANSIT_ZONE:-none}/.env
+        required: false
     volumes:
       - "opentripplanner_data:/var/opentripplanner/:ro"
     depends_on:

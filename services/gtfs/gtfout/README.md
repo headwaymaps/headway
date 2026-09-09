@@ -33,7 +33,7 @@ transit-zoner reads them from.
 | Binary | Purpose |
 |---|---|
 | `build-gtfs-index` | Measure feeds into the GeoPackage index. |
-| `verify-gtfs-credentials` | Check configured credentials against Atlas endpoints. Usually run as `bin/transit-credentials --verify <build-dir>`, which scopes it to one build's feeds. |
+| `transit-credentials` | Write per-zone credential files; `--verify` checks them against Atlas endpoints without writing files. Run through `bin/transit-credentials <build-dir>`. |
 | `download-feeds` | Fetch and repack the feeds named by a zone. |
 | `gtfs-bbox` | Compute the bounds of unpacked GTFS directories. |
 | `assume-bikes-allowed` | Add bike permissions to feeds that omit them. |

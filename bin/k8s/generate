@@ -20,7 +20,7 @@ Use containers and map-data version tags as specified in bin/_headway_version.sh
 Use containers from a tag other than what's in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev $0 builds/planet planet-dev
 
-Use containers and map-data version tags other than whats specified in bin/_headway_version.sh
+Use containers and map-data version tags other than what's specified in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 builds/Seattle seattle-dev
 EOF
 }
@@ -58,12 +58,6 @@ if [ ! -f "$MANIFEST" ]; then
     log 'run `bin/artifacts --pin` on the build machine'
     exit 1
 fi
-
-# The pelias config is built on the build machine, but generate also runs on
-# machines that don't have data/ - so the last one seen is kept alongside the
-# pinned artifact manifest and used as the fallback. It lives here rather than
-# in OUTPUT_DIR because `kubectl apply -f <dir>` would try to apply a stray
-# .json as a manifest.
 PINNED_PELIAS_CONFIG="${CONFIG_DIR}/pelias.json"
 PELIAS_CONFIG_FILE="data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
 if [ -f "$PELIAS_CONFIG_FILE" ]; then
@@ -76,10 +70,6 @@ else
     log "Missing pelias config file: ${PELIAS_CONFIG_FILE} and no ${PINNED_PELIAS_CONFIG} to fall back on"
     exit 1
 fi
-
-# A JSON blob inlined as an env value is a block scalar opened by `value: |`,
-# so its body sits 16 spaces in - two levels deeper than the ConfigMap key it
-# replaced.
 indent() {
     local pad
     pad=$(printf '%*s' "$1" '')
@@ -87,16 +77,8 @@ indent() {
 }
 export PELIAS_CONFIG_JSON_ENV="|
 $(indent 16 <<< "$PELIAS_CONFIG_JSON")"
-
-# Render to a staging dir and swap once everything succeeds
 STAGING_DIR=$(mktemp -d)
 trap 'rm -rf "$STAGING_DIR"' EXIT
-
-# The version of the data a volume holds, as `<date>-<hash>`, derived from the
-# names of the artifacts unpacked into it: the newest date, and a hash over the
-# exact set (the tileserver's volume holds three). A claim named with it changes
-# whenever its contents do - otherwise the init containers, which short-circuit
-# on a volume that already has data, would serve the old build forever.
 function volume_version() {
     local names date hash
     names=$(printf '%s\n' "$@" | sed 's#.*/##' | sort)
@@ -122,10 +104,6 @@ function render_template() {
 set -o nounset
 
 AREA_PREFIX="${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
-
-# terrain and landcover are generic across areas, so they sit above the area directory
-# Assigned on their own line so `set -e` sees the substitution's exit status:
-# in `export VAR=$(...)` the status is export's, always 0.
 export TERRAIN_ARTIFACT_URL LANDCOVER_ARTIFACT_URL AREAMAP_ARTIFACT_URL
 export VALHALLA_ARTIFACT_URL PLACEHOLDER_ARTIFACT_URL ELASTICSEARCH_ARTIFACT_URL
 TERRAIN_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${HEADWAY_DATA_TAG}/$(bin/artifacts terrain "$CONFIG_DIR")"
@@ -172,7 +150,6 @@ function generate_transit() {
   export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
-
 function check_zone_tokens() {
     local zone_file="$1"
 
@@ -195,7 +172,6 @@ function generate_otp() {
 
     export OTP_VOLUME_VERSION
     OTP_VOLUME_VERSION=$(volume_version "$graph_path")
-
     local zone_file router_config
     zone_file=$(zone_file_for "$CONFIG_DIR" "$TRANSIT_ZONE")
     if [ -z "$zone_file" ]; then
@@ -218,17 +194,12 @@ if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" = 1 ]; then
     generate_transit
 fi
 
-
-# NOTE: we *do* want to enable the travelmux *service*, regardless
-# of if transit routing is enabled - otherwise our nginx frontend will fail
-# to start up due to the inability to resolve DNS. A better solution might
-# be to remove the travelmux section from nginx altogether when transit
-# routing is disabled, but that's beyond the capabilities of the simple
-# envsubst we're using. For now then, we copy in the service defintion.
+render_template "k8s/_template/transit-zoner-deployment.yaml.tpl"
+render_template "k8s/_template/transit-zoner-service.yaml.tpl"
 render_template "k8s/_template/travelmux-service.yaml.tpl"
 
 shopt -s extglob
-for file in k8s/_template/!(opentripplanner*|travelmux*).tpl
+for file in k8s/_template/!(opentripplanner*|travelmux*|transit-zoner*).tpl
 do
     render_template "$file"
 done
