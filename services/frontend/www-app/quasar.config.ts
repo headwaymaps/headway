@@ -125,6 +125,15 @@ export default defineConfig((/* ctx */) => {
           // target: 'http://0.0.0.0:8000',
           // rewrite: (path) => path.replace(/^\/travelmux/, ''),
         },
+        '/transit-zoner': {
+          changeOrigin: true,
+          target: HEADWAY_HOST,
+          // target: 'http://localhost:8080',
+          // Talking to `services/gtfs/transit-zoner/start-dev-server` directly
+          // needs the prefix stripped, since it serves /api at its root:
+          // target: 'http://127.0.0.1:8420',
+          // rewrite: (path) => path.replace(/^\/transit-zoner/, ''),
+        },
       },
     },
 

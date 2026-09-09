@@ -53,6 +53,10 @@ http {
       proxy_pass      ${HEADWAY_TRAVELMUX_URL}/;
     }
 
+    location ^~ /transit-zoner/api/ {
+      proxy_pass ${HEADWAY_TRANSIT_ZONER_URL}/api/;
+    }
+
     location ^~ /valhalla/ {
       proxy_pass      ${HEADWAY_VALHALLA_URL}/;
     }

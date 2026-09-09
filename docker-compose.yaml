@@ -94,6 +94,7 @@ services:
       HEADWAY_PELIAS_URL: http://pelias-api:4000
       HEADWAY_TILESERVER_URL: http://tileserver:8000
       HEADWAY_TRAVELMUX_URL: http://travelmux:8000
+      HEADWAY_TRANSIT_ZONER_URL: http://127.0.0.1:8420
       HEADWAY_VALHALLA_URL: http://valhalla:8002
     ports:
       - "8080:8080"

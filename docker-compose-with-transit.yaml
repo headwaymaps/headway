@@ -34,21 +34,17 @@ services:
       OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_OTP_GRAPH_FILE}
       # Not required here so `compose down` works on a partial build; the OTP
       # init container refuses to start without it.
-      OTP_ROUTER_CONFIG_JSON: ${OTP_ROUTER_CONFIG_JSON:-}
+      OTP_ZONE_JSON: ${OTP_ZONE_JSON:-}
+      # The zone's slice of gtfs-secrets.json, as bin/transit-credentials
+      # writes it. Empty when no feed in the zone needs a credential.
+      OTP_GTFS_SECRETS_JSON: ${OTP_GTFS_SECRETS_JSON:-}
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "opentripplanner_data:/data/:rw"
   opentripplanner:
     image: ghcr.io/headwaymaps/opentripplanner:latest
     restart: always
-    # The GTFS API keys this zone's realtime updaters refer to. HEADWAY_TRANSIT_ZONE
-    # is exported by bin/_compose-file.sh, which picks the same zone the graph
-    # above came from. The file is gitignored and absent on a fresh checkout, and
-    # a zone with no authenticated feeds needs none, so it's optional.
-    env_file:
-      - builds/${HEADWAY_AREA:?}/.env
-      - path: builds/${HEADWAY_AREA:?}/transit/${HEADWAY_TRANSIT_ZONE:-none}/.env
-        required: false
+    env_file: builds/${HEADWAY_AREA:?}/.env
     volumes:
       - "opentripplanner_data:/var/opentripplanner/:ro"
     depends_on:
@@ -62,6 +58,13 @@ services:
     #   start_period: 60s
     # ports:
     #   - "9002:8000"
+  transit-zoner:
+    image: ghcr.io/headwaymaps/transit-zoner:latest
+    restart: always
+    expose:
+      - "8420"
+    networks:
+      - transit_zoner_frontend
   travelmux-init:
     image: ghcr.io/headwaymaps/travelmux-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
@@ -132,6 +135,7 @@ services:
       HEADWAY_PELIAS_URL: http://pelias-api:4000
       HEADWAY_TILESERVER_URL: http://tileserver:8000
       HEADWAY_TRAVELMUX_URL: http://travelmux:8000
+      HEADWAY_TRANSIT_ZONER_URL: http://transit-zoner:8420
       HEADWAY_VALHALLA_URL: http://valhalla:8002
     ports:
       - "8080:8080"
@@ -139,6 +143,7 @@ services:
       - pelias_frontend
       - tileserver_frontend
       - travel_frontend
+      - transit_zoner_frontend
       - valhalla_backend
     volumes:
       - "frontend_data:/data/:ro"
@@ -242,6 +247,7 @@ networks:
   pelias_frontend:
   pelias_backend:
   travel_frontend:
+  transit_zoner_frontend:
   valhalla_backend:
   otp_backend:
 volumes:
