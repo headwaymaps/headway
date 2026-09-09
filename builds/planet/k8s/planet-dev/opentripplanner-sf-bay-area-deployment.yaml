@@ -27,16 +27,22 @@ spec:
                 {
                   "updaters": [
                     {
-                      "feedId": "headway-53",
-                      "type": "stop-time-updater",
-                      "frequency": "60s",
-                      "url": "https://api.bart.gov/gtfsrt/tripupdate.aspx"
-                    },
-                    {
-                      "feedId": "headway-53",
+                      "feedId": "headway-f-sf~bay~area~rg",
                       "type": "real-time-alerts",
                       "frequency": "300s",
-                      "url": "https://api.bart.gov/gtfsrt/alerts.aspx"
+                      "url": "https://api.511.org/Transit/servicealerts?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-sf~bay~area~rg",
+                      "type": "stop-time-updater",
+                      "frequency": "60s",
+                      "url": "https://api.511.org/Transit/TripUpdates?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
+                    },
+                    {
+                      "feedId": "headway-f-sf~bay~area~rg",
+                      "type": "vehicle-positions",
+                      "frequency": "60s",
+                      "url": "https://api.511.org/Transit/VehiclePositions?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
                     }
                   ]
                 }
@@ -48,9 +54,12 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
+          envFrom:
+            - secretRef:
+                name: otp-sf-bay-area-gtfs-api-keys
+                optional: false
           env:
             - name: "JAVA_OPTS"
-              # keep this in sync to be just under the resources.limits.memory
               value: "-Xmx5G"
           imagePullPolicy: Always
           ports:
@@ -60,7 +69,6 @@ spec:
               mountPath: /var/opentripplanner
           resources:
             limits:
-              # keep this in sync to be just above env.JAVA_OPTS.-Xmx
               memory: 5.25Gi
             requests:
               memory: 500Mi

@@ -32,6 +32,9 @@ services:
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
       OTP_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_OTP_GRAPH_FILE}
+      # Not required here so `compose down` works on a partial build; the OTP
+      # init container refuses to start without it.
+      OTP_ROUTER_CONFIG_JSON: ${OTP_ROUTER_CONFIG_JSON:-}
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "opentripplanner_data:/data/:rw"
