@@ -8,6 +8,35 @@ on:
   merge_group:
 
 jobs:
+  # Add any new jobs to "needs" to include it in GH's CI requirements
+  all_checks:
+    name: All checks
+    if: always()
+    needs:
+      - build_data
+      - build_images
+      - www_checks
+      - rust_checks
+      - integration_tests
+      - browser_tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report each job's result
+        run: |
+          echo "build_data:         ${{ needs.build_data.result }}"
+          echo "build_images:       ${{ needs.build_images.result }}"
+          echo "www_checks:         ${{ needs.www_checks.result }}"
+          echo "rust_checks:        ${{ needs.rust_checks.result }}"
+          echo "integration_tests:  ${{ needs.integration_tests.result }}"
+          echo "browser_tests:      ${{ needs.browser_tests.result }}"
+      # Anything that isn't a success fails this job, skipped included: a check
+      # that didn't run is not a check that passed.
+      - name: Fail unless every job succeeded
+        if: >-
+          ${{ contains(needs.*.result, 'failure')
+           || contains(needs.*.result, 'cancelled')
+           || contains(needs.*.result, 'skipped') }}
+        run: exit 1
   build_data:
     name: Build Bogota data artifacts
     runs-on: ubuntu-latest
