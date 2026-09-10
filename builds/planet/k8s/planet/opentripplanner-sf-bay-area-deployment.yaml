@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: opentripplanner-sf-bay-area
+      annotations:
+        # Roll the pod if the zone file changes
+        headway/zone-checksum: "6d34dfb2d72b"
     spec:
       initContainers:
         - name: init
@@ -19,33 +22,17 @@ spec:
           volumeMounts:
             - name: opentripplanner-volume
               mountPath: /data
+            # The init container renders router-config.json from these two, so
+            # the live tokens stay out of this manifest.
+            - name: zone
+              mountPath: /run/config
+              readOnly: true
+            - name: gtfs-secrets
+              mountPath: /run/secrets
+              readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-03-141eb55d.obj.zst"
-            - name: OTP_ROUTER_CONFIG_JSON
-              value: |
-                {
-                  "updaters": [
-                    {
-                      "feedId": "headway-f-sf~bay~area~rg",
-                      "type": "real-time-alerts",
-                      "frequency": "300s",
-                      "url": "https://api.511.org/Transit/servicealerts?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
-                    },
-                    {
-                      "feedId": "headway-f-sf~bay~area~rg",
-                      "type": "stop-time-updater",
-                      "frequency": "60s",
-                      "url": "https://api.511.org/Transit/TripUpdates?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
-                    },
-                    {
-                      "feedId": "headway-f-sf~bay~area~rg",
-                      "type": "vehicle-positions",
-                      "frequency": "60s",
-                      "url": "https://api.511.org/Transit/VehiclePositions?agency=RG&api_key=${HEADWAY_GTFS_API_KEY_F_SF_BAY_AREA_RG_RT}"
-                    }
-                  ]
-                }
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-10-37f6c75f.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -54,10 +41,6 @@ spec:
       containers:
         - name: main
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-latest
-          envFrom:
-            - secretRef:
-                name: otp-sf-bay-area-gtfs-api-keys
-                optional: false
           env:
             - name: "JAVA_OPTS"
               value: "-Xmx5G"
@@ -87,6 +70,13 @@ spec:
             periodSeconds: 15
             failureThreshold: 20
       volumes:
+        - name: zone
+          configMap:
+            name: otp-sf-bay-area-zone
+        - name: gtfs-secrets
+          secret:
+            secretName: otp-sf-bay-area-gtfs-secrets
+            optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-12-0-2026-09-03-ff4145f9
+            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-12-0-2026-09-10-b6dbda6b
