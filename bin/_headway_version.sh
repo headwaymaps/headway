@@ -21,9 +21,17 @@
 # A bump in the DATA tag pretty much always implies a bump in the CONTAINER
 # tag, but not necessarily vice-versa.
 
-export HEADWAY_DATA_TAG=0.12.0
+export HEADWAY_DATA_TAG=0.13.0
 
 # # Schema change Log
+#
+# ## DATA v0.13.0, CONTAINER v0.14.0
+#
+# BREAKING DATA/CONTAINER: Updated OTP to 2.10.0. OTP refuses a graph.obj built
+# by a different version, so every zone's graph has to be rebuilt. The GTFS
+# GraphQL API travelmux uses is unchanged apart from deprecations, and the
+# router-config updaters we generate (real-time-alerts, stop-time-updater,
+# vehicle-positions) keep the same schema.
 #
 # ## DATA v0.12.0, CONTAINER v0.13.0
 #

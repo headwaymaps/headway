@@ -136,6 +136,13 @@ type Agency implements Node {
 "Alert of a current or upcoming disruption in public transportation"
 type Alert implements Node {
   """
+  The periods of time when this alert is active, sorted chronologically. There is always at
+  least one period. Each period has an inclusive start and an exclusive end. A period with an
+  unbounded start has always been active and a period with an unbounded end is active
+  indefinitely.
+  """
+  activityPeriods: [OffsetDateTimeRange!]!
+  """
   Agency affected by the disruption. Note that this value is present only if the
   disruption has an effect on all operations of the agency (e.g. in case of a strike).
   """
@@ -170,9 +177,9 @@ type Alert implements Node {
   "Url with more information in all different available languages"
   alertUrlTranslations: [TranslatedString!]! @deprecated(reason : "Use `alertUrl` instead. `accept-language` header can be used for translations or the `language` parameter on the `alertUrl` field.")
   "Time when this alert is not in effect anymore. Format: Unix timestamp in seconds"
-  effectiveEndDate: Long
+  effectiveEndDate: Long @deprecated(reason : "Use `activityPeriods` instead.")
   "Time when this alert comes into effect. Format: Unix timestamp in seconds"
-  effectiveStartDate: Long
+  effectiveStartDate: Long @deprecated(reason : "Use `activityPeriods` instead.")
   "Entities affected by the disruption."
   entities: [AlertEntity]
   "The feed in which this alert was published"
@@ -187,6 +194,47 @@ type Alert implements Node {
   stop: Stop @deprecated(reason : "Alert can have multiple affected entities now instead of there being duplicate alerts\nfor different entities. This will return only one of the affected stops.\nUse entities instead.")
   "Trip affected by the disruption"
   trip: Trip @deprecated(reason : "Alert can have multiple affected entities now instead of there being duplicate alerts\nfor different entities. This will return only one of the affected trips.\nUse entities instead.")
+}
+
+"""
+A connection to a list of alerts that follows
+[GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
+"""
+type AlertConnection {
+  """
+  Edges which contain the alerts. Part of the
+  [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
+  """
+  edges: [AlertEdge]
+  """
+  Contains cursors to fetch more pages of alerts.
+  Part of the [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
+  """
+  pageInfo: PageInfo!
+  """
+  The total number of alerts in this connection at the time of query execution (including the current and previous
+  pages).
+  Note, this number might not stay the same throughout the paging as alerts might be added or
+  removed.
+  """
+  totalCount: Int!
+}
+
+"""
+An edge for the alert connection. Part of the
+[GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
+"""
+type AlertEdge {
+  """
+  The cursor of the edge. Part of the
+  [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
+  """
+  cursor: String!
+  """
+  Alert as a node. Part of the
+  [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
+  """
+  node: Alert
 }
 
 "Arrival and departure time (not relative to midnight)."
@@ -344,6 +392,33 @@ type CallRealTime {
 type CallSchedule {
   "Scheduled time for a trip on a service date for a stop location."
   time: CallScheduledTime
+}
+
+"Cancellation statistics grouped by entities."
+type CanceledTripsSummary {
+  "How many canceled trips there are for the routes which have any cancellations."
+  routes: [CanceledTripsSummaryRoute!]!
+}
+
+"Contains pattern and the information for how many canceled trips there are for the pattern."
+type CanceledTripsSummaryPattern {
+  "How many canceled trips there are for the pattern."
+  cancellationCount: Int!
+  "The pattern for which the cancellation statistics are provided for."
+  pattern: Pattern!
+}
+
+"""
+Contains route, how many canceled trips there are for the route and cancellation statistics grouped
+by patterns.
+"""
+type CanceledTripsSummaryRoute {
+  "How many canceled trips there are for the route."
+  cancellationCount: Int!
+  "How many canceled trips there are for the patterns which have any cancellations."
+  patterns: [CanceledTripsSummaryPattern!]!
+  "The route for which the cancellation statistics are provided for."
+  route: Route!
 }
 
 "Car park represents a location where cars can be parked."
@@ -635,6 +710,42 @@ type FareProductUse {
           id: "single-ticket"  // product id
           name: "Single Ticket"
   ```
+    
+  ### Example: Combination of single tickets and day passes
+    
+  If you have two legs and it's possible to either buy singles or use a day pass, you will
+  have a combination of identical and different `FareProductUse.id`s.
+    
+  **Illustration**
+  ```yaml
+  itinerary:
+    leg1:
+      fareProducts:
+        # fare product use for day pass
+        id: "AAA" // id of a FareProductUse instance, not product id
+          product:
+            id: "single-ticket" // product id
+            name: "Single Ticket"
+    
+        # fare product use for single ticket
+        id: "CCC" // identical to leg2. the passenger needs to buy ONE day pass, not two.
+          product:
+            id: "day-pass"  // product id
+            name: "Day Pass"
+    leg2:
+      fareProducts:
+        id: "BBB" // different to leg1. the passenger needs to buy two single tickets.
+          product:
+            id: "single-ticket"  // product id
+            name: "Single Ticket"
+    
+        id: "CCC" // identical to leg1. the passenger needs to buy ONE day pass, not two.
+          product:
+            id: "day-pass"  // product id
+            name: "Day Pass"
+  ```
+  **It is the responsibility of the API consumers to display the day pass as a product for the
+  entire itinerary rather than two day passes!**
   """
   id: String!
   "The purchasable fare product"
@@ -654,6 +765,8 @@ type Feed {
   feedId: String!
   "The publisher of the input transit data."
   publisher: FeedPublisher
+  "The version of the dataset."
+  version: String
 }
 
 "Feed publisher information"
@@ -751,7 +864,23 @@ type Leg {
   accessibilityScore: Float
   "For transit legs, the transit agency that operates the service used for this leg. For non-transit legs, `null`."
   agency: Agency
-  "Applicable alerts for this leg."
+  """
+  Applicable alerts for this leg. Alerts are added to the leg according to conditions on the following entities:
+    
+  - Boarding stop: alerts scoped to that stop, or to that stop combined with the leg's route or trip.
+  - Alighting stop: same stop/route/trip matching as above.
+  - Intermediate stops: stops the leg passes through (visits) without boarding or alighting.
+    Only alerts flagged as relevant to passing through (possible in SIRI, but not GTFS-RT) are
+    included, and each is checked against that specific stop's scheduled time rather than the leg's
+    overall time span.
+    If you wish to include _all_ alerts of the intermediate stops, you can list them, for example in
+    the `stopCalls` field, and then list their alerts.
+  - Trip: alerts scoped to the entire trip (optionally limited to a specific service date).
+  - Route: alerts scoped to the whole route, independent of stop or direction.
+  - Agency: alerts scoped to the agency, applying across all of its routes and trips.
+  - Parent stations: for a stop that belongs to a station, alerts on the parent station are included
+    as well, if it is a boarding or alighting station.
+  """
   alerts: [Alert]
   """
   For transit leg, the offset from the scheduled arrival time of the alighting
@@ -876,9 +1005,9 @@ type Leg {
     originModesWithParentStation: [TransitMode!]
   ): [Leg!]
   "Whether there is real-time data about this Leg"
-  realTime: Boolean
+  realTime: Boolean @deprecated(reason : "Use `realTimeTripState.updated` on `TripOnServiceDate` instead.")
   "State of real-time data"
-  realtimeState: RealtimeState
+  realtimeState: RealtimeState @deprecated(reason : "Use `realTimeTripState` on `TripOnServiceDate` instead.")
   "Whether this leg is traversed with a rented vehicle."
   rentedBike: Boolean
   "Estimate of a hailed ride like Uber."
@@ -905,6 +1034,8 @@ type Leg {
   transitLeg: Boolean
   "For transit legs, the trip that is used for traversing the leg. For non-transit legs, `null`."
   trip: Trip
+  "For transit legs, the trip on service date. For non-transit legs, `null`."
+  tripOnServiceDate: TripOnServiceDate
   "Whether this leg is walking with a bike."
   walkingBike: Boolean
 }
@@ -985,6 +1116,31 @@ type Money {
   currency: Currency!
 }
 
+"""
+A textual message about a transit entity that is already known at planning time.
+
+It is not intended to convey real-time or emergency updates of the transit system but information that
+is known well ahead of time.
+"""
+type Notice {
+  "Textual representation of the message"
+  text: String
+}
+
+"""
+A range of time which can be unbounded in either direction.
+
+The start of the range is inclusive and the end is exclusive.
+A `null` start means that the range extends indefinitely into the past and a `null` end means
+that it extends indefinitely into the future.
+"""
+type OffsetDateTimeRange {
+  "The exclusive end of the range or `null` if the range is unbounded in the future."
+  end: OffsetDateTime
+  "The inclusive start of the range or `null` if the range is unbounded in the past."
+  start: OffsetDateTime
+}
+
 type OpeningHours {
   """
   Opening hours for the selected dates using the local time of the parking lot.
@@ -1033,7 +1189,36 @@ type Pattern implements Node {
     """
     types: [PatternAlertType]
   ): [Alert]
-  "ID of the pattern"
+  """
+  Get canceled trips for this pattern. Planned cancellations are not currently supported, so
+  only real-time canceled trips are returned.
+    
+  Avoid using this when fetching all patterns at once.
+  """
+  canceledTrips(
+    """
+    Only return canceled trips which are scheduled to be running during one of these time ranges.
+    A trip is considered to be running from its scheduled departure from the first stop until its
+    scheduled arrival at the last stop.
+        
+    An empty list or a list containing `null` is forbidden. If this argument is not provided or its
+    value is `null`, no filtering is applied.
+        
+    If both `runningTimeRanges` and `serviceDateRanges` are defined, a trip has to match both of
+    them to be returned.
+    """
+    runningTimeRanges: [OffsetDateTimeRangeInput!],
+    """
+    Only return canceled trips whose service date falls within one of these ranges.
+    An empty list or a list containing `null` is forbidden.  If this argument is not provided or its
+    value is `null`, no filtering is applied.
+    """
+    serviceDateRanges: [LocalDateRangeInput!]
+  ): [TripOnServiceDate!]!
+  """
+  ID of the pattern. This is not always a stable ID that originates from the transit data. This can
+  be generated by the system and it's not guaranteed to stay stable over time.
+  """
   code: String!
   """
   Direction of the pattern. Possible values: 0, 1 or -1.
@@ -1062,7 +1247,11 @@ type Pattern implements Node {
   same, even if their ids have changed.
   """
   semanticHash: String
-  "List of stops served by this pattern"
+  """
+  List of stops in order in which they are visited by this pattern.
+    
+  If a stop is visited more than once, it will appear several times.
+  """
   stops: [Stop!]
   "Trips which run on this pattern"
   trips: [Trip!]
@@ -1070,7 +1259,12 @@ type Pattern implements Node {
   tripsForDate(
     "Return trips of the pattern active on this date. Format: YYYYMMDD"
     serviceDate: String
-  ): [Trip!]
+  ): [Trip!] @deprecated(reason : "Use `tripsOnServiceDate`")
+  """
+  Instances of `TripOnServiceDates` which run on the specified date. If no trips run on this date
+  then this returns an empty list.
+  """
+  tripsOnServiceDate(serviceDate: LocalDate!): [TripOnServiceDate!]!
   "Real-time updated position of vehicles that are serving this pattern."
   vehiclePositions: [VehiclePosition!]
 }
@@ -1272,7 +1466,33 @@ type QueryType {
     severityLevel: [AlertSeverityLevelType!],
     "Only return alerts affecting these stops"
     stop: [String!]
-  ): [Alert] @timingData
+  ): [Alert] @deprecated(reason : "Use alertsConnection or alerts fields within specific types instead.") @timingData
+  "Get all active alerts"
+  alertsConnection(
+    """
+    This parameter is part of the [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm)
+    and should be used together with the `first` parameter.
+    """
+    after: String,
+    """
+    This parameter is part of the [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm)
+    and should be used together with the `last` parameter.
+    """
+    before: String,
+    "Can be used to filter the results. When paging, the filter should not be changed between pages."
+    filters: [AlertsFilterInput!],
+    """
+    Limits how many alerts are returned. This parameter is part of the
+    [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm) and can be used together with
+    the `after` parameter.
+    """
+    first: Int,
+    """
+    This parameter is part of the [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm)
+    and should be used together with the `before` parameter.
+    """
+    last: Int
+  ): AlertConnection @timingData
   "Get a single bike park based on its ID, i.e. value of field `bikeParkId`"
   bikePark(id: String!): BikePark @deprecated(reason : "bikePark is deprecated. Use vehicleParking instead.") @timingData
   "Get all bike parks"
@@ -1308,8 +1528,14 @@ type QueryType {
     """
     Can be used to filter the results. When paging, the filter should not be changed between pages.
         
-    An empty list of filters or no value means that all trips should be included. Only one filter
-    is allowed for now. Once new filtering criteria is introduced, this limitation will be removed.
+    An empty list of filters or no value means that all trips should be included. Multiple filters
+    are allowed.
+        
+    Filter order does not matter. Each filter entry is evaluated independently and the final result
+    is the union (OR) of all matching filter entries.
+        
+    Inside one filter entry, selectors in `include` are combined with OR, selectors in `exclude`
+    are combined with OR, and the final match is `include AND NOT(exclude)`.
     """
     filters: [CanceledTripsFilterInput!],
     """
@@ -1324,6 +1550,18 @@ type QueryType {
     """
     last: Int
   ): TripOnServiceDateConnection @timingData
+  """
+  Summary of canceled trips. Can be used as a preliminary query before using other
+  queries to fetch the details of the canceled trips.
+  """
+  canceledTripsSummary(
+    """
+    Can be used to filter the results.
+        
+    An empty list of filters or no value means that all cancellations should be included.
+    """
+    filters: [CanceledTripsSummaryFilterInput!]
+  ): CanceledTripsSummary @timingData
   "Get canceled TripTimes."
   cancelledTripTimes(
     "Feed feedIds (e.g. [\"HSL\"])."
@@ -1451,6 +1689,16 @@ type QueryType {
   pattern(id: String!): Pattern @timingData
   "Get all patterns"
   patterns: [Pattern] @timingData
+  """
+  Get the patterns for the given pattern codes (the value of a pattern's `code` field).
+    
+  **Note**: Pattern codes can change quite often, for example whenever the underlying transit
+  data is updated. Therefore they should not be persisted for a long time.
+  """
+  patternsByIds(
+    "Return the patterns with these codes, i.e. values of the field `code`."
+    ids: [String!]!
+  ): [Pattern] @timingData
   "Plans an itinerary from point A to point B based on the given arguments"
   plan(
     "Invariant: `boardSlack + alightSlack <= transferSlack`. Default value: 0"
@@ -1750,7 +1998,7 @@ type QueryType {
     If the value is set to be 0, safety is ignored. Default is 1.0.
     """
     walkSafetyFactor: Float,
-    "Max walk speed along streets, in meters per second. Default value: 1.33"
+    "Max walk speed along streets, in meters per second. Default value: 1.35"
     walkSpeed: Float,
     "Whether the itinerary must be wheelchair accessible. Default value: false"
     wheelchair: Boolean
@@ -1993,6 +2241,23 @@ type RealTimeEstimate {
   time: OffsetDateTime!
 }
 
+"The real-time state of a trip"
+type RealTimeTripState {
+  "Has the trip been added via real-time updates? (extra trip)"
+  added: Boolean!
+  "Has the trip been canceled?"
+  canceled: Boolean!
+  "Have any stop arrival or departure times been modified from the scheduled times?"
+  timesModified: Boolean!
+  """
+  Has the stop sequence changed from the scheduled pattern? True if stops were added, removed,
+  reordered, or reassigned to a different stop location (`assigned_stop_id`).
+  """
+  tripPatternModified: Boolean!
+  "Have there been any real-time updates on this trip?"
+  updated: Boolean!
+}
+
 "Rental vehicle represents a vehicle that belongs to a rental network."
 type RentalVehicle implements Node & PlaceInterface {
   "If true, vehicle is currently available for renting."
@@ -2156,6 +2421,8 @@ type Route implements Node {
   ): String
   "Transport mode of this route, e.g. `BUS`"
   mode: TransitMode
+  "Notices of this trip which are known ahead of time."
+  notices: [Notice!]! @deprecated(reason : "Experimental API that can be changed without notice.")
   "List of patterns which operate on this route"
   patterns(
     """
@@ -2265,6 +2532,39 @@ type Stop implements Node & PlaceInterface {
     """
     types: [StopAlertType]
   ): [Alert]
+  """
+  Canceled stop calls (arrivals/departures) at this stop. A call is included if either the trip it
+  belongs to has been canceled, or the visit at this stop has been canceled (skipped).
+    
+  **Note**: A service date is a technical term useful for transit planning purposes and might not
+  correspond to how a passenger thinks of a calendar date. For example, a night bus running on
+  Sunday morning at 1am to 3am, might have the previous Saturday's service date.
+  """
+  canceledCalls(
+    """
+    Selects if only calls where boarding is allowed, only calls where alighting is allowed, or calls
+    where either boarding or alighting is possible (according to the original schedule).
+    """
+    arrivalDeparture: ArrivalDeparture = EITHER,
+    """
+    Only include canceled calls whose trip's service date is within any of these date ranges.
+    If omitted (or `null`), no service date filter is applied and canceled calls across the entire
+    transit service period are returned. Defining a range is recommended.
+    """
+    serviceDateRanges: [LocalDateRangeInput!],
+    """
+    Only include canceled calls where the vehicle is scheduled to visit this stop during one of
+    these time ranges. The visit at a stop lasts from the scheduled arrival at the stop until the
+    scheduled departure from it.
+        
+    An empty list or a list containing `null` is forbidden. If this argument is not provided or its
+    value is `null`, no filtering is applied.
+        
+    If both `timeRanges` and `serviceDateRanges` are defined, a call has to match both of
+    them to be returned.
+    """
+    timeRanges: [OffsetDateTimeRangeInput!]
+  ): [StopCallOnTripOnServiceDate!]!
   "The cluster which this stop is part of"
   cluster: Cluster @deprecated(reason : "Not implemented")
   "Stop code which is visible at the stop"
@@ -2422,12 +2722,22 @@ from a specific stop location.
 This may contain real-time information, if available.
 """
 type StopCall {
+  "Notices of this call which are known ahead of time."
+  notices: [Notice!]! @deprecated(reason : "Experimental API that can be changed without notice.")
   "Real-time estimates for arrival and departure times for this stop location."
   realTime: CallRealTime
   "Scheduled arrival and departure times for this stop location."
   schedule: CallSchedule
   "The stop where this arrival/departure happens."
   stopLocation: CallStopLocation!
+}
+
+"A stop call together with the trip on service date it belongs to."
+type StopCallOnTripOnServiceDate {
+  "A stop call which belongs to the trip on a service date."
+  stopCall: StopCall!
+  "The trip on service date that the stop call belongs to."
+  tripOnServiceDate: TripOnServiceDate!
 }
 
 type StopGeometries {
@@ -2506,7 +2816,12 @@ type Stoptime {
   realtimeArrival: Int
   "Real-time prediction of departure time. Format: seconds since midnight of the departure date"
   realtimeDeparture: Int
-  "State of real-time data"
+  """
+  State of real-time data. Currently used to determine, whether a stop has been canceled.
+  Disclaimer: this is, in most cases the trips realtime state, unless the stop is canceled,
+  then the Trips State will be overwritten to be CANCELED.
+  It is recommended to avoid using this field.
+  """
   realtimeState: RealtimeState
   "Scheduled arrival time. Format: seconds since midnight of the departure date"
   scheduledArrival: Int
@@ -2662,11 +2977,15 @@ type Trip implements Node {
   link in a DatedServiceJourney.
   """
   isReplacement: Boolean!
+  "Notices of the trip that are known ahead of time."
+  notices: [Notice!]! @deprecated(reason : "Experimental API that can be changed without notice.")
   """
   The latest real-time occupancy information for the latest occurance of this
   trip.
   """
   occupancy: TripOccupancy
+  "Return the trip on a specific service date or `null` if the trip does not run on it."
+  onServiceDate(date: LocalDate!): TripOnServiceDate
   "The pattern the trip is running on"
   pattern: Pattern
   """
@@ -2696,7 +3015,7 @@ type Trip implements Node {
   stoptimesForDate(
     "Date for which stoptimes are returned. Format: YYYYMMDD"
     serviceDate: String
-  ): [Stoptime]
+  ): [Stoptime] @deprecated(reason : "Use `onServiceDate` instead.")
   "Coordinates of the route of this trip in Google polyline encoded format"
   tripGeometry: Geometry
   "Headsign of the vehicle when running on this trip"
@@ -2727,6 +3046,8 @@ type TripOnServiceDate {
   end: StopCall!
   "Is this TripOnServiceDate a replacement? For GTFS-sourced data this might be all we know."
   isReplacement: Boolean
+  "Real-time state of the trip on this service date."
+  realTimeTripState: RealTimeTripState
   "Replaced by these TripOnServiceDates."
   replacedByRelation: [ReplacedByRelation!]!
   "Replacement for these TripOnServiceDates."
@@ -3066,7 +3387,7 @@ type step {
   "The cardinal (compass) direction (e.g. north, northeast) taken when engaging this step."
   absoluteDirection: AbsoluteDirection
   "A list of alerts (e.g. construction, detours) applicable to the step."
-  alerts: [Alert]
+  alerts: [Alert] @deprecated(reason : "Not implemented")
   """
   This step is on an open area, such as a plaza or train platform,
   and thus the directions should say something like "cross".
@@ -3222,6 +3543,19 @@ enum AlertSeverityLevelType {
   WARNING
 }
 
+"""
+Enum for limiting the returned calls depending on pickup/drop off status on a stop
+based on the original schedules.
+"""
+enum ArrivalDeparture {
+  "Only include calls where alighting from the vehicle is allowed."
+  ARRIVALS
+  "Only include calls where boarding the vehicle is allowed."
+  DEPARTURES
+  "Include calls where either boarding or alighting is allowed."
+  EITHER
+}
+
 enum BikesAllowed {
   "The vehicle being used on this particular trip can accommodate at least one bicycle."
   ALLOWED
@@ -3247,13 +3581,7 @@ one can use the triangle factors.
 enum CyclingOptimizationType {
   "Emphasize flatness over safety or duration of the route. This option was previously called `FLAT`."
   FLAT_STREETS
-  """
-  Completely ignore the elevation differences and prefer the streets, that are evaluated
-  to be the safest, even more than with the `SAFE_STREETS` option.
-  Safety can also include other concerns such as convenience and general cyclist preferences
-  by taking into account road surface etc. This option was previously called `GREENWAYS`.
-  """
-  SAFEST_STREETS
+  SAFEST_STREETS @deprecated(reason : "Use SAFE_STREETS instead")
   """
   Emphasize cycling safety over flatness or duration of the route. Safety can also include other
   concerns such as convenience and general cyclist preferences by taking into account
@@ -3830,6 +4158,16 @@ enum RelativeDirection {
   UTURN_RIGHT
 }
 
+"How does a trip's replacement feature affect whether a it is considered for use in routing?"
+enum ReplacementRequirement {
+  "Consider all trips ignoring their replacement feature."
+  FEATURE_IGNORED
+  "Only consider trips which don't have the replacement feature."
+  FORBIDDEN
+  "Only consider trips which have the replacement feature."
+  REQUIRED
+}
+
 "Entities that are relevant for routes that can contain alerts"
 enum RouteAlertType {
   "Alerts affecting the route's agency."
@@ -3857,6 +4195,12 @@ enum RoutingErrorCode {
   question.
   """
   LOCATION_NOT_FOUND
+  """
+  No usable itineraries were found for the requested direct mode (e.g. walking, cycling, car, flex)
+  and no transit modes were included in the search. This is returned both when no route exists and
+  when routes were found but didn't pass quality filters.
+  """
+  NO_DIRECT_MODE_CONNECTION
   """
   No stops are reachable from the start or end locations specified.
     
@@ -3905,15 +4249,7 @@ one can use the triangle factors.
 enum ScooterOptimizationType {
   "Emphasize flatness over safety or duration of the route. This option was previously called `FLAT`."
   FLAT_STREETS
-  """
-  Completely ignore the elevation differences and prefer the streets, that are evaluated
-  to be safest for scooters, even more than with the `SAFE_STREETS` option.
-  Safety can also include other concerns such as convenience and general preferences by taking
-  into account road surface etc.  Note, currently the same criteria is used both for cycling and
-  scooter travel to determine how safe streets are for cycling or scooter.
-  This option was previously called `GREENWAYS`.
-  """
-  SAFEST_STREETS
+  SAFEST_STREETS @deprecated(reason : "Use SAFE_STREETS instead")
   """
   Emphasize scooter safety over flatness or duration of the route. Safety can also include other
   concerns such as convenience and general preferences by taking into account road surface etc.
@@ -4136,6 +4472,50 @@ input AccessibilityPreferencesInput {
   wheelchair: WheelchairPreferencesInput
 }
 
+"""
+A collection of selectors for including or excluding alerts from the alerts search.
+An alert matches a filter if it matches at least one of the `include` selectors and none of the
+`exclude` selectors. When several filters are given, an alert matches if it matches any of them.
+"""
+input AlertsFilterInput @oneOf {
+  """
+  A list of selectors for excluding alerts.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  exclude: [AlertsFilterSelectInput!]
+  """
+  A list of selectors for including alerts.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  include: [AlertsFilterSelectInput!]
+}
+
+"""
+A single selector for alerts. The fields of a selector are combined with AND semantics: an alert
+must match all of the given fields. Each field is matched if the alert matches any of its values.
+Fields that are not set are ignored. An empty list is forbidden.
+"""
+input AlertsFilterSelectInput {
+  """
+  Matches alerts which are active during any of these time ranges. An alert matches if any of its
+  active periods overlaps any of the given ranges.
+  """
+  activePeriods: [OffsetDateTimeRangeInput!]
+  "Matches alerts which have any of these causes."
+  causes: [AlertCauseType!]
+  "Matches alerts which have any of these effects."
+  effects: [AlertEffectType!]
+  """
+  Matches alerts which belong to any of these feeds. The values are feed ids, i.e. the part
+  before the colon in an id such as `HSL:1234`.
+  """
+  feeds: [String!]
+  "Matches alerts which have any of these severity levels."
+  severityLevels: [AlertSeverityLevelType!]
+}
+
 "Preferences related to alighting from a transit vehicle."
 input AlightPreferencesInput {
   "What is the required minimum time alighting from a vehicle."
@@ -4249,10 +4629,10 @@ input BoardPreferencesInput {
 }
 
 """
-A collection of selectors for including or excluding trips from canceled trips search. Currently,
-you can only use either include or exclude filter (as filtering is only supported with transit modes).
+A collection of selectors for including or excluding trips from canceled trips search. Excludes
+override includes.
 """
-input CanceledTripsFilterInput @oneOf {
+input CanceledTripsFilterInput {
   """
   A list of selectors for excluding canceled trips.
     
@@ -4274,6 +4654,56 @@ means everything is allowed to be returned and empty lists are not allowed.
 input CanceledTripsFilterSelectInput {
   "Canceled trips from these transit modes should be included/excluded."
   modes: [TransitMode!]
+  """
+  Canceled trips are included/excluded based on if they are scheduled to be running during any of
+  these time ranges. A trip is considered to be running from its scheduled departure from the first
+  stop until its scheduled arrival at the last stop.
+    
+  If both `runningTimeRanges` and `serviceDateRanges` are defined, a trip has to match both of
+  them to be included/excluded.
+  """
+  runningTimeRanges: [OffsetDateTimeRangeInput!]
+  """
+  Canceled trips are included/excluded based on if their service date (but not necessarily their running date)  is within any of these time
+  ranges.
+  """
+  serviceDateRanges: [LocalDateRangeInput!]
+}
+
+"Used to limit which canceled trips are included for the summary."
+input CanceledTripsSummaryFilterInput {
+  """
+  A list of selectors for excluding canceled trips.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  exclude: [CanceledTripsSummaryFilterSelectInput!]
+  """
+  A list of selectors for including canceled trips.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  include: [CanceledTripsSummaryFilterSelectInput!]
+}
+
+"Filter options for including or excluding canceled trips from the canceled trips summary."
+input CanceledTripsSummaryFilterSelectInput {
+  "Canceled trips from these transit modes should be included/excluded."
+  modes: [TransitMode!]
+  """
+  Canceled trips are included/excluded based on if they are scheduled to be running during any of
+  these time ranges. A trip is considered to be running from its scheduled departure from the first
+  stop until its scheduled arrival at the last stop.
+    
+  If both `runningTimeRanges` and `serviceDateRanges` are defined, a trip has to match both of
+  them to be included/excluded.
+  """
+  runningTimeRanges: [OffsetDateTimeRangeInput!]
+  """
+  Canceled trips are included/excluded based on if their service date is within any of these time
+  ranges.
+  """
+  serviceDateRanges: [LocalDateRangeInput!]
 }
 
 "Preferences for car parking facilities used during the routing."
@@ -4505,6 +4935,18 @@ input InputUnpreferred {
   useUnpreferredRoutesPenalty: Int @deprecated(reason : "Use unpreferredCost instead")
 }
 
+"""
+A generalized linear cost function that can be applied to a cost value.
+The coefficient is used to scale the input Cost linearly and the constant is used
+to add a fixed offset. If we assume a cost c, then f(c) = coefficient * c + constant.
+"""
+input LinearCostFunctionInput {
+  "The coefficient that scales the Cost input linearly."
+  coefficient: Float!
+  "The 0th degree constant of the function as a Cost, must be a non-negative integer"
+  constant: Cost!
+}
+
 "Filters an entity by a date range."
 input LocalDateRangeInput {
   """
@@ -4520,6 +4962,29 @@ input LocalDateRangeInput {
   dates that are before `end` are selected.
   """
   start: LocalDate
+}
+
+"""
+Filters an entity by a time range. Both ends of the range are optional which makes it possible
+to define a range which is open ended in either or both directions.
+"""
+input OffsetDateTimeRangeInput {
+  """
+  **Exclusive** end time of the filter. This means that an entity which is exactly at `end` is not
+  selected.
+    
+  If `null` this means that no end filter is applied and all entities that are after or at `start`
+  are selected.
+  """
+  end: OffsetDateTime
+  """
+  **Inclusive** start time of the filter. This means that an entity which is exactly at `start` is
+  selected.
+    
+  If `null` this means that no `start` filter is applied and all entities that are before `end` are
+  selected.
+  """
+  start: OffsetDateTime
 }
 
 """
@@ -4737,6 +5202,19 @@ input PlanTransitModePreferenceInput {
   cost: TransitModePreferenceCostInput
   "Transit mode that could be (but doesn't have to be) used in an itinerary."
   mode: TransitMode!
+  """
+  If present and not null, further limits the transit mode selection.  A transit trip matches
+  a PlanTransitModePreferenceInput if the mandatory TransitMode field mode matches. If replacement
+  is REQUIRED, the trip must also be a replacement. If replacement is FORBIDDEN,
+  the trip must not be a replacement. If replacement is FEATURE_IGNORED or missing, it
+  does not matter if the trip is a replacement or not. Whether a leg is a replacement is recognized
+  both by the NeTEx submode and the GTFS extended type, depending on the data source.
+  Note that a bus replacing a train has mode: BUS, replacement: true, so it matches a query with
+  mode: BUS, replacement: REQUIRED and mode: BUS, replacement: FEATURE_IGNORED, but it does not
+  match mode: TRAIN with any replacement options. So to get both trains and buses replacing them,
+  but no other buses, query [(mode: TRAIN), (mode: BUS, replacement: REQUIRED)].
+  """
+  replacement: ReplacementFilterInput
 }
 
 """
@@ -4763,7 +5241,9 @@ input PlanTransitModesInput {
   """
   Transit modes and reluctances associated with them. Each defined mode can be used in
   an itinerary but doesn't have to be. If direct search is not disabled, there can be an
-  itinerary without any transit legs. By default, all transit modes are usable.
+  itinerary without any transit legs. By default, all transit modes are usable. For a transit trip
+  to match PlanTransitModesInput, it must match one of the PlanTransitModePreferenceInputs given
+  in the field.
   """
   transit: [PlanTransitModePreferenceInput!]
 }
@@ -4804,6 +5284,12 @@ input PlanVisitViaLocationInput {
   It is enough to visit ONE of the locations listed.
   """
   stopLocationIds: [String!]
+}
+
+"Contains details on how to filter trips based on the replacement feature when considering them for routing."
+input ReplacementFilterInput {
+  "One of three choices: must be replacement, cannot be a replacement, can either be or not be a replacement"
+  requirement: ReplacementRequirement
 }
 
 "What criteria should be used when optimizing a scooter route."
@@ -5008,6 +5494,23 @@ input TransitPreferencesInput {
   an AND-condition.
   """
   filters: [TransitFilterInput!]
+  """
+  Relax generalized-cost when comparing itineraries with a different set of
+  transit-group-priorities. The groups are set server side for routes and
+  can not be configured in the API.
+    
+  This relaxes the comparison inside the routing engine for each stop-arrival. If two
+  paths have a different set of transit-group-priorities, then the generalized-cost
+  comparison is relaxed. The final set of paths are filtered through the normal
+  itinerary-filters.
+    
+  A relax-cost is used to increase the limit when comparing one cost to another cost
+  using a linear function applied to the generalized cost.
+  This is used to include more results into the result. A `coefficient=2.0` means a path (itinerary)
+  with twice as high cost as another one, is accepted. A `constant=300` means a "fixed"
+  constant is added to the limit.
+  """
+  relaxTransitGroupPriority: LinearCostFunctionInput
   "Preferences related to cancellations and real-time."
   timetable: TimetablePreferencesInput
   "Preferences related to transfers between transit vehicles (typically between stops)."
