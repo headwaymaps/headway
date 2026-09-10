@@ -42,7 +42,7 @@ Headway currently supports fully automatic builds for the following cities:
 This approach will download all the mapping data you need automatically, but only works for the pre-defined metro areas above.
 
 1. Pick a metro area from the list above, like "Amsterdam" or "Denver". These values are case-sensitive. In all the examples, replace "Amsterdam" with your metro area of choice.
-2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, then review and edit `builds/Amsterdam/.env`. Start without transit: delete the copied `builds/Amsterdam/transit` directory and unset `HEADWAY_ENABLE_TRANSIT_ROUTING`.
+2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, then review and edit `builds/Amsterdam/.env`. Start without transit: delete the copied `builds/Amsterdam/transit` directory.
 3. Execute `bin/build builds/Amsterdam` to build data artifacts
 4. Run `bin/start-services builds/Amsterdam`. This will bring up the Headway stack with a web frontend on port 8080.
   1. (Optional for https and non-default port use only) reverse-proxy traffic to port 8080.

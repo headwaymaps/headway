@@ -46,6 +46,7 @@ export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-latest}"
 
 source bin/_source-env.sh "$CONFIG_DIR"
 source bin/_zone-file.sh
+source bin/_transit-zones.sh
 export HEADWAY_DATA_TAG_SAFE=$(echo "$HEADWAY_DATA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
 export HEADWAY_AREA_TAG_SAFE=$(echo "$HEADWAY_AREA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
 set -a
@@ -134,7 +135,7 @@ function generate_transit() {
   local otp_endpoint_name line
 
   local zones=() graphs=()
-  while IFS= read -r line; do zones+=("$line"); done < <(bin/artifacts otp-zones "$CONFIG_DIR")
+  while IFS= read -r line; do zones+=("$line"); done <<< "$HEADWAY_TRANSIT_ZONES"
   while IFS= read -r line; do graphs+=("$line"); done < <(bin/artifacts otp-graphs "$CONFIG_DIR")
   if [ "${#zones[@]}" -ne "${#graphs[@]}" ]; then
       log "otp-zones gave ${#zones[@]} zones but otp-graphs gave ${#graphs[@]} graphs"
@@ -156,9 +157,9 @@ function check_zone_tokens() {
     export OTP_GTFS_SECRET_OPTIONAL=true
     [ -n "$zone_file" ] || return 0
 
-    local required_vars
-    required_vars=$(zone_required_env_vars "$zone_file" runtime) || return
-    if [ -n "$required_vars" ]; then
+    local required_feeds
+    required_feeds=$(zone_required_feeds "$zone_file" runtime) || return
+    if [ -n "$required_feeds" ]; then
         export OTP_GTFS_SECRET_OPTIONAL=false
     fi
 }
@@ -172,15 +173,15 @@ function generate_otp() {
 
     export OTP_VOLUME_VERSION
     OTP_VOLUME_VERSION=$(volume_version "$graph_path")
-    local zone_file router_config
+    local zone_file
     zone_file=$(zone_file_for "$CONFIG_DIR" "$TRANSIT_ZONE")
     if [ -z "$zone_file" ]; then
         echo "Missing zone.json for ${TRANSIT_ZONE}" >&2
         return 1
     fi
-    router_config=$(bin/zone-router-config --zone "$zone_file")
-    export OTP_ROUTER_CONFIG_JSON_ENV="|
-$(indent 16 <<< "$router_config")"
+    # roll the pods if the zone file changes
+    export OTP_ZONE_CHECKSUM
+    OTP_ZONE_CHECKSUM=$(shasum -a 256 "$zone_file" | cut -c1-12)
     check_zone_tokens "$zone_file"
 
     for file in k8s/_template/opentripplanner*.tpl; do
@@ -190,7 +191,7 @@ $(indent 16 <<< "$router_config")"
     echo "$OTP_ENDPOINT_NAME"
 }
 
-if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" = 1 ]; then
+if [ "$HEADWAY_ENABLE_TRANSIT_ROUTING" = 1 ]; then
     generate_transit
 fi
 

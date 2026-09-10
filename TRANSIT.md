@@ -2,24 +2,24 @@
 
 Start here only after the ordinary build in [BUILD.md](./BUILD.md) works.
 
-1. In `builds/Amsterdam/.env`, set `HEADWAY_ENABLE_TRANSIT_ROUTING=1`. Create
-   a lowercase zone directory; replace `Amsterdam` below with your build name.
+1. Create a lowercase zone directory; replace `Amsterdam` below with your build
+   name. A build has transit routing when it has a zone, so there is no flag to
+   set.
 
    ```sh
    mkdir -p builds/Amsterdam/transit/amsterdam
    ```
+
 2. Generate the gitignored credentials template and fill in any tokens you have.
    This clones the Transitland Atlas but measures nothing, so it's quick:
 
    ```sh
-   bin/build-gtfs-index --dry-run --write-config-template gtfs-credentials.env
+   bin/build-gtfs-index --dry-run --write-config-template gtfs-secrets.json
    ```
 
-3. Build the feed-extents index, which says which feeds cover which area. This
-   downloads and measures every catalogued feed, so the first run is slow (~30m);
-   after that it updates in place, skipping feeds it already measured and
-   retrying the ones that failed. Re-run it whenever you add tokens to
-   `gtfs-credentials.env`, to measure the feeds those tokens unlock.
+   Credentials live in `gtfs-secrets.json`.
+
+3. Build the feed-extents index, which says which feeds cover which area.
 
    ```sh
    bin/build-gtfs-index
@@ -37,8 +37,8 @@ Start here only after the ordinary build in [BUILD.md](./BUILD.md) works.
    services/gtfs/transit-zoner/start-dev-server
    ```
 
-5. Generate the zone's credential file. This fails, naming what to add to
-   `gtfs-credentials.env`, if a feed your zone uses has no token yet:
+5. Give each zone its own slice of the credentials. This writes
+   `transit/<zone>/gtfs-secrets.json`.
 
    ```sh
    bin/transit-credentials builds/Amsterdam
@@ -57,5 +57,4 @@ Start here only after the ordinary build in [BUILD.md](./BUILD.md) works.
    bin/reset-services builds/Amsterdam
    ```
 
-Update `gtfs-credentials.env` when tokens change, then rerun steps 3 and 5.
-Do not edit the generated `transit/<zone>/.env` files directly.
+Update `gtfs-secrets.json` when tokens change, then rerun steps 3 and 5.
