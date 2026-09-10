@@ -13,6 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_ROOT"
 
 source bin/_source-env.sh "$CONFIG_DIR"
+source bin/_transit-zones.sh
 
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
 

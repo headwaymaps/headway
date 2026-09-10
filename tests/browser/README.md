@@ -9,8 +9,8 @@ usable map — tiles painted to the canvas, panning and zooming, the geocoder
 menu, and both routing engines.
 
 Like the integration tests, they assert against **Bogota** (`builds/Bogota`), so
-the fixtures are Bogota landmarks and the transit test assumes
-`HEADWAY_ENABLE_TRANSIT_ROUTING=1`.
+the fixtures are Bogota landmarks and the transit test assumes that build has a
+transit zone.
 
 ## Running
 
