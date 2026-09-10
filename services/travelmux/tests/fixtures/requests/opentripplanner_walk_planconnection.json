@@ -32,7 +32,6 @@
                   "points": "}ckaHbkuiV`@@?J?~@ADANG\\AFEB?@AN}PCcRFq@@}W?{BCe@EYGUM[Um@y@a@g@KQEGq@w@uAiAa@UYQa@Q{EgBuAy@a@I[EUE]GGE?GSA]Eg@IyAc@YIkAWe@SeA_@y@QKC_AO[ASAcAGaACaCAqA@mEGgA?_@?iEBGAAC?K?QG?I?I?a@@GD_@?_ABm@?G?K@_EAGCIFS?MAW?g@BMBOFKBA@KHg@XM@c@`@A?CCCBILEFEFKLCDEDkAbACDA@c@ZIFoAfAMHQLEDGDGFGPCDuAlAC@QPQNSPwApA]XCBmAfA[X]XEDEDKHy@t@_@\\SNIH}@v@sAhA]\\YXORY^[b@ADW`@EFK[O]MNMRa@^sAlAIFGNEDSPQNON_@^k@l@i@j@WXUT_A`AWXQ\\_@t@m@jAA@GLS^CFININIOQXOV{@dAIJODs@x@EGKLKLC@EDEBCAKHUL]JEFKBGBOFCBC?E?GDMJIJADCAMTw@gAGJGPABo@pAIN]H]BWAG?CE]n@ACKKKMCCCCo@}@s@aA@AEGGGKM??CEAAs@aAm@_AAACEKMKQCCA?AAo@}@o@_AACCCCCEIMQAACAAAo@}@m@{@AC?ECACEMOEGCEC?aBaCABCEKOIMCEA@C?ACk@}@o@aA?C?EC@KCCACC}@?E?A@?DCAKCKCC@CAw@?y@?a@?o@AA@C?MAI?C@AAmAAwB?A@ACM?G?EFCEqA?G?Y?{@?S?A?C?M?K?A?AAA?gBAuA?C@CAIAM?I?AB@@?rA?bB_@?g@E_@CW?u@AuADM?wBCCA?EC@G?I?CCAFC@qACAX[Ag@Cg@CgCC_ECcFE[?eA?Q?{CC{ICi@?gDAkDAiA?gC?q@AcAFa@H[HqAh@cDrBeGrDIF_Ah@EB{Av@KDoChAmA^wGfBu@Pq@TUSO@k@PEDG@M@{@HyADw@@oCBiB@oa@A"
                 },
                 "mode": "WALK",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -314,7 +313,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T12:33:54-07:00",

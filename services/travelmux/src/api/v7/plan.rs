@@ -296,7 +296,11 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
             route: leg.route.as_ref().map(Route::from),
             agency_name: leg.agency.as_ref().map(|agency| agency.name.clone()),
             headsign: leg.headsign.clone(),
-            real_time: leg.real_time.unwrap_or(false),
+            real_time: leg
+                .trip_on_service_date
+                .as_ref()
+                .and_then(|trip| trip.real_time_trip_state.as_ref())
+                .is_some_and(|state| state.updated),
             alerts: leg
                 .alerts
                 .iter()
@@ -350,13 +354,10 @@ impl From<&gtfs_graphql::Alert> for Alert {
             header_text: alert.alert_header_text.clone(),
             description_text: alert.alert_description_text.clone(),
             url: alert.alert_url.clone(),
-            // OTP gives these as Unix seconds
             effective_start: alert
-                .effective_start_date
-                .and_then(|seconds| DateTime::from_timestamp(seconds, 0)),
-            effective_end: alert
-                .effective_end_date
-                .and_then(|seconds| DateTime::from_timestamp(seconds, 0)),
+                .effective_start()
+                .map(|start| start.with_timezone(&Utc)),
+            effective_end: alert.effective_end().map(|end| end.with_timezone(&Utc)),
         }
     }
 }

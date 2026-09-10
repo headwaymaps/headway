@@ -53,7 +53,8 @@ function fetch_opentripplanner {
         edges { node {
           start end duration walkDistance
           legs {
-            mode transitLeg distance duration realTime headsign
+            mode transitLeg distance duration headsign
+            tripOnServiceDate { realTimeTripState { updated } }
             start { scheduledTime estimated { time } }
             end { scheduledTime estimated { time } }
             from { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }
@@ -62,7 +63,7 @@ function fetch_opentripplanner {
             route { shortName longName color }
             agency { name }
             steps { distance relativeDirection absoluteDirection streetName lat lon area bogusName stayOn exit }
-            alerts { alertHeaderText alertDescriptionText alertUrl effectiveStartDate effectiveEndDate }
+            alerts { alertHeaderText alertDescriptionText alertUrl activityPeriods { start end } }
           }
         } }
         routingErrors { code description }

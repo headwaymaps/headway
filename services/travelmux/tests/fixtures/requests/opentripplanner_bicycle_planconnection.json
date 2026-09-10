@@ -32,7 +32,6 @@
                   "points": "}ckaHbkuiV`@@J??L?bA?p@?F?Pa@?}PCcRFq@@}W?{BCe@EYGUM[Um@y@a@g@KQEGq@w@uAiAa@UYQa@Q{EgBk@Q_@MOEsA_@DI]GGE?GSA]Eg@IyAc@YIkAWe@SeA_@y@QKC_AO[ASAcAGaACaCAqA@mEGgA?_@?iEBGAAC?K?QG?I?I?a@@GD_@?_ABm@?G?K@_EAGCIC_@?G@Y?U@I@M@OBG@UDWJ[NKFEHURQNABCBMJA@AgA?s@?sAHB?Q?iC?kB?Q?S?K?}A?K?Q?qA?KE??m@Ac@?]?]?C@m@?M?E?cB?e@?qA?O?IAi@?MAQCKCICGCOE[KYO[YYIEG@c@^WR_Av@m@j@SPMLuBjBGFSNML[XgA`AKHKJuBjBIHQJqBfBMJMLsBhBKJSPgB~AQNONoBdBMJQPeDvCMLSNgDzCMLQN}CpCSPSPcDvCKJWf@IR_CzEA@IPKTw@|Ai@fAYj@EHKNINCBEHERcBhDKHEHIPMVADKVqB`EINGIQWq@aAa@i@MSCCG??AMQIMEEyAuBCEEEMIMKACGKk@w@m@{@EEIOEEEGEGIKqAiBKOOUGIEGaAqAEEIGQICCg@GuC?E?OMS?eECM?Q?Y?oDAO?O?gEAO?Q?sB?y@Au@?W?_@AQ?eBAW?U?mB?c@?]?_@?E?Qk@SAG?CCIBC?C?Y@M@MBKBIBC@C@ACKGEACAaBfASLEBC@C?EBGBEBMH[RMLCDGDIFA?KD[LWLc@JSBYDY@CBG@E@GBE@K?G?C?G?E?GECAEEC?cB?M@I@I?o@?QAuC?o@AK@E?ODG@GAC?GAECGCKKECIIGCCAgCo@i@OGAOEICaBOI?]?kB?UBu@@mD@qA@G?cB@C@MHG@[Dc@FOBMDOD]LYJSJKDc@RG@M@G@uCvAIBGDOL_@PMRCBOFCBOBG@ULiAl@[Ry@b@EDCFCFEDIDmAn@E@C@OAC@EB]PWLIFKFGBG@y@d@[NEDq@h@eA|@aAt@u@l@}@t@STSXOVGNO`@Sj@a@hACF@BHF@FBFBP?FADgCfIeAjDIVENGPQb@Yb@i@r@UXIFMHMDGBG@M@W@i@@k@@iEAICuEAEACAGG?CCEA@G@AQ?W?kA@{@B]^qEBe@G?I@iA@}A?oA?cA?A?K?@I@IMAA?OAAe@MQSCm@\\mB}@EEC??DFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -458,7 +457,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T12:33:54-07:00",

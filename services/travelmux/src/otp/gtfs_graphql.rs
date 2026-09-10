@@ -453,7 +453,7 @@ pub struct Leg {
     pub distance: Option<f64>,
     /// seconds
     pub duration: Option<f64>,
-    pub real_time: Option<bool>,
+    pub trip_on_service_date: Option<TripOnServiceDate>,
     pub headsign: Option<String>,
     pub start: LegTime,
     pub end: LegTime,
@@ -552,10 +552,27 @@ pub struct Alert {
     pub alert_header_text: Option<String>,
     pub alert_description_text: String,
     pub alert_url: Option<String>,
-    /// Unix timestamp, in seconds
-    pub effective_start_date: Option<i64>,
-    /// Unix timestamp, in seconds
-    pub effective_end_date: Option<i64>,
+    /// The spans when the alert is in effect, never empty.
+    pub activity_periods: Vec<OffsetDateTimeRange>,
+}
+
+/// A span of time, open ended where a bound is missing.
+#[derive(cynic::QueryFragment, Debug)]
+pub struct OffsetDateTimeRange {
+    pub start: Option<DateTime<FixedOffset>>,
+    pub end: Option<DateTime<FixedOffset>>,
+}
+
+/// A leg's trip, as it runs on the leg's service date.
+#[derive(cynic::QueryFragment, Debug)]
+pub struct TripOnServiceDate {
+    pub real_time_trip_state: Option<RealTimeTripState>,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+pub struct RealTimeTripState {
+    /// Whether any realtime update has touched this trip.
+    pub updated: bool,
 }
 
 #[derive(cynic::QueryFragment, Debug)]
@@ -877,7 +894,10 @@ impl Leg {
             to: self.to.into_otp(),
             start_time,
             end_time,
-            real_time: self.real_time.unwrap_or(false),
+            real_time: self
+                .trip_on_service_date
+                .and_then(|trip| trip.real_time_trip_state)
+                .is_some_and(|state| state.updated),
         }
     }
 }
@@ -916,17 +936,34 @@ impl Step {
 }
 
 impl Alert {
+    /// When the alert first takes effect, or `None` if it's been in effect indefinitely.
+    pub fn effective_start(&self) -> Option<DateTime<FixedOffset>> {
+        self.bounds(|period| period.start)?.into_iter().min()
+    }
+
+    /// When the alert finally expires, or `None` if it runs indefinitely.
+    pub fn effective_end(&self) -> Option<DateTime<FixedOffset>> {
+        self.bounds(|period| period.end)?.into_iter().max()
+    }
+
+    /// One end of every period, or `None` if any of them leaves that end open.
+    fn bounds(
+        &self,
+        bound: fn(&OffsetDateTimeRange) -> Option<DateTime<FixedOffset>>,
+    ) -> Option<Vec<DateTime<FixedOffset>>> {
+        self.activity_periods.iter().map(bound).collect()
+    }
+
     fn into_otp(self) -> otp_api::Alert {
-        // The GraphQL API gives these as Unix *seconds*; the REST API gave millis, which is what
-        // `otp_api::Alert` documents and what our clients read.
-        let seconds_to_millis = |seconds: i64| seconds * 1000;
+        let effective_start_date = self.effective_start().map(|start| start.timestamp_millis());
+        let effective_end_date = self.effective_end().map(|end| end.timestamp_millis());
 
         otp_api::Alert {
             alert_header_text: self.alert_header_text,
             alert_description_text: Some(self.alert_description_text),
             alert_url: self.alert_url,
-            effective_start_date: self.effective_start_date.map(seconds_to_millis),
-            effective_end_date: self.effective_end_date.map(seconds_to_millis),
+            effective_start_date,
+            effective_end_date,
         }
     }
 }
@@ -961,7 +998,7 @@ mod tests {
           "walkDistance": 500.0,
           "legs": [
             {
-              "mode": "WALK", "transitLeg": false, "distance": 120.0, "duration": 300.0, "realTime": false, "headsign": null,
+              "mode": "WALK", "transitLeg": false, "distance": 120.0, "duration": 300.0, "tripOnServiceDate": null, "headsign": null,
               "start": { "scheduledTime": "2024-05-17T10:00:00-07:00", "estimated": null },
               "end": { "scheduledTime": "2024-05-17T10:05:00-07:00", "estimated": null },
               "from": { "name": "Origin", "lat": 47.5758, "lon": -122.3392, "arrival": null, "departure": null },
@@ -977,7 +1014,8 @@ mod tests {
               "alerts": []
             },
             {
-              "mode": "BUS", "transitLeg": true, "distance": 5000.0, "duration": 1680.0, "realTime": true, "headsign": "Downtown",
+              "mode": "BUS", "transitLeg": true, "distance": 5000.0, "duration": 1680.0,
+              "tripOnServiceDate": { "realTimeTripState": { "updated": true } }, "headsign": "Downtown",
               "start": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": { "time": "2024-05-17T10:08:00-07:00" } },
               "end": { "scheduledTime": "2024-05-17T10:35:00-07:00", "estimated": null },
               "from": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341, "arrival": null, "departure": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": null } },
@@ -988,7 +1026,7 @@ mod tests {
               "steps": [],
               "alerts": [ {
                 "alertHeaderText": "Detour", "alertDescriptionText": "Reroute", "alertUrl": "http://x",
-                "effectiveStartDate": 1715000000, "effectiveEndDate": 1716000000
+                "activityPeriods": [ { "start": "2024-05-06T05:53:20-07:00", "end": "2024-05-17T19:40:00-07:00" } ]
               } ]
             }
           ]
@@ -1051,9 +1089,65 @@ mod tests {
         assert_eq!(bus.alerts.len(), 1);
         let alert = &bus.alerts[0];
         assert_eq!(alert.alert_header_text.as_deref(), Some("Detour"));
-        // OTP's alert timestamps are in seconds, ours are in millis.
         assert_eq!(alert.effective_start_date, Some(1715000000000));
         assert_eq!(alert.effective_end_date, Some(1716000000000));
+    }
+
+    fn alert_active_over(periods: &[(Option<&str>, Option<&str>)]) -> Alert {
+        let at = |rfc3339: &str| DateTime::parse_from_rfc3339(rfc3339).unwrap();
+        Alert {
+            alert_header_text: None,
+            alert_description_text: "Reroute".to_owned(),
+            alert_url: None,
+            activity_periods: periods
+                .iter()
+                .map(|(start, end)| OffsetDateTimeRange {
+                    start: start.map(at),
+                    end: end.map(at),
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn several_activity_periods_collapse_to_the_outermost_bounds() {
+        let alert = alert_active_over(&[
+            (
+                Some("2024-05-17T12:00:00-07:00"),
+                Some("2024-05-17T13:00:00-07:00"),
+            ),
+            // Deliberately out of order.
+            (
+                Some("2024-05-16T09:00:00-07:00"),
+                Some("2024-05-16T10:00:00-07:00"),
+            ),
+        ]);
+
+        assert_eq!(
+            alert.effective_start(),
+            Some(DateTime::parse_from_rfc3339("2024-05-16T09:00:00-07:00").unwrap())
+        );
+        assert_eq!(
+            alert.effective_end(),
+            Some(DateTime::parse_from_rfc3339("2024-05-17T13:00:00-07:00").unwrap())
+        );
+    }
+
+    #[test]
+    fn an_open_ended_period_leaves_that_end_unbounded() {
+        let since_forever = alert_active_over(&[
+            (None, Some("2024-05-16T10:00:00-07:00")),
+            (
+                Some("2024-05-17T12:00:00-07:00"),
+                Some("2024-05-17T13:00:00-07:00"),
+            ),
+        ]);
+        assert_eq!(since_forever.effective_start(), None);
+        assert!(since_forever.effective_end().is_some());
+
+        let indefinitely = alert_active_over(&[(Some("2024-05-17T12:00:00-07:00"), None)]);
+        assert!(indefinitely.effective_start().is_some());
+        assert_eq!(indefinitely.effective_end(), None);
     }
 
     #[test]
