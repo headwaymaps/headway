@@ -37,30 +37,6 @@
           "urls": {
             "alerts": "https://s3.amazonaws.com/la-alerts-prod/alerts.pb"
           }
-        },
-        {
-          "feed_onestop_id": "f-metro~losangeles~bus~rt",
-          "urls": {
-            "trip_updates": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates",
-            "vehicle_positions": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
-          },
-          "authorization": {
-            "type": "header",
-            "param_name": "Authorization",
-            "info_url": "https://goswift.ly/realtime-api-key"
-          }
-        },
-        {
-          "feed_onestop_id": "f-metro~losangeles~rail~rt",
-          "urls": {
-            "trip_updates": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
-            "vehicle_positions": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
-          },
-          "authorization": {
-            "type": "header",
-            "param_name": "Authorization",
-            "info_url": "https://goswift.ly/realtime-api-key"
-          }
         }
       ]
     },
@@ -88,30 +64,6 @@
           "feed_onestop_id": "f-metro~losangeles~alerts",
           "urls": {
             "alerts": "https://s3.amazonaws.com/la-alerts-prod/alerts.pb"
-          }
-        },
-        {
-          "feed_onestop_id": "f-metro~losangeles~bus~rt",
-          "urls": {
-            "trip_updates": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates",
-            "vehicle_positions": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
-          },
-          "authorization": {
-            "type": "header",
-            "param_name": "Authorization",
-            "info_url": "https://goswift.ly/realtime-api-key"
-          }
-        },
-        {
-          "feed_onestop_id": "f-metro~losangeles~rail~rt",
-          "urls": {
-            "trip_updates": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
-            "vehicle_positions": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
-          },
-          "authorization": {
-            "type": "header",
-            "param_name": "Authorization",
-            "info_url": "https://goswift.ly/realtime-api-key"
           }
         }
       ]
