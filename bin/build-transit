@@ -27,8 +27,7 @@ fi
 source bin/_source-env.sh "$CONFIG_DIR"
 source bin/_zone-file.sh
 
-# Idempotent, and bin/build runs it too - it's here so that running this script
-# standalone works on a tree where the artifact root is still the placeholder.
+trap 'bin/revert-fetch-urls' EXIT
 bin/update-fetch-urls
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
@@ -85,9 +84,6 @@ set +x
 cat <<EOS
 
 Transit artifacts written to data/${HEADWAY_AREA}/transit and artifacts pinned.
-
-This build rewrote the artifact URLs in place; to put them back:
-    bin/revert-fetch-urls
 
 To publish the artifacts to the asset host:
     bin/publish-data ${CONFIG_DIR} [--host remote.host.com]

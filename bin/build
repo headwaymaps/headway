@@ -26,6 +26,7 @@ fi
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
+trap 'bin/revert-fetch-urls' EXIT
 bin/update-fetch-urls
 
 if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
@@ -48,4 +49,4 @@ else
     bin/artifacts --pin "$CONFIG_DIR"
 fi
 
-echo "Next, run: ./bin/revert-fetch-urls && ./bin/k8s/regenerate-all"
+echo "Next, run: ./bin/k8s/regenerate-all"
