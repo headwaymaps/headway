@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -123.05377,
+    "min_lat": 36.97492,
+    "max_lon": -120.95269,
+    "max_lat": 39.09981
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-sf~bay~area~rg",
+      "provider": "f-sf~bay~area~rg",
+      "url": "http://api.511.org/transit/datafeeds?operator_id=RG",
+      "authorization": {
+        "type": "replace_url",
+        "info_url": "https://511.org/open-data/token"
+      },
+      "realtime": [
+        {
+          "feed_onestop_id": "f-sf~bay~area~rg~rt",
+          "urls": {
+            "trip_updates": "https://api.511.org/Transit/TripUpdates?agency=RG",
+            "vehicle_positions": "https://api.511.org/Transit/VehiclePositions?agency=RG",
+            "alerts": "https://api.511.org/Transit/servicealerts?agency=RG"
+          },
+          "authorization": {
+            "type": "replace_url",
+            "info_url": "https://511.org/open-data/token"
+          }
+        }
+      ]
+    }
+  ]
+}

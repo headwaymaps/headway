@@ -78,7 +78,7 @@ if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
         '[.plan.itineraries[].legs[] | select(.mode == "TRANSIT")] | length > 0' \
         '[.plan.itineraries[].legs[] | select(.mode == "TRANSIT") | .transitLeg.mode | select(test("^(BUS|TRAM|SUBWAY|RAIL|FERRY|CABLE_CAR|GONDOLA|FUNICULAR)$"))] | length > 0'
 else
-    echo "  Skipping v6 transit route (HEADWAY_ENABLE_TRANSIT_ROUTING is not set)"
+    echo "  Skipping v6 transit route (build has no transit zones)"
 fi
 
 # === v7 ===
@@ -109,7 +109,7 @@ if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
         '[.itineraries[].legs[] | select(.mode == "TRANSIT")] | length > 0' \
         '[.itineraries[].legs[] | select(.mode == "TRANSIT") | .transitLeg.vehicleMode | select(test("^(BUS|TRAM|SUBWAY|RAIL|FERRY|CABLE_CAR|GONDOLA|FUNICULAR)$"))] | length > 0'
 else
-    echo "  Skipping v7 transit route (HEADWAY_ENABLE_TRANSIT_ROUTING is not set)"
+    echo "  Skipping v7 transit route (build has no transit zones)"
 fi
 
 print_test_summary "Routing"

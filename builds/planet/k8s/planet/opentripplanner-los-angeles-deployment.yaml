@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: opentripplanner-los-angeles
+      annotations:
+        # Roll the pod if the zone file changes
+        headway/zone-checksum: "0ae63a555a47"
     spec:
       initContainers:
         - name: init
@@ -19,11 +22,17 @@ spec:
           volumeMounts:
             - name: opentripplanner-volume
               mountPath: /data
+            # The init container renders router-config.json from these two, so
+            # the live tokens stay out of this manifest.
+            - name: zone
+              mountPath: /run/config
+              readOnly: true
+            - name: gtfs-secrets
+              mountPath: /run/secrets
+              readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-09-03-5bade966.obj.zst"
-            - name: OTP_ROUTER_CONFIG_JSON
-              value: ""
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-09-10-e9c0c071.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -34,7 +43,6 @@ spec:
           image: ghcr.io/headwaymaps/opentripplanner:maps-earth-latest
           env:
             - name: "JAVA_OPTS"
-              # keep this in sync to be just under the resources.limits.memory
               value: "-Xmx5G"
           imagePullPolicy: Always
           ports:
@@ -44,7 +52,6 @@ spec:
               mountPath: /var/opentripplanner
           resources:
             limits:
-              # keep this in sync to be just above env.JAVA_OPTS.-Xmx
               memory: 5.25Gi
             requests:
               memory: 500Mi
@@ -63,6 +70,13 @@ spec:
             periodSeconds: 15
             failureThreshold: 20
       volumes:
+        - name: zone
+          configMap:
+            name: otp-los-angeles-zone
+        - name: gtfs-secrets
+          secret:
+            secretName: otp-los-angeles-gtfs-secrets
+            optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-260817-0-12-0-2026-09-03-0addab82
+            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-260817-0-12-0-2026-09-10-509154ea

@@ -642,6 +642,36 @@ func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container 
 		WithDefaultArgs([]string{"/app/init.sh"})
 }
 
+func (h *Headway) TransitZonerServer(ctx context.Context) *dagger.File {
+	return rustContainer().
+		WithMountedDirectory("/repo", h.RepoDir).
+		WithWorkdir("/repo").
+		WithExec([]string{"cargo", "build", "--release", "--package", "transit-zoner"}).
+		File("/repo/target/release/transit-zoner")
+}
+
+func (h *Headway) TransitZonerServeContainer(ctx context.Context,
+	// A feed-extents GeoPackage to serve instead of the copy published in
+	// headway-data, e.g. file:///path/to/data/transit-zoner/feed-extents.gpkg.
+	// For trying out an index before publishing it.
+	// +optional
+	gtfsIndex *dagger.File) (*dagger.Container, error) {
+	if gtfsIndex == nil {
+		var err error
+		gtfsIndex, err = h.DownloadGtfsIndex(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return slimContainer("ca-certificates", "libssl3").
+		WithFile("/usr/local/bin/transit-zoner", h.TransitZonerServer(ctx), dagger.ContainerWithFileOpts{Permissions: 0755}).
+		WithFile("/app/feed-extents.gpkg", gtfsIndex).
+		WithExposedPort(8420).
+		WithEntrypoint([]string{"/usr/local/bin/transit-zoner"}).
+		WithDefaultArgs([]string{"--host", "0.0.0.0", "--gtfs-index", "/app/feed-extents.gpkg"}), nil
+}
+
 /**
  * Web Frontend
  */
@@ -683,6 +713,7 @@ func (h *Headway) WebServeContainer(ctx context.Context,
 		WithEnvVariable("HEADWAY_TILESERVER_URL", "http://tileserver:8000").
 		WithEnvVariable("HEADWAY_PELIAS_URL", "http://pelias-api:8080").
 		WithEnvVariable("HEADWAY_VALHALLA_URL", "http://valhalla:8002").
+		WithEnvVariable("HEADWAY_TRANSIT_ZONER_URL", "http://127.0.0.1:8420").
 		WithEnvVariable("ESC", "$").
 		WithEnvVariable("NGINX_ENVSUBST_OUTPUT_DIR", "/etc/nginx")
 }

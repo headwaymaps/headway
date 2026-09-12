@@ -9,10 +9,11 @@ APP_ROOT=$(git rev-parse --show-toplevel)
 
 cd "$APP_ROOT"
 
-# The tests assert against Bogota - see run-integration-tests.sh. Sourcing its env tells the
-# test scripts which features to exercise, e.g. HEADWAY_ENABLE_TRANSIT_ROUTING.
+# The tests assert against Bogota - see run-integration-tests.sh. Its env and its
+# built zones tell the test scripts which features to exercise.
 CONFIG_DIR="builds/Bogota"
 source bin/_source-env.sh "$CONFIG_DIR"
+source bin/_transit-zones.sh
 
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
 

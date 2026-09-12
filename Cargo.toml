@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "services/gtfs/transit-zoner",
   "services/gtfs/gtfout",
   "services/travelmux",
 ]

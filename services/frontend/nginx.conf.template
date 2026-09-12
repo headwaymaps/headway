@@ -53,6 +53,13 @@ http {
       proxy_pass      ${HEADWAY_TRAVELMUX_URL}/;
     }
 
+    # transit-zoner serves the GTFS feed index as an API; the UI that reads it
+    # is the /transit-zones page of the frontend app, served by the SPA fallback
+    # below like any other route.
+    location ^~ /transit-zoner/api/ {
+      proxy_pass ${HEADWAY_TRANSIT_ZONER_URL}/api/;
+    }
+
     location ^~ /valhalla/ {
       proxy_pass      ${HEADWAY_VALHALLA_URL}/;
     }

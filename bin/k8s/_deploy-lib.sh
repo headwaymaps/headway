@@ -1,12 +1,9 @@
 #!/bin/bash
-# Shared setup for the deploy scripts: argument parsing, the clean-tree check,
-# and applying a namespace's rendered configs. Sourced, not run.
+
+set -o pipefail
 
 NAMESPACE=""
 CONFIG_DIR=""
-
-# Reads `<namespace> [--dev]` into NAMESPACE and CONFIG_DIR, and cds to the repo
-# root so the paths the callers use resolve.
 function deploy_lib_parse_args() {
     local dev=false
 
@@ -43,9 +40,6 @@ function deploy_lib_parse_args() {
     if [ "$dev" = true ]; then
         config_name="${NAMESPACE}-dev"
     fi
-
-    # Manifests are rendered into the build dir they came from, so finding a
-    # config means looking for it under every build.
     local matches=(builds/*/k8s/"${config_name}")
     if [ ! -d "${matches[0]}" ]; then
         echo "no rendered configs named ${config_name} in builds/*/k8s - run bin/k8s/generate first" >&2
@@ -57,7 +51,68 @@ function deploy_lib_parse_args() {
     fi
     CONFIG_DIR="${matches[0]}"
 }
+function deploy_lib_build_dir() {
+    echo "${CONFIG_DIR%/k8s/*}"
+}
+ROTATED_DEPLOYMENTS=()
+function deploy_lib_apply_transit_config() {
+    local build_dir zone_file secrets_file zone missing=0
+    build_dir=$(deploy_lib_build_dir)
+    ROTATED_DEPLOYMENTS=()
 
+    source bin/_zone-file.sh
+    for zone_file in "${build_dir}"/transit/*/zone.json; do
+        [ -f "$zone_file" ] || continue
+        zone=$(zone_name_for_file "$zone_file")
+        secrets_file=$(zone_secrets_file_for "$zone_file")
+
+        deploy_lib_apply_object "$zone" \
+            configmap "otp-${zone}-zone" --from-file="zone.json=${zone_file}"
+
+        [ -f "$secrets_file" ] || continue
+        deploy_lib_apply_object "$zone" \
+            secret generic "otp-${zone}-gtfs-secrets" \
+            --from-file="gtfs-secrets.json=${secrets_file}"
+    done
+
+    if [ "$missing" -gt 0 ]; then
+        echo "Fill them in, or re-run bin/transit-credentials ${build_dir}" >&2
+        exit 1
+    fi
+}
+
+# Applies one generated object, and remembers the zone if it actually changed.
+# A regenerated manifest already rolls the pods through their zone-checksum
+# annotation; this covers applying without regenerating, and credential
+# rotation, which the manifests cannot see at all.
+function deploy_lib_apply_object() {
+    local zone="$1" result
+    shift
+
+    result=$(kubectl create "$@" -n "$NAMESPACE" --dry-run=client -o yaml \
+        | kubectl apply -f - -n "$NAMESPACE")
+    echo "${zone}: ${result}"
+
+    case "$result" in
+        *configured|*created) ;;
+        *) return 0 ;;
+    esac
+
+    # A zone can get here twice, from its ConfigMap and its Secret both, and
+    # restarting it twice would roll the pods twice.
+    local deployment="opentripplanner-${zone}"
+    case " ${ROTATED_DEPLOYMENTS[*]} " in
+        *" ${deployment} "*) return 0 ;;
+    esac
+    ROTATED_DEPLOYMENTS+=("$deployment")
+}
+function deploy_lib_restart_rotated() {
+    [ ${#ROTATED_DEPLOYMENTS[@]} -gt 0 ] || return 0
+
+    echo "restarting for changed zone or credentials: ${ROTATED_DEPLOYMENTS[*]}"
+    kubectl rollout restart -n "$NAMESPACE" \
+        "${ROTATED_DEPLOYMENTS[@]/#/deployment/}"
+}
 function deploy_lib_require_clean_tree() {
     local modified_files
     modified_files="$(git diff --name-only)"
@@ -68,9 +123,6 @@ function deploy_lib_require_clean_tree() {
         exit 1
     fi
 }
-
-# The committed configs carry a placeholder artifact host; swap the real one in
-# just long enough to apply, then put it back.
 function deploy_lib_apply() {
     trap 'bin/revert-fetch-urls' EXIT
     bin/update-fetch-urls

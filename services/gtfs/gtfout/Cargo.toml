@@ -3,11 +3,15 @@ name = "gtfout"
 version = "0.1.0"
 edition = "2021"
 
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-csv = "1.2.1"
-log = "0.4.19"
+base64 = "0.22.1"
+clap = { version = "4.6.6", features = ["derive"] }
+csv = "1.4.0"
+geo = { version = "0.33.1", features = ["serde"] }
+geopackage = { version = "0.9.1", features = ["bundled"] }
+log = "0.4.34"
 pretty_env_logger = "0.5.0"
-serde = { version = "1.0.158", features = ["derive"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls", "http2", "query"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+zip = "8.6.0"

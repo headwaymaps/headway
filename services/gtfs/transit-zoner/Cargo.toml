@@ -1,0 +1,12 @@
+[package]
+name = "transit-zoner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.15.0"
+clap = { version = "4.6.6", features = ["derive"] }
+geo = "0.33.1"
+gtfout = { path = "../gtfout" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"

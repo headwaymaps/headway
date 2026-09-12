@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -123.47553276919476,
+    "min_lat": 46.80322421686799,
+    "max_lon": -121.64517431353556,
+    "max_lat": 48.23134518798071
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-c28-washingtonstateferries",
+      "provider": "Washington State Ferries",
+      "url": "https://business.wsdot.wa.gov/Transit/csv_files/wsf/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-wsf~rt",
+          "urls": {
+            "trip_updates": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/95.pb",
+            "vehicle_positions": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/95.pb",
+            "alerts": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/95.pb"
+          },
+          "authorization": {
+            "type": "query_param",
+            "param_name": "key",
+            "info_url": "https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd"
+          }
+        }
+      ]
+    },
+    {
+      "feed_onestop_id": "f-c23-metrokingcounty",
+      "provider": "King County Marine Divison, King County Metro, City of Seattle",
+      "url": "http://metro.kingcounty.gov/GTFS/google_transit.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-kingcountymetro~rt",
+          "urls": {
+            "trip_updates": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+            "vehicle_positions": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb",
+            "alerts": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+          }
+        },
+        {
+          "feed_onestop_id": "f-seattlestreetcar~rt",
+          "urls": {
+            "trip_updates": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+            "vehicle_positions": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb",
+            "alerts": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb"
+          }
+        }
+      ]
+    },
+    {
+      "feed_onestop_id": "f-c23-soundtransit",
+      "provider": "Sound Transit",
+      "url": "https://gtfs.sound.obaweb.org/prod/40_gtfs.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-soundtransit~rt",
+          "urls": {
+            "trip_updates": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/trip-updates-for-agency/40.pb",
+            "vehicle_positions": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/vehicle-positions-for-agency/40.pb",
+            "alerts": "http://api.pugetsound.onebusaway.org/api/gtfs_realtime/alerts-for-agency/40.pb"
+          },
+          "authorization": {
+            "type": "query_param",
+            "param_name": "key",
+            "info_url": "https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd"
+          }
+        }
+      ]
+    }
+  ]
+}

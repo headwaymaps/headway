@@ -1,24 +1,36 @@
 #!/bin/bash
-# Picks the docker compose file for a build, based on whether that build has
-# transit routing enabled.
-#
-# Source this *after* bin/_source-env.sh - it reads HEADWAY_ENABLE_TRANSIT_ROUTING
-# from the build's .env.
-#
-# Sets COMPOSE_FILE, unless it's already set, so an explicit
-# `COMPOSE_FILE=... bin/start-services ...` still wins.
+
+source bin/_transit-zones.sh
 
 if [ -z "${COMPOSE_FILE:-}" ]; then
-    if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" = 1 ]; then
+    if [ "$HEADWAY_ENABLE_TRANSIT_ROUTING" = 1 ]; then
         COMPOSE_FILE=docker-compose-with-transit.yaml
     else
         COMPOSE_FILE=docker-compose.yaml
     fi
 fi
 
+# Compose runs a single OTP, so the first zone is the one it serves. No zone
+# means no transit, which is also how a partial build and `compose down` look.
+export HEADWAY_TRANSIT_ZONE="${HEADWAY_TRANSIT_ZONES%%$'\n'*}"
+if [ -n "$HEADWAY_TRANSIT_ZONE" ]; then
+    source bin/_zone-file.sh
+    ZONE_FILE=$(zone_file_for "$CONFIG_DIR" "$HEADWAY_TRANSIT_ZONE")
+    if [ -z "$ZONE_FILE" ]; then
+        echo "Error: no zone.json for ${HEADWAY_TRANSIT_ZONE}" >&2
+        exit 1
+    fi
+    export OTP_ZONE_JSON OTP_GTFS_SECRETS_JSON
+    OTP_ZONE_JSON=$(cat "$ZONE_FILE")
+    ZONE_SECRETS_FILE="$(dirname "$ZONE_FILE")/gtfs-secrets.json"
+    OTP_GTFS_SECRETS_JSON=""
+    if [ -f "$ZONE_SECRETS_FILE" ]; then
+        OTP_GTFS_SECRETS_JSON=$(cat "$ZONE_SECRETS_FILE")
+    fi
+fi
+
 # Artifact names carry a content hash, so the compose file can't spell them out.
-# Allow partial builds, including when Compose is used to stop services.
-# One OTP in compose, so the first zone's graph is the one it mounts.
+# Optional so a partial build, and stopping services, still work.
 export HEADWAY_OTP_GRAPH_FILE=$(bin/artifacts --optional otp-graphs "$CONFIG_DIR" | head -1)
 export HEADWAY_ELEVATION_FILE=$(bin/artifacts --optional elevation "$CONFIG_DIR")
 export HEADWAY_PMTILES_FILE=$(bin/artifacts --optional pmtiles "$CONFIG_DIR")

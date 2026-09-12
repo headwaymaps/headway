@@ -1,10 +1,8 @@
-use gtfout::{
-    geom::{Point, Rect},
-    Result,
-};
+use gtfout::{geom::RectExt, Result};
 
 use std::path::PathBuf;
 
+use geo::{Point, Rect};
 use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 struct GTFSPoint {
