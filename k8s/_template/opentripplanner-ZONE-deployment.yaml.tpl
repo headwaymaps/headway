@@ -11,6 +11,9 @@ spec:
     metadata:
       labels:
         app: ${OTP_ENDPOINT_NAME}
+      annotations:
+        # Roll the pod if the zone file changes
+        headway/zone-checksum: "${OTP_ZONE_CHECKSUM}"
     spec:
       initContainers:
         - name: init
@@ -19,11 +22,15 @@ spec:
           volumeMounts:
             - name: opentripplanner-volume
               mountPath: /data
+            - name: zone
+              mountPath: /run/config
+              readOnly: true
+            - name: gtfs-secrets
+              mountPath: /run/secrets
+              readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
               value: "${OTP_GRAPH_URL}"
-            - name: OTP_ROUTER_CONFIG_JSON
-              value: ${OTP_ROUTER_CONFIG_JSON_ENV}
           resources:
             limits:
               memory: 128Mi
@@ -63,6 +70,13 @@ spec:
             periodSeconds: 15
             failureThreshold: 20
       volumes:
+        - name: zone
+          configMap:
+            name: otp-${TRANSIT_ZONE}-zone
+        - name: gtfs-secrets
+          secret:
+            secretName: otp-${TRANSIT_ZONE}-gtfs-secrets
+            optional: ${OTP_GTFS_SECRET_OPTIONAL}
         - name: opentripplanner-volume
           persistentVolumeClaim:
             claimName: opentripplanner-${TRANSIT_ZONE}-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${OTP_VOLUME_VERSION}

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Serves the transit-zoner API.
+# The UI lives in the frontend app at /transit-zones.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+exec cargo run --release --package transit-zoner -- "$@"

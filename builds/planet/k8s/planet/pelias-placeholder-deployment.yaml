@@ -90,7 +90,7 @@ spec:
                   }
                 }
             - name: PLACEHOLDER_ARTIFACT_URL
-              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/maps-earth-planet-v1.260817-placeholder-2026-08-26-0c3310c0.tar.zst"
+              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/maps-earth-planet-v1.260817-placeholder-2026-08-29-a99a13ee.tar.zst"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
           resources:
             limits:
@@ -134,7 +134,7 @@ spec:
       volumes:
         - name: placeholder-volume
           persistentVolumeClaim:
-            claimName: placeholder-maps-earth-planet-v1-260817-0-12-0-2026-08-26-f393657b
+            claimName: placeholder-maps-earth-planet-v1-260817-0-12-0-2026-08-29-1b0aceb6
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

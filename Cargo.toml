@@ -1,6 +1,17 @@
 [workspace]
 resolver = "2"
 members = [
+  "services/gtfs/transit-zoner",
   "services/gtfs/gtfout",
   "services/travelmux",
 ]
+
+# Shared by more than one member. Version lives here; members add the features
+# they need on top.
+[workspace.dependencies]
+actix-web = "4.15.0"
+clap = { version = "4.6.6", features = ["derive"] }
+geo = "0.33.1"
+log = "0.4.34"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"

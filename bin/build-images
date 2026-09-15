@@ -150,6 +150,7 @@ function build_image_tags() {
     build "frontend-init"   "web-init-container"                        "headway-init"
     build "otp-init"        "otp-init-container"                        "opentripplanner-init"
     build "otp"             "otp-serve-container"                       "opentripplanner"
+    build "transit-zoner"   "transit-zoner-serve-container"             "transit-zoner"
     build "pelias-init"     "pelias-init-container"                     "pelias-init"
     build "tileserver"      "tileserver-serve-container"                "tileserver"
     build "tileserver-init" "tileserver-init-container"                 "tileserver-init"

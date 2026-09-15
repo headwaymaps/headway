@@ -48,7 +48,7 @@ fi
 echo "Checking travelmux health..."
 elapsed=0
 while [ $elapsed -lt $MAX_WAIT ]; do
-    if check_service "travelmux" "$FRONTEND_URL/api/health" 200; then
+    if check_service "travelmux" "$FRONTEND_URL/travelmux/health/ready" 200; then
         echo "✓ Travelmux is healthy"
         break
     fi

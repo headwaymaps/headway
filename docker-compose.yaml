@@ -82,6 +82,9 @@ services:
   frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
+    environment:
+      # _transit-zones.sh derives this from the build's zone files.
+      HEADWAY_ENABLE_TRANSIT_ROUTING: ${HEADWAY_ENABLE_TRANSIT_ROUTING:?}
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
       - "frontend_data:/data/:rw"
@@ -94,6 +97,7 @@ services:
       HEADWAY_PELIAS_URL: http://pelias-api:4000
       HEADWAY_TILESERVER_URL: http://tileserver:8000
       HEADWAY_TRAVELMUX_URL: http://travelmux:8000
+      HEADWAY_TRANSIT_ZONER_URL: http://127.0.0.1:8420
       HEADWAY_VALHALLA_URL: http://valhalla:8002
     ports:
       - "8080:8080"

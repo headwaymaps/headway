@@ -20,7 +20,7 @@ Use containers and map-data version tags as specified in bin/_headway_version.sh
 Use containers from a tag other than what's in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev $0 builds/planet planet-dev
 
-Use containers and map-data version tags other than whats specified in bin/_headway_version.sh
+Use containers and map-data version tags other than what's specified in bin/_headway_version.sh
     HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 builds/Seattle seattle-dev
 EOF
 }
@@ -45,6 +45,8 @@ export HEADWAY_DATA_TAG
 export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-latest}"
 
 source bin/_source-env.sh "$CONFIG_DIR"
+source bin/_zone-file.sh
+source bin/_transit-zones.sh
 export HEADWAY_DATA_TAG_SAFE=$(echo "$HEADWAY_DATA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
 export HEADWAY_AREA_TAG_SAFE=$(echo "$HEADWAY_AREA_TAG" | tr '._' '-' | tr '[:upper:]' '[:lower:]')
 set -a
@@ -155,7 +157,7 @@ function generate_transit() {
   local otp_endpoint_name line
 
   local zones=() graphs=()
-  while IFS= read -r line; do zones+=("$line"); done < <(bin/artifacts otp-zones "$CONFIG_DIR")
+  while IFS= read -r line; do zones+=("$line"); done <<< "$HEADWAY_TRANSIT_ZONES"
   while IFS= read -r line; do graphs+=("$line"); done < <(bin/artifacts otp-graphs "$CONFIG_DIR")
   if [ "${#zones[@]}" -ne "${#graphs[@]}" ]; then
       log "otp-zones gave ${#zones[@]} zones but otp-graphs gave ${#graphs[@]} graphs"
@@ -171,6 +173,18 @@ function generate_transit() {
   export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
+function check_zone_tokens() {
+    local zone_file="$1"
+
+    export OTP_GTFS_SECRET_OPTIONAL=true
+    [ -n "$zone_file" ] || return 0
+
+    local required_feeds
+    required_feeds=$(zone_required_feeds "$zone_file" runtime) || return
+    if [ -n "$required_feeds" ]; then
+        export OTP_GTFS_SECRET_OPTIONAL=false
+    fi
+}
 
 function generate_otp() {
     export TRANSIT_ZONE=$1
@@ -181,15 +195,16 @@ function generate_otp() {
 
     export OTP_VOLUME_VERSION
     OTP_VOLUME_VERSION=$(volume_version "$graph_path")
-
-    local router_config_file="${CONFIG_DIR}/transit/${TRANSIT_ZONE}-router-config.json"
-    if [ -f "$router_config_file" ]; then
-        router_config_json=$(cat "$router_config_file")
-        export OTP_ROUTER_CONFIG_JSON_ENV="|
-$(indent 16 <<< "$router_config_json")"
-    else
-        export OTP_ROUTER_CONFIG_JSON_ENV='""'
+    local zone_file
+    zone_file=$(zone_file_for "$CONFIG_DIR" "$TRANSIT_ZONE")
+    if [ -z "$zone_file" ]; then
+        echo "Missing zone.json for ${TRANSIT_ZONE}" >&2
+        return 1
     fi
+    # roll the pods if the zone file changes
+    export OTP_ZONE_CHECKSUM
+    OTP_ZONE_CHECKSUM=$(shasum -a 256 "$zone_file" | cut -c1-12)
+    check_zone_tokens "$zone_file"
 
     for file in k8s/_template/opentripplanner*.tpl; do
         output=$(basename "$file" | sed 's/\.tpl$//' | sed "s/ZONE/${TRANSIT_ZONE}/")
@@ -198,10 +213,12 @@ $(indent 16 <<< "$router_config_json")"
     echo "$OTP_ENDPOINT_NAME"
 }
 
-if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" = 1 ]; then
+if [ "$HEADWAY_ENABLE_TRANSIT_ROUTING" = 1 ]; then
     generate_transit
 fi
 
+render_template "k8s/_template/transit-zoner-deployment.yaml.tpl"
+render_template "k8s/_template/transit-zoner-service.yaml.tpl"
 
 # NOTE: we *do* want to enable the travelmux *service*, regardless
 # of if transit routing is enabled - otherwise our nginx frontend will fail
@@ -212,7 +229,7 @@ fi
 render_template "k8s/_template/travelmux-service.yaml.tpl"
 
 shopt -s extglob
-for file in k8s/_template/!(opentripplanner*|travelmux*).tpl
+for file in k8s/_template/!(opentripplanner*|travelmux*|transit-zoner*).tpl
 do
     render_template "$file"
 done

@@ -10,10 +10,9 @@
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-lib.sh"
 
 deploy_lib_parse_args "$@"
-deploy_lib_require_clean_tree
+deploy_lib_preflight
 echo "ready to roll"
 
 deploy_lib_apply
-
 kubectl rollout restart deployment -n "$NAMESPACE"
 watch kubectl get pods -n "$NAMESPACE"

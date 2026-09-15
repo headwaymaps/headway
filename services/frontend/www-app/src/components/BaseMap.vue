@@ -151,6 +151,15 @@ export interface BaseMapInterface {
     layerId: string,
     listener: (ev: unknown) => void,
   ) => void;
+  // Screen/world conversion and map-level (rather than layer-level) events, for
+  // overlays that have to track the map as it moves - see TransitZonePage.
+  project: (lngLat: LngLatLike) => { x: number; y: number };
+  unproject: (point: [number, number]) => LngLat;
+  onMapEvent: (type: 'move' | 'moveend', listener: () => void) => void;
+  offMapEvent: (type: 'move' | 'moveend', listener: () => void) => void;
+  // Dragging the map and dragging a box on top of it are the same gesture, so
+  // a page that wants the latter has to turn the former off.
+  setDragPan: (enabled: boolean) => void;
 }
 
 let baseMapMethods: BaseMapInterface | undefined = undefined;
@@ -219,6 +228,12 @@ export default defineComponent({
       removeLayersExcept: this.removeLayersExcept,
       removeAllLayers: this.removeAllLayers,
       on: this.on,
+      project: (lngLat) => map.project(lngLat),
+      unproject: (point) => map.unproject(point),
+      onMapEvent: (type, listener) => map.on(type, listener),
+      offMapEvent: (type, listener) => map.off(type, listener),
+      setDragPan: (enabled) =>
+        enabled ? map.dragPan.enable() : map.dragPan.disable(),
     };
 
     // Ironically the "compact" representation takes up a lot more vertical space, since we have other
