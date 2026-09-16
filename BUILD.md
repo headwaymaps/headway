@@ -66,7 +66,7 @@ Transit routing is layered onto a build that already works, so get
 
 Which agencies to route is described by a transit zone: a `zone.json` naming the
 GTFS feeds to build together. The easiest way to author one is the hosted tool
-at <https://maps.earth/transit-zones> - highlight your area of interest, check
+at <https://maps.earth/transit-zone> - highlight your area of interest, check
 the providers you care about, and save the file it gives you. To run that tool
 yourself instead, see [TRANSIT_ZONER.md](./TRANSIT_ZONER.md).
 
