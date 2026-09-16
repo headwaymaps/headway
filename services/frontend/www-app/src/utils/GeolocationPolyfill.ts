@@ -1,4 +1,5 @@
 import { Platform } from 'quasar';
+import type { GeolocatePositionEvent } from 'maplibre-gl';
 import LocationControl from 'src/ui/LocationControl';
 
 export default class GeolocationPolyfill {
@@ -62,18 +63,21 @@ export default class GeolocationPolyfill {
       'GeolocationPolyfill has already been registered.',
     );
 
-    geolocationControl.on('geolocate', (position: GeolocationPosition) => {
+    geolocationControl.geolocateControl.on('geolocate', (event) => {
+      const position = geolocationPosition(event);
       console.debug('updating mostRecentPosition', position);
       this.mostRecentPosition = position;
     });
-    geolocationControl.on('trackuserlocationstart', (e: unknown) => {
-      console.debug('starting user location watch', e);
-      this.isWatching = true;
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    geolocationControl.on('trackuserlocationend', (e: any) => {
-      console.debug('ending user location watch', e);
-      switch (e.target._watchState) {
+    geolocationControl.geolocateControl.on(
+      'trackuserlocationstart',
+      (event) => {
+        console.debug('starting user location watch', event);
+        this.isWatching = true;
+      },
+    );
+    geolocationControl.geolocateControl.on('trackuserlocationend', (event) => {
+      console.debug('ending user location watch', event);
+      switch (event.target._watchState) {
         case 'BACKGROUND': {
           // user panned, so screen is no longer locked to the user location, but location is still being upated.
           break;
@@ -85,8 +89,8 @@ export default class GeolocationPolyfill {
         default: {
           console.assert(
             false,
-            `unexpected watch state: ${e.target._watchState}`,
-            e.target,
+            `unexpected watch state: ${event.target._watchState}`,
+            event.target,
           );
         }
       }
@@ -94,4 +98,17 @@ export default class GeolocationPolyfill {
 
     this.isRegistered = true;
   }
+}
+
+function geolocationPosition(
+  event: GeolocatePositionEvent,
+): GeolocationPosition {
+  return {
+    coords: event.coords,
+    timestamp: event.timestamp,
+    toJSON: () => ({
+      coords: event.coords,
+      timestamp: event.timestamp,
+    }),
+  };
 }
