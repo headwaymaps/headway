@@ -1,0 +1,110 @@
+#!/bin/bash
+
+set -e -o nounset
+
+# Print a short timing summary for a build, and append it to
+# data/build-timings.jsonl so builds can be compared over time.
+#
+# Reads the TSV that bin/_build-timing.sh collected: "<label>\t<milliseconds>".
+# A label with no "/" is a phase's wall time. Within a phase, "~name" is one of
+# dagger's own top-level spans and anything else is a step the module reported.
+
+source bin/_duration.sh
+
+TIMING_FILE="${1:-}"
+AREA="${2:-unknown}"
+HISTORY="data/build-timings.jsonl"
+
+if [ ! -s "${TIMING_FILE}" ]; then
+    echo "No build timings were recorded." >&2
+    exit 0
+fi
+
+# Steps to name individually per phase before rolling the rest up.
+MAX_STEPS=6
+# Concurrent detail to show under a step.
+MAX_NESTED=3
+LABEL_WIDTH=42
+TAB=$(printf '\t')
+# Below this, dagger's own spans are noise and get rolled into one row.
+INFRA_FLOOR_MS=2000
+
+function print_row() {
+    local indent="$1" label="$2" ms="$3"
+    printf '%s%-*s %s\n' "$indent" "$((LABEL_WIDTH - ${#indent}))" "$label" "$(fmt_duration "$ms")"
+}
+
+function rows_for() {
+    awk -F"$TAB" -v prefix="$1/" 'index($1, prefix) == 1 { sub(prefix, "", $1); print $1 "\t" $2 }' \
+        "$TIMING_FILE"
+}
+
+function sum() {
+    awk -F"$TAB" '{ total += $2 } END { printf "%d", total }'
+}
+
+phases=$(grep -v "/" "$TIMING_FILE" || true)
+total=0
+accounted=0
+
+body=""
+while IFS="$TAB" read -r phase wall; do
+    [ -n "$phase" ] || continue
+    total=$((total + wall))
+
+    all=$(rows_for "$phase")
+    # The module function's own span just brackets the steps below it.
+    infra=$(grep "^~" <<< "$all" | grep -v "^~Headway\." || true)
+    # Steps of a phase run in sequence, so they add up to it. Anything nested
+    # deeper ran concurrently inside one of them and is detail, not a total.
+    steps=$(grep -v "^~" <<< "$all" | grep -v "/" | awk -F"$TAB" '$2 > 0' | sort -t"$TAB" -k2,2gr || true)
+    nested=$(grep -v "^~" <<< "$all" | grep "/" | sort -t"$TAB" -k2,2gr || true)
+
+    body="${body}$(print_row "  " "$phase" "$wall")"$'\n'
+
+    small=$(awk -F"$TAB" -v floor="$INFRA_FLOOR_MS" '$2 < floor' <<< "$infra" | sum)
+    if [ "${small:-0}" -gt 0 ]; then
+        body="${body}$(print_row "    " "dagger startup" "$small")"$'\n'
+        accounted=$((accounted + small))
+    fi
+    while IFS="$TAB" read -r label ms; do
+        [ -n "$label" ] || continue
+        body="${body}$(print_row "    " "${label#\~}" "$ms")"$'\n'
+        accounted=$((accounted + ms))
+    done < <(awk -F"$TAB" -v floor="$INFRA_FLOOR_MS" '$2 >= floor' <<< "$infra" | sort -t"$TAB" -k2,2gr)
+
+    while IFS="$TAB" read -r label ms; do
+        [ -n "$label" ] || continue
+        body="${body}$(print_row "    " "$label" "$ms")"$'\n'
+        accounted=$((accounted + ms))
+
+        # What ran inside this step, concurrently: the biggest few, indented.
+        children=$(awk -F"$TAB" -v prefix="$label/" 'index($1, prefix) == 1 { sub(prefix, "", $1); print $1 "\t" $2 }' <<< "$nested" | head -n "$MAX_NESTED")
+        while IFS="$TAB" read -r child child_ms; do
+            [ -n "$child" ] || continue
+            body="${body}$(print_row "      " "$child" "$child_ms")"$'\n'
+        done <<< "$children"
+    done <<< "$(head -n "$MAX_STEPS" <<< "$steps")"
+
+    dropped=$(tail -n "+$((MAX_STEPS + 1))" <<< "$steps")
+    if [ -n "$dropped" ]; then
+        rest=$(sum <<< "$dropped")
+        body="${body}$(print_row "    " "+$(grep -c . <<< "$dropped") smaller steps, added up" "$rest")"$'\n'
+        accounted=$((accounted + rest))
+    fi
+done <<< "$phases"
+
+echo
+if [ "$total" -gt 0 ]; then
+    printf '%s build: %s total, %d%% of it accounted for below (steps overlap)\n' \
+        "$AREA" "$(fmt_duration "$total")" $((accounted * 100 / total))
+fi
+printf '%s' "$body"
+
+if command -v jq > /dev/null && [ -d data ]; then
+    steps_json=$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map({(.[0]): (.[1] | tonumber)}) | add' "$TIMING_FILE")
+    jq -c -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg area "$AREA" \
+        --argjson total "$total" --argjson steps "$steps_json" \
+        '{at: $at, area: $area, total_ms: $total, steps_ms: $steps}' >> "$HISTORY"
+    printf '  (appended to %s)\n' "$HISTORY"
+fi

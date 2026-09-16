@@ -25,8 +25,9 @@ EOS
 fi
 
 source bin/_source-env.sh "$CONFIG_DIR"
+source bin/_build-timing.sh
 
-trap 'bin/revert-fetch-urls' EXIT
+trap 'bin/revert-fetch-urls; build_timing_report "$HEADWAY_AREA"; timing_cleanup' EXIT
 bin/update-fetch-urls
 
 if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
@@ -39,7 +40,7 @@ if [[ -f "${INPUT_PBF}" ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-dagger --progress=plain -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} | build | export data/${HEADWAY_AREA}"
+timed_dagger build -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} | build | export data/${HEADWAY_AREA}"
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 if [ -d "$TRANSIT_CONFIG_DIR" ]; then
@@ -49,4 +50,5 @@ else
     bin/artifacts --pin "$CONFIG_DIR"
 fi
 
+set +x
 echo "Next, run: ./bin/k8s/regenerate-all"

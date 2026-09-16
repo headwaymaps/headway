@@ -1,0 +1,107 @@
+#!/bin/bash
+
+set -e -o nounset
+
+# Show what past builds cost, from the history bin/build appends to.
+#
+#     bin/build-timings              # every build, oldest first
+#     bin/build-timings Bogota       # just that area
+#     bin/build-timings --steps      # the step breakdown of the latest build
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
+
+source bin/_duration.sh
+
+HISTORY="data/build-timings.jsonl"
+BAR_WIDTH=24
+TAB=$(printf '\t')
+
+STEPS=""
+AREA=""
+for arg in "$@"; do
+    case "$arg" in
+        --steps) STEPS=1 ;;
+        --help | -h)
+            echo "usage: $0 [--steps] [AREA]"
+            exit 0
+            ;;
+        *) AREA="$arg" ;;
+    esac
+done
+
+if [ ! -s "$HISTORY" ]; then
+    echo "No build history yet - ${HISTORY} is written by bin/build." >&2
+    exit 1
+fi
+
+if ! command -v jq > /dev/null; then
+    echo "Error: jq is required to read ${HISTORY}" >&2
+    exit 1
+fi
+
+function records() {
+    jq -r --arg area "$AREA" \
+        'select($area == "" or .area == $area) | [.at, .area, .total_ms] | @tsv' \
+        "$HISTORY"
+}
+
+if [ -z "$(records)" ]; then
+    echo "No builds recorded${AREA:+ for ${AREA}} in ${HISTORY}." >&2
+    exit 1
+fi
+
+if [ -n "$STEPS" ]; then
+    latest=$(jq -c --arg area "$AREA" \
+        '[inputs | select($area == "" or .area == $area)] | last' -n "$HISTORY")
+    steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' <<< "$latest")
+
+    when=$(jq -r '.at' <<< "$latest")
+    when=${when%:*Z}
+    printf '\n%s %s (%s total)\n' \
+        "$(jq -r '.area' <<< "$latest")" "${when/T/ }" "$(fmt_duration "$(jq -r '.total_ms' <<< "$latest")")"
+
+    function children_of() {
+        awk -F"$TAB" -v prefix="$1/" 'index($1, prefix) == 1 {
+            rest = substr($1, length(prefix) + 1)
+            if (index(rest, "/") == 0) { sub(/^~/, "", rest); print rest "\t" $2 }
+        }' <<< "$steps"
+    }
+
+    while IFS="$TAB" read -r phase ms; do
+        printf '  %-40s %s\n' "$phase" "$(fmt_duration "$ms")"
+        while IFS="$TAB" read -r step step_ms; do
+            [ -n "$step" ] || continue
+            printf '    %-38s %s\n' "$step" "$(fmt_duration "$step_ms")"
+            while IFS="$TAB" read -r child child_ms; do
+                [ -n "$child" ] || continue
+                printf '      %-36s %s\n' "$child" "$(fmt_duration "$child_ms")"
+            done <<< "$(children_of "${phase}/${step}")"
+        done <<< "$(children_of "$phase")"
+    done <<< "$(grep -v "/" <<< "$steps")"
+    echo
+    exit 0
+fi
+
+# Bars and percentages compare a build to the same area's previous build, so
+# each area is listed and scaled on its own.
+printf '\n%-10s %-17s %8s %8s\n' "AREA" "WHEN" "TOTAL" "CHANGE"
+for area in $(records | cut -f2 | sort -u); do
+    rows=$(records | awk -F"$TAB" -v area="$area" '$2 == area')
+    longest=$(awk -F"$TAB" '{ if ($3 > max) max = $3 } END { printf "%d", max }' <<< "$rows")
+
+    previous=""
+    while IFS="$TAB" read -r at _ ms; do
+        change=""
+        if [ -n "$previous" ]; then
+            change=$(printf '%+d%%' $(((ms - previous) * 100 / previous)))
+        fi
+        previous=$ms
+
+        bar=$(printf '%*s' $((ms * BAR_WIDTH / longest)) "" | tr ' ' '#')
+        when=${at%:*Z}
+        printf '%-10s %-17s %8s %8s  %s\n' \
+            "$area" "${when/T/ }" "$(fmt_duration "$ms")" "$change" "$bar"
+    done <<< "$rows"
+done
+echo
