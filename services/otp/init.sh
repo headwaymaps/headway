@@ -21,7 +21,7 @@ fi
 # because it carries the live GTFS-RT credentials out of gtfs-secrets.json and
 # a deployment manifest is a committed file.
 ZONE_FILE="${OTP_ZONE_PATH:-/run/config/zone.json}"
-SECRETS_FILE="${OTP_GTFS_SECRETS_PATH:-/run/secrets/gtfs-secrets.json}"
+SECRETS_FILE="${OTP_GTFS_SECRETS_PATH:-/var/run/secrets/maps.earth/gtfs-secrets.json}"
 TEMP_FILES=()
 trap 'rm -f "${TEMP_FILES[@]}"' EXIT
 

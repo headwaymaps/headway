@@ -26,7 +26,7 @@ spec:
               mountPath: /run/config
               readOnly: true
             - name: gtfs-secrets
-              mountPath: /run/secrets
+              mountPath: /var/run/secrets/maps.earth
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
