@@ -210,6 +210,7 @@ type OSMExport struct {
 
 func New(
 	// +defaultPath="./"
+	// +ignore=["data", "target", "**/node_modules", ".worktrees", ".git", "*.osm.pbf", "*.mbtiles"]
 	repoDir *dagger.Directory) *Headway {
 	return &Headway{RepoDir: repoDir}
 }
