@@ -101,6 +101,11 @@ pub struct FeedCore {
     /// The Onestop ID.
     pub id: FeedId,
 
+    /// What the atlas calls the feed. Regional feeds list no operator inline,
+    /// so this is all they have to be named by.
+    #[serde(default)]
+    pub name: Option<String>,
+
     /// The operators listed inline on this record.
     #[serde(default)]
     pub operators: Vec<Operator>,
@@ -345,11 +350,14 @@ impl FeedCore {
             })
             .collect();
 
-        if names.is_empty() {
-            self.id.to_string()
-        } else {
-            names.join(", ")
+        if !names.is_empty() {
+            return names.join(", ");
         }
+        self.name
+            .as_deref()
+            .filter(|name| !name.is_empty())
+            .unwrap_or(self.id.as_str())
+            .to_owned()
     }
 }
 
@@ -595,6 +603,23 @@ mod tests {
             "Sonoma-Marin Area Rail Transit"
         );
         assert_eq!(static_feeds[0].display_name(), "f-9q8y-sfmta");
+    }
+
+    #[test]
+    fn display_name_falls_back_to_the_feed_name_then_the_id() {
+        let named = FeedCore {
+            id: "f-c23-pugetsound~consolidated".into(),
+            name: Some("Puget Sound Consolidated GTFS".to_owned()),
+            operators: vec![],
+            authorization: None,
+        };
+        assert_eq!(named.display_name(), "Puget Sound Consolidated GTFS");
+
+        let anonymous = FeedCore {
+            name: None,
+            ..named
+        };
+        assert_eq!(anonymous.display_name(), "f-c23-pugetsound~consolidated");
     }
 
     #[test]
