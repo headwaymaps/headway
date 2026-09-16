@@ -1,5 +1,14 @@
+pub mod atlas;
+pub mod auth_kind_secret;
+pub mod extents;
+pub mod feed_config;
 pub mod geom;
-pub use geom::{Point, Rect};
+pub mod measure;
+pub mod transit_zone;
+
+pub use atlas::dmfr::FeedId;
+pub use geo::{coord, Coord, Rect};
+pub use geom::RectExt;
 
 pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -74.2155,
+    "min_lat": 4.5199,
+    "max_lon": -74.0078,
+    "max_lat": 4.7711
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-d2g6-transmilenio~troncal~transmilenio~alimentadores~transmile",
+      "provider": "Transmilenio - Alimentadores (feeders), Transmilenio - Cable, Transmilenio - Complementaria, Transmilenio - Dual (doors on both sides), Transmilenio - Especial, Transmilenio - Troncal (trunk), Transmilenio - Urbana (city)",
+      "url": "https://storage.googleapis.com/gtfs-estaticos/GTFS-2024-02-21.zip"
+    }
+  ]
+}

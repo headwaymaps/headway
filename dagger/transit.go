@@ -4,58 +4,34 @@ import (
 	"context"
 	"dagger/headway/internal/dagger"
 	"fmt"
-	"strings"
+	"path/filepath"
+	"sort"
 
 	"golang.org/x/sync/errgroup"
 )
 
-// Zones built at once by BuildTransit when not overridden. Each additional zone
-// is another concurrent OTP graph build competing for RAM, so this trades peak
-// memory for wall clock.
 const defaultMaxConcurrentZones = 3
-
-// ===
-// Transit
-// ===
 
 type TransitZone struct {
 	Headway *Headway
-	// Date stamp (YYYY-MM-DD) of the GTFS download that this zone is built from.
-	//
-	// It's both the cache key for BuildGtfsDir and the artifact versioning
-	// scheme, which is what keeps the two honest with each other: the feeds are
-	// fetched at most once per day, and the date in the name is by construction
-	// the day they were fetched.
-	BuildDate      string
+
+	BuildDate string
+
+	Zone string
+
 	TransitFeeds   *dagger.File
 	GTFSDir        *dagger.Directory
 	OSMExport      *OSMExport
 	OTPBuildConfig *dagger.File
 }
 
-// Top-level transit orchestrator. Must not be cached: it reads time.Now() to
-// decide which day's feeds to build, and a cached call would freeze that at
-// whatever day it first ran.
-//
+// Select today's feeds on every invocation.
 // +cache="never"
 func (h *Headway) BuildTransit(ctx context.Context,
+	// +ignore=["**/.env", "**/gtfs-secrets.json"]
 	transitConfigDir *dagger.Directory,
-	// Env-file (KEY=VALUE lines) of API keys for feeds whose CSV row sets
-	// urls.authentication_type, named HEADWAY_GTFS_API_KEY_<mdb_source_id>.
-	//
-	// This has to be passed explicitly: dagger sandboxes module code, so it
-	// can't read the host environment and there's no way to pick these up
-	// implicitly. bin/build-transit passes `--gtfs-api-keys file://$PWD/.bin-env`.
-	//
 	// +optional
-	gtfsApiKeys *dagger.Secret,
-	// How many zones to build concurrently. Zones are independent, so this is
-	// mostly free parallelism - but each one runs its own OTP graph build, and
-	// those are memory hungry at planet scale, so peak memory scales with it.
-	//
-	// Defaults to 3. Pass 1 to get the old sequential behavior back, e.g. when
-	// bisecting a failure.
-	//
+	gtfsSecrets *dagger.Secret,
 	// +optional
 	maxConcurrentZones int) (*dagger.Directory, error) {
 
@@ -63,14 +39,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		maxConcurrentZones = defaultMaxConcurrentZones
 	}
 
-	// Also a cache key for the GTFS download, not just a label. Unlike the
-	// dates on the artifacts, this one has to be today's: it's what makes the
-	// feeds get re-fetched on a new day.
 	gtfsDate := buildDate()
 
 	output := dag.Directory()
-
-	transitFeedsDir := transitConfigDir.Directory("gtfs-feeds")
 
 	otpBuildConfig := (*dagger.File)(nil)
 	otpConfigExists, err := transitConfigDir.Exists(ctx, "otp-build-config.json")
@@ -81,16 +52,11 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		otpBuildConfig = transitConfigDir.File("otp-build-config.json")
 	}
 	elevations := dag.Directory()
-	transitFeedsFiles, err := transitFeedsDir.Entries(ctx)
+	zoneFiles, err := transitZoneFiles(ctx, transitConfigDir)
 	if err != nil {
-		panic(fmt.Errorf("failed to get entries in transit feeds dir: %w", err))
+		return nil, err
 	}
-	// First prepare every zone concurrently. This produces all the bboxes that
-	// osmium needs for one multi-output extraction from the source PBF.
-	//
-	// Results are collected by index rather than appended, so the output
-	// directory is assembled in the same order no matter who finishes first.
-	// That keeps the returned Directory - and so the build cache - stable.
+
 	type zoneResult struct {
 		zone       *TransitZone
 		stem       string
@@ -100,30 +66,26 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		graph      *Artifact
 		elevations *dagger.Directory
 	}
-	results := make([]zoneResult, len(transitFeedsFiles))
+	results := make([]zoneResult, len(zoneFiles))
 
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.SetLimit(maxConcurrentZones)
 
-	for i, entry := range transitFeedsFiles {
+	for i, entry := range zoneFiles {
 		group.Go(func() (err error) {
-			// Most of the helpers below report failure by panicking. That was
-			// survivable when this ran on the main goroutine; from a worker it
-			// would take the whole process down mid-flight, with nothing saying
-			// which zone was at fault. Convert to an error so errgroup can
-			// cancel the siblings and the zone gets named.
+
 			defer func() {
 				if r := recover(); r != nil {
-					err = fmt.Errorf("transit zone %q failed: %v", entry, r)
+					err = fmt.Errorf("transit zone %q failed: %v", entry.name, r)
 				}
 			}()
 
-			transitFeedsFile := transitFeedsDir.File(entry)
-			zone := h.TransitZone(groupCtx, transitFeedsFile, gtfsDate)
+			transitFeedsFile := transitConfigDir.File(entry.path)
+			zone := h.TransitZone(groupCtx, entry.name, transitFeedsFile, gtfsDate)
 			if otpBuildConfig != nil {
 				zone = zone.WithOtpBuildConfig(groupCtx, otpBuildConfig)
 			}
-			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, gtfsDate, gtfsApiKeys))
+			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, gtfsDate, gtfsSecrets))
 
 			name := zone.Name(groupCtx)
 			stem := zone.ArtifactStem(groupCtx)
@@ -131,8 +93,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			if err != nil {
 				return fmt.Errorf("failed to get bbox for transit zone %q: %w", name, err)
 			}
-			// The download is keyed on gtfsDate, so dating the artifact from it
-			// keeps the name honest about the day the feeds were fetched.
+
 			gtfs := DirectoryArtifact(fmt.Sprintf("%s-gtfs", stem), zone.GTFSDir).Compress()
 			gtfs.Date = gtfsDate
 
@@ -165,8 +126,6 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	}
 	clippedOSM := h.OSMExport.clipMany(ctx, extracts)
 
-	// Graph builds remain concurrent, but each now consumes its pre-extracted
-	// PBF instead of causing another full scan of the source PBF.
 	group, groupCtx = errgroup.WithContext(ctx)
 	group.SetLimit(maxConcurrentZones)
 	for i := range results {
@@ -209,20 +168,37 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	return output, nil
 }
 
-func (h *Headway) TransitZone(ctx context.Context, transitFeeds *dagger.File, buildDate string) *TransitZone {
+type transitZoneFile struct {
+	name string
+
+	path string
+}
+
+func transitZoneFiles(ctx context.Context, transitConfigDir *dagger.Directory) ([]transitZoneFile, error) {
+	paths, err := transitConfigDir.Glob(ctx, "*/zone.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to list transit zones: %w", err)
+	}
+
+	sort.Strings(paths)
+	zones := make([]transitZoneFile, 0, len(paths))
+	for _, path := range paths {
+		zones = append(zones, transitZoneFile{name: filepath.Dir(path), path: path})
+	}
+	return zones, nil
+}
+
+func (h *Headway) TransitZone(ctx context.Context, zone string, transitFeeds *dagger.File, buildDate string) *TransitZone {
 	return &TransitZone{
 		Headway:      h,
+		Zone:         zone,
 		BuildDate:    buildDate,
 		TransitFeeds: transitFeeds,
 	}
 }
 
 func (t *TransitZone) ZoneName(ctx context.Context) string {
-	fileName, err := t.TransitFeeds.Name(ctx)
-	if err != nil {
-		panic(fmt.Errorf("failed to get transit feeds name: %w", err))
-	}
-	return strings.TrimSuffix(fileName, ".gtfs_feeds.csv")
+	return t.Zone
 }
 
 func (t *TransitZone) WithOtpBuildConfig(ctx context.Context, otpBuildConfig *dagger.File) *TransitZone {
@@ -230,14 +206,10 @@ func (t *TransitZone) WithOtpBuildConfig(ctx context.Context, otpBuildConfig *da
 	return t
 }
 
-// Name identifies the zone's build, date included. It names intermediates
-// inside the build, where there's no Artifact to carry the date separately.
 func (t *TransitZone) Name(ctx context.Context) string {
 	return fmt.Sprintf("%s-%s-%s", t.Headway.Area, t.ZoneName(ctx), t.BuildDate)
 }
 
-// ArtifactStem identifies the zone without a date: published artifacts get
-// their date from the Artifact.
 func (t *TransitZone) ArtifactStem(ctx context.Context) string {
 	return fmt.Sprintf("%s-%s", t.Headway.Area, t.ZoneName(ctx))
 }
@@ -256,48 +228,41 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 	return t
 }
 
-// Downloads each agency's GTFS zip and repacks them.
-//
-// buildDate (YYYY-MM-DD) is passed explicitly rather than read off the receiver
-// so that it's unambiguously part of dagger's cache key. Every build on the
-// same UTC day reuses one download; the first build of a new day re-downloads.
-// That's what ties the date stamped into the artifact names to the day the
-// feeds were actually fetched.
-//
-// The TTL is belt-and-suspenders: any same-day reuse is by definition under
-// 24h, so it never expires an entry that the date key would still consider
-// current.
-//
+// buildDate invalidates the download cache each UTC day.
 // +cache="24h"
 func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
-	// See BuildTransit.
-	//
 	// +optional
-	gtfsApiKeys *dagger.Secret) *dagger.Directory {
+	gtfsSecrets *dagger.Secret) *dagger.Directory {
 	servicesDir := t.Headway.ServiceDir("gtfs")
 
-	assumeBikesAllowed := t.Headway.Gtfout(ctx).File("assume-bikes-allowed")
+	gtfout := t.Headway.Gtfout(ctx)
 
-	container := dag.Container().
-		From("python:3")
-	container = WithAptPackages(container, "zip").
-		WithExec([]string{"pip", "install", "requests"}).
+	container := slimContainer("ca-certificates", "zip", "unzip").
 		WithMountedDirectory("/app", servicesDir).
 		WithWorkdir("/app").
-		WithMountedFile("/usr/local/bin/assume-bikes-allowed", assumeBikesAllowed).
-		WithMountedFile("gtfs_feeds.csv", t.TransitFeeds)
-	if gtfsApiKeys != nil {
-		container = container.WithMountedSecret(GtfsApiKeysPath, gtfsApiKeys)
+		WithMountedFile("/usr/local/bin/assume-bikes-allowed", gtfout.File("assume-bikes-allowed")).
+		WithMountedFile("/usr/local/bin/download-feeds", gtfout.File("download-feeds"))
+
+	container = container.WithMountedFile(zoneFilePath, t.TransitFeeds)
+
+	downloadArgs := []string{"download-feeds", "--zone", zoneFilePath, "--output", "downloaded"}
+
+	if gtfsSecrets != nil {
+		container = container.WithMountedSecret(GtfsSecretsPath, gtfsSecrets)
+		downloadArgs = append(downloadArgs, "--credentials-file", GtfsSecretsPath)
 	}
+
 	return container.
-		WithExec([]string{"sh", "-c", "./download_gtfs_feeds.py --output=downloaded < gtfs_feeds.csv"}).
+		WithExec(downloadArgs).
 		WithExec([]string{"sh", "-c", "./build_gtfs.sh --input downloaded --output ./output"}).
 		Directory("./output")
 }
 
-// Where BuildGtfsDir mounts the GTFS API key env-file for download_gtfs_feeds.py
-// to read. Mounted as a secret so the keys stay out of the build cache and logs.
-const GtfsApiKeysPath = "/run/secrets/gtfs-api-keys"
+// gtfs-secrets.json, in transitland's secrets.json format, which is how gtfout
+// reads credentials.
+const GtfsSecretsPath = "/run/secrets/gtfs-secrets.json"
+
+const zoneFilePath = "/run/secrets/zone.json"
 
 func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	container := slimContainer("unzip").
@@ -316,51 +281,34 @@ func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	return ParseBboxStr(bboxStr)
 }
 
-// Downloads GTFS mobility database CSV
-func (h *Headway) GtfsGetMobilitydb(ctx context.Context) *dagger.File {
-	downloadUrl := getEnvWithDefault("HEADWAY_MOBILITYDB_URL", "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media")
-	return downloadFile(downloadUrl)
-}
-
-// Enumerates GTFS feeds for a given area by filtering the mobility database
-func (h *Headway) NearbyGtfsFeeds(ctx context.Context) *dagger.File {
-	if h.Area == "" {
-		panic("Area is required for GTFS enumeration")
-	}
-
-	bbox, err := h.BBox(ctx)
-	if err != nil {
-		panic(fmt.Errorf("failed to get bounding box for area %s: %w", h.Area, err))
-	}
-
-	mobilityDb := h.GtfsGetMobilitydb(ctx)
-	servicesDir := h.ServiceDir("gtfs")
-
-	container := dag.Container().
-		From("python:3").
-		WithMountedDirectory("/app", servicesDir).
-		WithMountedFile("/app/sources.csv", mobilityDb).
-		WithWorkdir("/app").
-		WithExec([]string{"sh", "-c", fmt.Sprintf("./filter_feeds.py --bbox='%s' < sources.csv > nearby_gtfs_feeds.csv", bbox.SpaceSeparated())})
-
-	return container.File("/app/nearby_gtfs_feeds.csv")
-}
-
-// Builds Rust GTFS processing tools
-// I'm not yet sure how exporting will work in situ. Something akin to:
+// Downloads the GTFS feed-extents index from the headway-data repository.
 //
-//	dagger -c 'gtfout | file assume-bikes-allowed | export ./assume-bikes-allowed'
-func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
-	sourceDir := h.ServiceDir("gtfs/gtfout")
-	container := rustContainer().
-		WithMountedDirectory("/gtfout", sourceDir).
-		WithWorkdir("/gtfout").
-		WithExec([]string{"cargo", "build", "--release"})
-
-	return container.Directory("/gtfout/target/release")
+// +cache="never"
+func (h *Headway) DownloadGtfsIndex(ctx context.Context) (*dagger.File, error) {
+	commit, err := dag.Git(headwayDataRepo).Branch("main").Commit(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve %s main: %w", headwayDataRepo, err)
+	}
+	return h.DownloadGtfsIndexAtCommit(ctx, commit), nil
 }
 
-// Converts elevation HGT files to TIF format
+// Downloads the GTFS feed-extents index at a specific headway-data commit
+func (h *Headway) DownloadGtfsIndexAtCommit(ctx context.Context, commit string) *dagger.File {
+	url := getEnvWithDefault("HEADWAY_GTFS_INDEX_URL",
+		fmt.Sprintf("%s/raw/%s/gtfs/feed-extents.gpkg", headwayDataRepo, commit))
+	return downloadFile(url)
+}
+
+func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
+	container := rustContainer().
+		WithMountedDirectory("/repo", h.RepoDir).
+		WithWorkdir("/repo").
+		WithExec([]string{"cargo", "build", "--release",
+			"--package", "gtfout"})
+
+	return container.Directory("/repo/target/release")
+}
+
 func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {
 	bbox, err := t.BBox(ctx)
 	if err != nil {
@@ -368,10 +316,6 @@ func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {
 	}
 	return elevations(ctx, bbox, t.Headway)
 }
-
-// ===
-// OpenTripPlanner
-// ===
 
 func otpBaseContainer(ctx context.Context) *dagger.Container {
 	return dag.Container().
@@ -385,14 +329,12 @@ func (h *Headway) OtpServeContainer(ctx context.Context) *dagger.Container {
 		WithEntrypoint([]string{"sh", "-c"}).
 		WithDefaultArgs([]string{"/docker-entrypoint.sh --load --port ${PORT}"})
 
-	// NOTE: we dropped the healthcheck directive from the old pre-dagger dockerfile
-	// because I don't see where dagger supports these kinds of health checks.
-	// As I understand it, k8s ignores them anyway
 	return container
 }
 
 func (h *Headway) OtpInitContainer(ctx context.Context) *dagger.Container {
 	return downloadContainer().
+		WithFile("/usr/local/bin/zone-router-config", h.Gtfout(ctx).File("zone-router-config")).
 		WithFile("/app/init.sh", h.ServiceDir("otp").File("init.sh")).
 		WithDefaultArgs([]string{"/app/init.sh"})
 }

@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Apply a namespace's rendered configs and nothing else.
+# Apply a namespace's rendered configs, and restart only what changed.
 #
 # Pods restart only where the manifest actually changed - a new artifact URL or
 # volume version moves the pod template, so kubectl rolls exactly those pods and
@@ -10,9 +10,9 @@
 source "$(dirname "${BASH_SOURCE[0]}")/_deploy-lib.sh"
 
 deploy_lib_parse_args "$@"
-deploy_lib_require_clean_tree
+deploy_lib_preflight
 echo "ready to apply"
-
 deploy_lib_apply
+deploy_lib_restart_rotated
 
 watch kubectl get pods -n "$NAMESPACE"

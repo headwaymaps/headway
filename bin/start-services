@@ -29,7 +29,7 @@ Example:
     $0 builds/Bogota
 Override the compose file:
     COMPOSE_FILE=docker-compose.yaml $0 builds/Seattle
-Otherwise the compose file follows the build's HEADWAY_ENABLE_TRANSIT_ROUTING setting.
+Otherwise the compose file follows whether the build has any transit zones.
 EOS
     exit 1
 fi

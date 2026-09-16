@@ -73,6 +73,21 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  {
+    path: '/transit-zones',
+    component: () => import('layouts/MainLayout.vue'),
+    props: {
+      appClass: 'front-page',
+    },
+    children: [
+      {
+        name: 'transit-zones',
+        path: '/transit-zones',
+        component: () => import('pages/TransitZonePage.vue'),
+      },
+    ],
+  },
+
   // Always leave this as last one,
   // but you can also remove it
   {

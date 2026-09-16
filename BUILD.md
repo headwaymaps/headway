@@ -42,16 +42,14 @@ Headway currently supports fully automatic builds for the following cities:
 This approach will download all the mapping data you need automatically, but only works for the pre-defined metro areas above.
 
 1. Pick a metro area from the list above, like "Amsterdam" or "Denver". These values are case-sensitive. In all the examples, replace "Amsterdam" with your metro area of choice.
-2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, review and edit `builds/Amsterdam/.env`. Bogota is configured for transit routing, so unless you're setting that up too (step 4), delete the copied `builds/Amsterdam/transit` directory and unset `HEADWAY_ENABLE_TRANSIT_ROUTING`.
+2. Configuration is managed per build directory in `builds/<Area>`. Copy a template build directory: `cp -r builds/Bogota builds/Amsterdam`, then review and edit `builds/Amsterdam/.env`. Start without transit: delete the copied `builds/Amsterdam/transit` directory.
 3. Execute `bin/build builds/Amsterdam` to build data artifacts
-4. (Optional) Set up transit routing. Note: This increases hosting requirements for large metro areas - you'll want at least 4GB RAM extra for a medium sized city's transit service.
-   1. Find nearby transit schedules by running `bin/export-nearby-transit-feeds builds/Amsterdam`
-   2. Examine `builds/Amsterdam/transit/gtfs-feeds/amsterdam.gtfs_feeds.csv` and manually edit it if necessary to curate GTFS feeds. Some may have errors, and many may be useless for your purposes.
-   3. Build transit routing with `bin/build-transit builds/Amsterdam`
-5. Run `bin/start-services builds/Amsterdam`. This will bring up the Headway stack with a web frontend on port 8080.
+4. Run `bin/start-services builds/Amsterdam`. This will bring up the Headway stack with a web frontend on port 8080.
   1. (Optional for https and non-default port use only) reverse-proxy traffic to port 8080.
 
 That's it!
+
+Once the non-transit build works, see [Adding transit routing](#adding-transit-routing) to add transit.
 
 There are some experimental kubernetes configs in [k8s/](./k8s/), but they are pretty specific to my own needs at this point. See [k8s/README.md](./k8s/README.md) for how they're generated and deployed.
 
@@ -60,6 +58,55 @@ There are some experimental kubernetes configs in [k8s/](./k8s/), but they are p
 To build Headway for a custom area, you just need to provide your own OSM extract (.osm.pbf).
 
 The process is largely the same as above. After downloading your OSM extract, move it to the project root (in the same directory as this BUILD.md), and wherever you see `with-area Amsterdam` in the build scripts, change it to `with-area YourArea --local-pbf ./your-area.osm.pbf`.
+
+## Adding transit routing
+
+Transit routing is layered onto a build that already works, so get
+`bin/start-services` running first.
+
+Which agencies to route is described by a transit zone: a `zone.json` naming the
+GTFS feeds to build together. The easiest way to author one is the hosted tool
+at <https://maps.earth/transit-zones> - highlight your area of interest, check
+the providers you care about, and save the file it gives you. To run that tool
+yourself instead, see [TRANSIT_ZONER.md](./TRANSIT_ZONER.md).
+
+1. Save the `zone.json` into a directory named for the zone. That name is used
+   verbatim from here on, including as a Kubernetes object name, so stick to
+   lowercase letters, numbers and dashes:
+
+   ```sh
+   mkdir -p builds/Amsterdam/transit/amsterdam
+   mv ~/Downloads/zone.json builds/Amsterdam/transit/amsterdam/zone.json
+   ```
+
+   A build can serve several zones; add a directory per zone.
+
+2. Give each zone its slice of the GTFS credentials:
+
+   ```sh
+   bin/transit-credentials builds/Amsterdam
+   ```
+
+   Feeds needing an API key are reported with a JSON skeleton to paste into
+   `gtfs-secrets.json` in the repo root (gitignored), and where to request each
+   token. Fill them in and re-run until nothing is reported missing. Each zone
+   gets a `transit/<zone>/gtfs-secrets.json` holding only the feeds it uses.
+
+   Tokens can be checked against the providers before committing to a long
+   build:
+
+   ```sh
+   bin/transit-credentials --verify builds/Amsterdam
+   ```
+
+3. Build the transit artifacts and restart the stack:
+
+   ```sh
+   bin/build-transit builds/Amsterdam
+   bin/reset-services builds/Amsterdam
+   ```
+
+Re-run steps 2 and 3 when a token changes or you edit a `zone.json`.
 
 ## Docker-compose restarts
 
