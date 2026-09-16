@@ -32,7 +32,6 @@
                   "points": "}ckaHbkuiV`@@J??L?bA?p@?F?Pa@?}PCcRFq@@}W?{BCe@EYGUM[Um@y@a@g@KQEGq@w@uAiAa@UYQa@Q{EgBk@Q_@MOEsA_@DI]GGE?GSA]Eg@IyAc@YIkAWe@SeA_@y@QKC_AO[ASAcAGaACaCAqA@mEGgA?_@?iEBGAAC?K?QG?I?I?a@@GD_@?_ABm@?G?K@_EAGCIC_@?G@Y?U@I@M@OBG@UDWJ[NKFEHURQNABCBMJA@AgA?s@?sAHB?Q?iC?kB?Q?S?K?}A?K?Q?qA?KE??m@Ac@?]?]?C@m@?M?E?cB?e@?qA?O?IAi@?MAQCKCICGCOE[KYO[YYIEG@c@^WR_Av@m@j@SPMLuBjBGFSNML[XgA`AKHKJuBjBIHQJqBfBMJMLsBhBKJSPgB~AQNONoBdBMJQPeDvCMLSNgDzCMLQN}CpCSPSPcDvCKJWf@IR_CzEA@IPKTw@|Ai@fAYj@EHKNINCBEHERcBhDKHEHIPMVADKVqB`EINGIQWq@aAa@i@MSCCG??AMQIMEEyAuBCEEEMIMKACGKk@w@m@{@EEIOEEEGEGIKqAiBKOOUGIEGaAqAEEIGQICCg@GuC?E?OMS?eECM?Q?Y?oDAO?O?gEAO?Q?sB?y@Au@?W?_@AQ?eBAW?U?mB?c@?]?_@?E?Qk@SAG?CCIBC?C?Y@M@MBKBIBC@C@ACKGEACAaBfASLEBC@C?EBGBEBMH[RMLCDGDIFA?KD[LWLc@JSBYDY@CBG@E@GBE@K?G?C?G?E?GECAEEC?cB?M@I@I?o@?QAuC?o@AK@E?ODG@GAC?GAECGCKKECIIGCCAgCo@i@OGAOEICaBOI?]?kB?UBu@@mD@qA@G?cB@C@MHG@[Dc@FOBMDOD]LYJSJKDc@RG@M@G@uCvAIBGDOL_@PMRCBOFCBOBG@ULiAl@[Ry@b@EDCFCFEDIDmAn@E@C@OAC@EB]PWLIFKFGBG@y@d@[NEDq@h@eA|@aAt@u@l@}@t@STSXOVGNO`@Sj@a@hACF@BHF@FBFBP?FADgCfIeAjDIVENGPQb@Yb@i@r@UXIFMHMDGBG@M@W@i@@k@@iEAICuEAEACAGG?CCEA@G@AQ?W?kA@{@B]^qEBe@G?I@iA@}A?oA?cA?A?K?@I@IMAA?OAAe@MQSCm@\\mB}@EEC??DFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -458,7 +457,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T12:33:55-07:00",
@@ -495,7 +495,6 @@
                   "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mC?g@S@?[?Cq@??H"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -576,7 +575,8 @@
                   "lon": -122.334106,
                   "name": "1st Ave S & S Hanford St"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -584,11 +584,15 @@
                 },
                 "alerts": [
                   {
+                    "activityPeriods": [
+                      {
+                        "end": "2024-09-29T15:30:00-07:00",
+                        "start": "2024-03-31T15:30:00-07:00"
+                      }
+                    ],
                     "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
                     "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
-                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
-                    "effectiveEndDate": 1727649000,
-                    "effectiveStartDate": 1711924200
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view"
                   }
                 ],
                 "distance": 2322.8,
@@ -616,7 +620,6 @@
                   "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -640,7 +643,12 @@
                   "lon": -122.328957,
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": {
@@ -672,7 +680,6 @@
                   "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -696,7 +703,12 @@
                   "lon": -122.346619,
                   "name": "Aurora Ave N & N 38th St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -726,7 +738,6 @@
                   "points": "}bzaHjyviVG??A@q@FIDGNXPZLNFDJHFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -792,7 +803,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T12:38:35-07:00",
@@ -829,7 +841,6 @@
                   "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mC?g@?_@?]?{@?M?u@jF?@wB?gA?w@?i@?M?K?I?W@iHgA?o@?C?iB??wC?a@H??g@p@??P"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -958,7 +969,8 @@
                   "lon": -122.328972,
                   "name": "4th Ave S & S Hanford St"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -990,7 +1002,6 @@
                   "points": "c`kaHtksiV{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -1014,7 +1025,12 @@
                   "lon": -122.328957,
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": {
@@ -1046,7 +1062,6 @@
                   "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -1070,7 +1085,12 @@
                   "lon": -122.346619,
                   "name": "Aurora Ave N & N 38th St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -1100,7 +1120,6 @@
                   "points": "}bzaHjyviVG??A@q@FIDGNXPZLNFDJHFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -1166,7 +1185,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T12:48:22-07:00",
@@ -1203,7 +1223,6 @@
                   "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mC?g@S@?[?Cq@??H"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -1284,7 +1303,8 @@
                   "lon": -122.334106,
                   "name": "1st Ave S & S Hanford St"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -1292,11 +1312,15 @@
                 },
                 "alerts": [
                   {
+                    "activityPeriods": [
+                      {
+                        "end": "2024-09-29T15:30:00-07:00",
+                        "start": "2024-03-31T15:30:00-07:00"
+                      }
+                    ],
                     "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
                     "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
-                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
-                    "effectiveEndDate": 1727649000,
-                    "effectiveStartDate": 1711924200
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view"
                   }
                 ],
                 "distance": 2322.8,
@@ -1324,7 +1348,6 @@
                   "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -1348,7 +1371,12 @@
                   "lon": -122.328957,
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": {
@@ -1380,7 +1408,6 @@
                   "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -1404,7 +1431,12 @@
                   "lon": -122.346619,
                   "name": "Aurora Ave N & N 38th St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -1434,7 +1466,6 @@
                   "points": "}bzaHjyviVG??A@q@FIDGNXPZLNFDJHFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -1500,7 +1531,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T12:52:35-07:00",
@@ -1537,7 +1569,6 @@
                   "points": "}ckaHbkuiV`@@J??L?bA?p@?F?Pa@?}PCcRFq@@}W?{BCe@EYGUM[Um@y@a@g@KQEGq@w@uAiAa@UYQa@Q{EgBk@Q_@MOEsA_@DI]GGE?GSA]Eg@IyAc@YIkAWe@SeA_@y@QKC_AO[ASAcAGaACaCAqA@mEGgA?_@?iEBGAAC?K?QG?I?I?a@@GD_@?_ABm@?G?K@_EAGCIC_@?G@Y?U@I@M@OBG@UDWJ[NKFEHURQNABCBMJA@AgA?s@?sAHB?Q?iC?kB?Q?S?K?}A?K?Q?qA?KE??m@Ac@?]?]?C@m@?M?E?cB?e@?qA?O?IAi@?MHY?k@LI@A?IA?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -1798,7 +1829,8 @@
                   "lon": -122.329941,
                   "name": "Prefontaine Pl S & Yesler Way"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -1830,7 +1862,6 @@
                   "points": "_epaHnqsiVUt@M^GPIHGLa@\\gC|BoC`C]ZuAjA??YVoCbCmCbCmC`CgCzB??GBmCbCeEvDiDxC??]XwChCm@j@kCbCIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@sB?qA?c@BwA?iAC}D?yF?{FByE?yD?uD?cE?aF?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": "E-Line Rapid Ride",
@@ -1854,7 +1885,12 @@
                   "lon": -122.347176,
                   "name": "Aurora Ave N & N 46th St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -1884,7 +1920,6 @@
                   "points": "q|{aHz|viV@N??jE@PA@mBdECrD@vAAtA?J??O?cCjE?L?L?`F@J?bA@jDBL?J@tA?~CBDVHAFJBZ?x@R?HAD?@q@FIDGNXPZLNFDJHFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -2034,7 +2069,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T12:58:03-07:00",
@@ -2071,7 +2107,6 @@
                   "points": "}ckaHbkuiV`@@J??L?bA?p@?F?Pa@?}PCcRFq@@}W?{BCe@EYGUM[Um@y@a@g@KQEGq@w@uAiAa@UYQa@Q{EgBk@Q_@MOEsA_@DI]GGE?GSA]Eg@IyAc@YIkAWe@SeA_@y@QKC_AO[ASAcAGaACaCAqA@mEGgA?_@?iEBGAAC?K?QG?I?I?a@@GD_@?_ABm@?G??I?[?i@?i@I?C?K@gA??N"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -2236,7 +2271,8 @@
                   "lon": -122.335556,
                   "name": "Alaskan Way S & S Jackson St"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -2268,7 +2304,6 @@
                   "points": "cyoaH|ttiVUCm@?k@?}@Ae@@WBg@Ne@Py@h@a@RqCzB??KJ{@uCSw@Uq@o@yBm@mBm@mBo@sBk@mBsBjB??[VmCbCmC`CgCzB??GBmCbCeEvDiDxC??]XwChCm@j@kCbCIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGaAwAaAsAcAwAw@iAKM_AsA{@kA??EIcAuAaAuAcAuAc@m@]e@aAuAKIM[GSAYa@B}@J??w@HiFAiFAaE???g@?gFCmGA]?mB?S@UDC@"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": "C-Line Rapid Ride",
@@ -2292,7 +2327,12 @@
                   "lon": -122.338394,
                   "name": "Westlake Ave N & Mercer St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -2322,7 +2362,6 @@
                   "points": "kztaH~euiVBPKBG@GBUJCg@MDE@CBA@ABCBu@ZINMJIDKDQ@OFKFMNUf@GFGDE@A\\?HC?Y@M@MBKBIBC@C@ACKGEACAaBfASLEBC@C?EBGBEBMH[RMLCDGDIFA?KD[LWLc@JSBYDY@CBG@E@GBE@K?G?C?G?E?GECAEEC?cB?M@I@I?o@?QAuC?o@AK@E?ODG@GAC?GAECGCKKECIIGCCAgCo@i@OGAOEICaBOI?]?kB?UBu@@mD@qA@G?cB@C@MHG@[Dc@FOBMDOD]LYJSJKDc@RG@M@G@uCvAIBGDOL_@PMRCBOFCBOBG@ULiAl@[Ry@b@EDCFCFEDIDmAn@E@C@OAC@EB]PWLIFKFGBG@y@d@[NEDq@h@eA|@aAt@u@l@}@t@STSXOVGNO`@Sj@a@hACF@BHF@FBFBP?FADgCfIeAjDIVENGPQb@Yb@i@r@UXIFMHMDGBG@M@W@i@@k@@iEAICKVU?Q?g@?e@?c@?w@@EKACIKAGCIAQ?W?kA@{@B]^qEBe@G?I@iA@}A?oA?cA?A?K?@I@IMAA?OAAe@MQSCm@\\mB}@EEC??DFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -2592,7 +2631,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T13:00:18-07:00",
@@ -2629,7 +2669,6 @@
                   "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mC?g@S@?[?Cq@??H"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -2710,7 +2749,8 @@
                   "lon": -122.334106,
                   "name": "1st Ave S & S Hanford St"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -2718,11 +2758,15 @@
                 },
                 "alerts": [
                   {
+                    "activityPeriods": [
+                      {
+                        "end": "2024-09-29T15:30:00-07:00",
+                        "start": "2024-03-31T15:30:00-07:00"
+                      }
+                    ],
                     "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
                     "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
-                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
-                    "effectiveEndDate": 1727649000,
-                    "effectiveStartDate": 1711924200
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view"
                   }
                 ],
                 "distance": 2322.8,
@@ -2750,7 +2794,6 @@
                   "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -2774,7 +2817,12 @@
                   "lon": -122.328957,
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": {
@@ -2806,7 +2854,6 @@
                   "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -2830,7 +2877,12 @@
                   "lon": -122.346619,
                   "name": "Aurora Ave N & N 38th St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -2860,7 +2912,6 @@
                   "points": "}bzaHjyviVG??A@q@FIDGNXPZLNFDJHFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -2926,7 +2977,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T13:08:35-07:00",
@@ -2963,7 +3015,6 @@
                   "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mC?g@?_@?]?{@?M?u@jF?@wB?gA?w@?i@?M?K?I?W@iHgA?o@?C?iB??wC?a@H??g@p@??P"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -3092,7 +3143,8 @@
                   "lon": -122.328972,
                   "name": "4th Ave S & S Hanford St"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -3124,7 +3176,6 @@
                   "points": "c`kaHtksiV{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -3148,7 +3199,12 @@
                   "lon": -122.328957,
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": {
@@ -3180,7 +3236,6 @@
                   "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -3204,7 +3259,12 @@
                   "lon": -122.346619,
                   "name": "Aurora Ave N & N 38th St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -3234,7 +3294,6 @@
                   "points": "}bzaHjyviVG??A@q@FIDGNXPZLNFDJHFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -3300,7 +3359,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T13:18:22-07:00",
@@ -3337,7 +3397,6 @@
                   "points": "}ckaHbkuiV`@@J?@kB?mB?C?eB?q@?I?eA?W?K@S?E?s@?y@?_A?iA?y@@mC?g@S@?[?Cq@??H"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -3418,7 +3477,8 @@
                   "lon": -122.334106,
                   "name": "1st Ave S & S Hanford St"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               },
               {
                 "agency": {
@@ -3426,11 +3486,15 @@
                 },
                 "alerts": [
                   {
+                    "activityPeriods": [
+                      {
+                        "end": "2024-09-29T15:30:00-07:00",
+                        "start": "2024-03-31T15:30:00-07:00"
+                      }
+                    ],
                     "alertDescriptionText": "This is an update to a previous Transit Alert.  \r\nThe reroute end time for games on June 1 and June 15 have been updated.\r\n\nReroute will be in effect on each of the games noted below:\r\n- Sunday, April 28 at 3:30 PM-4:30 PM\r\n- Wednesday, May 1 at 3:00 PM-4:00 PM\r\n- Sunday, May 12 at 3:30 PM-4:30 PM\r\n- Wednesday, May 15 at 3:30 PM-4:30 PM\r\n- Thursday, May 30 at 3:30 PM-4:30 PM\r\n- Saturday, June 1 at 6:35 PM-7:35 PM\r\n- Sunday, June 2 at 3:30 PM-4:30 PM\r\n- Saturday, June 15 at 6:35 PM-7:35 PM\r\n- Sunday, June 16 at 3:30 PM-4:30 PM\r\n- Sunday, June 30 at 3:30 PM-4:30 PM\r\n- Thursday, July 4 at 3:30 PM-4:30 PM\r\n- Saturday, July 6 at 3:30 PM-4:30 PM\r\n- Sunday, July 7 at 3:30 PM-4:30 PM\r\n- Sunday, July 21 at 3:30 PM-4:30 PM\r\n- Wednesday, July 24 at 3:00 PM-4:00 PM\r\n- Sunday, August 4 at 3:30 PM-4:30 PM\r\n- Sunday, August 11 at 3:30 PM-4:30 PM\r\n- Saturday, August 24 at 3:30 PM-4:30 PM\r\n- Sunday, August 25 at 3:30 PM-4:30 PM\r\n- Wednesday, August 28 at 3:30 PM-4:30 PM\r\n- Sunday, September 15 at 3:30 PM-4:30 PM\r\n- Thursday, September 19 at 3:30 PM-4:30 PM\r\n- Sunday, September 29 at 2:30 PM-3:30 PM\r\n\nAffected stops:\r\nStop #15190 1st Ave S & S Spokane St (NB)\r\nStop #15205 1st Ave S & S Hanford St (NB)\r\nStop #15230 1st Ave S & S Lander St (NB)\r\nStop #15206 1st Ave S & S Stacy St (NB)\r\nStop #15212 1st Ave S & S Walker St (NB)\r\nStop #15207 1st Ave S & S Holgate St (NB)\r\nStop #15204 Edgar Martinez Dr S & Occidental Ave S (EB)\r\nStop #15201 1st Ave S & S Atlantic St (SB)\r\nStop #15202 1st Ave S & S Holgate St (SB)\r\nStop #15211 1st Ave S & S Walker St (SB)\r\nStop #15203 1st Ave S & S Stacy St (SB)\r\n\nFor Route 21 to Downtown Seattle get on/off buses at:\r\nStop #15145 SW Spokane St & Chelan Ave SW (EB)\r\nStop #30538 4th Ave S & S Spokane St (NB)\r\nStop #30550 4th Ave S & S Hanford St (NB)\r\nStop #30560 4th Ave S & S Forest St (NB)\r\nStop #30570 4th Ave S & S Lander St (NB)\r\nStop #30590 4th Ave S & S Walker St (NB)\r\nStop #30600 4th Ave S & S Holgate St (NB)\r\nStop #30635 4th Ave S & S Royal Brougham Way (NB)\r\n\nFor Route 21 to Westwood Village get on/off buses at:\r\nStop #515 3rd Ave S & S Main St (SB)\r\nStop #30670 4th Ave S & Edgar Martinez Dr S (SB)\r\nStop #30690 4th Ave S & S Holgate St (SB)\r\nStop #30700 4th Ave S & S Walker St (SB)\r\nStop #15380 1st Ave S & S Lander St (SB)",
                     "alertHeaderText": "Route 21 will be affected in both directions during Mariners afternoon home games; stops on portions of 1st Ave S will not be served; use alternate stops on 4th Ave S instead.",
-                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view",
-                    "effectiveEndDate": 1727649000,
-                    "effectiveStartDate": 1711924200
+                    "alertUrl": "https://drive.google.com/file/d/1rOKsBD54nHp8U1Sh3GGpQQpLMNhXwTDf/view"
                   }
                 ],
                 "distance": 2322.8,
@@ -3458,7 +3522,6 @@
                   "points": "odkaHvktiVgJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -3482,7 +3545,12 @@
                   "lon": -122.328957,
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": {
@@ -3514,7 +3582,6 @@
                   "points": "kqnaHpksiVmD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?"
                 },
                 "mode": "BUS",
-                "realTime": false,
                 "route": {
                   "color": null,
                   "longName": null,
@@ -3538,7 +3605,12 @@
                   "lon": -122.346619,
                   "name": "Aurora Ave N & N 38th St"
                 },
-                "transitLeg": true
+                "transitLeg": true,
+                "tripOnServiceDate": {
+                  "realTimeTripState": {
+                    "updated": false
+                  }
+                }
               },
               {
                 "agency": null,
@@ -3568,7 +3640,6 @@
                   "points": "}bzaHjyviVG??A@q@FIDGNXPZLNFDJHFHt@l@d@V\\JNBNBB?L?\\?"
                 },
                 "mode": "BICYCLE",
-                "realTime": false,
                 "route": null,
                 "start": {
                   "estimated": null,
@@ -3634,7 +3705,8 @@
                   "lon": -122.347234,
                   "name": "Destination"
                 },
-                "transitLeg": false
+                "transitLeg": false,
+                "tripOnServiceDate": null
               }
             ],
             "start": "2024-05-17T13:22:35-07:00",
