@@ -31,6 +31,7 @@ import type {
   MapLayerEventType,
   MapMouseEvent,
   MapOptions,
+  MapTouchEvent,
   Marker,
   SourceSpecification,
 } from 'maplibre-gl';
@@ -107,7 +108,7 @@ const mapTouchTimeouts: NodeJS.Timeout[] = [];
 
 type BaseMapEventType = 'click' | 'longpress' | 'poi_click';
 type BaseMapEventHandler = (
-  event: MapMouseEvent & {
+  event: (MapMouseEvent | MapTouchEvent) & {
     features?: GeoJSON.Feature[] | undefined;
   },
 ) => void;
@@ -284,7 +285,7 @@ export default defineComponent({
         }, 700),
       );
     });
-    map.on('touchstart', (event: MapMouseEvent) => {
+    map.on('touchstart', (event: MapTouchEvent) => {
       clearAllTimeouts();
       mapTouchTimeouts.push(
         setTimeout(() => {
