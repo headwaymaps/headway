@@ -2,6 +2,7 @@ set -ex
 
 (cd services/frontend/www-app && yarn upgrade) \
     && (cd services/pelias/generate_config && yarn upgrade) \
+    && (cd tests/browser && yarn upgrade) \
     && cargo update \
     && (cd dagger && go get -u ./... && go mod tidy)
 
