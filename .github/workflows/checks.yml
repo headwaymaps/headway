@@ -98,13 +98,13 @@ jobs:
       - name: Build service images
         run: bin/build-images
       - name: Save Docker images
-        run: |
-          docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep headway) | gzip > docker-images.tar.gz
+        run: docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep headway) | zstd -T0 > docker-images.tar.zst
       - name: Upload Docker images
         uses: actions/upload-artifact@v7
         with:
           name: docker-images-${{ github.sha }}
-          path: docker-images.tar.gz
+          path: docker-images.tar.zst
+          compression-level: 0
           retention-days: 7
   www_checks:
     defaults:
@@ -168,7 +168,7 @@ jobs:
           name: docker-images-${{ github.sha }}
           path: .
       - name: Load Docker images
-        run: gunzip -c docker-images.tar.gz | docker load
+        run: zstd -dc docker-images.tar.zst | docker load
       - name: Run integration tests
         run: tests/integration/run-integration-tests.sh
       - name: Collect logs on failure
@@ -211,7 +211,7 @@ jobs:
           name: docker-images-${{ github.sha }}
           path: .
       - name: Load Docker images
-        run: gunzip -c docker-images.tar.gz | docker load
+        run: zstd -dc docker-images.tar.zst | docker load
       - name: Start services
         run: bin/start-services --no-follow-logs builds/Bogota
       - name: Wait for services
