@@ -14,7 +14,18 @@ import type { Plugin } from 'vite';
 
 import { defineConfig } from '#q-app/wrappers';
 
-const HEADWAY_HOST = 'https://maps.earth';
+// Where `yarn dev` proxies the backend services. Point it at a local stack with
+// e.g. HEADWAY_HOST=http://localhost:8080 yarn dev
+const HEADWAY_HOST = process.env.HEADWAY_HOST ?? 'https://maps.earth';
+
+//   HEADWAY_HOST=http://localhost:8080 HEADWAY_TRAVELMUX_HOST=http://localhost:8000 yarn dev
+const HEADWAY_TRAVELMUX_HOST = process.env.HEADWAY_TRAVELMUX_HOST;
+const travelmuxProxy = HEADWAY_TRAVELMUX_HOST
+  ? {
+      target: HEADWAY_TRAVELMUX_HOST,
+      rewrite: (path: string) => path.replace(/^\/travelmux/, ''),
+    }
+  : { target: HEADWAY_HOST };
 
 // Serve the checked-out style locally, while its tiles, sprites, and fonts continue through the
 // /tileserver proxy. This makes it possible to iterate on a style against upstream world data.
@@ -198,9 +209,7 @@ export default defineConfig((/* ctx */) => {
         },
         '/travelmux': {
           changeOrigin: true,
-          target: HEADWAY_HOST,
-          // target: 'http://0.0.0.0:8000',
-          // rewrite: (path) => path.replace(/^\/travelmux/, ''),
+          ...travelmuxProxy,
         },
         '/transit-zoner': {
           changeOrigin: true,
