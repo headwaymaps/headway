@@ -5,7 +5,7 @@
 //! endpoints come along to pick the same router the plan came from.
 
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::geometry::{LineString, Point};
 use polyline::decode_polyline;
 use serde::{Deserialize, Serialize};
@@ -14,12 +14,20 @@ use super::error::PlanResponseErr;
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql;
-use crate::util::bearing_along;
 use crate::util::serde_util::deserialize_point_from_lat_lon;
+use crate::util::{point_at, ShapePosition};
 use crate::Error;
 
 /// OTP encodes its polylines at 1e-5, the original Google scale.
 const OTP_POLYLINE_PRECISION: u32 = 5;
+
+/// How far ahead of a vehicle's last report we're willing to guess. Beyond this the predictions
+/// it's built from are worth less than admitting we don't know.
+const TRACK_HORIZON: TimeDelta = TimeDelta::minutes(3);
+
+/// How finely the guess is sampled. The client walks between samples in a straight line, so this
+/// only has to be short enough that a bus doesn't round a corner inside one.
+const TRACK_STEP: TimeDelta = TimeDelta::seconds(5);
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -82,6 +90,123 @@ pub struct Vehicle {
     /// RFC 3339. When the vehicle reported this position.
     #[serde(skip_serializing_if = "Option::is_none")]
     last_updated: Option<DateTime<FixedOffset>>,
+
+    /// Where we guess the vehicle goes next, for a client to animate along between polls.
+    ///
+    /// Sampled every few seconds from the last report up to at most a few minutes out, by
+    /// walking the route's shape at the pace the trip's arrival predictions imply. Every point
+    /// past the first is a guess, not a report - `last_updated` is still the last thing the
+    /// vehicle actually told us. Empty when there's nothing to predict from, in which case the
+    /// vehicle should just sit at `lat`/`lon`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    track: Vec<Waypoint>,
+}
+
+/// Where a vehicle is guessed to be at one moment.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Waypoint {
+    lat: f64,
+    lon: f64,
+    /// RFC 3339, UTC.
+    time: DateTime<Utc>,
+}
+
+impl Waypoint {
+    /// Interpolating a shape yields far more digits than it means. A millionth of a degree is
+    /// about 10cm, already finer than the GPS fix underneath, and the rest is payload.
+    fn new(point: Point, time: DateTime<Utc>) -> Self {
+        let round = |degrees: f64| (degrees * 1e6).round() / 1e6;
+        Self {
+            lat: round(point.y()),
+            lon: round(point.x()),
+            time,
+        }
+    }
+}
+
+/// A point the vehicle is expected to reach, and when - the vehicle's own position to begin
+/// with, then each upcoming stop at its predicted arrival.
+struct Anchor {
+    progress: f64,
+    time: DateTime<Utc>,
+}
+
+/// The stops ahead of `position` that the trip still expects to reach, in order.
+///
+/// Predictions that don't move both forward along the shape and forward in time are dropped:
+/// OTP hands back the whole day's stop sequence, including stops the vehicle has already passed
+/// and, on a loop, stops whose shape position is behind it.
+fn anchors(
+    shape: &LineString,
+    position: &ShapePosition,
+    reported_at: DateTime<Utc>,
+    stoptimes: &[gtfs_graphql::VehicleStoptime],
+) -> Vec<Anchor> {
+    let mut anchors = vec![Anchor {
+        progress: position.progress,
+        time: reported_at,
+    }];
+    let horizon = reported_at + TRACK_HORIZON;
+
+    for stoptime in stoptimes {
+        let (Some(point), Some(time)) = (stoptime.point(), stoptime.expected_arrival()) else {
+            continue;
+        };
+        let Some(stop) = ShapePosition::project(shape, point) else {
+            continue;
+        };
+        let last = anchors.last().expect("seeded above");
+        if stop.progress <= last.progress || time <= last.time {
+            continue;
+        }
+        anchors.push(Anchor {
+            progress: stop.progress,
+            time,
+        });
+        if time >= horizon {
+            break;
+        }
+    }
+    anchors
+}
+
+/// Sample the guessed path at a fixed cadence, so a client can walk it by wall clock.
+fn track(shape: &LineString, anchors: &[Anchor]) -> Vec<Waypoint> {
+    let (Some(first), Some(last)) = (anchors.first(), anchors.last()) else {
+        return vec![];
+    };
+    // One anchor is just the vehicle where it already is - nothing to say.
+    if anchors.len() < 2 {
+        return vec![];
+    }
+
+    let mut waypoints = Vec::new();
+    let mut time = first.time;
+    let end = last.time.min(first.time + TRACK_HORIZON);
+    while time <= end {
+        // The pair of anchors this instant falls between.
+        let next = anchors
+            .iter()
+            .position(|anchor| anchor.time > time)
+            .unwrap_or(anchors.len() - 1);
+        let before = &anchors[next.saturating_sub(1)];
+        let after = &anchors[next];
+
+        let span = (after.time - before.time).num_milliseconds() as f64;
+        let into = if span > 0.0 {
+            (time - before.time).num_milliseconds() as f64 / span
+        } else {
+            0.0
+        };
+        let progress = before.progress + into * (after.progress - before.progress);
+
+        if let Some(point) = point_at(shape, progress) {
+            waypoints.push(Waypoint::new(point, time));
+        }
+        time += TRACK_STEP;
+    }
+    waypoints
 }
 
 impl Vehicle {
@@ -93,6 +218,24 @@ impl Vehicle {
     ) -> Option<Self> {
         let lat = position.lat?;
         let lon = position.lon?;
+        let on_shape = shape.and_then(|shape| ShapePosition::project(shape, Point::new(lon, lat)));
+
+        // Guessing forward only makes sense from a report we can date.
+        let track = match (shape, &on_shape, position.last_update) {
+            (Some(shape), Some(on_shape), Some(reported_at)) => {
+                let stoptimes: Vec<_> = position
+                    .trip
+                    .stoptimes_for_date
+                    .unwrap_or_default()
+                    .into_iter()
+                    .flatten()
+                    .collect();
+                let anchors = anchors(shape, on_shape, reported_at.with_timezone(&Utc), &stoptimes);
+                track(shape, &anchors)
+            }
+            _ => vec![],
+        };
+
         Some(Self {
             pattern_code: pattern_code.to_owned(),
             vehicle_id: position.vehicle_id,
@@ -100,8 +243,9 @@ impl Vehicle {
             lat,
             lon,
             heading: position.heading,
-            bearing: shape.and_then(|shape| bearing_along(shape, Point::new(lon, lat))),
+            bearing: on_shape.map(|on_shape| on_shape.bearing),
             last_updated: position.last_update,
+            track,
         })
     }
 }
@@ -181,8 +325,37 @@ pub async fn get_vehicle_positions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::otp::gtfs_graphql::VehiclePosition;
+    use crate::otp::gtfs_graphql::{StoptimeStop, VehiclePosition, VehicleStoptime, VehicleTrip};
     use geo::line_string;
+
+    /// Midnight of the service day these fixtures run on.
+    const SERVICE_DAY: i64 = 1_716_015_600;
+
+    fn at(after_midnight: i64) -> DateTime<Utc> {
+        DateTime::from_timestamp(SERVICE_DAY + after_midnight, 0).expect("in range")
+    }
+
+    /// A straight run due east. A degree of longitude here is about 75km, so the stops below sit
+    /// roughly 750m apart.
+    fn shape() -> LineString {
+        line_string![
+            (x: -122.340, y: 47.600),
+            (x: -122.300, y: 47.600),
+        ]
+    }
+
+    fn stoptime(lon: f64, arrival: i32) -> VehicleStoptime {
+        VehicleStoptime {
+            realtime: Some(true),
+            realtime_arrival: Some(arrival),
+            scheduled_arrival: Some(arrival),
+            service_day: Some(SERVICE_DAY),
+            stop: Some(StoptimeStop {
+                lat: Some(47.600),
+                lon: Some(lon),
+            }),
+        }
+    }
 
     fn position(lat: Option<f64>, lon: Option<f64>) -> VehiclePosition {
         VehiclePosition {
@@ -192,15 +365,11 @@ mod tests {
             lon,
             heading: None,
             last_update: None,
+            trip: VehicleTrip {
+                gtfs_id: "1:809330321".to_owned(),
+                stoptimes_for_date: None,
+            },
         }
-    }
-
-    /// An eastbound stretch of 1st Ave S.
-    fn shape() -> LineString {
-        line_string![
-            (x: -122.340, y: 47.600),
-            (x: -122.330, y: 47.600),
-        ]
     }
 
     fn query(patterns: &str) -> VehiclePositionsQuery {
@@ -248,6 +417,7 @@ mod tests {
         let vehicle = Vehicle::from_otp("1:40:0:01", None, position(Some(47.6), Some(-122.335)))
             .expect("has coordinates");
         assert_eq!(vehicle.bearing, None);
+        assert!(vehicle.track.is_empty());
         assert_eq!(vehicle.lat, 47.6);
     }
 
@@ -259,5 +429,89 @@ mod tests {
             positions: vec![],
         };
         assert!(shape_of(&pattern).is_none());
+    }
+
+    fn anchors_for(
+        vehicle_lon: f64,
+        reported_at: i64,
+        stoptimes: &[VehicleStoptime],
+    ) -> Vec<Anchor> {
+        let shape = shape();
+        let on_shape =
+            ShapePosition::project(&shape, Point::new(vehicle_lon, 47.600)).expect("on the shape");
+        anchors(&shape, &on_shape, at(reported_at), stoptimes)
+    }
+
+    /// OTP hands back the whole day's stop sequence, most of which is behind the vehicle.
+    #[test]
+    fn stops_the_vehicle_has_already_passed_are_dropped() {
+        let stoptimes = [
+            stoptime(-122.340, 100), // start of the line, well behind
+            stoptime(-122.330, 200), // behind
+            stoptime(-122.320, 400), // ahead
+            stoptime(-122.310, 600), // ahead
+        ];
+        let anchors = anchors_for(-122.325, 300, &stoptimes);
+
+        // The vehicle itself, then only the two stops ahead of it.
+        assert_eq!(anchors.len(), 3);
+        assert!(anchors[1].progress > anchors[0].progress);
+        assert_eq!(anchors[1].time, at(400));
+        assert_eq!(anchors[2].time, at(600));
+    }
+
+    /// The position and the predictions come from the same minute-old snapshot, so by the time we
+    /// serve them the next stop's arrival can already be in the past. Those can't anchor
+    /// anything - the walk has to carry on to a prediction that's still ahead.
+    #[test]
+    fn predictions_that_have_already_expired_are_walked_past() {
+        let stoptimes = [
+            stoptime(-122.320, 250), // ahead on the shape, but due before the report
+            stoptime(-122.310, 600),
+        ];
+        let anchors = anchors_for(-122.325, 300, &stoptimes);
+
+        assert_eq!(anchors.len(), 2);
+        assert_eq!(anchors[1].time, at(600));
+    }
+
+    #[test]
+    fn a_vehicle_with_nothing_ahead_of_it_gets_no_track() {
+        let stoptimes = [stoptime(-122.340, 100), stoptime(-122.330, 200)];
+        let anchors = anchors_for(-122.325, 300, &stoptimes);
+
+        assert_eq!(anchors.len(), 1);
+        assert!(track(&shape(), &anchors).is_empty());
+    }
+
+    #[test]
+    fn the_track_starts_where_the_vehicle_is_and_walks_toward_the_next_stop() {
+        let stoptimes = [stoptime(-122.320, 400), stoptime(-122.310, 600)];
+        let anchors = anchors_for(-122.325, 300, &stoptimes);
+        let track = track(&shape(), &anchors);
+
+        assert!(
+            track.len() > 2,
+            "expected several samples, got {}",
+            track.len()
+        );
+        assert_eq!(track[0].time, at(300));
+        // Sampled at a fixed cadence...
+        assert_eq!(track[1].time - track[0].time, TRACK_STEP);
+        // ...running east, the way the shape does, and never past the last prediction.
+        assert!(track[1].lon > track[0].lon);
+        assert!(track.last().expect("non-empty").time <= at(600));
+        assert!(track.windows(2).all(|pair| pair[1].lon >= pair[0].lon));
+    }
+
+    /// A trip predicted hours out shouldn't produce hours of guessed positions.
+    #[test]
+    fn the_track_stops_at_the_horizon() {
+        let stoptimes = [stoptime(-122.310, 300 + 60 * 60)];
+        let anchors = anchors_for(-122.325, 300, &stoptimes);
+        let track = track(&shape(), &anchors);
+
+        let span = track.last().expect("non-empty").time - track[0].time;
+        assert!(span <= TRACK_HORIZON, "track ran {span} past the horizon");
     }
 }

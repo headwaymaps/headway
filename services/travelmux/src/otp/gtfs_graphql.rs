@@ -12,7 +12,7 @@
 //!   OTP's old REST response. That's what the v6 API - and, through its `_otp` passthrough, v6's
 //!   clients - still expect.
 
-use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use cynic::http::ReqwestExt;
 use cynic::{Operation, QueryBuilder};
@@ -652,6 +652,54 @@ pub struct VehiclePosition {
     pub heading: Option<f64>,
     /// When the vehicle reported this position.
     pub last_update: Option<DateTime<FixedOffset>>,
+    /// The run this vehicle is on, which is what carries the arrival predictions.
+    pub trip: VehicleTrip,
+}
+
+/// A vehicle's trip. Separate from [`Trip`] because a plan's legs have no use for the whole stop
+/// sequence, and selecting it there would drag 50-odd stoptimes into every leg of every
+/// itinerary.
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Trip")]
+pub struct VehicleTrip {
+    pub gtfs_id: String,
+    /// Every stop of the run, in order, with whatever realtime prediction OTP holds for it.
+    pub stoptimes_for_date: Option<Vec<Option<VehicleStoptime>>>,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Stoptime")]
+pub struct VehicleStoptime {
+    /// Whether `realtime_arrival` is a prediction rather than a repeat of the schedule.
+    pub realtime: Option<bool>,
+    /// Seconds after `service_day`.
+    pub realtime_arrival: Option<i32>,
+    /// Seconds after `service_day`.
+    pub scheduled_arrival: Option<i32>,
+    /// Midnight of the service date, in seconds since the Unix epoch.
+    pub service_day: Option<i64>,
+    pub stop: Option<StoptimeStop>,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Stop")]
+pub struct StoptimeStop {
+    pub lat: Option<f64>,
+    pub lon: Option<f64>,
+}
+
+impl VehicleStoptime {
+    /// When OTP expects the vehicle here, preferring its realtime prediction over the schedule.
+    pub fn expected_arrival(&self) -> Option<DateTime<Utc>> {
+        let service_day = self.service_day?;
+        let after_midnight = self.realtime_arrival.or(self.scheduled_arrival)?;
+        DateTime::from_timestamp(service_day + i64::from(after_midnight), 0)
+    }
+
+    pub fn point(&self) -> Option<Point> {
+        let stop = self.stop.as_ref()?;
+        Some(Point::new(stop.lon?, stop.lat?))
+    }
 }
 
 impl VehiclePositionsQuery {
@@ -1193,11 +1241,21 @@ mod tests {
               "vehiclePositions": [
                 {
                   "vehicleId": "1:7204", "label": "7204", "lat": 47.6, "lon": -122.33,
-                  "heading": 180.0, "lastUpdate": "2024-05-17T10:08:00-07:00"
+                  "heading": 180.0, "lastUpdate": "2024-05-17T10:08:00-07:00",
+                  "trip": {
+                    "gtfsId": "1:809330321",
+                    "stoptimesForDate": [
+                      {
+                        "realtime": true, "realtimeArrival": 36600, "scheduledArrival": 36480,
+                        "serviceDay": 1715929200, "stop": { "lat": 47.61, "lon": -122.33 }
+                      }
+                    ]
+                  }
                 },
                 {
                   "vehicleId": "1:7205", "label": null, "lat": null, "lon": null,
-                  "heading": null, "lastUpdate": null
+                  "heading": null, "lastUpdate": null,
+                  "trip": { "gtfsId": "1:809330322", "stoptimesForDate": null }
                 }
               ]
             },
@@ -1220,6 +1278,19 @@ mod tests {
         // A vehicle that reports no position is still handed back - it's the API layer that
         // decides there's nothing to draw.
         assert_eq!(patterns[0].positions[1].lat, None);
+        // The stop sequence rides along with the position - it's what the arrival predictions
+        // that drive the guessed track come from.
+        let stoptimes = patterns[0].positions[0]
+            .trip
+            .stoptimes_for_date
+            .as_ref()
+            .expect("selected");
+        let first = stoptimes[0].as_ref().expect("present");
+        assert!(first.realtime.unwrap_or(false));
+        assert_eq!(
+            first.expected_arrival(),
+            DateTime::from_timestamp(1715965800, 0)
+        );
 
         assert_eq!(patterns[1].geometry, None);
         assert!(patterns[1].positions.is_empty());

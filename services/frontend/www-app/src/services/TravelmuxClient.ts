@@ -97,6 +97,16 @@ export interface TravelmuxVehicle {
   bearing?: number;
   /// RFC 3339. When the vehicle reported this position.
   lastUpdated?: string;
+  /// Where travelmux guesses the vehicle goes next, to animate along between polls. The first
+  /// point is the reported position at `lastUpdated`; everything after it is a guess.
+  track?: TravelmuxWaypoint[];
+}
+
+export interface TravelmuxWaypoint {
+  lat: number;
+  lon: number;
+  /// RFC 3339
+  time: string;
 }
 
 export interface NonTransitLeg {

@@ -1,4 +1,4 @@
-import { LngLat } from 'maplibre-gl';
+import { LngLat, Marker } from 'maplibre-gl';
 import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import { i18n } from 'src/i18n/lang';
 import Trip, { transitVehicleEmoji } from 'src/models/Trip';
@@ -37,14 +37,59 @@ const UNKNOWN_PATTERN: PatternStyle = {
 export class TransitVehicle {
   readonly raw: TravelmuxVehicle;
   readonly style: PatternStyle;
+  /// `raw.track`'s timestamps as epoch millis, parsed once rather than per animation frame.
+  private readonly trackTimes: number[];
 
   constructor(raw: TravelmuxVehicle, style: PatternStyle) {
     this.raw = raw;
     this.style = style;
+    this.trackTimes = (raw.track ?? []).map((waypoint) =>
+      Date.parse(waypoint.time),
+    );
   }
 
+  /// Where the vehicle last actually reported being.
   get lngLat(): LngLat {
     return new LngLat(this.raw.lon, this.raw.lat);
+  }
+
+  /// Where we reckon the vehicle is at `now`, walking the predicted track.
+  ///
+  /// Before the track begins, or with no track at all, that's just the reported position. Past
+  /// its end we hold at the last point rather than carrying on off the end of the prediction.
+  positionAt(now: number): LngLat {
+    const track = this.raw.track;
+    if (!track || track.length === 0) {
+      return this.lngLat;
+    }
+    if (now <= this.trackTimes[0]!) {
+      return new LngLat(track[0]!.lon, track[0]!.lat);
+    }
+    const end = track.length - 1;
+    if (now >= this.trackTimes[end]!) {
+      return new LngLat(track[end]!.lon, track[end]!.lat);
+    }
+    for (let i = 1; i <= end; i++) {
+      const until = this.trackTimes[i]!;
+      if (until < now) {
+        continue;
+      }
+      const since = this.trackTimes[i - 1]!;
+      const from = track[i - 1]!;
+      const to = track[i]!;
+      const span = until - since;
+      const into = span > 0 ? (now - since) / span : 0;
+      return new LngLat(
+        from.lon + into * (to.lon - from.lon),
+        from.lat + into * (to.lat - from.lat),
+      );
+    }
+    return this.lngLat;
+  }
+
+  /// Whether the dot has moved past the last thing the vehicle actually told us.
+  isEstimatedAt(now: number): boolean {
+    return this.trackTimes.length > 0 && now > this.trackTimes[0]!;
   }
 
   /// Stable for as long as the vehicle keeps reporting, so it can key a marker.
@@ -64,8 +109,11 @@ export class TransitVehicle {
     return i18n.global.t('transit_vehicle_$label', { label: this.raw.label });
   }
 
-  /// How stale this position is, phrased for the traveler - "Location as of 40 sec ago".
-  asOfFormatted(now: Date = new Date()): string {
+  /// How much of this dot is reported and how much is guesswork, phrased for the traveler.
+  ///
+  /// Once the dot has left the reported position it says so: the position on screen is one
+  /// nobody reported, and the honest thing is to name the last moment we actually knew.
+  freshnessFormatted(now: Date = new Date()): string {
     if (!this.raw.lastUpdated) {
       return i18n.global.t('transit_vehicle_location_live');
     }
@@ -81,14 +129,22 @@ export class TransitVehicle {
             n: Math.round(ageSeconds),
           })
         : formatDuration(ageSeconds, 'shortform');
-    return i18n.global.t('transit_vehicle_location_as_of_$timeDuration', {
-      timeDuration,
-    });
+    const phrase = this.isEstimatedAt(now.getTime())
+      ? 'transit_vehicle_location_estimated_$timeDuration'
+      : 'transit_vehicle_location_as_of_$timeDuration';
+    return i18n.global.t(phrase, { timeDuration });
   }
 }
 
-/// Polls for the vehicles serving the transit legs of the trips on screen, and draws each as a
-/// pulsing dot until [stop]ped.
+/// A vehicle we're drawing, and the marker drawing it. The marker outlives a poll so it can be
+/// animated between them - and so a tooltip being read doesn't vanish underneath the reader.
+interface TrackedVehicle {
+  marker: Marker;
+  vehicle: TransitVehicle;
+}
+
+/// Polls for the vehicles serving the transit legs of the trips on screen, draws each as a
+/// pulsing dot, and walks it along travelmux's predicted track between polls until [stop]ped.
 ///
 /// Only some feeds publish positions, so most trips draw nothing at all.
 export default class VehicleOverlay {
@@ -97,7 +153,8 @@ export default class VehicleOverlay {
   private to: LngLat;
   private trips: Trip[];
   private timer?: ReturnType<typeof setInterval>;
-  private markerKeys: string[] = [];
+  private animation?: number;
+  private tracked: Map<string, TrackedVehicle> = new Map();
 
   constructor(map: BaseMapInterface, from: LngLat, to: LngLat, trips: Trip[]) {
     this.map = map;
@@ -111,6 +168,7 @@ export default class VehicleOverlay {
     // Before the first refresh, so that an in-flight poll can tell it's still wanted.
     this.timer = setInterval(() => this.refresh(), POLL_INTERVAL_MS);
     this.refresh();
+    this.animate();
   }
 
   stop(): void {
@@ -118,10 +176,14 @@ export default class VehicleOverlay {
       clearInterval(this.timer);
       this.timer = undefined;
     }
+    if (this.animation !== undefined) {
+      cancelAnimationFrame(this.animation);
+      this.animation = undefined;
+    }
     this.clearMarkers();
   }
 
-  /// How to draw each pattern's vehicles, keyed by pattern code.
+  /// The route color to draw each pattern's vehicles in, keyed by pattern code.
   private stylesByPattern(): Map<string, PatternStyle> {
     const styles = new Map<string, PatternStyle>();
     for (const trip of this.trips) {
@@ -143,10 +205,23 @@ export default class VehicleOverlay {
   }
 
   private clearMarkers(): void {
-    for (const key of this.markerKeys) {
+    for (const key of this.tracked.keys()) {
       this.map.removeMarker(key);
     }
-    this.markerKeys = [];
+    this.tracked.clear();
+  }
+
+  /// Walk every dot along its track. Positions are interpolated per frame rather than per poll,
+  /// which is the whole point: a vehicle reports about once a minute but moves continuously.
+  private animate(): void {
+    const frame = () => {
+      const now = Date.now();
+      for (const tracked of this.tracked.values()) {
+        tracked.marker.setLngLat(tracked.vehicle.positionAt(now));
+      }
+      this.animation = requestAnimationFrame(frame);
+    };
+    this.animation = requestAnimationFrame(frame);
   }
 
   private async refresh(): Promise<void> {
@@ -167,20 +242,40 @@ export default class VehicleOverlay {
       return;
     }
 
-    this.clearMarkers();
+    const stale = new Set(this.tracked.keys());
     for (const raw of result.value) {
       const vehicle = new TransitVehicle(
         raw,
         styles.get(raw.patternCode) ?? UNKNOWN_PATTERN,
       );
+      const key = vehicle.markerKey;
+      stale.delete(key);
+
+      const existing = this.tracked.get(key);
+      if (existing) {
+        // Keep the marker: re-creating it restarts the pulse and drops any open tooltip.
+        existing.vehicle = vehicle;
+        Markers.setTransitVehicleBearing(existing.marker, raw.bearing);
+        continue;
+      }
+
       const marker = Markers.transitVehicle({
         ...vehicle.style,
         vehicleLabel: vehicle.labelFormatted,
-        bearing: vehicle.raw.bearing,
-        ageText: () => vehicle.asOfFormatted(),
-      }).setLngLat(vehicle.lngLat);
-      this.map.pushMarker(vehicle.markerKey, marker);
-      this.markerKeys.push(vehicle.markerKey);
+        bearing: raw.bearing,
+        // Reads through the map so it picks up each refresh's vehicle, not the one it was
+        // built with.
+        ageText: () =>
+          this.tracked.get(key)?.vehicle.freshnessFormatted() ?? '',
+      }).setLngLat(vehicle.positionAt(Date.now()));
+      this.tracked.set(key, { marker, vehicle });
+      this.map.pushMarker(key, marker);
+    }
+
+    // Vehicles that stopped reporting, or left the patterns we asked about.
+    for (const key of stale) {
+      this.map.removeMarker(key);
+      this.tracked.delete(key);
     }
   }
 }

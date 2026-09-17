@@ -107,6 +107,15 @@ export default {
 
     return new Marker({ element });
   },
+  /// Re-aim a vehicle marker without rebuilding it, as its bearing changes between polls.
+  setTransitVehicleBearing: (marker: Marker, bearing?: number): void => {
+    const heading = marker
+      .getElement()
+      .querySelector<HTMLElement>('.transit-vehicle__heading');
+    if (heading && bearing !== undefined) {
+      heading.style.transform = `rotate(${bearing}deg)`;
+    }
+  },
   maneuver: (icon: string, rotation: number = 0): Marker => {
     const element = document.createElement('div');
     element.innerHTML = `
