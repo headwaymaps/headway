@@ -4,7 +4,8 @@
 #
 # The checks should align with our CI checks in .github/workflows/frontend-checks.yml
 #
-# To automatically run before each commit, once per clone:
+# Run it by hand, or automatically before each commit by setting this once per
+# clone:
 #
 #     git config core.hooksPath .githooks
 #

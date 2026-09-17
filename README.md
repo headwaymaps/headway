@@ -26,6 +26,14 @@ Headway is currently capable of showing a map, searching for points of interest 
 
 Headway has been confirmed working on amd64 machines running Linux and macOS. The machine used for generation of the data files needs to have at least 8GB of memory, potentially more for larger areas. The requirements for running an instance of the stack are lower though. Expect to need around 4GB for a medium sized metro area. Additionally, you should expect to need 50GB-100GB of disk space during the build process.
 
+### Development
+
+`.githooks/pre-commit` runs the formatting, linting and test checks. Run it by hand, or automatically before each commit by setting this once per clone:
+
+```
+git config core.hooksPath .githooks
+```
+
 ### License
 
 Headway is available freely under the terms of the Apache License, version 2.0. Please consider opening a PR for any enhancements or bugfixes!
