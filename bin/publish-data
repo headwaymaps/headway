@@ -31,6 +31,8 @@ if [ "$#" -eq 3 ]; then
     HOST=$3
 fi
 
+source bin/_panes.sh
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${REPO_ROOT}/data"
 
@@ -72,11 +74,9 @@ function upload() {
     destination="${HOST}:${output_path}"
   fi
 
-  echo "Syncing ${input_path} -> ${destination}"
-  rsync -a --partial "$input_path" "$destination"
-  echo "Synced ${destination}"
+  echo "${input_path} -> ${destination}"
+  rsync -a --partial --progress "$input_path" "$destination"
 }
-export -f run upload
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
@@ -95,7 +95,7 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 PLAN=$(mktemp)
-trap 'rm -f "$PLAN"' EXIT
+trap 'rm -f "$PLAN"; panes_cleanup' EXIT
 
 for file in $("${REPO_ROOT}/bin/artifacts" files "$CONFIG_DIR"); do
   plan_upload "$file" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}" >> "$PLAN"
@@ -106,13 +106,28 @@ for file in $("${REPO_ROOT}/bin/artifacts" shared-files "$CONFIG_DIR"); do
   plan_upload "$file" "${HEADWAY_DATA_TAG}" >> "$PLAN"
 done
 
-export HOST
-
 # One round trip for all of them, rather than racing mkdir from each upload.
-xargs -0 -n2 bash -c 'dirname "$2"' _ < "$PLAN" | sort -u | tr '\n' '\0' \
-  | xargs -0 bash -c 'run mkdir -p "$@"' _
+DIRS=()
+while IFS= read -r dir; do
+  DIRS+=("$dir")
+done < <(
+  while IFS= read -r -d '' input_path && IFS= read -r -d '' output_path; do
+    dirname "$output_path"
+  done < "$PLAN" | sort -u
+)
+if [ ${#DIRS[@]} -gt 0 ]; then
+  run mkdir -p "${DIRS[@]}"
+fi
 
-xargs -0 -n2 -P "$MAX_CONCURRENT_UPLOADS" bash -c 'upload "$0" "$1"' < "$PLAN"
+panes_init "$MAX_CONCURRENT_UPLOADS"
+while IFS= read -r -d '' input_path && IFS= read -r -d '' output_path; do
+  panes_add "$(basename "$output_path")" upload "$input_path" "$output_path"
+done < "$PLAN"
+
+panes_run || {
+  panes_dump_failures
+  exit 1
+}
 
 echo "Publishing complete."
 echo 'Next, deploy with `bin/k8s/rollout-latest` or `bin/k8s/apply-latest`'

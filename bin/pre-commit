@@ -4,31 +4,22 @@
 #
 # The checks should align with our CI checks in .github/workflows/frontend-checks.yml
 #
-# To automatically run before each commit, copy or symlink this into .git/hooks/
+# To automatically run before each commit, once per clone:
+#
+#     git config core.hooksPath .githooks
+#
+# The relative path resolves against whichever worktree you're committing in, so
+# each worktree runs its own copy of this script.
 #
 # You can commit without running the checks by running `git commit --no-verify` if need be.
 
 cd "$(git rev-parse --show-toplevel)"
 
-# Array to store background job PIDs
-pids=()
-# Array to store job names for better error reporting
-jobs=()
-# Array to store job status
-statuses=()
+source bin/_panes.sh
 
-# Helper function to run a job in background
-run_job() {
-    local name=$1
-    shift
-    echo "Starting: $name"
-    (
-        set -e
-        "$@"
-    ) &
-    pids+=($!)
-    jobs+=("$name")
-}
+# Every check gets its own pane, so none of them queue behind another.
+panes_init 0
+trap panes_cleanup EXIT
 
 # Determine which checks to run
 filter="${1:-}"
@@ -38,41 +29,23 @@ should_run() {
 }
 
 # Run checks (all in parallel, or only the named one)
-should_run "dagger" && run_job "dagger fmt" bash -c "cd dagger && go fmt"
-should_run "frontend" && run_job "frontend checks" bash -c "cd services/frontend/www-app && yarn install && yarn quasar prepare && yarn fmt && yarn lint && yarn tsc && yarn test"
-should_run "rust" && run_job "Rust workspace checks" bash -c "cargo fmt --all && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --all-targets"
-should_run "pelias" && run_job "pelias config checks" bash -c "cd services/pelias/generate_config && yarn install && yarn fmt && yarn lint && yarn build"
+should_run "dagger" && panes_add "dagger fmt" bash -c "cd dagger && go fmt"
+should_run "frontend" && panes_add "frontend checks" bash -c "cd services/frontend/www-app && yarn install && yarn quasar prepare && yarn fmt && yarn lint && yarn tsc && yarn test"
+should_run "rust" && panes_add "Rust workspace checks" bash -c "cargo fmt --all && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --all-targets"
+should_run "pelias" && panes_add "pelias config checks" bash -c "cd services/pelias/generate_config && yarn install && yarn fmt && yarn lint && yarn build"
 
-if [[ ${#pids[@]} -eq 0 ]]; then
+if [[ ${#panes_names[@]} -eq 0 ]]; then
     echo "Unknown check: '$filter'. Valid options: dagger, frontend, rust, pelias"
     exit 1
 fi
 
-# Wait for all background jobs and collect exit codes
 echo ""
-echo "Waiting for all checks to complete..."
-failed=""
-for i in "${!pids[@]}"; do
-    pid=${pids[$i]}
-    job=${jobs[$i]}
-    wait $pid
-    statuses+=($?)
-done
+panes_run || panes_dump_failures
 
-echo ""
-echo "Status"
-echo "======"
-echo ""
 exit_status=0
-for i in "${!statuses[@]}"; do
-    job=${jobs[$i]}
-    status=${statuses[$i]}
-
-    if [ $status -eq 0 ]; then
-        echo "✅ $job passed"
-    else
-        echo "❌ $job failed"
-        exit_status=$status
+for i in "${!panes_statuses[@]}"; do
+    if [ "${panes_statuses[$i]}" -ne 0 ]; then
+        exit_status=${panes_statuses[$i]}
     fi
 done
 
