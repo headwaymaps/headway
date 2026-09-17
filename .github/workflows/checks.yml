@@ -7,113 +7,16 @@ on:
     branches: [main]
   merge_group:
 
-permissions:
-  contents: read
-  pull-requests: read
-  checks: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  merge_queue_gate:
-    name: Verify reusable PR checks
-    if: github.event_name == 'merge_group'
-    runs-on: ubuntu-latest
-    outputs:
-      reuse: ${{ steps.reuse.outputs.reuse }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
-      - id: reuse
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          base_sha=""
-          base_ref=""
-          group_sha=""
-          pr_sha=""
-          pr_number=""
-
-          summary() {
-            {
-              echo "## Merge queue CI reuse"
-              echo
-              echo "- Decision: \`$1\`"
-              echo "- Reason: $2"
-              echo "- Base: \`${base_ref:-unknown}@${base_sha:-unknown}\`"
-              echo "- Merge-group head: \`${group_sha:-unknown}\`"
-              if [ -n "$pr_sha" ]; then
-                echo "- PR: #${pr_number:-unknown} at \`${pr_sha}\`"
-              fi
-            } >> "$GITHUB_STEP_SUMMARY"
-          }
-
-          reject() {
-            echo "Not reusing PR checks: $1"
-            summary "full CI" "$1"
-            echo "reuse=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          }
-
-          base_sha="$(jq -r '.merge_group.base_sha // empty' "$GITHUB_EVENT_PATH")"
-          base_ref="$(jq -r '.merge_group.base_ref // empty' "$GITHUB_EVENT_PATH")"
-          group_sha="$(jq -r '.merge_group.head_sha // empty' "$GITHUB_EVENT_PATH")"
-          [ -n "$base_sha" ] && [ -n "$base_ref" ] && [ -n "$group_sha" ] ||
-            reject "merge-group payload is missing a base or head SHA"
-          [ "$GITHUB_SHA" = "$group_sha" ] ||
-            reject "checked-out SHA does not match the merge-group head"
-
-          set -- $(git show -s --format=%P "$group_sha")
-          [ "$#" -eq 2 ] || reject "merge-group commit does not contain exactly one PR"
-          [ "$1" = "$base_sha" ] || reject "merge-group first parent is not its base SHA"
-          pr_sha="$2"
-
-          prs="$(gh api "repos/$GITHUB_REPOSITORY/commits/$pr_sha/pulls")" ||
-            reject "could not find pull requests associated with the merge commit"
-          pr_count="$(jq --arg base_ref "$base_ref" --arg base_sha "$base_sha" --arg pr_sha "$pr_sha" \
-            '[.[] | select(
-              .state == "open"
-              and .base.ref == $base_ref
-              and .base.sha == $base_sha
-              and .head.sha == $pr_sha
-            )] | length' <<<"$prs")"
-          [ "$pr_count" -eq 1 ] ||
-            reject "merge-group commit is not exactly one open PR tested against this base"
-          pr_number="$(jq --arg base_ref "$base_ref" --arg base_sha "$base_sha" --arg pr_sha "$pr_sha" \
-            '[.[] | select(
-              .state == "open"
-              and .base.ref == $base_ref
-              and .base.sha == $base_sha
-              and .head.sha == $pr_sha
-            )][0].number' <<<"$prs")"
-
-          checks="$(gh api "repos/$GITHUB_REPOSITORY/commits/$pr_sha/check-runs?per_page=100")" ||
-            reject "could not inspect checks on the PR head"
-          has_passing_checks="$(jq \
-            '[.check_runs[] | select(
-              .name == "All checks"
-              and .conclusion == "success"
-              and .app.slug == "github-actions"
-              and (.details_url | contains("/actions/runs/"))
-            )] | length > 0' <<<"$checks")"
-          [ "$has_passing_checks" = true ] ||
-            reject "the matching PR head has no passing GitHub Actions All checks run"
-
-          echo "Reusing completed PR checks for $pr_sha on unchanged base $base_sha"
-          summary "reused PR checks" "single PR already passed All checks on the unchanged base"
-          echo "reuse=true" >> "$GITHUB_OUTPUT"
-
   # Add any new jobs to "needs" to include it in GH's CI requirements
   all_checks:
     name: All checks
     if: always()
     needs:
-      - merge_queue_gate
       - build_data
       - build_images
       - www_checks
@@ -124,7 +27,6 @@ jobs:
     steps:
       - name: Report each job's result
         run: |
-          echo "merge_queue_gate:  ${{ needs.merge_queue_gate.result }}"
           echo "build_data:         ${{ needs.build_data.result }}"
           echo "build_images:       ${{ needs.build_images.result }}"
           echo "www_checks:         ${{ needs.www_checks.result }}"
@@ -135,24 +37,12 @@ jobs:
       # that didn't run is not a check that passed.
       - name: Fail unless every job succeeded
         if: >-
-          ${{ (github.event_name == 'merge_group'
-               && needs.merge_queue_gate.result != 'success')
-           || contains(needs.*.result, 'failure')
+          ${{ contains(needs.*.result, 'failure')
            || contains(needs.*.result, 'cancelled')
-           || (needs.merge_queue_gate.outputs.reuse != 'true'
-               && (needs.build_data.result == 'skipped'
-                   || needs.build_images.result == 'skipped'
-                   || needs.www_checks.result == 'skipped'
-                   || needs.rust_checks.result == 'skipped'
-                   || needs.integration_tests.result == 'skipped'
-                   || needs.browser_tests.result == 'skipped')) }}
+           || contains(needs.*.result, 'skipped') }}
         run: exit 1
   build_data:
     name: Build Bogota data artifacts
-    needs: [merge_queue_gate]
-    if: >-
-      ${{ always() && (github.event_name != 'merge_group'
-          || needs.merge_queue_gate.outputs.reuse != 'true') }}
     runs-on: ubuntu-latest
     env:
       DAGGER_NO_NAG: 1
@@ -183,10 +73,6 @@ jobs:
           retention-days: 7
   build_images:
     name: Build service images
-    needs: [merge_queue_gate]
-    if: >-
-      ${{ always() && (github.event_name != 'merge_group'
-          || needs.merge_queue_gate.outputs.reuse != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -206,10 +92,6 @@ jobs:
           compression-level: 0
           retention-days: 7
   www_checks:
-    needs: [merge_queue_gate]
-    if: >-
-      ${{ always() && (github.event_name != 'merge_group'
-          || needs.merge_queue_gate.outputs.reuse != 'true') }}
     defaults:
       run:
         working-directory: services/frontend/www-app
@@ -228,10 +110,6 @@ jobs:
       - run: yarn tsc
       - run: yarn test
   rust_checks:
-    needs: [merge_queue_gate]
-    if: >-
-      ${{ always() && (github.event_name != 'merge_group'
-          || needs.merge_queue_gate.outputs.reuse != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -253,11 +131,8 @@ jobs:
       - run: cargo build --workspace --release --all-features
   integration_tests:
     name: Integration Tests
-    needs: [merge_queue_gate, build_data, build_images]
-    if: >-
-      ${{ always() && (github.event_name != 'merge_group'
-          || needs.merge_queue_gate.outputs.reuse != 'true') }}
     runs-on: ubuntu-latest
+    needs: [build_data, build_images]
     steps:
       - uses: actions/checkout@v7
       - name: Install jq
@@ -292,11 +167,8 @@ jobs:
           path: integration-test-logs.txt
   browser_tests:
     name: Browser Tests
-    needs: [merge_queue_gate, build_data, build_images]
-    if: >-
-      ${{ always() && (github.event_name != 'merge_group'
-          || needs.merge_queue_gate.outputs.reuse != 'true') }}
     runs-on: ubuntu-latest
+    needs: [build_data, build_images]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
