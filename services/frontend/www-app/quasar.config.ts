@@ -14,6 +14,22 @@ import { defineConfig } from '#q-app/wrappers';
 // e.g. HEADWAY_HOST=http://localhost:8080 yarn dev
 const HEADWAY_HOST = process.env.HEADWAY_HOST ?? 'https://maps.earth';
 
+// Travelmux is called out separately so it can be worked on outside the stack:
+//   HEADWAY_HOST=http://localhost:8080 \
+//   HEADWAY_TRAVELMUX_HOST=http://localhost:8000 yarn dev
+// serves everything from compose except travelmux, which comes from `cargo run`.
+//
+// Set, it addresses a travelmux directly, which serves /v7/... at its root - only
+// a gateway in front of it mounts those under /travelmux - so the prefix has to
+// come off. Unset, requests go to HEADWAY_HOST's gateway with the prefix intact.
+const HEADWAY_TRAVELMUX_HOST = process.env.HEADWAY_TRAVELMUX_HOST;
+const travelmuxProxy = HEADWAY_TRAVELMUX_HOST
+  ? {
+      target: HEADWAY_TRAVELMUX_HOST,
+      rewrite: (path: string) => path.replace(/^\/travelmux/, ''),
+    }
+  : { target: HEADWAY_HOST };
+
 export default defineConfig((/* ctx */) => {
   return {
     eslint: {
@@ -123,9 +139,7 @@ export default defineConfig((/* ctx */) => {
         },
         '/travelmux': {
           changeOrigin: true,
-          target: HEADWAY_HOST,
-          // target: 'http://0.0.0.0:8000',
-          // rewrite: (path) => path.replace(/^\/travelmux/, ''),
+          ...travelmuxProxy,
         },
         '/transit-zoner': {
           changeOrigin: true,
