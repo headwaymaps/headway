@@ -9,6 +9,7 @@ use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::geometry::{LineString, Point};
 use polyline::decode_polyline;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 
 use super::error::PlanResponseErr;
 use crate::api::AppState;
@@ -25,6 +26,14 @@ const OTP_POLYLINE_PRECISION: u32 = 5;
 /// it's built from are worth less than admitting we don't know.
 const TRACK_HORIZON: TimeDelta = TimeDelta::minutes(3);
 
+/// How many vehicles still short of the boarding stop to report. These are the ones that might
+/// actually pick the rider up.
+const UPCOMING_VEHICLES: usize = 2;
+
+/// How many vehicles past the boarding stop to report. One is enough to show the rider what they
+/// just missed; more is clutter from a bus that's no longer theirs.
+const DEPARTED_VEHICLES: usize = 1;
+
 /// How finely the guess is sampled. The client walks between samples in a straight line, so this
 /// only has to be short enough that a bus doesn't round a corner inside one.
 const TRACK_STEP: TimeDelta = TimeDelta::seconds(5);
@@ -38,19 +47,50 @@ pub struct VehiclePositionsQuery {
     #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
     to_place: Point,
 
-    /// Comma separated pattern codes, as a plan's transit legs report them.
+    /// The patterns to report on, `;` separated, as `<code>` or `<code>@<lat>,<lon>`.
+    ///
+    /// The code is a plan's transit leg's `patternCode`. The optional point is where the rider
+    /// boards that leg, which is what "nearby" is measured from - a vehicle two miles up the
+    /// route is on the same pattern but is nothing to do with the trip.
     patterns: String,
 }
 
+/// One pattern a client asked about.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PatternRequest {
+    code: String,
+    /// Where the rider boards. Without it every vehicle on the pattern comes back, since there's
+    /// nothing to rank them against.
+    boarding_stop: Option<Point>,
+}
+
 impl VehiclePositionsQuery {
-    fn pattern_codes(&self) -> Vec<String> {
+    fn patterns(&self) -> Vec<PatternRequest> {
         self.patterns
-            .split(',')
+            .split(';')
             .map(str::trim)
-            .filter(|code| !code.is_empty())
-            .map(ToOwned::to_owned)
+            .filter(|entry| !entry.is_empty())
+            .map(|entry| match entry.split_once('@') {
+                Some((code, point)) => PatternRequest {
+                    code: code.to_owned(),
+                    boarding_stop: parse_lat_lon(point),
+                },
+                None => PatternRequest {
+                    code: entry.to_owned(),
+                    boarding_stop: None,
+                },
+            })
             .collect()
     }
+}
+
+/// `<lat>,<lon>`, the way every other point in this API is written.
+fn parse_lat_lon(point: &str) -> Option<Point> {
+    let (lat, lon) = point.split_once(',')?;
+    Some(Point::new(
+        lon.trim().parse().ok()?,
+        lat.trim().parse().ok()?,
+    ))
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -90,6 +130,11 @@ pub struct Vehicle {
     /// RFC 3339. When the vehicle reported this position.
     #[serde(skip_serializing_if = "Option::is_none")]
     last_updated: Option<DateTime<FixedOffset>>,
+
+    /// How far along the pattern's shape this vehicle is, in metres. Kept for ranking vehicles
+    /// against the boarding stop, which is a server-side concern.
+    #[serde(skip)]
+    progress: Option<f64>,
 
     /// Where we guess the vehicle goes next, for a client to animate along between polls.
     ///
@@ -244,10 +289,59 @@ impl Vehicle {
             lon,
             heading: position.heading,
             bearing: on_shape.map(|on_shape| on_shape.bearing),
+            progress: on_shape.map(|on_shape| on_shape.progress),
             last_updated: position.last_update,
             track,
         })
     }
+}
+
+/// The handful of vehicles worth drawing for a rider boarding at `boarding_stop`: the ones just
+/// short of it, and the one that just left.
+///
+/// A pattern runs its whole length, so most of its vehicles are miles from the trip and only
+/// crowd the map. Returns everything, unranked, when there's nothing to rank against - no
+/// boarding stop, or a pattern whose shape wouldn't decode.
+fn nearby(
+    mut vehicles: Vec<Vehicle>,
+    shape: Option<&LineString>,
+    boarding_stop: Option<Point>,
+) -> Vec<Vehicle> {
+    let Some(boarding) = shape
+        .zip(boarding_stop)
+        .and_then(|(shape, stop)| ShapePosition::project(shape, stop))
+    else {
+        return vehicles;
+    };
+
+    // Nearest first on each side of the stop. A vehicle we couldn't place on the shape sorts to
+    // the back rather than being dropped - it's still really out there.
+    vehicles.sort_by(|a, b| {
+        let key = |vehicle: &Vehicle| {
+            vehicle
+                .progress
+                .map(|progress| (progress - boarding.progress).abs())
+                .unwrap_or(f64::MAX)
+        };
+        key(a).partial_cmp(&key(b)).unwrap_or(Ordering::Equal)
+    });
+
+    let mut upcoming = 0;
+    let mut departed = 0;
+    vehicles.retain(|vehicle| {
+        let Some(progress) = vehicle.progress else {
+            return false;
+        };
+        // Sitting exactly at the stop counts as still to come: it hasn't left yet.
+        if progress <= boarding.progress {
+            upcoming += 1;
+            upcoming <= UPCOMING_VEHICLES
+        } else {
+            departed += 1;
+            departed <= DEPARTED_VEHICLES
+        }
+    });
+    vehicles
 }
 
 /// The shape a pattern follows, or `None` when OTP has none or it won't decode - in which case
@@ -279,8 +373,8 @@ pub async fn get_vehicle_positions(
     query: web::Query<VehiclePositionsQuery>,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<VehiclePositionsResponseOk, PlanResponseErr> {
-    let pattern_codes = query.pattern_codes();
-    if pattern_codes.is_empty() {
+    let requested = query.patterns();
+    if requested.is_empty() {
         return Ok(VehiclePositionsResponseOk { vehicles: vec![] });
     }
 
@@ -298,7 +392,8 @@ pub async fn get_vehicle_positions(
     };
 
     let client = reqwest::Client::new();
-    let vehicles = gtfs_graphql::vehicle_positions(&client, &endpoint, pattern_codes)
+    let codes = requested.iter().map(|p| p.code.clone()).collect();
+    let vehicles = gtfs_graphql::vehicle_positions(&client, &endpoint, codes)
         .await
         .map_err(|e| {
             log::error!("error while fetching vehicle positions from otp service: {e}");
@@ -309,13 +404,18 @@ pub async fn get_vehicle_positions(
         .into_iter()
         .flat_map(|pattern| {
             let shape = shape_of(&pattern);
-            pattern
+            let boarding_stop = requested
+                .iter()
+                .find(|request| request.code == pattern.pattern_code)
+                .and_then(|request| request.boarding_stop);
+            let on_pattern: Vec<_> = pattern
                 .positions
                 .into_iter()
-                .filter_map(move |position| {
+                .filter_map(|position| {
                     Vehicle::from_otp(&pattern.pattern_code, shape.as_ref(), position)
                 })
-                .collect::<Vec<_>>()
+                .collect();
+            nearby(on_pattern, shape.as_ref(), boarding_stop)
         })
         .collect();
 
@@ -380,15 +480,92 @@ mod tests {
         }
     }
 
+    fn codes_of(patterns: &[PatternRequest]) -> Vec<&str> {
+        patterns.iter().map(|p| p.code.as_str()).collect()
+    }
+
     #[test]
-    fn splits_pattern_codes() {
-        assert_eq!(
-            query("1:40:0:01,1:21:0:01").pattern_codes(),
-            ["1:40:0:01", "1:21:0:01"]
-        );
-        assert!(query("").pattern_codes().is_empty());
+    fn splits_patterns() {
+        let patterns = query("1:40:0:01;1:21:0:01").patterns();
+        assert_eq!(codes_of(&patterns), ["1:40:0:01", "1:21:0:01"]);
+        assert!(patterns.iter().all(|p| p.boarding_stop.is_none()));
+
+        assert!(query("").patterns().is_empty());
         // A plan whose transit legs all lack a pattern sends an empty element rather than nothing.
-        assert_eq!(query("1:40:0:01,").pattern_codes(), ["1:40:0:01"]);
+        assert_eq!(codes_of(&query("1:40:0:01;").patterns()), ["1:40:0:01"]);
+    }
+
+    #[test]
+    fn reads_the_boarding_stop_off_a_pattern() {
+        let patterns = query("1:40:0:01@47.6,-122.33;1:21:0:01").patterns();
+        assert_eq!(codes_of(&patterns), ["1:40:0:01", "1:21:0:01"]);
+        assert_eq!(patterns[0].boarding_stop, Some(Point::new(-122.33, 47.6)));
+        // Not every leg has to name one.
+        assert_eq!(patterns[1].boarding_stop, None);
+    }
+
+    /// Better to report on the whole pattern than to drop it over a malformed point.
+    #[test]
+    fn an_unreadable_boarding_stop_leaves_the_pattern_unranked() {
+        let patterns = query("1:40:0:01@not-a-point").patterns();
+        assert_eq!(codes_of(&patterns), ["1:40:0:01"]);
+        assert_eq!(patterns[0].boarding_stop, None);
+    }
+
+    /// Vehicles strung along the shape, identified by their longitude.
+    fn vehicles_at(lons: &[f64]) -> Vec<Vehicle> {
+        let shape = shape();
+        lons.iter()
+            .map(|lon| {
+                let mut position = position(Some(47.600), Some(*lon));
+                position.label = Some(format!("{lon}"));
+                Vehicle::from_otp("1:40:0:01", Some(&shape), position).expect("has coordinates")
+            })
+            .collect()
+    }
+
+    fn labels(vehicles: &[Vehicle]) -> Vec<&str> {
+        vehicles
+            .iter()
+            .map(|v| v.label.as_deref().unwrap_or(""))
+            .collect()
+    }
+
+    #[test]
+    fn keeps_the_two_vehicles_approaching_the_stop_and_the_one_that_just_left() {
+        let shape = shape();
+        // The shape runs east, so a smaller longitude is further back along it. Spaced so no
+        // two are equidistant from the stop, which would leave the order up to the sort.
+        let vehicles = vehicles_at(&[-122.339, -122.336, -122.332, -122.329, -122.325, -122.305]);
+        let boarding_stop = Point::new(-122.330, 47.600);
+
+        let nearby = nearby(vehicles, Some(&shape), Some(boarding_stop));
+
+        // Nearest first: the one just past the stop, then the two still approaching it.
+        // -122.339 is a third vehicle still approaching, -122.325 and -122.305 are further past.
+        assert_eq!(labels(&nearby), ["-122.329", "-122.332", "-122.336"]);
+    }
+
+    #[test]
+    fn a_pattern_with_no_boarding_stop_reports_every_vehicle() {
+        let shape = shape();
+        let vehicles = vehicles_at(&[-122.339, -122.335, -122.331, -122.329, -122.305]);
+
+        assert_eq!(nearby(vehicles.clone(), Some(&shape), None).len(), 5);
+        // Nor can we rank without a shape to measure along.
+        assert_eq!(
+            nearby(vehicles, None, Some(Point::new(-122.330, 47.600))).len(),
+            5
+        );
+    }
+
+    #[test]
+    fn fewer_vehicles_than_we_would_show_is_fine() {
+        let shape = shape();
+        let vehicles = vehicles_at(&[-122.335]);
+        let nearby = nearby(vehicles, Some(&shape), Some(Point::new(-122.330, 47.600)));
+
+        assert_eq!(labels(&nearby), ["-122.335"]);
     }
 
     #[test]

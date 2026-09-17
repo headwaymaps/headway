@@ -102,6 +102,12 @@ export interface TravelmuxVehicle {
   track?: TravelmuxWaypoint[];
 }
 
+/// A pattern to report vehicles for, and where the rider boards it.
+export interface PatternRequest {
+  code: string;
+  boardingStop?: LngLat;
+}
+
 export interface TravelmuxWaypoint {
   lat: number;
   lon: number;
@@ -207,23 +213,31 @@ export class TravelmuxClient {
     }
   }
 
-  /// Where the vehicles serving `patternCodes` are right now.
+  /// Where the vehicles near each requested pattern's boarding stop are right now.
   ///
   /// `from`/`to` are the endpoints of the plan the patterns came from: pattern codes only mean
-  /// something to the transit graph that issued them, so they pick the same one.
+  /// something to the transit graph that issued them, so they pick the same one. Each pattern
+  /// names where its leg boards, which is what travelmux measures "near" against - a pattern
+  /// runs its whole length, and most of its vehicles have nothing to do with the trip.
   public static async fetchVehiclePositions(
     from: LngLat,
     to: LngLat,
-    patternCodes: string[],
+    patterns: PatternRequest[],
   ): Promise<Result<TravelmuxVehicle[], Error>> {
-    if (patternCodes.length === 0) {
+    if (patterns.length === 0) {
       return Ok([]);
     }
 
     const params = new URLSearchParams({
       fromPlace: `${from.lat},${from.lng}`,
       toPlace: `${to.lat},${to.lng}`,
-      patterns: patternCodes.join(','),
+      patterns: patterns
+        .map(({ code, boardingStop }) =>
+          boardingStop
+            ? `${code}@${boardingStop.lat},${boardingStop.lng}`
+            : code,
+        )
+        .join(';'),
     });
 
     const response = await fetch(`/travelmux/v7/vehicle_positions?${params}`);

@@ -3,6 +3,7 @@ import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import { i18n } from 'src/i18n/lang';
 import Trip, { transitVehicleEmoji } from 'src/models/Trip';
 import {
+  PatternRequest,
   TravelmuxClient,
   TravelmuxVehicle,
 } from 'src/services/TravelmuxClient';
@@ -25,6 +26,9 @@ export interface PatternStyle {
   /// Badged onto the marker itself. Only ever the short name - a long one ("Downtown -
   /// Ballard") doesn't fit beside a 22px dot - so a route without one goes unbadged.
   badge?: string;
+  /// Where the rider boards this leg. Travelmux reports the vehicles either side of it rather
+  /// than every vehicle running the route.
+  boardingStop?: LngLat;
 }
 
 const UNKNOWN_PATTERN: PatternStyle = {
@@ -198,6 +202,7 @@ export default class VehicleOverlay {
           emoji: transitVehicleEmoji(transitLeg.vehicleMode),
           routeName: route?.shortName ?? route?.longName ?? '',
           badge: route?.shortName,
+          boardingStop: leg.sourceLngLat,
         });
       }
     }
@@ -226,10 +231,14 @@ export default class VehicleOverlay {
 
   private async refresh(): Promise<void> {
     const styles = this.stylesByPattern();
+    const patterns: PatternRequest[] = [...styles].map(([code, style]) => ({
+      code,
+      boardingStop: style.boardingStop,
+    }));
     const result = await TravelmuxClient.fetchVehiclePositions(
       this.from,
       this.to,
-      [...styles.keys()],
+      patterns,
     );
 
     if (!result.ok) {
