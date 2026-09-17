@@ -13,7 +13,7 @@ spec:
         app: opentripplanner-sf-bay-area
       annotations:
         # Roll the pod if the zone file changes
-        headway/zone-checksum: "6d34dfb2d72b"
+        headway/zone-checksum: "7d1accc94de6"
     spec:
       initContainers:
         - name: init
@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-10-37f6c75f.obj.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-17-4a49362c.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -79,4 +79,4 @@ spec:
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-12-0-2026-09-10-b6dbda6b
+            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-13-0-2026-09-17-4543ce30

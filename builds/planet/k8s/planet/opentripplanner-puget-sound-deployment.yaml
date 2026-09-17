@@ -13,7 +13,7 @@ spec:
         app: opentripplanner-puget-sound
       annotations:
         # Roll the pod if the zone file changes
-        headway/zone-checksum: "a4e605fc80b8"
+        headway/zone-checksum: "4012a276f0ff"
     spec:
       initContainers:
         - name: init
@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.12.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-09-10-2a5ecc91.obj.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-09-17-28190bff.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -79,4 +79,4 @@ spec:
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260817-0-12-0-2026-09-10-3c94fb4f
+            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260817-0-13-0-2026-09-17-c861b740
