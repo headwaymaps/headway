@@ -379,6 +379,20 @@ pub(crate) fn plan_result_from_fixture(path: &str) -> PlanResult {
         .into_result()
 }
 
+/// Where each vehicle serving `pattern_codes` is right now.
+///
+/// Patterns OTP no longer knows about are silently absent - pattern codes go stale whenever the
+/// transit data is rebuilt, and a caller polling on an old plan can't do anything about it.
+pub async fn vehicle_positions(
+    client: &reqwest::Client,
+    endpoint: &Url,
+    pattern_codes: Vec<String>,
+) -> crate::Result<Vec<PatternVehicle>> {
+    let operation = VehiclePositionsQuery::build(VehiclePositionsVariables { pattern_codes });
+    let data: VehiclePositionsQuery = post_graphql(client, endpoint, operation).await?;
+    Ok(data.into_vehicles())
+}
+
 /// Execute a `planConnection` query.
 pub async fn plan_connection(
     client: &reqwest::Client,
@@ -454,6 +468,7 @@ pub struct Leg {
     /// seconds
     pub duration: Option<f64>,
     pub trip_on_service_date: Option<TripOnServiceDate>,
+    pub trip: Option<Trip>,
     pub headsign: Option<String>,
     pub start: LegTime,
     pub end: LegTime,
@@ -563,6 +578,20 @@ pub struct OffsetDateTimeRange {
     pub end: Option<DateTime<FixedOffset>>,
 }
 
+/// A leg's trip.
+#[derive(cynic::QueryFragment, Debug)]
+pub struct Trip {
+    pub pattern: Option<Pattern>,
+}
+
+/// The sequence of stops a trip serves, which is what vehicle positions are reported against.
+#[derive(cynic::QueryFragment, Debug)]
+pub struct Pattern {
+    /// `FeedId:RouteId:DirectionId:PatternVariantNumber`. OTP warns that these change whenever
+    /// the transit data is rebuilt, so they're only good for the life of a plan.
+    pub code: String,
+}
+
 /// A leg's trip, as it runs on the leg's service date.
 #[derive(cynic::QueryFragment, Debug)]
 pub struct TripOnServiceDate {
@@ -579,6 +608,67 @@ pub struct RealTimeTripState {
 pub struct RoutingError {
     pub code: RoutingErrorCode,
     pub description: String,
+}
+
+#[derive(cynic::QueryVariables, Debug)]
+struct VehiclePositionsVariables {
+    pattern_codes: Vec<String>,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "QueryType", variables = "VehiclePositionsVariables")]
+struct VehiclePositionsQuery {
+    #[arguments(ids: $pattern_codes)]
+    patterns_by_ids: Option<Vec<Option<VehiclePositionsPattern>>>,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Pattern")]
+struct VehiclePositionsPattern {
+    code: String,
+    vehicle_positions: Option<Vec<VehiclePosition>>,
+}
+
+/// Where one vehicle is, and which of the queried patterns it's serving.
+#[derive(Debug)]
+pub struct PatternVehicle {
+    pub pattern_code: String,
+    pub position: VehiclePosition,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+pub struct VehiclePosition {
+    /// `FeedId:VehicleId`
+    pub vehicle_id: Option<String>,
+    /// What the vehicle shows the public, e.g. a fleet or license plate number.
+    pub label: Option<String>,
+    pub lat: Option<f64>,
+    pub lon: Option<f64>,
+    /// Degrees clockwise from north.
+    pub heading: Option<f64>,
+    /// When the vehicle reported this position.
+    pub last_update: Option<DateTime<FixedOffset>>,
+}
+
+impl VehiclePositionsQuery {
+    fn into_vehicles(self) -> Vec<PatternVehicle> {
+        self.patterns_by_ids
+            .unwrap_or_default()
+            .into_iter()
+            .flatten()
+            .flat_map(|pattern| {
+                let code = pattern.code;
+                pattern
+                    .vehicle_positions
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(move |position| PatternVehicle {
+                        pattern_code: code.clone(),
+                        position,
+                    })
+            })
+            .collect()
+    }
 }
 
 /// The direction a [`Step`] turns, relative to the direction of travel.
@@ -998,7 +1088,7 @@ mod tests {
           "walkDistance": 500.0,
           "legs": [
             {
-              "mode": "WALK", "transitLeg": false, "distance": 120.0, "duration": 300.0, "tripOnServiceDate": null, "headsign": null,
+              "mode": "WALK", "transitLeg": false, "distance": 120.0, "duration": 300.0, "tripOnServiceDate": null, "trip": null, "headsign": null,
               "start": { "scheduledTime": "2024-05-17T10:00:00-07:00", "estimated": null },
               "end": { "scheduledTime": "2024-05-17T10:05:00-07:00", "estimated": null },
               "from": { "name": "Origin", "lat": 47.5758, "lon": -122.3392, "arrival": null, "departure": null },
@@ -1015,7 +1105,7 @@ mod tests {
             },
             {
               "mode": "BUS", "transitLeg": true, "distance": 5000.0, "duration": 1680.0,
-              "tripOnServiceDate": { "realTimeTripState": { "updated": true } }, "headsign": "Downtown",
+              "tripOnServiceDate": { "realTimeTripState": { "updated": true } }, "trip": { "pattern": { "code": "1:40:0:01" } }, "headsign": "Downtown",
               "start": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": { "time": "2024-05-17T10:08:00-07:00" } },
               "end": { "scheduledTime": "2024-05-17T10:35:00-07:00", "estimated": null },
               "from": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341, "arrival": null, "departure": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": null } },
@@ -1091,6 +1181,43 @@ mod tests {
         assert_eq!(alert.alert_header_text.as_deref(), Some("Detour"));
         assert_eq!(alert.effective_start_date, Some(1715000000000));
         assert_eq!(alert.effective_end_date, Some(1716000000000));
+    }
+
+    #[test]
+    fn flattens_vehicle_positions_by_pattern() {
+        let body = json!({
+          "data": { "patternsByIds": [
+            {
+              "code": "1:40:0:01",
+              "vehiclePositions": [
+                {
+                  "vehicleId": "1:7204", "label": "7204", "lat": 47.6, "lon": -122.33,
+                  "heading": 180.0, "lastUpdate": "2024-05-17T10:08:00-07:00"
+                },
+                {
+                  "vehicleId": "1:7205", "label": null, "lat": null, "lon": null,
+                  "heading": null, "lastUpdate": null
+                }
+              ]
+            },
+            // A pattern OTP knows but has no realtime for, and one it has forgotten entirely.
+            { "code": "1:21:0:01", "vehiclePositions": [] },
+            null
+          ] }
+        });
+        let envelope: GraphQlResponse<VehiclePositionsQuery> =
+            serde_json::from_value(body).unwrap();
+        let vehicles = envelope.data.unwrap().into_vehicles();
+
+        assert_eq!(vehicles.len(), 2);
+        assert!(vehicles
+            .iter()
+            .all(|vehicle| vehicle.pattern_code == "1:40:0:01"));
+        assert_eq!(vehicles[0].position.label.as_deref(), Some("7204"));
+        assert_eq!(vehicles[0].position.lat, Some(47.6));
+        // A vehicle that reports no position is still handed back - it's the API layer that
+        // decides there's nothing to draw.
+        assert_eq!(vehicles[1].position.lat, None);
     }
 
     fn alert_active_over(periods: &[(Option<&str>, Option<&str>)]) -> Alert {

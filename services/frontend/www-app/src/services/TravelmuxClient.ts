@@ -52,6 +52,9 @@ export interface TransitLeg {
   headsign?: string;
   /// Whether the leg's times reflect real-time data, rather than just the schedule
   realTime: boolean;
+  /// The pattern this ride follows, which is what vehicle positions are keyed by. Only meaningful
+  /// for the life of the plan it came in - OTP renumbers patterns when transit data is rebuilt.
+  patternCode?: string;
   alerts: TransitAlert[];
 }
 
@@ -70,6 +73,26 @@ export interface TransitAlert {
   effectiveStart?: string;
   /// RFC 3339
   effectiveEnd?: string;
+}
+
+export interface TravelmuxVehiclePositionsResponse {
+  vehicles: TravelmuxVehicle[];
+}
+
+/// One transit vehicle's last known position.
+export interface TravelmuxVehicle {
+  /// Which pattern this vehicle is serving, matching a transit leg's patternCode.
+  patternCode: string;
+  /// `FeedId:VehicleId`
+  vehicleId?: string;
+  /// What the vehicle shows the public, e.g. a fleet number
+  label?: string;
+  lat: number;
+  lon: number;
+  /// Degrees clockwise from north
+  heading?: number;
+  /// RFC 3339. When the vehicle reported this position.
+  lastUpdated?: string;
 }
 
 export interface NonTransitLeg {
@@ -168,6 +191,36 @@ export class TravelmuxClient {
       );
       return Err(error);
     }
+  }
+
+  /// Where the vehicles serving `patternCodes` are right now.
+  ///
+  /// `from`/`to` are the endpoints of the plan the patterns came from: pattern codes only mean
+  /// something to the transit graph that issued them, so they pick the same one.
+  public static async fetchVehiclePositions(
+    from: LngLat,
+    to: LngLat,
+    patternCodes: string[],
+  ): Promise<Result<TravelmuxVehicle[], Error>> {
+    if (patternCodes.length === 0) {
+      return Ok([]);
+    }
+
+    const params = new URLSearchParams({
+      fromPlace: `${from.lat},${from.lng}`,
+      toPlace: `${to.lat},${to.lng}`,
+      patterns: patternCodes.join(','),
+    });
+
+    const response = await fetch(`/travelmux/v7/vehicle_positions?${params}`);
+    if (!response.ok) {
+      return Err(
+        new Error(`Failed to fetch vehicle positions: ${response.statusText}`),
+      );
+    }
+
+    const body: TravelmuxVehiclePositionsResponse = await response.json();
+    return Ok(body.vehicles);
   }
 
   public static async fetchPlans(

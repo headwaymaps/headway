@@ -58,8 +58,8 @@
   </div>
 </template>
 <script lang="ts">
-import { getBaseMap } from 'src/components/BaseMap.vue';
-import { Component, defineComponent, Ref, ref } from 'vue';
+import { getBaseMap, type BaseMapInterface } from 'src/components/BaseMap.vue';
+import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
@@ -72,6 +72,7 @@ import Trip, {
   TripFetchErrorCode,
 } from 'src/models/Trip';
 import TripLayerId from 'src/models/TripLayerId';
+import VehicleOverlay from 'src/models/VehicleOverlay';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
@@ -115,6 +116,7 @@ export default defineComponent({
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
+    vehicleOverlay?: VehicleOverlay;
     TravelMode: typeof TravelMode;
   } {
     return {
@@ -123,6 +125,7 @@ export default defineComponent({
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
+      vehicleOverlay: undefined,
       TravelMode: TravelMode,
     };
   },
@@ -130,6 +133,9 @@ export default defineComponent({
     mode: async function (): Promise<void> {
       await this.updateTrips();
     },
+  },
+  unmounted: function () {
+    this.stopVehicleOverlay();
   },
   mounted: async function () {
     if (this.to != '_') {
@@ -172,6 +178,25 @@ export default defineComponent({
         default:
           throw new Error(`unexpected mode: ${mode ?? 'none'}`);
       }
+    },
+    stopVehicleOverlay() {
+      this.vehicleOverlay?.stop();
+      this.vehicleOverlay = undefined;
+    },
+    /// Draw the vehicles serving the trips on screen, for the feeds that report where they are.
+    startVehicleOverlay(map: BaseMapInterface, trips: Trip[]) {
+      this.stopVehicleOverlay();
+      if (!this.fromPlace || !this.toPlace) {
+        return;
+      }
+      const overlay = new VehicleOverlay(
+        map,
+        this.fromPlace.point,
+        this.toPlace.point,
+        trips,
+      );
+      this.vehicleOverlay = markRaw(overlay);
+      overlay.start();
     },
     clickTrip(trip: Trip) {
       this.$data.activeTrip = trip;
@@ -232,6 +257,7 @@ export default defineComponent({
 
       map.removeAllLayers();
       map.removeAllMarkers();
+      this.stopVehicleOverlay();
 
       if (this.fromPlace && this.toPlace) {
         this.isLoading = true;
@@ -256,6 +282,7 @@ export default defineComponent({
           const trips = result.value;
           this.trips = trips;
           this.renderTrips(0);
+          this.startVehicleOverlay(map, trips);
           this.error = undefined;
         } else {
           this.trips = [];

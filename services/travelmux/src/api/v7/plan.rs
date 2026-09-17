@@ -286,6 +286,12 @@ pub struct TransitLeg {
     /// Whether the leg's times reflect real-time data, rather than just the schedule.
     real_time: bool,
 
+    /// The pattern this ride follows, which is what `/v7/vehicle_positions` is keyed by.
+    ///
+    /// Only good for the life of this plan - OTP renumbers patterns whenever the transit data is
+    /// rebuilt.
+    pattern_code: Option<String>,
+
     alerts: Vec<Alert>,
 }
 
@@ -301,6 +307,11 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
                 .as_ref()
                 .and_then(|trip| trip.real_time_trip_state.as_ref())
                 .is_some_and(|state| state.updated),
+            pattern_code: leg
+                .trip
+                .as_ref()
+                .and_then(|trip| trip.pattern.as_ref())
+                .map(|pattern| pattern.code.clone()),
             alerts: leg
                 .alerts
                 .iter()
@@ -1279,6 +1290,11 @@ mod tests {
         assert_eq!(
             transit_leg.get("route").unwrap().get("shortName").unwrap(),
             "21"
+        );
+        // What a client polls /v7/vehicle_positions with.
+        assert_eq!(
+            transit_leg.get("patternCode").unwrap().as_str().unwrap(),
+            "1:21:0:01"
         );
 
         let alerts = transit_leg.get("alerts").unwrap().as_array().unwrap();

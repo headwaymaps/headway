@@ -26,6 +26,32 @@ export default {
   tripEnd: (): Marker => {
     return new Marker({ color: '#111111' });
   },
+  /// A transit vehicle's live position: a dot in the route's color, pulsing to say it's moving.
+  ///
+  /// `tooltipText` is called on hover rather than baked in, so the "as of" age is current at the
+  /// moment the traveler reads it.
+  transitVehicle: (color: string, tooltipText: () => string): Marker => {
+    const element = document.createElement('div');
+    element.className = 'transit-vehicle';
+
+    const pulse = document.createElement('div');
+    pulse.className = 'transit-vehicle__pulse';
+    pulse.style.backgroundColor = color;
+
+    const dot = document.createElement('div');
+    dot.className = 'transit-vehicle__dot';
+    dot.style.backgroundColor = color;
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'transit-vehicle__tooltip';
+
+    element.append(pulse, dot, tooltip);
+    element.addEventListener('mouseenter', () => {
+      tooltip.textContent = tooltipText();
+    });
+
+    return new Marker({ element });
+  },
   maneuver: (icon: string, rotation: number = 0): Marker => {
     const element = document.createElement('div');
     element.innerHTML = `

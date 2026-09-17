@@ -14,6 +14,7 @@ mod error;
 mod osrm_api;
 pub mod plan;
 mod travel_modes;
+pub mod vehicle_positions;
 
 pub use error::{PlanResponseErr, PlanResponseOk};
 pub use plan::Itinerary;
