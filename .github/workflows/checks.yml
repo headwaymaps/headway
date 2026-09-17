@@ -46,7 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DAGGER_NO_NAG: 1
-      _EXPERIMENTAL_DAGGER_CACHE_CONFIG: type=gha,scope=headway-ci-data,mode=max
     steps:
       - uses: actions/checkout@v7
       - name: Install Dagger
@@ -75,9 +74,6 @@ jobs:
   build_images:
     name: Build service images
     runs-on: ubuntu-latest
-    env:
-      DAGGER_NO_NAG: 1
-      _EXPERIMENTAL_DAGGER_CACHE_CONFIG: type=gha,scope=headway-ci-images,mode=max
     steps:
       - uses: actions/checkout@v7
       - name: Install Dagger
