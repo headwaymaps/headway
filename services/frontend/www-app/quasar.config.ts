@@ -10,7 +10,9 @@
 
 import { defineConfig } from '#q-app/wrappers';
 
-const HEADWAY_HOST = 'https://maps.earth';
+// Where `yarn dev` proxies the backend services. Point it at a local stack with
+// e.g. HEADWAY_HOST=http://localhost:8080 yarn dev
+const HEADWAY_HOST = process.env.HEADWAY_HOST ?? 'https://maps.earth';
 
 export default defineConfig((/* ctx */) => {
   return {
