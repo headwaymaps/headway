@@ -35,6 +35,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 DATA_ROOT="${REPO_ROOT}/data"
 
 OUTPUT_DIR="/srv/www/data.maps.earth"
+MAX_CONCURRENT_UPLOADS=4
 
 # Run a command locally, or on $HOST if one was given.
 function run() {
@@ -45,31 +46,37 @@ function run() {
   fi
 }
 
-function upload() {
+# Verify one pinned artifact and emit its "<input_path>\0<output_path>\0" pair.
+function plan_upload() {
   local file=$1
   local output_prefix=$2
 
   local input_path="${DATA_ROOT}/${HEADWAY_AREA}/${file}"
   if [ ! -f "$input_path" ]; then
-    echo "pinned in ${MANIFEST} but not built here: ${file}"
+    echo "pinned in ${MANIFEST} but not built here: ${file}" >&2
     exit 1
   fi
 
   # The asset host mirrors data/<Area>, so a manifest value is the path here,
   # under /bootstrap in compose, and in the URLs bin/k8s/generate renders.
-  local resource="${output_prefix}/${file}"
-  local output_path="${OUTPUT_DIR}/${resource}"
+  printf '%s\0%s\0' "$input_path" "${OUTPUT_DIR}/${output_prefix}/${file}"
+}
 
-  # rsync in both cases, so re-runs skip anything already copied.
+# rsync, so re-runs skip anything already copied.
+function upload() {
+  local input_path=$1
+  local output_path=$2
+
   local destination="${output_path}"
   if [ -n "$HOST" ]; then
     destination="${HOST}:${output_path}"
   fi
 
   echo "Syncing ${input_path} -> ${destination}"
-  run mkdir -p "$(dirname "$output_path")"
-  rsync -av --partial --progress "$input_path" "$destination"
+  rsync -a --partial "$input_path" "$destination"
+  echo "Synced ${destination}"
 }
+export -f run upload
 
 source bin/_source-env.sh "$CONFIG_DIR"
 
@@ -87,14 +94,25 @@ if [ ! -f "$MANIFEST" ]; then
   exit 1
 fi
 
+PLAN=$(mktemp)
+trap 'rm -f "$PLAN"' EXIT
+
 for file in $("${REPO_ROOT}/bin/artifacts" files "$CONFIG_DIR"); do
-  upload "$file" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}"
+  plan_upload "$file" "${HEADWAY_DATA_TAG}/${HEADWAY_AREA_TAG}" >> "$PLAN"
 done
 
 # Generic across all areas, so they sit above the area directory.
 for file in $("${REPO_ROOT}/bin/artifacts" shared-files "$CONFIG_DIR"); do
-  upload "$file" "${HEADWAY_DATA_TAG}"
+  plan_upload "$file" "${HEADWAY_DATA_TAG}" >> "$PLAN"
 done
+
+export HOST
+
+# One round trip for all of them, rather than racing mkdir from each upload.
+xargs -0 -n2 bash -c 'dirname "$2"' _ < "$PLAN" | sort -u | tr '\n' '\0' \
+  | xargs -0 bash -c 'run mkdir -p "$@"' _
+
+xargs -0 -n2 -P "$MAX_CONCURRENT_UPLOADS" bash -c 'upload "$0" "$1"' < "$PLAN"
 
 echo "Publishing complete."
 echo 'Next, deploy with `bin/k8s/rollout-latest` or `bin/k8s/apply-latest`'
