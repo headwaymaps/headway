@@ -99,6 +99,7 @@ mod tests {
     fn feed(id: &str) -> FeedCore {
         FeedCore {
             id: id.into(),
+            name: None,
             operators: vec![],
 
             authorization: None,

@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/dev/seattle-latest/transit/Seattle-seattle-graph-2026-08-20-a1b4fe0b.obj.zst"
+              value: "https://data.example.com/dev/seattle-latest/transit/Seattle-seattle-graph-2026-09-17-b157c2b8.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -42,7 +42,7 @@ spec:
           env:
             - name: "JAVA_OPTS"
               # keep this in sync to be just under the resources.limits.memory
-              value: "-Xmx5G"
+              value: "-Xmx7G"
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -52,7 +52,7 @@ spec:
           resources:
             limits:
               # keep this in sync to be just above env.JAVA_OPTS.-Xmx
-              memory: 5.25Gi
+              memory: 7.25Gi
             requests:
               memory: 500Mi
           livenessProbe:
@@ -79,4 +79,4 @@ spec:
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-seattle-seattle-latest-dev-2026-08-20-f21ba60d
+            claimName: opentripplanner-seattle-seattle-latest-dev-2026-09-17-eab90125

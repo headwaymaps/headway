@@ -35,12 +35,16 @@
     <header>
       <h1>Transit zone</h1>
       <p v-if="!area">
-        Search for a place, then drag a box over the area you want to serve.
+        Search for a place, then drag a box over the area you want to serve, or
+        drop a zone.json here to edit one you already have.
       </p>
       <p v-else-if="loading">Looking for feeds…</p>
       <p v-else-if="error" class="zone-error">{{ error }}</p>
       <p v-else>
         {{ feeds.length }} feeds touch this area; {{ selected.size }} selected.
+      </p>
+      <p v-if="droppedUnknownFeedIds.length" class="zone-warning">
+        Not in the index, so left out: {{ droppedUnknownFeedIds.join(', ') }}
       </p>
     </header>
 
@@ -115,6 +119,10 @@
       />
     </footer>
   </div>
+
+  <div v-if="dragging" class="zone-drop-overlay">
+    <span>Drop zone.json to edit it</span>
+  </div>
 </template>
 
 <script lang="ts">
@@ -126,6 +134,7 @@ import TransitZonerClient, {
   Bbox,
   FeedSummary,
 } from 'src/services/TransitZonerClient';
+import { parseTransitZone } from 'src/models/TransitZone';
 
 /// A rectangle in screen pixels, as the pointer draws it.
 interface ScreenRect {
@@ -157,6 +166,8 @@ export default defineComponent({
     loading: boolean;
     error: string | null;
     requestSeq: number;
+    dragDepth: number;
+    droppedUnknownFeedIds: string[];
   } {
     return {
       mapMounted: false,
@@ -172,9 +183,14 @@ export default defineComponent({
       loading: false,
       error: null,
       requestSeq: 0,
+      dragDepth: 0,
+      droppedUnknownFeedIds: [],
     };
   },
   computed: {
+    dragging(): boolean {
+      return this.dragDepth > 0;
+    },
     selectedFeedBoxes(): FeedBox[] {
       return this.feedBoxes.filter((box) => this.selected.has(box.feedId));
     },
@@ -216,6 +232,10 @@ export default defineComponent({
     container?.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mouseup', this.onMouseUp);
+    window.addEventListener('dragenter', this.onDragEnter);
+    window.addEventListener('dragover', this.onDragOver);
+    window.addEventListener('dragleave', this.onDragLeave);
+    window.addEventListener('drop', this.onDrop);
   },
   unmounted: function () {
     const baseMap = getBaseMap();
@@ -226,6 +246,10 @@ export default defineComponent({
       ?.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mouseup', this.onMouseUp);
+    window.removeEventListener('dragenter', this.onDragEnter);
+    window.removeEventListener('dragover', this.onDragOver);
+    window.removeEventListener('dragleave', this.onDragLeave);
+    window.removeEventListener('drop', this.onDrop);
   },
   methods: {
     searchBoxDidSelectPlace(place?: Place) {
@@ -243,6 +267,7 @@ export default defineComponent({
         this.feeds = [];
         this.selected = new Set();
         this.error = null;
+        this.droppedUnknownFeedIds = [];
         // Any in-flight lookup is for the area just discarded.
         this.requestSeq += 1;
         this.loading = false;
@@ -362,7 +387,9 @@ export default defineComponent({
         y2: bottomRight.y,
       };
     },
-    async loadFeeds() {
+    /// `restoring` is the selection a dropped zone asked for; without it every
+    /// feed the area turns up is selected, which is what drawing a new one means.
+    async loadFeeds(restoring?: readonly string[]) {
       if (!this.area) {
         return;
       }
@@ -377,18 +404,94 @@ export default defineComponent({
           return;
         }
         this.feeds = feeds;
-        this.selected = new Set(feeds.map((feed) => feed.feed_id));
+        const found = new Set(feeds.map((feed) => feed.feed_id));
+        if (restoring) {
+          this.selected = new Set(restoring.filter((id) => found.has(id)));
+          // A feed the zone names that this index has never measured would
+          // otherwise just vanish from the selection.
+          this.droppedUnknownFeedIds = restoring.filter((id) => !found.has(id));
+        } else {
+          this.selected = found;
+        }
       } catch (e) {
         if (seq === this.requestSeq) {
           this.error = e instanceof Error ? e.message : String(e);
           this.feeds = [];
           this.selected = new Set();
+          this.droppedUnknownFeedIds = [];
         }
       } finally {
         if (seq === this.requestSeq) {
           this.loading = false;
         }
       }
+    },
+    /// Whether a drag carries files, as opposed to text or a dragged map pin.
+    isFileDrag(event: DragEvent): boolean {
+      return event.dataTransfer?.types.includes('Files') ?? false;
+    },
+    onDragEnter(event: DragEvent) {
+      if (this.isFileDrag(event)) {
+        this.dragDepth += 1;
+      }
+    },
+    onDragOver(event: DragEvent) {
+      if (!this.isFileDrag(event)) {
+        return;
+      }
+      // Without this the browser navigates to the file instead of dropping it.
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    },
+    onDragLeave(event: DragEvent) {
+      if (this.isFileDrag(event)) {
+        this.dragDepth = Math.max(0, this.dragDepth - 1);
+      }
+    },
+    async onDrop(event: DragEvent) {
+      if (!this.isFileDrag(event)) {
+        return;
+      }
+      event.preventDefault();
+      this.dragDepth = 0;
+      const file = event.dataTransfer?.files[0];
+      if (file) {
+        await this.openZone(file);
+      }
+    },
+    /// Restores a saved zone: its area becomes the drawn one, and its feeds the
+    /// selection within whatever that area turns up today.
+    async openZone(file: File) {
+      this.setDrawing(false);
+      let text: string;
+      try {
+        text = await file.text();
+      } catch (e) {
+        this.error = e instanceof Error ? e.message : String(e);
+        return;
+      }
+
+      const parsed = parseTransitZone(text);
+      if (!parsed.ok) {
+        this.error = parsed.error.message;
+        return;
+      }
+
+      const zone = parsed.value;
+      this.error = null;
+      this.droppedUnknownFeedIds = [];
+      this.area = zone.bbox;
+      const [west, south, east, north] = zone.bbox;
+      getBaseMap()?.fitBounds(
+        [
+          [west, south],
+          [east, north],
+        ],
+        { padding: 40 },
+      );
+      await this.loadFeeds(zone.feedIds);
     },
     toggle(feedId: string) {
       const next = new Set(this.selected);
@@ -451,6 +554,28 @@ export default defineComponent({
   stroke-width: 4;
 }
 
+// Covers the whole page so a file dropped anywhere lands. The window listeners
+// are what actually handle the drop, so this must never swallow the event.
+.zone-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(25, 118, 210, 0.12);
+  border: 3px dashed var(--q-primary);
+
+  span {
+    background: white;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-weight: 500;
+    color: var(--q-primary);
+  }
+}
+
 // Inside #map, which maplibre positions, so these are map coordinates.
 .zone-box {
   position: absolute;
@@ -483,6 +608,10 @@ export default defineComponent({
 
   .zone-error {
     color: #b00020;
+  }
+
+  .zone-warning {
+    color: #8a6d00;
   }
 
   .zone-controls {
