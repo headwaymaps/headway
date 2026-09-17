@@ -13,7 +13,11 @@ function vehicle(overrides: Partial<TravelmuxVehicle> = {}): TransitVehicle {
     lon: -122.33,
     ...overrides,
   };
-  return new TransitVehicle(raw, '#0080FF');
+  return new TransitVehicle(raw, {
+    color: '#0080FF',
+    emoji: '🚍',
+    routeName: '5',
+  });
 }
 
 function reportedSecondsAgo(seconds: number): TransitVehicle {
@@ -43,6 +47,17 @@ describe('asOfFormatted', () => {
 
   test('a position with no timestamp', () => {
     expect(vehicle().asOfFormatted(NOW)).toEqual('Live location');
+  });
+});
+
+describe('labelFormatted', () => {
+  test('a bus with a fleet number', () => {
+    expect(vehicle({ label: '7193' }).labelFormatted).toEqual('(vehicle 7193)');
+  });
+
+  // Link, Sounder and the ferries report a position but no label.
+  test('a vehicle that publishes no label', () => {
+    expect(vehicle({ label: undefined }).labelFormatted).toBeUndefined();
   });
 });
 

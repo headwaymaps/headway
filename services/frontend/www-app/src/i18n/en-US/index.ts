@@ -90,6 +90,7 @@ export default {
   transit_vehicle_location_as_of_$timeDuration:
     'Location as of {timeDuration} ago',
   transit_vehicle_location_live: 'Live location',
+  transit_vehicle_$label: '(vehicle {label})',
   search_results_not_found_header: 'No results found. 😢',
   search_results_not_found_subheader:
     'Something missing? Consider adding it to {osmLink} so it can eventually appear here.',

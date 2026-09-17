@@ -1,7 +1,7 @@
 import { LngLat } from 'maplibre-gl';
 import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import { i18n } from 'src/i18n/lang';
-import Trip from 'src/models/Trip';
+import Trip, { transitVehicleEmoji } from 'src/models/Trip';
 import {
   TravelmuxClient,
   TravelmuxVehicle,
@@ -16,14 +16,31 @@ const POLL_INTERVAL_MS = 30_000;
 /// The color of a vehicle whose route doesn't name one, matching an active trip line.
 const DEFAULT_VEHICLE_COLOR = '#1296FF';
 
+/// How a pattern's vehicles are drawn, taken from the leg that put the pattern on screen.
+export interface PatternStyle {
+  color: string;
+  emoji: string;
+  /// What to call the route on hover: its short name, or its long name when it has none.
+  routeName: string;
+  /// Badged onto the marker itself. Only ever the short name - a long one ("Downtown -
+  /// Ballard") doesn't fit beside a 22px dot - so a route without one goes unbadged.
+  badge?: string;
+}
+
+const UNKNOWN_PATTERN: PatternStyle = {
+  color: DEFAULT_VEHICLE_COLOR,
+  emoji: '🚍',
+  routeName: '',
+};
+
 /// A transit vehicle's last known position, and the route color to draw it in.
 export class TransitVehicle {
   readonly raw: TravelmuxVehicle;
-  readonly color: string;
+  readonly style: PatternStyle;
 
-  constructor(raw: TravelmuxVehicle, color: string) {
+  constructor(raw: TravelmuxVehicle, style: PatternStyle) {
     this.raw = raw;
-    this.color = color;
+    this.style = style;
   }
 
   get lngLat(): LngLat {
@@ -33,6 +50,18 @@ export class TransitVehicle {
   /// Stable for as long as the vehicle keeps reporting, so it can key a marker.
   get markerKey(): string {
     return `vehicle_${this.raw.patternCode}_${this.raw.vehicleId ?? this.raw.label ?? ''}`;
+  }
+
+  /// The number painted on the vehicle, phrased for the tooltip - "(vehicle 7193)".
+  ///
+  /// Buses publish one; Link, Sounder and the ferries don't, so this is often absent. It comes
+  /// from the feed's `label` rather than its `vehicleId`: for King County Metro's DART vans the
+  /// two disagree, and `label` is the one that matches the van.
+  get labelFormatted(): string | undefined {
+    if (!this.raw.label) {
+      return undefined;
+    }
+    return i18n.global.t('transit_vehicle_$label', { label: this.raw.label });
   }
 
   /// How stale this position is, phrased for the traveler - "Location as of 40 sec ago".
@@ -92,23 +121,25 @@ export default class VehicleOverlay {
     this.clearMarkers();
   }
 
-  /// The route color to draw each pattern's vehicles in, keyed by pattern code.
-  private colorsByPattern(): Map<string, string> {
-    const colors = new Map<string, string>();
+  /// How to draw each pattern's vehicles, keyed by pattern code.
+  private stylesByPattern(): Map<string, PatternStyle> {
+    const styles = new Map<string, PatternStyle>();
     for (const trip of this.trips) {
       for (const leg of trip.legs) {
         const transitLeg = leg.raw.transitLeg;
         if (!transitLeg?.patternCode) {
           continue;
         }
-        const color = transitLeg.route?.color;
-        colors.set(
-          transitLeg.patternCode,
-          color ? `#${color}` : DEFAULT_VEHICLE_COLOR,
-        );
+        const route = transitLeg.route;
+        styles.set(transitLeg.patternCode, {
+          color: route?.color ? `#${route.color}` : DEFAULT_VEHICLE_COLOR,
+          emoji: transitVehicleEmoji(transitLeg.vehicleMode),
+          routeName: route?.shortName ?? route?.longName ?? '',
+          badge: route?.shortName,
+        });
       }
     }
-    return colors;
+    return styles;
   }
 
   private clearMarkers(): void {
@@ -119,11 +150,11 @@ export default class VehicleOverlay {
   }
 
   private async refresh(): Promise<void> {
-    const colors = this.colorsByPattern();
+    const styles = this.stylesByPattern();
     const result = await TravelmuxClient.fetchVehiclePositions(
       this.from,
       this.to,
-      [...colors.keys()],
+      [...styles.keys()],
     );
 
     if (!result.ok) {
@@ -140,11 +171,13 @@ export default class VehicleOverlay {
     for (const raw of result.value) {
       const vehicle = new TransitVehicle(
         raw,
-        colors.get(raw.patternCode) ?? DEFAULT_VEHICLE_COLOR,
+        styles.get(raw.patternCode) ?? UNKNOWN_PATTERN,
       );
-      const marker = Markers.transitVehicle(vehicle.color, () =>
-        vehicle.asOfFormatted(),
-      ).setLngLat(vehicle.lngLat);
+      const marker = Markers.transitVehicle({
+        ...vehicle.style,
+        vehicleLabel: vehicle.labelFormatted,
+        ageText: () => vehicle.asOfFormatted(),
+      }).setLngLat(vehicle.lngLat);
       this.map.pushMarker(vehicle.markerKey, marker);
       this.markerKeys.push(vehicle.markerKey);
     }

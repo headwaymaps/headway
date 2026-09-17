@@ -26,28 +26,68 @@ export default {
   tripEnd: (): Marker => {
     return new Marker({ color: '#111111' });
   },
-  /// A transit vehicle's live position: a dot in the route's color, pulsing to say it's moving.
+  /// A transit vehicle's live position: the emoji for its kind, ringed in the route's color and
+  /// pulsing to say the position is live.
   ///
-  /// `tooltipText` is called on hover rather than baked in, so the "as of" age is current at the
+  /// `ageText` is called on hover rather than baked in, so the "as of" age is current at the
   /// moment the traveler reads it.
-  transitVehicle: (color: string, tooltipText: () => string): Marker => {
+  transitVehicle: (options: {
+    color: string;
+    emoji: string;
+    routeName: string;
+    badge?: string;
+    vehicleLabel?: string;
+    ageText: () => string;
+  }): Marker => {
     const element = document.createElement('div');
     element.className = 'transit-vehicle';
 
     const pulse = document.createElement('div');
     pulse.className = 'transit-vehicle__pulse';
-    pulse.style.backgroundColor = color;
+    pulse.style.backgroundColor = options.color;
 
-    const dot = document.createElement('div');
-    dot.className = 'transit-vehicle__dot';
-    dot.style.backgroundColor = color;
+    const vehicle = document.createElement('div');
+    vehicle.className = 'transit-vehicle__vehicle';
+    vehicle.style.borderColor = options.color;
+    vehicle.textContent = options.emoji;
+
+    const route = document.createElement('div');
+    route.className = 'transit-vehicle__route';
+    const routeEmoji = document.createElement('span');
+    routeEmoji.textContent = options.emoji;
+    const routeName = document.createElement('span');
+    routeName.textContent = options.routeName;
+    route.append(routeEmoji, routeName);
+    if (options.vehicleLabel) {
+      const label = document.createElement('span');
+      label.className = 'transit-vehicle__label';
+      label.textContent = options.vehicleLabel;
+      route.append(label);
+    }
+
+    const age = document.createElement('div');
+    age.className = 'transit-vehicle__age';
+    const realTime = document.createElement('i');
+    realTime.className = 'material-icons transit-vehicle__realtime';
+    realTime.textContent = 'rss_feed';
+    const ageText = document.createElement('span');
+    age.append(realTime, ageText);
 
     const tooltip = document.createElement('div');
     tooltip.className = 'transit-vehicle__tooltip';
+    tooltip.append(route, age);
 
-    element.append(pulse, dot, tooltip);
+    element.append(pulse, vehicle);
+    if (options.badge) {
+      const badge = document.createElement('div');
+      badge.className = 'transit-vehicle__badge';
+      badge.style.borderColor = options.color;
+      badge.textContent = options.badge;
+      element.append(badge);
+    }
+    element.append(tooltip);
     element.addEventListener('mouseenter', () => {
-      tooltip.textContent = tooltipText();
+      ageText.textContent = options.ageText();
     });
 
     return new Marker({ element });

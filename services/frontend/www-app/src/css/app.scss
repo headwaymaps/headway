@@ -10,17 +10,25 @@
 
 .transit-vehicle {
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
 }
 
-.transit-vehicle__dot {
+// The emoji sits on a white chip so it stays legible over any basemap, with the
+// route's color as the ring around it.
+.transit-vehicle__vehicle {
   position: absolute;
   inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid;
+  background: white;
   box-sizing: border-box;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+  line-height: 1;
 }
 
 .transit-vehicle__pulse {
@@ -41,11 +49,30 @@
   }
 }
 
-// Riders on a touch screen have no hover, and a dot this small is an awkward tap target, so the
-// tooltip is a pointer affordance rather than the only way to read the position's age.
+// Hangs off the lower right of the chip. White with a colored border rather than
+// colored with white text: GTFS route colors run light (King County Metro's is
+// yellow), so white-on-color can't be relied on to stay readable.
+.transit-vehicle__badge {
+  position: absolute;
+  top: 13px;
+  left: 14px;
+  padding: 0 3px;
+  border: 1px solid;
+  border-radius: 6px;
+  background: white;
+  color: #111;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 11px;
+  white-space: nowrap;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+// Riders on a touch screen have no hover, and a marker this small is an awkward tap target, so
+// the tooltip is a pointer affordance - the badge is what carries the route on its own.
 .transit-vehicle__tooltip {
   position: absolute;
-  bottom: 20px;
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
   display: none;
@@ -56,6 +83,30 @@
   color: white;
   font-size: 12px;
   pointer-events: none;
+}
+
+.transit-vehicle__route {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+// Reads as an aside to the route, which is the thing being identified.
+.transit-vehicle__label {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.transit-vehicle__realtime {
+  font-size: 13px;
+}
+
+.transit-vehicle__age {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.8;
 }
 
 .transit-vehicle:hover .transit-vehicle__tooltip {
