@@ -176,6 +176,7 @@ export default class VehicleOverlay {
       const marker = Markers.transitVehicle({
         ...vehicle.style,
         vehicleLabel: vehicle.labelFormatted,
+        bearing: vehicle.raw.bearing,
         ageText: () => vehicle.asOfFormatted(),
       }).setLngLat(vehicle.lngLat);
       this.map.pushMarker(vehicle.markerKey, marker);

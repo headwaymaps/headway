@@ -387,7 +387,7 @@ pub async fn vehicle_positions(
     client: &reqwest::Client,
     endpoint: &Url,
     pattern_codes: Vec<String>,
-) -> crate::Result<Vec<PatternVehicle>> {
+) -> crate::Result<Vec<PatternVehicles>> {
     let operation = VehiclePositionsQuery::build(VehiclePositionsVariables { pattern_codes });
     let data: VehiclePositionsQuery = post_graphql(client, endpoint, operation).await?;
     Ok(data.into_vehicles())
@@ -626,14 +626,18 @@ struct VehiclePositionsQuery {
 #[cynic(graphql_type = "Pattern")]
 struct VehiclePositionsPattern {
     code: String,
+    pattern_geometry: Option<Geometry>,
     vehicle_positions: Option<Vec<VehiclePosition>>,
 }
 
-/// Where one vehicle is, and which of the queried patterns it's serving.
+/// One queried pattern's live vehicles, with the shape they're running along.
 #[derive(Debug)]
-pub struct PatternVehicle {
+pub struct PatternVehicles {
     pub pattern_code: String,
-    pub position: VehiclePosition,
+    /// The shape the pattern follows, as an encoded polyline. Its coordinates run in the
+    /// direction of travel, which is what makes a vehicle's heading recoverable from it.
+    pub geometry: Option<String>,
+    pub positions: Vec<VehiclePosition>,
 }
 
 #[derive(cynic::QueryFragment, Debug)]
@@ -651,21 +655,17 @@ pub struct VehiclePosition {
 }
 
 impl VehiclePositionsQuery {
-    fn into_vehicles(self) -> Vec<PatternVehicle> {
+    fn into_vehicles(self) -> Vec<PatternVehicles> {
         self.patterns_by_ids
             .unwrap_or_default()
             .into_iter()
             .flatten()
-            .flat_map(|pattern| {
-                let code = pattern.code;
-                pattern
-                    .vehicle_positions
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(move |position| PatternVehicle {
-                        pattern_code: code.clone(),
-                        position,
-                    })
+            .map(|pattern| PatternVehicles {
+                pattern_code: pattern.code,
+                geometry: pattern
+                    .pattern_geometry
+                    .and_then(|geometry| geometry.points),
+                positions: pattern.vehicle_positions.unwrap_or_default(),
             })
             .collect()
     }
@@ -1184,11 +1184,12 @@ mod tests {
     }
 
     #[test]
-    fn flattens_vehicle_positions_by_pattern() {
+    fn groups_vehicle_positions_by_pattern() {
         let body = json!({
           "data": { "patternsByIds": [
             {
               "code": "1:40:0:01",
+              "patternGeometry": { "points": "abcd", "length": 2 },
               "vehiclePositions": [
                 {
                   "vehicleId": "1:7204", "label": "7204", "lat": 47.6, "lon": -122.33,
@@ -1200,24 +1201,28 @@ mod tests {
                 }
               ]
             },
-            // A pattern OTP knows but has no realtime for, and one it has forgotten entirely.
-            { "code": "1:21:0:01", "vehiclePositions": [] },
+            // A pattern OTP knows but has no realtime for and no shape, and one it has
+            // forgotten entirely.
+            { "code": "1:21:0:01", "patternGeometry": null, "vehiclePositions": [] },
             null
           ] }
         });
         let envelope: GraphQlResponse<VehiclePositionsQuery> =
             serde_json::from_value(body).unwrap();
-        let vehicles = envelope.data.unwrap().into_vehicles();
+        let patterns = envelope.data.unwrap().into_vehicles();
 
-        assert_eq!(vehicles.len(), 2);
-        assert!(vehicles
-            .iter()
-            .all(|vehicle| vehicle.pattern_code == "1:40:0:01"));
-        assert_eq!(vehicles[0].position.label.as_deref(), Some("7204"));
-        assert_eq!(vehicles[0].position.lat, Some(47.6));
+        assert_eq!(patterns.len(), 2);
+        assert_eq!(patterns[0].pattern_code, "1:40:0:01");
+        assert_eq!(patterns[0].geometry.as_deref(), Some("abcd"));
+        assert_eq!(patterns[0].positions.len(), 2);
+        assert_eq!(patterns[0].positions[0].label.as_deref(), Some("7204"));
+        assert_eq!(patterns[0].positions[0].lat, Some(47.6));
         // A vehicle that reports no position is still handed back - it's the API layer that
         // decides there's nothing to draw.
-        assert_eq!(vehicles[1].position.lat, None);
+        assert_eq!(patterns[0].positions[1].lat, None);
+
+        assert_eq!(patterns[1].geometry, None);
+        assert!(patterns[1].positions.is_empty());
     }
 
     fn alert_active_over(periods: &[(Option<&str>, Option<&str>)]) -> Alert {

@@ -6,15 +6,20 @@
 
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
 use chrono::{DateTime, FixedOffset};
-use geo::geometry::Point;
+use geo::geometry::{LineString, Point};
+use polyline::decode_polyline;
 use serde::{Deserialize, Serialize};
 
 use super::error::PlanResponseErr;
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql;
+use crate::util::bearing_along;
 use crate::util::serde_util::deserialize_point_from_lat_lon;
 use crate::Error;
+
+/// OTP encodes its polylines at 1e-5, the original Google scale.
+const OTP_POLYLINE_PRECISION: u32 = 5;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -64,9 +69,15 @@ pub struct Vehicle {
     lat: f64,
     lon: f64,
 
-    /// Degrees clockwise from north.
+    /// Degrees clockwise from north, as the feed reported it. Most feeds don't, so prefer
+    /// `bearing`, which is derived rather than published.
     #[serde(skip_serializing_if = "Option::is_none")]
     heading: Option<f64>,
+
+    /// Degrees clockwise from north, taken from the direction the pattern's shape runs where the
+    /// vehicle sits on it. Available whether or not the feed publishes a heading of its own.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bearing: Option<u16>,
 
     /// RFC 3339. When the vehicle reported this position.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -75,18 +86,38 @@ pub struct Vehicle {
 
 impl Vehicle {
     /// A vehicle with no coordinates has nothing to draw, so it's dropped rather than represented.
-    fn from_otp(vehicle: gtfs_graphql::PatternVehicle) -> Option<Self> {
-        let position = vehicle.position;
+    fn from_otp(
+        pattern_code: &str,
+        shape: Option<&LineString>,
+        position: gtfs_graphql::VehiclePosition,
+    ) -> Option<Self> {
+        let lat = position.lat?;
+        let lon = position.lon?;
         Some(Self {
-            pattern_code: vehicle.pattern_code,
+            pattern_code: pattern_code.to_owned(),
             vehicle_id: position.vehicle_id,
             label: position.label,
-            lat: position.lat?,
-            lon: position.lon?,
+            lat,
+            lon,
             heading: position.heading,
+            bearing: shape.and_then(|shape| bearing_along(shape, Point::new(lon, lat))),
             last_updated: position.last_update,
         })
     }
+}
+
+/// The shape a pattern follows, or `None` when OTP has none or it won't decode - in which case
+/// its vehicles are still drawn, just without a bearing.
+fn shape_of(pattern: &gtfs_graphql::PatternVehicles) -> Option<LineString> {
+    let encoded = pattern.geometry.as_ref()?;
+    decode_polyline(encoded, OTP_POLYLINE_PRECISION)
+        .inspect_err(|e| {
+            log::warn!(
+                "undecodable shape for pattern {}: {e}",
+                pattern.pattern_code
+            );
+        })
+        .ok()
 }
 
 impl Responder for VehiclePositionsResponseOk {
@@ -130,28 +161,46 @@ pub async fn get_vehicle_positions(
             PlanResponseErr::from(e)
         })?;
 
-    Ok(VehiclePositionsResponseOk {
-        vehicles: vehicles.into_iter().filter_map(Vehicle::from_otp).collect(),
-    })
+    let vehicles = vehicles
+        .into_iter()
+        .flat_map(|pattern| {
+            let shape = shape_of(&pattern);
+            pattern
+                .positions
+                .into_iter()
+                .filter_map(move |position| {
+                    Vehicle::from_otp(&pattern.pattern_code, shape.as_ref(), position)
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+
+    Ok(VehiclePositionsResponseOk { vehicles })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::otp::gtfs_graphql::VehiclePosition;
+    use geo::line_string;
 
-    fn positioned(lat: Option<f64>, lon: Option<f64>) -> gtfs_graphql::PatternVehicle {
-        gtfs_graphql::PatternVehicle {
-            pattern_code: "1:40:0:01".to_owned(),
-            position: VehiclePosition {
-                vehicle_id: Some("1:7204".to_owned()),
-                label: Some("7204".to_owned()),
-                lat,
-                lon,
-                heading: Some(180.0),
-                last_update: None,
-            },
+    fn position(lat: Option<f64>, lon: Option<f64>) -> VehiclePosition {
+        VehiclePosition {
+            vehicle_id: Some("1:7204".to_owned()),
+            label: Some("7204".to_owned()),
+            lat,
+            lon,
+            heading: None,
+            last_update: None,
         }
+    }
+
+    /// An eastbound stretch of 1st Ave S.
+    fn shape() -> LineString {
+        line_string![
+            (x: -122.340, y: 47.600),
+            (x: -122.330, y: 47.600),
+        ]
     }
 
     fn query(patterns: &str) -> VehiclePositionsQuery {
@@ -175,8 +224,40 @@ mod tests {
 
     #[test]
     fn a_vehicle_without_coordinates_is_dropped() {
-        assert!(Vehicle::from_otp(positioned(Some(47.6), Some(-122.33))).is_some());
-        assert!(Vehicle::from_otp(positioned(Some(47.6), None)).is_none());
-        assert!(Vehicle::from_otp(positioned(None, None)).is_none());
+        let shape = shape();
+        let build = |lat, lon| Vehicle::from_otp("1:40:0:01", Some(&shape), position(lat, lon));
+        assert!(build(Some(47.6), Some(-122.33)).is_some());
+        assert!(build(Some(47.6), None).is_none());
+        assert!(build(None, None).is_none());
+    }
+
+    #[test]
+    fn a_bearing_is_taken_from_the_shape() {
+        let vehicle = Vehicle::from_otp(
+            "1:40:0:01",
+            Some(&shape()),
+            position(Some(47.6), Some(-122.335)),
+        )
+        .expect("has coordinates");
+        assert_eq!(vehicle.bearing, Some(89));
+    }
+
+    /// OTP has no shape for some patterns. Their vehicles are still worth drawing.
+    #[test]
+    fn a_pattern_without_a_shape_still_yields_a_vehicle() {
+        let vehicle = Vehicle::from_otp("1:40:0:01", None, position(Some(47.6), Some(-122.335)))
+            .expect("has coordinates");
+        assert_eq!(vehicle.bearing, None);
+        assert_eq!(vehicle.lat, 47.6);
+    }
+
+    #[test]
+    fn an_undecodable_shape_is_dropped_rather_than_failing_the_request() {
+        let pattern = gtfs_graphql::PatternVehicles {
+            pattern_code: "1:40:0:01".to_owned(),
+            geometry: Some("!!! not a polyline !!!".to_owned()),
+            positions: vec![],
+        };
+        assert!(shape_of(&pattern).is_none());
     }
 }

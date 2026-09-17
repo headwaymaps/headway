@@ -84,3 +84,83 @@ pub(crate) fn bearing_at_end(line_string: &LineString) -> Option<u16> {
         bearing_between(second_to_last, last)
     }
 }
+
+/// Which way `shape` runs where it passes closest to `point`, in degrees clockwise from north.
+///
+/// A GTFS shape's coordinates are ordered in the direction the vehicle travels, so this says
+/// which way a vehicle on it is heading - unlike a bearing inferred from two successive
+/// positions, which says nothing while the vehicle is stopped and is noise while it crawls.
+///
+/// Where a shape passes near itself, as a loop or an out-and-back tail does, the nearest segment
+/// may not be the one the vehicle is really on, and the answer can come back reversed.
+pub(crate) fn bearing_along(shape: &LineString, point: Point) -> Option<u16> {
+    use geo::{ClosestPoint, Distance, Haversine};
+
+    let mut nearest: Option<(f64, geo::Line)> = None;
+    for line in shape.lines() {
+        let projected = match line.closest_point(&point) {
+            geo::Closest::SinglePoint(projected) => projected,
+            geo::Closest::Intersection(projected) => projected,
+            geo::Closest::Indeterminate => continue,
+        };
+        let distance = Haversine.distance(projected, point);
+        if nearest
+            .as_ref()
+            .is_none_or(|(nearest, _)| distance < *nearest)
+        {
+            nearest = Some((distance, line));
+        }
+    }
+
+    let (_, line) = nearest?;
+    bearing_between(Point::from(line.start), Point::from(line.end))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use geo::line_string;
+
+    /// Two blocks east, then two blocks north.
+    fn corner() -> LineString {
+        line_string![
+            (x: -122.340, y: 47.600),
+            (x: -122.330, y: 47.600),
+            (x: -122.330, y: 47.610),
+        ]
+    }
+
+    #[test]
+    fn a_vehicle_on_the_first_leg_heads_along_it() {
+        let on_the_eastbound_stretch = Point::new(-122.335, 47.6002);
+        assert_eq!(bearing_along(&corner(), on_the_eastbound_stretch), Some(89));
+    }
+
+    #[test]
+    fn a_vehicle_past_the_corner_heads_along_the_second_leg() {
+        let on_the_northbound_stretch = Point::new(-122.3298, 47.605);
+        assert_eq!(bearing_along(&corner(), on_the_northbound_stretch), Some(0));
+    }
+
+    /// The same road driven the other way is a different pattern with a reversed shape, which is
+    /// the whole reason a shape can answer this when two successive positions can't.
+    #[test]
+    fn the_reverse_shape_gives_the_opposite_bearing() {
+        let mut reversed = corner();
+        reversed.0.reverse();
+        let same_spot = Point::new(-122.335, 47.6002);
+
+        // Not exactly 180 apart: each is the bearing at the *start* of its own segment, and an
+        // east-west great circle's bearing drifts as it runs.
+        assert_eq!(bearing_along(&corner(), same_spot), Some(89));
+        assert_eq!(bearing_along(&reversed, same_spot), Some(270));
+    }
+
+    #[test]
+    fn a_shape_with_no_segments_has_no_bearing() {
+        assert_eq!(
+            bearing_along(&LineString::new(vec![]), Point::new(0., 0.)),
+            None
+        );
+    }
+}
