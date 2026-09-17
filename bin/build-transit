@@ -26,8 +26,9 @@ fi
 
 source bin/_source-env.sh "$CONFIG_DIR"
 source bin/_zone-file.sh
+source bin/_build-timing.sh
 
-trap 'bin/revert-fetch-urls' EXIT
+trap 'bin/revert-fetch-urls; build_timing_report "$HEADWAY_AREA"; timing_cleanup' EXIT
 bin/update-fetch-urls
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
@@ -76,7 +77,7 @@ if [[ -f $INPUT_PBF ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-dagger -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} ${GTFS_SECRETS} | export 'data/${HEADWAY_AREA}/transit'"
+timed_dagger transit -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} ${GTFS_SECRETS} | export 'data/${HEADWAY_AREA}/transit'"
 
 bin/artifacts --pin "$CONFIG_DIR"
 

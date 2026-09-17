@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -73,6 +74,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 
 	for i, entry := range zoneFiles {
 		group.Go(func() (err error) {
+			// Picking the feeds and reading the zone's bbox downloads the GTFS,
+			// well before the graph it feeds is built.
+			defer recordTiming("transit/"+entry.name+"-feeds", time.Now())
 
 			defer func() {
 				if r := recover(); r != nil {
@@ -124,7 +128,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			Bbox:   []float64{bbox.Left, bbox.Bottom, bbox.Right, bbox.Top},
 		}
 	}
+	clipStart := time.Now()
 	clippedOSM := h.OSMExport.clipMany(ctx, extracts)
+	recordTiming("transit/osm-clip", clipStart)
 
 	group, groupCtx = errgroup.WithContext(ctx)
 	group.SetLimit(maxConcurrentZones)
@@ -136,6 +142,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 					err = fmt.Errorf("transit zone %q failed: %v", result.clipName, r)
 				}
 			}()
+
+			defer recordTiming("transit/"+result.zone.ZoneName(groupCtx)+"-graph-prepare", time.Now())
 
 			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
 			graphStem := fmt.Sprintf("%s-graph", result.stem)
@@ -155,16 +163,18 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	}
 	artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
 
-	if err := buildAll(ctx, artifacts); err != nil {
+	if err := buildAll(ctx, "transit", artifacts); err != nil {
 		return nil, err
 	}
 
+	hashStart := time.Now()
 	for _, artifact := range artifacts {
 		output, err = artifact.AddTo(ctx, output)
 		if err != nil {
 			return nil, err
 		}
 	}
+	recordTiming("transit/content-hash", hashStart)
 	return output, nil
 }
 

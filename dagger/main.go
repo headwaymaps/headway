@@ -116,11 +116,20 @@ func buildDate() string {
 	return time.Now().UTC().Format("2006-01-02")
 }
 
-// build the artifacts concurrently.
-func buildAll(ctx context.Context, artifacts []*Artifact) error {
+// build the artifacts concurrently. The group's own wall time is recorded as a
+// step of phase, and each artifact below it - those overlap, so they explain
+// where the group's time went without adding up to it.
+func buildAll(ctx context.Context, phase string, artifacts []*Artifact) error {
+	defer recordTiming(phase+"/"+artifactsTimingStep, time.Now())
+
 	group, groupCtx := errgroup.WithContext(ctx)
 	for _, artifact := range artifacts {
-		group.Go(func() error { return artifact.build(groupCtx) })
+		group.Go(func() error {
+			start := time.Now()
+			err := artifact.build(groupCtx)
+			recordTiming(phase+"/"+artifactsTimingStep+"/"+artifact.timingLabel(), start)
+			return err
+		})
 	}
 	return group.Wait()
 }
@@ -201,6 +210,7 @@ type OSMExport struct {
 
 func New(
 	// +defaultPath="./"
+	// +ignore=["data", "target", "**/node_modules", ".worktrees", ".git", "*.osm.pbf", "*.mbtiles"]
 	repoDir *dagger.Directory) *Headway {
 	return &Headway{RepoDir: repoDir}
 }
@@ -260,20 +270,38 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 		return nil, fmt.Errorf("Area is required")
 	}
 
+	// Each of these does some of its work eagerly - pulling an image, resolving
+	// a commit, generating config - before the artifact it describes is ever
+	// built, so time them apart from the build itself.
+	start := time.Now()
 	pmtiles, err := h.Pmtiles(ctx, "mvt")
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
+	recordTiming("build/pmtiles-prepare", start)
 
+	start = time.Now()
 	terrain, err := h.TileserverTerrain(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
 	}
+	recordTiming("build/terrain-prepare", start)
 
+	start = time.Now()
 	valhalla := h.ValhallaTiles(ctx)
+	recordTiming("build/valhalla-prepare", start)
+
+	start = time.Now()
 	pelias := h.Pelias(ctx)
+	recordTiming("build/pelias-config", start)
+
+	start = time.Now()
 	elasticSearch := pelias.ElasticsearchData(ctx)
+	recordTiming("build/elasticsearch-prepare", start)
+
+	start = time.Now()
 	placeholder := pelias.PreparePlaceholder(ctx)
+	recordTiming("build/placeholder-prepare", start)
 
 	artifacts := []*Artifact{
 		FileArtifact(h.Area, "osm.pbf", h.OSMExport.File),
@@ -285,10 +313,11 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 		FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")),
 	}
 
-	if err := buildAll(ctx, artifacts); err != nil {
+	if err := buildAll(ctx, "build", artifacts); err != nil {
 		return nil, err
 	}
 
+	hashStart := time.Now()
 	output := dag.Directory()
 	for _, artifact := range artifacts {
 		output, err = artifact.AddTo(ctx, output)
@@ -296,6 +325,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 			return nil, err
 		}
 	}
+	recordTiming("build/content-hash", hashStart)
 
 	// Not content addressed: the deploy scripts read this back by name.
 	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
