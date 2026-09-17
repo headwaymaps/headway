@@ -1,4 +1,8 @@
-#!/bin/bash -ex
+#!/bin/bash -e
+
+function status() {
+    echo "==> $*" >&2
+}
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
@@ -28,6 +32,8 @@ source bin/_source-env.sh "$CONFIG_DIR"
 source bin/_zone-file.sh
 source bin/_build-timing.sh
 
+status "Building transit for ${HEADWAY_AREA} from ${CONFIG_DIR}"
+
 trap 'bin/revert-fetch-urls; build_timing_report "$HEADWAY_AREA"; timing_cleanup' EXIT
 bin/update-fetch-urls
 
@@ -39,7 +45,6 @@ TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
 # be a valid k8s object name - cheap to check, expensive to discover after a
 # multi-hour build.
 function lint_zone_names() {
-    set +x
     local found=0 zone file
     for file in $(zone_files_in "$CONFIG_DIR"); do
         found=1
@@ -56,7 +61,6 @@ function lint_zone_names() {
         echo "Draw one with: services/gtfs/transit-zoner/start-dev-server" >&2
         exit 1
     fi
-    set -x
 }
 lint_zone_names
 
@@ -77,11 +81,12 @@ if [[ -f $INPUT_PBF ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
+status "Building transit artifacts into data/${HEADWAY_AREA}/transit"
 timed_dagger transit -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-transit ${TRANSIT_CONFIG_DIR} ${GTFS_SECRETS} | export 'data/${HEADWAY_AREA}/transit'"
 
+status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"
 
-set +x
 cat <<EOS
 
 Transit artifacts written to data/${HEADWAY_AREA}/transit and artifacts pinned.
