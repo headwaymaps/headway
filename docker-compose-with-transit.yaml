@@ -153,6 +153,7 @@ services:
     depends_on:
       - "pelias-api"
       - "tileserver"
+      - "transit-zoner"
       - "travelmux"
       - "valhalla"
   pelias-config-init:
