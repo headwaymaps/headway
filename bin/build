@@ -1,4 +1,8 @@
-#!/bin/bash -ex
+#!/bin/bash -e
+
+function status() {
+    echo "==> $*" >&2
+}
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
@@ -27,10 +31,13 @@ fi
 source bin/_source-env.sh "$CONFIG_DIR"
 source bin/_build-timing.sh
 
+status "Building ${HEADWAY_AREA} from ${CONFIG_DIR}"
+
 trap 'bin/revert-fetch-urls; build_timing_report "$HEADWAY_AREA"; timing_cleanup' EXIT
 bin/update-fetch-urls
 
 if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
+    status "Running ${CONFIG_DIR}/prebuild.sh"
     "${CONFIG_DIR}/prebuild.sh"
 fi
 
@@ -40,6 +47,7 @@ if [[ -f "${INPUT_PBF}" ]]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
+status "Building artifacts into data/${HEADWAY_AREA}"
 timed_dagger build -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} | build | export data/${HEADWAY_AREA}"
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
@@ -47,6 +55,7 @@ if [ -d "$TRANSIT_CONFIG_DIR" ]; then
     # build-transit calls pin for us, once the transit artifacts have landed too.
     bin/build-transit "$CONFIG_DIR"
 else
+    status "Pinning artifacts"
     bin/artifacts --pin "$CONFIG_DIR"
 fi
 

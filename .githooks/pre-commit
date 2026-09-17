@@ -1,0 +1,59 @@
+#!/bin/bash
+#
+# Run formatting and linting checks in parallel.
+#
+# The checks should align with our CI checks in .github/workflows/frontend-checks.yml
+#
+# Run it by hand, or automatically before each commit by setting this once per
+# clone:
+#
+#     git config core.hooksPath .githooks
+#
+# The relative path resolves against whichever worktree you're committing in, so
+# each worktree runs its own copy of this script.
+#
+# You can commit without running the checks by running `git commit --no-verify` if need be.
+
+cd "$(git rev-parse --show-toplevel)"
+
+source bin/_panes.sh
+
+# Every check gets its own pane, so none of them queue behind another.
+panes_init 0
+trap panes_cleanup EXIT
+
+# Determine which checks to run
+filter="${1:-}"
+
+should_run() {
+    [[ -z "$filter" || "$1" == "$filter" ]]
+}
+
+# Run checks (all in parallel, or only the named one)
+should_run "dagger" && panes_add "dagger fmt" bash -c "cd dagger && go fmt"
+should_run "frontend" && panes_add "frontend checks" bash -c "cd services/frontend/www-app && yarn install && yarn quasar prepare && yarn fmt && yarn lint && yarn tsc && yarn test"
+should_run "rust" && panes_add "Rust workspace checks" bash -c "cargo fmt --all && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --all-targets"
+should_run "pelias" && panes_add "pelias config checks" bash -c "cd services/pelias/generate_config && yarn install && yarn fmt && yarn lint && yarn build"
+
+if [[ ${#panes_names[@]} -eq 0 ]]; then
+    echo "Unknown check: '$filter'. Valid options: dagger, frontend, rust, pelias"
+    exit 1
+fi
+
+echo ""
+panes_run || panes_dump_failures
+
+exit_status=0
+for i in "${!panes_statuses[@]}"; do
+    if [ "${panes_statuses[$i]}" -ne 0 ]; then
+        exit_status=${panes_statuses[$i]}
+    fi
+done
+
+echo ""
+if [ $exit_status -ne 0 ]; then
+    echo "Fix the issues and try again."
+else
+    echo "All checks passed!"
+fi
+exit $exit_status
