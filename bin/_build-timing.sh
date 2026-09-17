@@ -30,11 +30,28 @@ function timed_dagger() {
     local start=$SECONDS
     local status=0
 
-    # Two kinds of record come out of the log: the ones the module writes for
-    # each artifact it builds, and dagger's own top-level spans - which are
-    # sequential, so together they account for the whole invocation.
+    # The log is scraped afterwards rather than in the pipeline: mawk reads its
+    # input a block at a time, so an awk in front of the terminal holds dagger's
+    # output back for tens of KiB. tee hands every chunk straight through.
+    local log
+    log=$(mktemp "${TMPDIR:-/tmp}/headway-dagger-log.XXXXXX")
+
     set -o pipefail
-    dagger --progress=plain "$@" 2>&1 | awk -v out="$TIMING_FILE" -v phase="$phase" '
+    dagger --progress=plain "$@" 2>&1 | tee "$log" || status=$?
+    set +o pipefail
+
+    scrape_timings "$phase" "$log"
+    rm -f "$log"
+
+    printf '%s\t%s\n' "$phase" "$(((SECONDS - start) * 1000))" >> "$TIMING_FILE"
+    return $status
+}
+
+# Two kinds of record come out of the log: the ones the module writes for each
+# artifact it builds, and dagger's own top-level spans - which are sequential,
+# so together they account for the whole invocation.
+function scrape_timings() {
+    awk -v out="$TIMING_FILE" -v phase="$1" '
         # Durations come formatted for people: "0.4s", "3m46s", "1h2m3s".
         function millis(took,   ms, unit, value) {
             ms = 0
@@ -48,7 +65,6 @@ function timed_dagger() {
             }
             return ms
         }
-        { print; fflush() }
         {
             line = $0
             gsub(/\033\[[0-9;]*m/, "", line)
@@ -70,11 +86,7 @@ function timed_dagger() {
                 printf "%s/~%s\t%d\n", phase, name, millis(took) >> out
             }
         }
-    ' || status=$?
-    set +o pipefail
-
-    printf '%s\t%s\n' "$phase" "$(((SECONDS - start) * 1000))" >> "$TIMING_FILE"
-    return $status
+    ' "$2"
 }
 
 function build_timing_report() {
