@@ -157,6 +157,9 @@ export default class VehicleOverlay {
   private timer?: ReturnType<typeof setInterval>;
   private animation?: number;
   private tracked: Map<string, TrackedVehicle> = new Map();
+  /// Milliseconds between this device's clock and the one that timed the tracks. A device even a
+  /// few minutes out would otherwise hold every vehicle at one end of its track.
+  private clockOffsetMs = 0;
   /// The patterns of the trip the traveler has picked. Vehicles on any other trip's patterns are
   /// drawn dimmed. Empty means nothing is picked yet, and nothing is dimmed.
   private selected: Set<string> = new Set();
@@ -232,7 +235,7 @@ export default class VehicleOverlay {
   /// which is the whole point: a vehicle reports about once a minute but moves continuously.
   private animate(): void {
     const frame = () => {
-      const now = Date.now();
+      const now = Date.now() + this.clockOffsetMs;
       for (const tracked of this.tracked.values()) {
         tracked.marker.setLngLat(tracked.vehicle.positionAt(now));
       }
@@ -268,8 +271,10 @@ export default class VehicleOverlay {
       return;
     }
 
+    this.clockOffsetMs = result.value.clockOffsetMs;
+
     const stale = new Set(this.tracked.keys());
-    for (const raw of result.value) {
+    for (const raw of result.value.vehicles) {
       const vehicle = new TransitVehicle(raw);
       const key = vehicle.markerKey;
       stale.delete(key);
@@ -291,8 +296,12 @@ export default class VehicleOverlay {
         // Reads through the map so it picks up each refresh's vehicle, not the one it was
         // built with.
         ageText: () =>
-          this.tracked.get(key)?.vehicle.freshnessFormatted() ?? '',
-      }).setLngLat(vehicle.positionAt(Date.now()));
+          this.tracked
+            .get(key)
+            ?.vehicle.freshnessFormatted(
+              new Date(Date.now() + this.clockOffsetMs),
+            ) ?? '',
+      }).setLngLat(vehicle.positionAt(Date.now() + this.clockOffsetMs));
       Markers.setTransitVehicleFaded(marker, this.isFaded(raw.patternCode));
       this.tracked.set(key, { marker, vehicle });
       this.map.pushMarker(key, marker);

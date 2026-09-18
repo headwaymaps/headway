@@ -119,6 +119,13 @@ fn is_on_earth(lat: f64, lon: f64) -> bool {
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct VehiclePositionsResponseOk {
+    /// RFC 3339, UTC. What the clock said here as this was answered.
+    ///
+    /// Every time in this response is the server's, and a client animating against its own clock
+    /// is animating against a different one. Comparing this to the moment the response arrived
+    /// gives the offset between them, which is what a track should be walked by - a device a few
+    /// minutes out would otherwise hold every vehicle at one end of its track or the other.
+    server_time: DateTime<Utc>,
     vehicles: Vec<Vehicle>,
 }
 
@@ -478,7 +485,10 @@ pub async fn get_vehicle_positions(
 ) -> std::result::Result<VehiclePositionsResponseOk, PlanResponseErr> {
     let requested = query.patterns();
     if requested.is_empty() {
-        return Ok(VehiclePositionsResponseOk { vehicles: vec![] });
+        return Ok(VehiclePositionsResponseOk {
+            server_time: Utc::now(),
+            vehicles: vec![],
+        });
     }
 
     let endpoint = {
@@ -525,7 +535,10 @@ pub async fn get_vehicle_positions(
         })
         .collect();
 
-    Ok(VehiclePositionsResponseOk { vehicles })
+    Ok(VehiclePositionsResponseOk {
+        server_time: Utc::now(),
+        vehicles,
+    })
 }
 
 #[cfg(test)]

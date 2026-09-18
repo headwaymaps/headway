@@ -76,7 +76,16 @@ export interface TransitAlert {
 }
 
 export interface TravelmuxVehiclePositionsResponse {
+  /// RFC 3339. What the clock said on the server as this was answered.
+  serverTime: string;
   vehicles: TravelmuxVehicle[];
+}
+
+/// Vehicles, and how far this device's clock is from the one that timed them.
+export interface VehiclePositions {
+  vehicles: TravelmuxVehicle[];
+  /// Milliseconds to add to this device's clock to read the server's.
+  clockOffsetMs: number;
 }
 
 /// One transit vehicle's last known position.
@@ -229,9 +238,9 @@ export class TravelmuxClient {
     from: LngLat,
     to: LngLat,
     patterns: PatternRequest[],
-  ): Promise<Result<TravelmuxVehicle[], Error>> {
+  ): Promise<Result<VehiclePositions, Error>> {
     if (patterns.length === 0) {
-      return Ok([]);
+      return Ok({ vehicles: [], clockOffsetMs: 0 });
     }
 
     const params = new URLSearchParams({
@@ -259,7 +268,12 @@ export class TravelmuxClient {
         );
       }
       const body: TravelmuxVehiclePositionsResponse = await response.json();
-      return Ok(body.vehicles);
+      // Ignores the latency of the response itself, which is small next to the clock skew this
+      // is here to correct - and erring towards "slightly stale" beats erring towards a guess.
+      return Ok({
+        vehicles: body.vehicles,
+        clockOffsetMs: Date.parse(body.serverTime) - Date.now(),
+      });
     } catch (e) {
       return Err(e instanceof Error ? e : new Error(String(e)));
     }
