@@ -26,7 +26,8 @@ export class TransitVehicle {
 
   constructor(raw: TravelmuxVehicle) {
     this.raw = raw;
-    this.trackStart = raw.track ? Date.parse(raw.track.startTime) : NaN;
+    // The track begins where the vehicle last reported, so that's its start.
+    this.trackStart = raw.lastUpdated ? Date.parse(raw.lastUpdated) : NaN;
   }
 
   /// How to draw this vehicle. Everything here rides along on the vehicle itself, so there's no

@@ -78,6 +78,9 @@ export interface TransitAlert {
 export interface TravelmuxVehiclePositionsResponse {
   /// RFC 3339. What the clock said on the server as this was answered.
   serverTime: string;
+  /// Requested patterns the graph has never heard of - codes that died when the transit data was
+  /// rebuilt, as opposed to a route that simply isn't running.
+  unknownPatterns?: string[];
   vehicles: TravelmuxVehicle[];
 }
 
@@ -120,13 +123,12 @@ export interface PatternRequest {
   boardingStop?: LngLat;
 }
 
-/// Positions at a fixed cadence, so the pair bracketing an instant is arithmetic rather than a
-/// search. Everything past the first point is a guess.
+/// Positions at a fixed cadence, beginning at the vehicle's own `lastUpdated`: `points[0]` is
+/// where it was when it reported, and everything after is a guess. Evenly spaced in time, so the
+/// pair bracketing an instant is arithmetic rather than a search.
 export interface TravelmuxTrack {
-  /// RFC 3339. When the vehicle was at `points[0]`.
-  startTime: string;
   stepSeconds: number;
-  /// `[lat, lon]` pairs.
+  /// `[lat, lon]` pairs. The first is `lastUpdated`'s.
   points: [number, number][];
 }
 

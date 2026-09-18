@@ -119,6 +119,12 @@ fn is_on_earth(lat: f64, lon: f64) -> bool {
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct VehiclePositionsResponseOk {
+    /// Requested patterns the graph has never heard of, which is how a client tells "this route
+    /// isn't running right now" from "these codes died when the transit data was rebuilt". Both
+    /// otherwise look like an empty vehicle list, and only the second means re-plan.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    unknown_patterns: Vec<String>,
+
     /// RFC 3339, UTC. What the clock said here as this was answered.
     ///
     /// Every time in this response is the server's, and a client animating against its own clock
@@ -188,18 +194,16 @@ pub struct Vehicle {
 /// Where a vehicle is expected to be over the next few minutes, sampled at a fixed cadence by
 /// walking the route's shape at the pace the trip's arrival predictions imply.
 ///
-/// The samples are evenly spaced in time, so the pair bracketing any instant is arithmetic
-/// rather than a search: `i = (now - startTime) / stepSeconds`, clamped to `points`. Everything
-/// past the first point is a guess - `lastUpdated` is still the last thing the vehicle itself
-/// told us.
+/// The track begins at the vehicle's own `lastUpdated`: `points[0]` is where it was when it
+/// reported, and everything after is a guess. The samples are evenly spaced in time, so the pair
+/// bracketing any instant is arithmetic rather than a search:
+/// `i = (now - lastUpdated) / stepSeconds`, clamped to `points`.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Track {
-    /// RFC 3339, UTC. When the vehicle was at `points[0]`.
-    start_time: DateTime<Utc>,
     /// Seconds between consecutive points.
     step_seconds: i64,
-    /// `[lat, lon]` pairs, at least two.
+    /// `[lat, lon]` pairs, at least two. The first is `lastUpdated`'s.
     points: Vec<[f64; 2]>,
 }
 
@@ -326,7 +330,6 @@ fn track(shape: &LineString, anchors: &[Anchor]) -> Option<Track> {
 
     // A single point is a position, not a path; the vehicle already has one of those.
     (points.len() > 1).then(|| Track {
-        start_time: first.time,
         step_seconds: TRACK_STEP.num_seconds(),
         points,
     })
@@ -486,6 +489,7 @@ pub async fn get_vehicle_positions(
     let requested = query.patterns();
     if requested.is_empty() {
         return Ok(VehiclePositionsResponseOk {
+            unknown_patterns: vec![],
             server_time: Utc::now(),
             vehicles: vec![],
         });
@@ -517,6 +521,11 @@ pub async fn get_vehicle_positions(
             PlanResponseErr::from(e)
         })?;
 
+    let known: std::collections::HashSet<String> = vehicles
+        .iter()
+        .map(|pattern| pattern.pattern_code.clone())
+        .collect();
+
     let vehicles = vehicles
         .into_iter()
         .flat_map(|pattern| {
@@ -536,6 +545,11 @@ pub async fn get_vehicle_positions(
         .collect();
 
     Ok(VehiclePositionsResponseOk {
+        unknown_patterns: requested
+            .iter()
+            .map(|request| request.code.clone())
+            .filter(|code| !known.contains(code))
+            .collect(),
         server_time: Utc::now(),
         vehicles,
     })
@@ -941,15 +955,16 @@ mod tests {
             "expected several samples, got {}",
             track.points.len()
         );
-        assert_eq!(track.start_time, at(300));
-        // Evenly spaced in time, so a client indexes rather than searches.
+        // Evenly spaced in time, so a client indexes rather than searches. The track starts at
+        // the vehicle's own lastUpdated, which is why it doesn't carry a start of its own.
+        assert_eq!(anchors[0].time, at(300));
         assert_eq!(track.step_seconds, TRACK_STEP.num_seconds());
         // Running east, the way the shape does, and never past the last prediction.
         let lons: Vec<f64> = track.points.iter().map(|p| p[1]).collect();
         assert!(lons[1] > lons[0]);
         assert!(lons.windows(2).all(|pair| pair[1] >= pair[0]));
-        let ends_at = track.start_time
-            + TimeDelta::seconds(track.step_seconds * (track.points.len() as i64 - 1));
+        let ends_at =
+            at(300) + TimeDelta::seconds(track.step_seconds * (track.points.len() as i64 - 1));
         assert!(ends_at <= at(600));
     }
 

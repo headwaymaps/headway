@@ -61,7 +61,6 @@ describe('positionAt', () => {
       lon: -122.33,
       lastUpdated: new Date(T0).toISOString(),
       track: {
-        startTime: new Date(T0).toISOString(),
         stepSeconds: 5,
         points: [
           [47.6, -122.33],
