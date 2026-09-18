@@ -415,36 +415,45 @@ func (h *Headway) TileserverInitContainer(ctx context.Context) *dagger.Container
 		WithDefaultArgs([]string{"/app/init.sh"})
 }
 
-func martinBinary() *dagger.File {
-	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites,mlt"
+const (
+	martinRepository = "https://github.com/michaelkirk/martin.git"
+	martinBranch     = "mkirk/tilejson-encoding-2026-07-30"
+)
 
-	// To build from source (e.g. for debugging a fork), set this to true
-	const buildFromSource = true
-	if buildFromSource {
-		// WithEnvVariable("CACHE_BUSTER", time.Now().String()).
-		return rustContainer("git").
-			WithExec([]string{"git", "clone", "--branch", "mkirk/tilejson-encoding-2026-07-30", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
-			WithWorkdir("/martin").
-			WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
-			File("target/release/martin")
-	} else {
-		const martinVersion = "1.10.1"
-		return rustContainer().
-			WithExec([]string{"cargo", "install", "--locked", "--version", martinVersion, "--no-default-features", "--features", martinFeatures, "martin"}).
-			File("/usr/local/cargo/bin/martin")
+// martinBinary resolves the moving development branch before handing its
+// immutable commit to martinBinaryAtCommit, so cached binaries track updates.
+func martinBinary(ctx context.Context) (*dagger.File, error) {
+	commit, err := dag.Git(martinRepository).Branch(martinBranch).Commit(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Martin branch %q: %w", martinBranch, err)
 	}
+	return martinBinaryAtCommit(commit), nil
 }
 
-func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Container {
+func martinBinaryAtCommit(commit string) *dagger.File {
+	const martinFeatures = "fonts,mbtiles,pmtiles,styles,sprites,mlt"
+
+	return rustContainer().
+		WithDirectory("/martin", dag.Git(martinRepository).Commit(commit).Tree()).
+		WithWorkdir("/martin").
+		WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
+		File("target/release/martin")
+}
+
+func (h *Headway) TileserverServeContainer(ctx context.Context) (*dagger.Container, error) {
 	serviceDir := h.ServiceDir("tileserver")
+	martin, err := martinBinary(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return slimContainer("ca-certificates", "libfreetype6", "libssl3").
-		WithFile("/usr/local/bin/martin", martinBinary(), dagger.ContainerWithFileOpts{Permissions: 0755}).
+		WithFile("/usr/local/bin/martin", martin, dagger.ContainerWithFileOpts{Permissions: 0755}).
 		WithDirectory("/app/assets", serviceDir.Directory("assets")).
 		WithFile("/app/martin-config.yaml", serviceDir.File("martin-config.yaml")).
 		WithFile("/app/configure-and-run.sh", serviceDir.File("configure-and-run.sh")).
 		WithWorkdir("/").
 		WithExposedPort(8000).
-		WithDefaultArgs([]string{"/app/configure-and-run.sh"})
+		WithDefaultArgs([]string{"/app/configure-and-run.sh"}), nil
 }
 
 // Builds maptiles using Planetiler
