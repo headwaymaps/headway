@@ -31,10 +31,12 @@
   line-height: 1;
 }
 
-// A vehicle on a route the traveler hasn't picked: still worth seeing, but it shouldn't
-// compete with the trip they're actually looking at.
-.transit-vehicle--faded {
-  opacity: 0.35;
+// A vehicle running a route the traveler hasn't picked. The fade lands on the marker's contents
+// rather than the marker itself: maplibre writes `opacity` inline on the element it was handed,
+// and only while that element is on screen, so it is not ours to set. The tooltip is left alone
+// so a dimmed dot is still readable when hovered.
+.transit-vehicle--faded > *:not(.transit-vehicle__tooltip) {
+  opacity: 0.3;
 }
 
 // Rotated to the bearing, carrying the arrow around the rim with it.

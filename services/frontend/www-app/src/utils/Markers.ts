@@ -108,6 +108,10 @@ export default {
     return new Marker({ element });
   },
   /// Dim a vehicle marker, for one running a route the traveler hasn't selected.
+  ///
+  /// Not through maplibre's `setOpacity`: that writes to the marker element only once the marker
+  /// is on the map *and* inside the viewport, so a dot created off-screen keeps whatever it had.
+  /// The class instead lets CSS fade the contents, which maplibre never touches.
   setTransitVehicleFaded: (marker: Marker, faded: boolean): void => {
     marker.getElement().classList.toggle('transit-vehicle--faded', faded);
   },
