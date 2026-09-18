@@ -236,15 +236,23 @@ export class TravelmuxClient {
         .join(';'),
     });
 
-    const response = await fetch(`/travelmux/v7/vehicle_positions?${params}`);
-    if (!response.ok) {
-      return Err(
-        new Error(`Failed to fetch vehicle positions: ${response.statusText}`),
-      );
+    // A dropped connection or a body that isn't JSON throws rather than returning, and this is
+    // called from a timer with nowhere for a rejection to go - so it becomes an Err like any
+    // other failed poll.
+    try {
+      const response = await fetch(`/travelmux/v7/vehicle_positions?${params}`);
+      if (!response.ok) {
+        return Err(
+          new Error(
+            `Failed to fetch vehicle positions: ${response.statusText}`,
+          ),
+        );
+      }
+      const body: TravelmuxVehiclePositionsResponse = await response.json();
+      return Ok(body.vehicles);
+    } catch (e) {
+      return Err(e instanceof Error ? e : new Error(String(e)));
     }
-
-    const body: TravelmuxVehiclePositionsResponse = await response.json();
-    return Ok(body.vehicles);
   }
 
   public static async fetchPlans(

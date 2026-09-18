@@ -188,8 +188,8 @@ export default class VehicleOverlay {
   start(): void {
     this.stop();
     // Before the first refresh, so that an in-flight poll can tell it's still wanted.
-    this.timer = setInterval(() => this.refresh(), POLL_INTERVAL_MS);
-    this.refresh();
+    this.timer = setInterval(() => void this.poll(), POLL_INTERVAL_MS);
+    void this.poll();
     this.animate();
   }
 
@@ -245,6 +245,16 @@ export default class VehicleOverlay {
       this.animation = requestAnimationFrame(frame);
     };
     this.animation = requestAnimationFrame(frame);
+  }
+
+  /// [refresh], with anything it throws logged rather than left as an unhandled rejection -
+  /// nothing awaits it, since it's driven by a timer.
+  private async poll(): Promise<void> {
+    try {
+      await this.refresh();
+    } catch (e) {
+      console.warn('vehicle position refresh failed', e);
+    }
   }
 
   private async refresh(): Promise<void> {

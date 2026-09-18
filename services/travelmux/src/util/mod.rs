@@ -122,28 +122,11 @@ pub(crate) fn progress_along(shape: &LineString, point: Point) -> Option<f64> {
 
 /// The point `progress` metres along `shape`, clamped to its ends.
 ///
-/// The inverse of [`ShapePosition::project`]'s `progress`, for putting a vehicle back on the map
-/// once we've guessed how far it has got.
+/// The inverse of [`progress_along`], for putting a vehicle back on the map once we've guessed
+/// how far it has got.
 pub(crate) fn point_at(shape: &LineString, progress: f64) -> Option<Point> {
-    use geo::{Distance, Haversine, InterpolatePoint};
-
-    if progress <= 0.0 {
-        return shape.0.first().copied().map(Point::from);
-    }
-
-    let mut travelled = 0.0;
-    for line in shape.lines() {
-        let start = Point::from(line.start);
-        let end = Point::from(line.end);
-        let length = Haversine.distance(start, end);
-        if travelled + length >= progress {
-            let into_segment = (progress - travelled) / length;
-            return Some(Haversine.point_at_ratio_between(start, end, into_segment));
-        }
-        travelled += length;
-    }
-
-    shape.0.last().copied().map(Point::from)
+    use geo::{Haversine, InterpolateLine};
+    Haversine.point_at_distance_from_start(shape, progress)
 }
 
 #[cfg(test)]

@@ -85,12 +85,26 @@ impl VehiclePositionsQuery {
 }
 
 /// `<lat>,<lon>`, the way every other point in this API is written.
+///
+/// Rust parses "NaN" and "inf" as floats quite happily, and a non-finite boarding stop poisons
+/// every comparison it's ranked against, so anything off the globe is refused here.
 fn parse_lat_lon(point: &str) -> Option<Point> {
     let (lat, lon) = point.split_once(',')?;
-    Some(Point::new(
-        lon.trim().parse().ok()?,
-        lat.trim().parse().ok()?,
-    ))
+    let lat: f64 = lat.trim().parse().ok()?;
+    let lon: f64 = lon.trim().parse().ok()?;
+    (is_on_earth(lat, lon)).then(|| Point::new(lon, lat))
+}
+
+/// Whether a coordinate is somewhere a vehicle could actually be.
+///
+/// Null island is the interesting case: OTP reports a vehicle at exactly `0, 0` for a run that
+/// hasn't started, which is a thousand miles off the coast of Ghana rather than a position.
+fn is_on_earth(lat: f64, lon: f64) -> bool {
+    lat.is_finite()
+        && lon.is_finite()
+        && (-90.0..=90.0).contains(&lat)
+        && (-180.0..=180.0).contains(&lon)
+        && (lat != 0.0 || lon != 0.0)
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -249,7 +263,9 @@ fn track(shape: &LineString, anchors: &[Anchor]) -> Vec<Waypoint> {
 }
 
 impl Vehicle {
-    /// A vehicle with no coordinates has nothing to draw, so it's dropped rather than represented.
+    /// A vehicle with no usable coordinates has nothing to draw, so it's dropped rather than
+    /// represented. OTP reports a vehicle at null island for a run it hasn't started yet, twice
+    /// over: once properly, and once as a placeholder sharing the real one's id.
     fn from_otp(
         pattern_code: &str,
         shape: Option<&LineString>,
@@ -257,6 +273,9 @@ impl Vehicle {
     ) -> Option<Self> {
         let lat = position.lat?;
         let lon = position.lon?;
+        if !is_on_earth(lat, lon) {
+            return None;
+        }
         let progress = shape.and_then(|shape| progress_along(shape, Point::new(lon, lat)));
 
         // Guessing forward only makes sense from a report we can date.
@@ -308,7 +327,7 @@ fn nearby(
     };
 
     // Nearest first on each side of the stop. A vehicle we couldn't place on the shape sorts to
-    // the back rather than being dropped - it's still really out there.
+    // the back, and the retain below drops it: there's no saying which side of the stop it is on.
     vehicles.sort_by(|a, b| {
         let key = |vehicle: &Vehicle| {
             vehicle
@@ -385,7 +404,11 @@ pub async fn get_vehicle_positions(
     };
 
     let client = reqwest::Client::new();
-    let codes = requested.iter().map(|p| p.code.clone()).collect();
+    // A code repeated in the query would have OTP return its vehicles once per mention, and
+    // each copy would be drawn as though it were a separate bus.
+    let mut codes: Vec<String> = requested.iter().map(|p| p.code.clone()).collect();
+    codes.sort();
+    codes.dedup();
     let vehicles = gtfs_graphql::vehicle_positions(&client, &endpoint, codes)
         .await
         .map_err(|e| {
@@ -500,9 +523,46 @@ mod tests {
     /// Better to report on the whole pattern than to drop it over a malformed point.
     #[test]
     fn an_unreadable_boarding_stop_leaves_the_pattern_unranked() {
-        let patterns = query("1:40:0:01@not-a-point").patterns();
-        assert_eq!(codes_of(&patterns), ["1:40:0:01"]);
-        assert_eq!(patterns[0].boarding_stop, None);
+        for malformed in [
+            "1:40:0:01@not-a-point",
+            // Rust parses these as floats. A non-finite boarding stop poisons every comparison
+            // it's ranked against, leaving one arbitrary vehicle standing.
+            "1:40:0:01@NaN,NaN",
+            "1:40:0:01@inf,inf",
+            "1:40:0:01@1e400,1e400",
+            // Off the globe.
+            "1:40:0:01@91.0,-122.33",
+            "1:40:0:01@47.6,181.0",
+        ] {
+            let patterns = query(malformed).patterns();
+            assert_eq!(codes_of(&patterns), ["1:40:0:01"], "{malformed}");
+            assert_eq!(patterns[0].boarding_stop, None, "{malformed}");
+        }
+    }
+
+    /// OTP reports a vehicle at exactly 0,0 for a run it hasn't started, reusing the id of the
+    /// bus that will make it - so keeping it both draws a dot off West Africa and, sharing a
+    /// marker with the real vehicle, drags the real one there too.
+    #[test]
+    fn a_vehicle_at_null_island_is_dropped() {
+        let shape = shape();
+        let build = |lat, lon| Vehicle::from_otp("1:40:0:01", Some(&shape), position(lat, lon));
+
+        assert!(build(Some(0.0), Some(0.0)).is_none());
+        // Only exactly 0,0 - the Gulf of Guinea is a real place.
+        assert!(build(Some(0.0), Some(-122.33)).is_some());
+        assert!(build(Some(47.6), Some(0.0)).is_some());
+    }
+
+    #[test]
+    fn a_vehicle_off_the_globe_is_dropped() {
+        let shape = shape();
+        let build = |lat, lon| Vehicle::from_otp("1:40:0:01", Some(&shape), position(lat, lon));
+
+        assert!(build(Some(91.0), Some(-122.33)).is_none());
+        assert!(build(Some(47.6), Some(181.0)).is_none());
+        assert!(build(Some(f64::NAN), Some(-122.33)).is_none());
+        assert!(build(Some(47.6), Some(f64::INFINITY)).is_none());
     }
 
     /// Vehicles strung along the shape, identified by their longitude.
