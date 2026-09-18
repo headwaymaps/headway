@@ -4,7 +4,7 @@
 //! showing. Pattern codes are only meaningful to the OTP instance that issued them, so the trip's
 //! endpoints come along to pick the same router the plan came from.
 
-use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
+use actix_web::{post, web, HttpRequest, HttpResponseBuilder, Responder};
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::geometry::{LineString, Point};
 use geo::{Haversine, InterpolateLine};
@@ -17,7 +17,10 @@ use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql;
 use crate::util::progress_along;
-use crate::util::serde_util::deserialize_point_from_lat_lon;
+use crate::util::serde_util::{
+    deserialize_optional_point_from_lon_lat_pair, deserialize_point_from_lon_lat_pair,
+    serialize_point_as_lon_lat_pair, serialize_points_as_lon_lat_pairs,
+};
 use crate::Error;
 
 /// OTP encodes its polylines at 1e-5, the original Google scale.
@@ -49,66 +52,39 @@ const TRACK_STEP: TimeDelta = TimeDelta::seconds(5);
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct VehiclePositionsQuery {
-    #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
+pub struct VehiclePositionsRequest {
+    #[serde(deserialize_with = "deserialize_point_from_lon_lat_pair")]
     from_place: Point,
 
-    #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
+    #[serde(deserialize_with = "deserialize_point_from_lon_lat_pair")]
     to_place: Point,
 
-    /// The patterns to report on, `;` separated, as `<code>` or `<code>@<lat>,<lon>`.
-    ///
-    /// The code is a plan's transit leg's `patternCode`. The optional point is where the rider
-    /// boards that leg, which is what "nearby" is measured from - a vehicle two miles up the
-    /// route is on the same pattern but is nothing to do with the trip.
-    patterns: String,
+    /// The patterns to report on. A code is a plan's transit leg's `patternCode`.
+    patterns: Vec<PatternRequest>,
 }
 
 /// One pattern a client asked about.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct PatternRequest {
     code: String,
-    /// Where the rider boards. Without it every vehicle on the pattern comes back, since there's
-    /// nothing to rank them against.
+
+    /// Where the rider boards, which is what "nearby" is measured from - a vehicle two miles up
+    /// the route is on the same pattern but is nothing to do with the trip. Without it every
+    /// vehicle on the pattern comes back, since there's nothing to rank them against.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_optional_point_from_lon_lat_pair"
+    )]
     boarding_stop: Option<Point>,
-}
-
-impl VehiclePositionsQuery {
-    fn patterns(&self) -> Vec<PatternRequest> {
-        self.patterns
-            .split(';')
-            .map(str::trim)
-            .filter(|entry| !entry.is_empty())
-            .map(|entry| match entry.split_once('@') {
-                Some((code, point)) => PatternRequest {
-                    code: code.to_owned(),
-                    boarding_stop: parse_lat_lon(point),
-                },
-                None => PatternRequest {
-                    code: entry.to_owned(),
-                    boarding_stop: None,
-                },
-            })
-            .collect()
-    }
-}
-
-/// `<lat>,<lon>`, the way every other point in this API is written.
-///
-/// Rust parses "NaN" and "inf" as floats quite happily, and a non-finite boarding stop poisons
-/// every comparison it's ranked against, so anything off the globe is refused here.
-fn parse_lat_lon(point: &str) -> Option<Point> {
-    let (lat, lon) = point.split_once(',')?;
-    let lat: f64 = lat.trim().parse().ok()?;
-    let lon: f64 = lon.trim().parse().ok()?;
-    (is_on_earth(lat, lon)).then(|| Point::new(lon, lat))
 }
 
 /// Whether a coordinate is somewhere a vehicle could actually be.
 ///
 /// Null island is the interesting case: OTP reports a vehicle at exactly `0, 0` for a run that
 /// hasn't started, which is a thousand miles off the coast of Ghana rather than a position.
-fn is_on_earth(lat: f64, lon: f64) -> bool {
+fn is_on_earth(point: Point) -> bool {
+    let (lon, lat) = (point.x(), point.y());
     lat.is_finite()
         && lon.is_finite()
         && (-90.0..=90.0).contains(&lat)
@@ -167,8 +143,9 @@ pub struct Vehicle {
     #[serde(skip_serializing_if = "Option::is_none")]
     label: Option<String>,
 
-    lat: f64,
-    lon: f64,
+    /// Where the vehicle last reported being, as `[lon, lat]`.
+    #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
+    position: Point,
 
     /// Degrees clockwise from north, as the feed reported it. Most feeds don't publish one.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -186,7 +163,7 @@ pub struct Vehicle {
     /// Where we guess the vehicle goes next, for a client to animate along between polls.
     ///
     /// Absent when there's nothing to predict from, in which case the vehicle just sits at
-    /// `lat`/`lon`.
+    /// `position`.
     #[serde(skip_serializing_if = "Option::is_none")]
     track: Option<Track>,
 }
@@ -203,15 +180,16 @@ pub struct Vehicle {
 pub struct Track {
     /// Seconds between consecutive points.
     step_seconds: i64,
-    /// `[lat, lon]` pairs, at least two. The first is `lastUpdated`'s.
-    points: Vec<[f64; 2]>,
+    /// At least two points, serialized as `[lon, lat]` pairs. The first is `lastUpdated`'s.
+    #[serde(serialize_with = "serialize_points_as_lon_lat_pairs")]
+    points: Vec<Point>,
 }
 
 /// Interpolating a shape yields far more digits than it means. A millionth of a degree is about
 /// 10cm, already finer than the GPS fix underneath, and the rest is payload.
-fn rounded(point: Point) -> [f64; 2] {
+fn rounded(point: Point) -> Point {
     let round = |degrees: f64| (degrees * 1e6).round() / 1e6;
-    [round(point.y()), round(point.x())]
+    Point::new(round(point.x()), round(point.y()))
 }
 
 /// A point the vehicle is expected to reach, and when - the vehicle's own position to begin
@@ -346,12 +324,11 @@ impl Vehicle {
         position: gtfs_graphql::VehiclePosition,
     ) -> Option<Self> {
         let pattern_code = pattern.pattern_code.as_str();
-        let lat = position.lat?;
-        let lon = position.lon?;
-        if !is_on_earth(lat, lon) {
+        let reported_at_point = Point::new(position.lon?, position.lat?);
+        if !is_on_earth(reported_at_point) {
             return None;
         }
-        let progress = shape.and_then(|shape| progress_along(shape, Point::new(lon, lat)));
+        let progress = shape.and_then(|shape| progress_along(shape, reported_at_point));
 
         let heading_for = position
             .stop_relationship
@@ -400,8 +377,7 @@ impl Vehicle {
             headsign: pattern.headsign.clone(),
             vehicle_id: position.vehicle_id,
             label: position.label,
-            lat,
-            lon,
+            position: reported_at_point,
             heading: position.heading,
             progress,
             last_updated: position.last_update,
@@ -485,12 +461,12 @@ impl Responder for VehiclePositionsResponseOk {
     }
 }
 
-#[get("/v7/vehicle_positions")]
-pub async fn get_vehicle_positions(
-    query: web::Query<VehiclePositionsQuery>,
+#[post("/v8/vehicle_positions")]
+pub async fn post_vehicle_positions(
+    request: web::Json<VehiclePositionsRequest>,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<VehiclePositionsResponseOk, PlanResponseErr> {
-    let requested = query.patterns();
+    let requested = &request.patterns;
     if requested.is_empty() {
         return Ok(VehiclePositionsResponseOk {
             unknown_patterns: vec![],
@@ -502,7 +478,7 @@ pub async fn get_vehicle_positions(
     let endpoint = {
         let Some(router) = app_state
             .otp_cluster()
-            .find_router(query.from_place, query.to_place)
+            .find_router(request.from_place, request.to_place)
         else {
             Err(
                 Error::user("Transit directions not available for this area.")
@@ -632,12 +608,13 @@ mod tests {
         }
     }
 
-    fn query(patterns: &str) -> VehiclePositionsQuery {
-        VehiclePositionsQuery {
-            from_place: Point::new(-122.34, 47.57),
-            to_place: Point::new(-122.34, 47.65),
-            patterns: patterns.to_owned(),
-        }
+    fn request_for(patterns: serde_json::Value) -> VehiclePositionsRequest {
+        serde_json::from_value(serde_json::json!({
+            "fromPlace": [-122.34, 47.57],
+            "toPlace": [-122.34, 47.65],
+            "patterns": patterns,
+        }))
+        .expect("deserializes")
     }
 
     fn codes_of(patterns: &[PatternRequest]) -> Vec<&str> {
@@ -645,43 +622,60 @@ mod tests {
     }
 
     #[test]
-    fn splits_patterns() {
-        let patterns = query("1:40:0:01;1:21:0:01").patterns();
-        assert_eq!(codes_of(&patterns), ["1:40:0:01", "1:21:0:01"]);
-        assert!(patterns.iter().all(|p| p.boarding_stop.is_none()));
+    fn reads_the_patterns_asked_about() {
+        let request = request_for(serde_json::json!([
+            { "code": "1:40:0:01" },
+            { "code": "1:21:0:01" },
+        ]));
+        assert_eq!(codes_of(&request.patterns), ["1:40:0:01", "1:21:0:01"]);
+        assert!(request.patterns.iter().all(|p| p.boarding_stop.is_none()));
 
-        assert!(query("").patterns().is_empty());
-        // A plan whose transit legs all lack a pattern sends an empty element rather than nothing.
-        assert_eq!(codes_of(&query("1:40:0:01;").patterns()), ["1:40:0:01"]);
+        assert!(request_for(serde_json::json!([])).patterns.is_empty());
     }
 
     #[test]
     fn reads_the_boarding_stop_off_a_pattern() {
-        let patterns = query("1:40:0:01@47.6,-122.33;1:21:0:01").patterns();
-        assert_eq!(codes_of(&patterns), ["1:40:0:01", "1:21:0:01"]);
-        assert_eq!(patterns[0].boarding_stop, Some(Point::new(-122.33, 47.6)));
+        let request = request_for(serde_json::json!([
+            { "code": "1:40:0:01", "boardingStop": [-122.33, 47.6] },
+            { "code": "1:21:0:01" },
+        ]));
+        assert_eq!(
+            request.patterns[0].boarding_stop,
+            Some(Point::new(-122.33, 47.6))
+        );
         // Not every leg has to name one.
-        assert_eq!(patterns[1].boarding_stop, None);
+        assert_eq!(request.patterns[1].boarding_stop, None);
     }
 
-    /// Better to report on the whole pattern than to drop it over a malformed point.
+    /// Boarding stops are parsed as the same `[lon, lat]` pair as every other v8 input.
     #[test]
-    fn an_unreadable_boarding_stop_leaves_the_pattern_unranked() {
-        for malformed in [
-            "1:40:0:01@not-a-point",
-            // Rust parses these as floats. A non-finite boarding stop poisons every comparison
-            // it's ranked against, leaving one arbitrary vehicle standing.
-            "1:40:0:01@NaN,NaN",
-            "1:40:0:01@inf,inf",
-            "1:40:0:01@1e400,1e400",
-            // Off the globe.
-            "1:40:0:01@91.0,-122.33",
-            "1:40:0:01@47.6,181.0",
-        ] {
-            let patterns = query(malformed).patterns();
-            assert_eq!(codes_of(&patterns), ["1:40:0:01"], "{malformed}");
-            assert_eq!(patterns[0].boarding_stop, None, "{malformed}");
+    fn reads_a_boarding_stop_without_position_validation() {
+        for off_globe in [[-122.33, 91.0], [181.0, 47.6], [0.0, 0.0]] {
+            let request = request_for(serde_json::json!([
+                { "code": "1:40:0:01", "boardingStop": off_globe },
+            ]));
+            assert_eq!(codes_of(&request.patterns), ["1:40:0:01"], "{off_globe:?}");
+            assert_eq!(
+                request.patterns[0].boarding_stop,
+                Some(Point::from(off_globe)),
+                "{off_globe:?}"
+            );
         }
+    }
+
+    /// A pair, not the `lat`/`lon` object v7 used.
+    #[test]
+    fn a_point_is_read_as_lon_lat() {
+        let request = request_for(serde_json::json!([]));
+        assert_eq!(request.from_place, Point::new(-122.34, 47.57));
+        assert!(
+            serde_json::from_value::<VehiclePositionsRequest>(serde_json::json!({
+                "fromPlace": { "lat": 47.57, "lon": -122.34 },
+                "toPlace": [-122.34, 47.65],
+                "patterns": [],
+            }))
+            .is_err()
+        );
     }
 
     /// The client keys its markers on this, so it has to survive a poll and tell two vehicles on
@@ -820,7 +814,18 @@ mod tests {
             .expect("has coordinates");
         assert!(vehicle.progress.is_none());
         assert!(vehicle.track.is_none());
-        assert_eq!(vehicle.lat, 47.6);
+        assert_eq!(vehicle.position.y(), 47.6);
+    }
+
+    /// Written the same way as every other point v8 reports.
+    #[test]
+    fn a_vehicle_reports_its_position_as_a_lon_lat_pair() {
+        let vehicle = Vehicle::from_otp(&pattern(), None, position(Some(47.6), Some(-122.335)))
+            .expect("has coordinates");
+        let json = serde_json::to_value(&vehicle).expect("serializes");
+
+        assert_eq!(json["position"], serde_json::json!([-122.335, 47.6]));
+        assert!(json.get("lat").is_none());
     }
 
     #[test]
@@ -964,9 +969,14 @@ mod tests {
         assert_eq!(anchors[0].time, at(300));
         assert_eq!(track.step_seconds, TRACK_STEP.num_seconds());
         // Running east, the way the shape does, and never past the last prediction.
-        let lons: Vec<f64> = track.points.iter().map(|p| p[1]).collect();
+        let lons: Vec<f64> = track.points.iter().copied().map(Point::x).collect();
         assert!(lons[1] > lons[0]);
         assert!(lons.windows(2).all(|pair| pair[1] >= pair[0]));
+        let json = serde_json::to_value(&track).expect("serializes");
+        assert_eq!(
+            json["points"][0],
+            serde_json::json!([track.points[0].x(), track.points[0].y()])
+        );
         let ends_at =
             at(300) + TimeDelta::seconds(track.step_seconds * (track.points.len() as i64 - 1));
         assert!(ends_at <= at(600));
