@@ -652,8 +652,17 @@ pub struct VehiclePosition {
     pub heading: Option<f64>,
     /// When the vehicle reported this position.
     pub last_update: Option<DateTime<FixedOffset>>,
+    /// The stop the vehicle is working towards, as OTP understands it. The authority on where a
+    /// vehicle is in its run - the alternative is inferring it from the predictions, which is
+    /// guesswork when the two disagree.
+    pub stop_relationship: Option<StopRelationship>,
     /// The run this vehicle is on, which is what carries the arrival predictions.
     pub trip: VehicleTrip,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+pub struct StopRelationship {
+    pub stop: StoptimeStop,
 }
 
 /// A vehicle's trip. Separate from [`Trip`] because a plan's legs have no use for the whole stop
@@ -684,6 +693,7 @@ pub struct VehicleStoptime {
 #[derive(cynic::QueryFragment, Debug)]
 #[cynic(graphql_type = "Stop")]
 pub struct StoptimeStop {
+    pub gtfs_id: String,
     pub lat: Option<f64>,
     pub lon: Option<f64>,
 }
@@ -699,6 +709,10 @@ impl VehicleStoptime {
     pub fn point(&self) -> Option<Point> {
         let stop = self.stop.as_ref()?;
         Some(Point::new(stop.lon?, stop.lat?))
+    }
+
+    pub fn stop_id(&self) -> Option<&str> {
+        Some(self.stop.as_ref()?.gtfs_id.as_str())
     }
 }
 
@@ -1242,19 +1256,21 @@ mod tests {
                 {
                   "vehicleId": "1:7204", "label": "7204", "lat": 47.6, "lon": -122.33,
                   "heading": 180.0, "lastUpdate": "2024-05-17T10:08:00-07:00",
+                  "stopRelationship": { "stop": { "gtfsId": "1:2150", "lat": 47.61, "lon": -122.33 } },
                   "trip": {
                     "gtfsId": "1:809330321",
                     "stoptimesForDate": [
                       {
                         "realtime": true, "realtimeArrival": 36600, "scheduledArrival": 36480,
-                        "serviceDay": 1715929200, "stop": { "lat": 47.61, "lon": -122.33 }
+                        "serviceDay": 1715929200,
+                        "stop": { "gtfsId": "1:2150", "lat": 47.61, "lon": -122.33 }
                       }
                     ]
                   }
                 },
                 {
                   "vehicleId": "1:7205", "label": null, "lat": null, "lon": null,
-                  "heading": null, "lastUpdate": null,
+                  "heading": null, "lastUpdate": null, "stopRelationship": null,
                   "trip": { "gtfsId": "1:809330322", "stoptimesForDate": null }
                 }
               ]
@@ -1287,6 +1303,15 @@ mod tests {
             .expect("selected");
         let first = stoptimes[0].as_ref().expect("present");
         assert!(first.realtime.unwrap_or(false));
+        // The stop the vehicle is working towards is matched against these by id.
+        assert_eq!(first.stop_id(), Some("1:2150"));
+        assert_eq!(
+            patterns[0].positions[0]
+                .stop_relationship
+                .as_ref()
+                .map(|r| r.stop.gtfs_id.as_str()),
+            Some("1:2150")
+        );
         assert_eq!(
             first.expected_arrival(),
             DateTime::from_timestamp(1715965800, 0)

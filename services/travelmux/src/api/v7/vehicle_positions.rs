@@ -26,6 +26,14 @@ const OTP_POLYLINE_PRECISION: u32 = 5;
 /// it's built from are worth less than admitting we don't know.
 const TRACK_HORIZON: TimeDelta = TimeDelta::minutes(3);
 
+/// The fastest a transit vehicle plausibly averages between two stops, in metres per second.
+///
+/// 30 m/s is 108 km/h. Measured against a day of Puget Sound vehicles, the implied speed to a
+/// vehicle's own next stop sits at 4.5 m/s in the median and 22.3 at the 99th percentile, so
+/// this only ever catches data contradicting itself - a Sounder run between its widest-spaced
+/// stops works out around 19 m/s.
+const MAX_PLAUSIBLE_SPEED: f64 = 30.0;
+
 /// How many vehicles still short of the boarding stop to report. These are the ones that might
 /// actually pick the rider up.
 const UPCOMING_VEHICLES: usize = 2;
@@ -185,15 +193,23 @@ struct Anchor {
     time: DateTime<Utc>,
 }
 
-/// The stops ahead of `position` that the trip still expects to reach, in order.
+/// The stops the trip still expects to reach, in order, starting from the one OTP says the
+/// vehicle is working towards.
 ///
-/// Predictions that don't move both forward along the shape and forward in time are dropped:
-/// OTP hands back the whole day's stop sequence, including stops the vehicle has already passed
-/// and, on a loop, stops whose shape position is behind it.
+/// Starting there rather than at "the first prediction still in the future" is what keeps a
+/// vehicle on the ground. OTP hands back the whole day's stop sequence, and when a run is late
+/// its next several predictions are already in the past; scanning past them lands on a stop
+/// kilometres away with seconds left to reach it, and the vehicle is flung down the route. The
+/// stop OTP names is the one that agrees with the position it reported alongside.
+///
+/// Returns just the vehicle's own position - and so no track at all - when there's no stop to
+/// aim at, or when the stop it names is already behind it or overdue. Sitting still is honest;
+/// guessing is what put a bus across town.
 fn anchors(
     shape: &LineString,
     progress: f64,
     reported_at: DateTime<Utc>,
+    heading_for: Option<&str>,
     stoptimes: &[gtfs_graphql::VehicleStoptime],
 ) -> Vec<Anchor> {
     let mut anchors = vec![Anchor {
@@ -202,7 +218,13 @@ fn anchors(
     }];
     let horizon = reported_at + TRACK_HORIZON;
 
-    for stoptime in stoptimes {
+    let Some(from) =
+        heading_for.and_then(|next| stoptimes.iter().position(|s| s.stop_id() == Some(next)))
+    else {
+        return anchors;
+    };
+
+    for stoptime in &stoptimes[from..] {
         let (Some(point), Some(time)) = (stoptime.point(), stoptime.expected_arrival()) else {
             continue;
         };
@@ -210,8 +232,28 @@ fn anchors(
             continue;
         };
         let last = anchors.last().expect("seeded above");
-        if stop <= last.progress || time <= last.time {
+        // Nothing to pace towards a stop that's already overdue. On the vehicle's own next stop
+        // that means its position and its predictions disagree, and every stop after it is
+        // further still, so there's nothing here worth guessing from.
+        if time <= last.time {
+            if anchors.len() == 1 {
+                return anchors;
+            }
             continue;
+        }
+        // A vehicle standing at its next stop projects level with it, or a touch past. That's
+        // not a disagreement, it's arrival - aim at the stop after instead.
+        if stop <= last.progress {
+            continue;
+        }
+        // A span a vehicle would have to outrun a train to cover is the data contradicting
+        // itself. On the first span that's the position disagreeing with the predictions; later
+        // it's two predictions disagreeing with each other, which OTP also serves. Either way
+        // there's nothing to pace, so the track ends here - which on the first span means no
+        // track at all, and the vehicle simply sits where it was last seen.
+        let seconds = (time - last.time).num_milliseconds() as f64 / 1000.0;
+        if (stop - last.progress) / seconds > MAX_PLAUSIBLE_SPEED {
+            break;
         }
         anchors.push(Anchor {
             progress: stop,
@@ -278,6 +320,11 @@ impl Vehicle {
         }
         let progress = shape.and_then(|shape| progress_along(shape, Point::new(lon, lat)));
 
+        let heading_for = position
+            .stop_relationship
+            .as_ref()
+            .map(|relationship| relationship.stop.gtfs_id.clone());
+
         // Guessing forward only makes sense from a report we can date.
         let track = match (shape, progress, position.last_update) {
             (Some(shape), Some(progress), Some(reported_at)) => {
@@ -288,7 +335,13 @@ impl Vehicle {
                     .into_iter()
                     .flatten()
                     .collect();
-                let anchors = anchors(shape, progress, reported_at.with_timezone(&Utc), &stoptimes);
+                let anchors = anchors(
+                    shape,
+                    progress,
+                    reported_at.with_timezone(&Utc),
+                    heading_for.as_deref(),
+                    &stoptimes,
+                );
                 track(shape, &anchors)
             }
             _ => vec![],
@@ -460,6 +513,8 @@ mod tests {
         ]
     }
 
+    /// A stop at `lon` along the shape, due `arrival` seconds after midnight. Its id names its
+    /// longitude, so a test can say which stop the vehicle is heading for.
     fn stoptime(lon: f64, arrival: i32) -> VehicleStoptime {
         VehicleStoptime {
             realtime: Some(true),
@@ -467,10 +522,15 @@ mod tests {
             scheduled_arrival: Some(arrival),
             service_day: Some(SERVICE_DAY),
             stop: Some(StoptimeStop {
+                gtfs_id: format!("stop@{lon}"),
                 lat: Some(47.600),
                 lon: Some(lon),
             }),
         }
+    }
+
+    fn stop_id(lon: f64) -> String {
+        format!("stop@{lon}")
     }
 
     fn position(lat: Option<f64>, lon: Option<f64>) -> VehiclePosition {
@@ -481,6 +541,7 @@ mod tests {
             lon,
             heading: None,
             last_update: None,
+            stop_relationship: None,
             trip: VehicleTrip {
                 gtfs_id: "1:809330321".to_owned(),
                 stoptimes_for_date: None,
@@ -650,63 +711,126 @@ mod tests {
         assert!(shape_of(&pattern).is_none());
     }
 
+    /// `heading_for` is the longitude of the stop OTP says the vehicle is working towards.
     fn anchors_for(
         vehicle_lon: f64,
         reported_at: i64,
+        heading_for: Option<f64>,
         stoptimes: &[VehicleStoptime],
     ) -> Vec<Anchor> {
         let shape = shape();
         let progress =
             progress_along(&shape, Point::new(vehicle_lon, 47.600)).expect("on the shape");
-        anchors(&shape, progress, at(reported_at), stoptimes)
+        let heading_for = heading_for.map(stop_id);
+        anchors(
+            &shape,
+            progress,
+            at(reported_at),
+            heading_for.as_deref(),
+            stoptimes,
+        )
     }
 
-    /// OTP hands back the whole day's stop sequence, most of which is behind the vehicle.
+    /// OTP hands back the whole day's stop sequence, most of which is behind the vehicle. The
+    /// stop it says the vehicle is working towards is where the track starts.
     #[test]
-    fn stops_the_vehicle_has_already_passed_are_dropped() {
+    fn the_track_starts_at_the_stop_otp_says_the_vehicle_is_heading_for() {
         let stoptimes = [
             stoptime(-122.340, 100), // start of the line, well behind
             stoptime(-122.330, 200), // behind
-            stoptime(-122.320, 400), // ahead
-            stoptime(-122.310, 600), // ahead
+            stoptime(-122.320, 400), // <- heading here
+            stoptime(-122.310, 600),
         ];
-        let anchors = anchors_for(-122.325, 300, &stoptimes);
+        let anchors = anchors_for(-122.325, 300, Some(-122.320), &stoptimes);
 
-        // The vehicle itself, then only the two stops ahead of it.
+        // The vehicle itself, then its next stop and the one after.
         assert_eq!(anchors.len(), 3);
-        assert!(anchors[1].progress > anchors[0].progress);
         assert_eq!(anchors[1].time, at(400));
         assert_eq!(anchors[2].time, at(600));
     }
 
-    /// The position and the predictions come from the same minute-old snapshot, so by the time we
-    /// serve them the next stop's arrival can already be in the past. Those can't anchor
-    /// anything - the walk has to carry on to a prediction that's still ahead.
+    /// The position and the predictions come out of the same minute-old snapshot, so a late run's
+    /// next stop is routinely already overdue by the time we serve it. Scanning on to whichever
+    /// prediction is still in the future finds a stop kilometres away with seconds left to reach
+    /// it, and the vehicle gets flung down the route at several hundred metres a second.
     #[test]
-    fn predictions_that_have_already_expired_are_walked_past() {
+    fn an_overdue_next_stop_yields_no_track_rather_than_a_leap() {
         let stoptimes = [
-            stoptime(-122.320, 250), // ahead on the shape, but due before the report
-            stoptime(-122.310, 600),
+            stoptime(-122.339, 250), // the stop OTP says it's heading for - already overdue
+            stoptime(-122.305, 320), // miles further on, and still in the future
         ];
-        let anchors = anchors_for(-122.325, 300, &stoptimes);
+        let anchors = anchors_for(-122.340, 300, Some(-122.339), &stoptimes);
 
-        assert_eq!(anchors.len(), 2);
-        assert_eq!(anchors[1].time, at(600));
+        assert_eq!(anchors.len(), 1, "should not have anchored on the far stop");
+        assert!(track(&shape(), &anchors).is_empty());
     }
 
+    /// Same shape of data, but the vehicle is where its next stop says it should be.
     #[test]
-    fn a_vehicle_with_nothing_ahead_of_it_gets_no_track() {
-        let stoptimes = [stoptime(-122.340, 100), stoptime(-122.330, 200)];
-        let anchors = anchors_for(-122.325, 300, &stoptimes);
+    fn a_next_stop_still_ahead_is_paced_normally() {
+        let stoptimes = [stoptime(-122.320, 400), stoptime(-122.310, 600)];
+        let anchors = anchors_for(-122.325, 300, Some(-122.320), &stoptimes);
+
+        assert_eq!(anchors.len(), 3);
+        assert_eq!(anchors[1].time, at(400));
+    }
+
+    /// Without a next stop there's no telling which predictions belong ahead of the vehicle.
+    #[test]
+    fn a_vehicle_with_no_stated_next_stop_gets_no_track() {
+        let stoptimes = [stoptime(-122.320, 400), stoptime(-122.310, 600)];
+        let anchors = anchors_for(-122.325, 300, None, &stoptimes);
 
         assert_eq!(anchors.len(), 1);
         assert!(track(&shape(), &anchors).is_empty());
     }
 
+    /// A vehicle standing at its next stop projects level with it. That's arrival, not a
+    /// disagreement, so it should be paced on towards the stop after.
+    #[test]
+    fn a_vehicle_standing_at_its_next_stop_aims_at_the_one_after() {
+        let stoptimes = [stoptime(-122.330, 400), stoptime(-122.320, 600)];
+        // Reported a hair past the stop it's standing at.
+        let anchors = anchors_for(-122.3299, 300, Some(-122.330), &stoptimes);
+
+        assert_eq!(anchors.len(), 2);
+        assert_eq!(anchors[1].time, at(600));
+    }
+
+    /// The position and the prediction are two different sources, and the first span is where
+    /// they meet. A next stop that would need 200 m/s to reach is them contradicting each other.
+    #[test]
+    fn an_impossibly_fast_first_span_yields_no_track() {
+        // 10km away, due in 50 seconds.
+        let stoptimes = [stoptime(-122.220, 350), stoptime(-122.210, 900)];
+        let anchors = anchors_for(-122.340, 300, Some(-122.220), &stoptimes);
+
+        assert_eq!(anchors.len(), 1);
+        assert!(track(&shape(), &anchors).is_empty());
+    }
+
+    /// The same distance at a pace a vehicle could actually keep is fine.
+    #[test]
+    fn a_distant_next_stop_with_time_to_reach_it_is_kept() {
+        let stoptimes = [stoptime(-122.220, 300 + 900)];
+        let anchors = anchors_for(-122.340, 300, Some(-122.220), &stoptimes);
+
+        assert_eq!(anchors.len(), 2);
+    }
+
+    /// A stop OTP names that isn't in the sequence we were given is no anchor either.
+    #[test]
+    fn an_unknown_next_stop_gets_no_track() {
+        let stoptimes = [stoptime(-122.320, 400)];
+        let anchors = anchors_for(-122.325, 300, Some(-122.999), &stoptimes);
+
+        assert_eq!(anchors.len(), 1);
+    }
+
     #[test]
     fn the_track_starts_where_the_vehicle_is_and_walks_toward_the_next_stop() {
         let stoptimes = [stoptime(-122.320, 400), stoptime(-122.310, 600)];
-        let anchors = anchors_for(-122.325, 300, &stoptimes);
+        let anchors = anchors_for(-122.325, 300, Some(-122.320), &stoptimes);
         let track = track(&shape(), &anchors);
 
         assert!(
@@ -727,7 +851,7 @@ mod tests {
     #[test]
     fn the_track_stops_at_the_horizon() {
         let stoptimes = [stoptime(-122.310, 300 + 60 * 60)];
-        let anchors = anchors_for(-122.325, 300, &stoptimes);
+        let anchors = anchors_for(-122.325, 300, Some(-122.310), &stoptimes);
         let track = track(&shape(), &anchors);
 
         let span = track.last().expect("non-empty").time - track[0].time;
