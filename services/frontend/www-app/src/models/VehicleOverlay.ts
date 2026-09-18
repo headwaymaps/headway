@@ -4,6 +4,7 @@ import { i18n } from 'src/i18n/lang';
 import Trip, { transitVehicleEmoji } from 'src/models/Trip';
 import {
   PatternRequest,
+  TransitVehicleMode,
   TravelmuxClient,
   TravelmuxVehicle,
 } from 'src/services/TravelmuxClient';
@@ -17,37 +18,38 @@ const POLL_INTERVAL_MS = 30_000;
 /// The color of a vehicle whose route doesn't name one, matching an active trip line.
 const DEFAULT_VEHICLE_COLOR = '#1296FF';
 
-/// How a pattern's vehicles are drawn, taken from the leg that put the pattern on screen.
-export interface PatternStyle {
-  color: string;
-  emoji: string;
-  /// What to call the route on hover: its short name, or its long name when it has none.
-  routeName: string;
-  /// Badged onto the marker itself. Only ever the short name - a long one ("Downtown -
-  /// Ballard") doesn't fit beside a 22px dot - so a route without one goes unbadged.
-  badge?: string;
-  /// Where the rider boards this leg. Travelmux reports the vehicles either side of it rather
-  /// than every vehicle running the route.
-  boardingStop?: LngLat;
-}
-
-const UNKNOWN_PATTERN: PatternStyle = {
-  color: DEFAULT_VEHICLE_COLOR,
-  emoji: '🚍',
-  routeName: '',
-};
-
-/// A transit vehicle's last known position, and the route color to draw it in.
+/// A transit vehicle's last known position, and how to draw it.
 export class TransitVehicle {
   readonly raw: TravelmuxVehicle;
-  readonly style: PatternStyle;
   /// The track's start as epoch millis, parsed once rather than per animation frame.
   private readonly trackStart: number;
 
-  constructor(raw: TravelmuxVehicle, style: PatternStyle) {
+  constructor(raw: TravelmuxVehicle) {
     this.raw = raw;
-    this.style = style;
     this.trackStart = raw.track ? Date.parse(raw.track.startTime) : NaN;
+  }
+
+  /// How to draw this vehicle. Everything here rides along on the vehicle itself, so there's no
+  /// looking back at the leg that put its pattern on screen.
+  get style(): {
+    color: string;
+    emoji: string;
+    routeName: string;
+    badge?: string;
+  } {
+    const route = this.raw.route;
+    return {
+      color: route?.color ? `#${route.color}` : DEFAULT_VEHICLE_COLOR,
+      // A vehicle whose feed names no mode is still some kind of transit.
+      emoji: transitVehicleEmoji(
+        this.raw.vehicleMode ?? TransitVehicleMode.Transit,
+      ),
+      /// Its short name, or its long name when it has none.
+      routeName: route?.shortName ?? route?.longName ?? '',
+      /// Only the short name is badged: a long one ("Downtown - Ballard") doesn't fit beside a
+      /// 22px dot, so a route without one goes unbadged.
+      badge: route?.shortName,
+    };
   }
 
   /// Where the vehicle last actually reported being.
@@ -201,26 +203,22 @@ export default class VehicleOverlay {
     this.clearMarkers();
   }
 
-  /// The route color to draw each pattern's vehicles in, keyed by pattern code.
-  private stylesByPattern(): Map<string, PatternStyle> {
-    const styles = new Map<string, PatternStyle>();
+  /// The patterns on screen and where the rider boards each: travelmux reports the vehicles
+  /// either side of that stop rather than every vehicle running the route.
+  private patternsToPoll(): PatternRequest[] {
+    const boardingStops = new Map<string, LngLat>();
     for (const trip of this.trips) {
       for (const leg of trip.legs) {
-        const transitLeg = leg.raw.transitLeg;
-        if (!transitLeg?.patternCode) {
-          continue;
+        const patternCode = leg.raw.transitLeg?.patternCode;
+        if (patternCode) {
+          boardingStops.set(patternCode, leg.sourceLngLat);
         }
-        const route = transitLeg.route;
-        styles.set(transitLeg.patternCode, {
-          color: route?.color ? `#${route.color}` : DEFAULT_VEHICLE_COLOR,
-          emoji: transitVehicleEmoji(transitLeg.vehicleMode),
-          routeName: route?.shortName ?? route?.longName ?? '',
-          badge: route?.shortName,
-          boardingStop: leg.sourceLngLat,
-        });
       }
     }
-    return styles;
+    return [...boardingStops].map(([code, boardingStop]) => ({
+      code,
+      boardingStop,
+    }));
   }
 
   private clearMarkers(): void {
@@ -254,15 +252,10 @@ export default class VehicleOverlay {
   }
 
   private async refresh(): Promise<void> {
-    const styles = this.stylesByPattern();
-    const patterns: PatternRequest[] = [...styles].map(([code, style]) => ({
-      code,
-      boardingStop: style.boardingStop,
-    }));
     const result = await TravelmuxClient.fetchVehiclePositions(
       this.from,
       this.to,
-      patterns,
+      this.patternsToPoll(),
     );
 
     if (!result.ok) {
@@ -277,10 +270,7 @@ export default class VehicleOverlay {
 
     const stale = new Set(this.tracked.keys());
     for (const raw of result.value) {
-      const vehicle = new TransitVehicle(
-        raw,
-        styles.get(raw.patternCode) ?? UNKNOWN_PATTERN,
-      );
+      const vehicle = new TransitVehicle(raw);
       const key = vehicle.markerKey;
       stale.delete(key);
 

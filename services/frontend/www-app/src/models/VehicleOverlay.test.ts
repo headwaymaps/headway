@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { TransitVehicle } from './VehicleOverlay';
-import { TravelmuxVehicle } from 'src/services/TravelmuxClient';
+import {
+  TransitVehicleMode,
+  TravelmuxVehicle,
+} from 'src/services/TravelmuxClient';
 
 const NOW = new Date('2024-05-17T12:35:01-07:00');
 
@@ -8,17 +11,15 @@ function vehicle(overrides: Partial<TravelmuxVehicle> = {}): TransitVehicle {
   const raw: TravelmuxVehicle = {
     id: '1:40:0:01/1:7204',
     patternCode: '1:40:0:01',
+    route: { shortName: '5', color: '0080FF' },
+    vehicleMode: TransitVehicleMode.Bus,
     vehicleId: '1:7204',
     label: '7204',
     lat: 47.6,
     lon: -122.33,
     ...overrides,
   };
-  return new TransitVehicle(raw, {
-    color: '#0080FF',
-    emoji: '🚍',
-    routeName: '5',
-  });
+  return new TransitVehicle(raw);
 }
 
 function reportedSecondsAgo(seconds: number): TransitVehicle {
