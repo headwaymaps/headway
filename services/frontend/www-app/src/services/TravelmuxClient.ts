@@ -81,8 +81,16 @@ export interface TravelmuxVehiclePositionsResponse {
 
 /// One transit vehicle's last known position.
 export interface TravelmuxVehicle {
+  /// Stable for as long as the vehicle keeps reporting on this pattern.
+  id: string;
   /// Which pattern this vehicle is serving, matching a transit leg's patternCode.
   patternCode: string;
+  /// What the vehicle is running. Carried on the vehicle so a client needn't join back to the
+  /// plan's legs to find out.
+  route?: TransitRoute;
+  /// What kind of vehicle it is, as OTP names it.
+  vehicleMode?: TransitVehicleMode;
+  headsign?: string;
   /// `FeedId:VehicleId`
   vehicleId?: string;
   /// What the vehicle shows the public, e.g. a fleet number
@@ -93,9 +101,8 @@ export interface TravelmuxVehicle {
   heading?: number;
   /// RFC 3339. When the vehicle reported this position.
   lastUpdated?: string;
-  /// Where travelmux guesses the vehicle goes next, to animate along between polls. The first
-  /// point is the reported position at `lastUpdated`; everything after it is a guess.
-  track?: TravelmuxWaypoint[];
+  /// Where travelmux guesses the vehicle goes next, to animate along between polls.
+  track?: TravelmuxTrack;
 }
 
 /// A pattern to report vehicles for, and where the rider boards it.
@@ -104,11 +111,14 @@ export interface PatternRequest {
   boardingStop?: LngLat;
 }
 
-export interface TravelmuxWaypoint {
-  lat: number;
-  lon: number;
-  /// RFC 3339
-  time: string;
+/// Positions at a fixed cadence, so the pair bracketing an instant is arithmetic rather than a
+/// search. Everything past the first point is a guess.
+export interface TravelmuxTrack {
+  /// RFC 3339. When the vehicle was at `points[0]`.
+  startTime: string;
+  stepSeconds: number;
+  /// `[lat, lon]` pairs.
+  points: [number, number][];
 }
 
 export interface NonTransitLeg {

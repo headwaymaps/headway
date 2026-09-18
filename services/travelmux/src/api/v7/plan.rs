@@ -327,11 +327,11 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
 #[serde(rename_all = "camelCase")]
 pub struct Route {
     /// e.g. "40"
-    short_name: Option<String>,
+    pub(crate) short_name: Option<String>,
     /// e.g. "Downtown - Ballard"
-    long_name: Option<String>,
+    pub(crate) long_name: Option<String>,
     /// An RRGGBB hex color, without a leading "#"
-    color: Option<String>,
+    pub(crate) color: Option<String>,
 }
 
 impl From<&gtfs_graphql::Route> for Route {

@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 use super::error::PlanResponseErr;
+use super::plan::Route;
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql;
@@ -125,8 +126,25 @@ pub struct VehiclePositionsResponseOk {
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Vehicle {
+    /// Stable for as long as the vehicle keeps reporting on this pattern, so a client can match
+    /// it against what it drew last poll rather than inventing a key of its own.
+    id: String,
+
     /// Which of the requested patterns this vehicle is serving.
     pattern_code: String,
+
+    /// What the vehicle is running. Repeated on every vehicle rather than left for the client to
+    /// look up from the plan's legs, so each client doesn't write that join again.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    route: Option<Route>,
+
+    /// What kind of vehicle it is, e.g. `BUS` or `TRAM`, as OTP names it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vehicle_mode: Option<gtfs_graphql::TransitMode>,
+
+    /// What the vehicle displays, e.g. "Downtown Seattle Via 35th Ave SW".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    headsign: Option<String>,
 
     /// `FeedId:VehicleId`, unique for as long as the vehicle is reporting.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -154,36 +172,35 @@ pub struct Vehicle {
 
     /// Where we guess the vehicle goes next, for a client to animate along between polls.
     ///
-    /// Sampled every few seconds from the last report up to at most a few minutes out, by
-    /// walking the route's shape at the pace the trip's arrival predictions imply. Every point
-    /// past the first is a guess, not a report - `last_updated` is still the last thing the
-    /// vehicle actually told us. Empty when there's nothing to predict from, in which case the
-    /// vehicle should just sit at `lat`/`lon`.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    track: Vec<Waypoint>,
+    /// Absent when there's nothing to predict from, in which case the vehicle just sits at
+    /// `lat`/`lon`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    track: Option<Track>,
 }
 
-/// Where a vehicle is guessed to be at one moment.
+/// Where a vehicle is expected to be over the next few minutes, sampled at a fixed cadence by
+/// walking the route's shape at the pace the trip's arrival predictions imply.
+///
+/// The samples are evenly spaced in time, so the pair bracketing any instant is arithmetic
+/// rather than a search: `i = (now - startTime) / stepSeconds`, clamped to `points`. Everything
+/// past the first point is a guess - `lastUpdated` is still the last thing the vehicle itself
+/// told us.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct Waypoint {
-    lat: f64,
-    lon: f64,
-    /// RFC 3339, UTC.
-    time: DateTime<Utc>,
+pub struct Track {
+    /// RFC 3339, UTC. When the vehicle was at `points[0]`.
+    start_time: DateTime<Utc>,
+    /// Seconds between consecutive points.
+    step_seconds: i64,
+    /// `[lat, lon]` pairs, at least two.
+    points: Vec<[f64; 2]>,
 }
 
-impl Waypoint {
-    /// Interpolating a shape yields far more digits than it means. A millionth of a degree is
-    /// about 10cm, already finer than the GPS fix underneath, and the rest is payload.
-    fn new(point: Point, time: DateTime<Utc>) -> Self {
-        let round = |degrees: f64| (degrees * 1e6).round() / 1e6;
-        Self {
-            lat: round(point.y()),
-            lon: round(point.x()),
-            time,
-        }
-    }
+/// Interpolating a shape yields far more digits than it means. A millionth of a degree is about
+/// 10cm, already finer than the GPS fix underneath, and the rest is payload.
+fn rounded(point: Point) -> [f64; 2] {
+    let round = |degrees: f64| (degrees * 1e6).round() / 1e6;
+    [round(point.y()), round(point.x())]
 }
 
 /// A point the vehicle is expected to reach, and when - the vehicle's own position to begin
@@ -267,16 +284,14 @@ fn anchors(
 }
 
 /// Sample the guessed path at a fixed cadence, so a client can walk it by wall clock.
-fn track(shape: &LineString, anchors: &[Anchor]) -> Vec<Waypoint> {
-    let (Some(first), Some(last)) = (anchors.first(), anchors.last()) else {
-        return vec![];
-    };
+fn track(shape: &LineString, anchors: &[Anchor]) -> Option<Track> {
+    let (first, last) = (anchors.first()?, anchors.last()?);
     // One anchor is just the vehicle where it already is - nothing to say.
     if anchors.len() < 2 {
-        return vec![];
+        return None;
     }
 
-    let mut waypoints = Vec::new();
+    let mut points = Vec::new();
     let mut time = first.time;
     let end = last.time.min(first.time + TRACK_HORIZON);
     while time <= end {
@@ -297,11 +312,17 @@ fn track(shape: &LineString, anchors: &[Anchor]) -> Vec<Waypoint> {
         let progress = before.progress + into * (after.progress - before.progress);
 
         if let Some(point) = point_at(shape, progress) {
-            waypoints.push(Waypoint::new(point, time));
+            points.push(rounded(point));
         }
         time += TRACK_STEP;
     }
-    waypoints
+
+    // A single point is a position, not a path; the vehicle already has one of those.
+    (points.len() > 1).then(|| Track {
+        start_time: first.time,
+        step_seconds: TRACK_STEP.num_seconds(),
+        points,
+    })
 }
 
 impl Vehicle {
@@ -309,10 +330,11 @@ impl Vehicle {
     /// represented. OTP reports a vehicle at null island for a run it hasn't started yet, twice
     /// over: once properly, and once as a placeholder sharing the real one's id.
     fn from_otp(
-        pattern_code: &str,
+        pattern: &gtfs_graphql::PatternVehicles,
         shape: Option<&LineString>,
         position: gtfs_graphql::VehiclePosition,
     ) -> Option<Self> {
+        let pattern_code = pattern.pattern_code.as_str();
         let lat = position.lat?;
         let lon = position.lon?;
         if !is_on_earth(lat, lon) {
@@ -344,11 +366,27 @@ impl Vehicle {
                 );
                 track(shape, &anchors)
             }
-            _ => vec![],
+            _ => None,
         };
 
+        // A vehicle reports under one id for as long as it's on this pattern, so that plus the
+        // pattern is stable between polls - which is all a client needs to keep a marker.
+        let identifier = position
+            .vehicle_id
+            .as_deref()
+            .or(position.label.as_deref())
+            .unwrap_or_default();
+
         Some(Self {
+            id: format!("{pattern_code}/{identifier}"),
             pattern_code: pattern_code.to_owned(),
+            route: Some(Route {
+                short_name: pattern.route.short_name.clone(),
+                long_name: pattern.route.long_name.clone(),
+                color: pattern.route.color.clone(),
+            }),
+            vehicle_mode: pattern.route.mode.clone(),
+            headsign: pattern.headsign.clone(),
             vehicle_id: position.vehicle_id,
             label: position.label,
             lat,
@@ -477,12 +515,11 @@ pub async fn get_vehicle_positions(
                 .iter()
                 .find(|request| request.code == pattern.pattern_code)
                 .and_then(|request| request.boarding_stop);
-            let on_pattern: Vec<_> = pattern
-                .positions
+            let mut pattern = pattern;
+            let positions = std::mem::take(&mut pattern.positions);
+            let on_pattern: Vec<_> = positions
                 .into_iter()
-                .filter_map(|position| {
-                    Vehicle::from_otp(&pattern.pattern_code, shape.as_ref(), position)
-                })
+                .filter_map(|position| Vehicle::from_otp(&pattern, shape.as_ref(), position))
                 .collect();
             nearby(on_pattern, shape.as_ref(), boarding_stop)
         })
@@ -531,6 +568,21 @@ mod tests {
 
     fn stop_id(lon: f64) -> String {
         format!("stop@{lon}")
+    }
+
+    fn pattern() -> gtfs_graphql::PatternVehicles {
+        gtfs_graphql::PatternVehicles {
+            pattern_code: "1:40:0:01".to_owned(),
+            geometry: None,
+            route: gtfs_graphql::VehicleRoute {
+                short_name: Some("40".to_owned()),
+                long_name: Some("Downtown - Ballard".to_owned()),
+                color: Some("0080FF".to_owned()),
+                mode: Some(gtfs_graphql::TransitMode::Bus),
+            },
+            headsign: Some("Downtown Seattle".to_owned()),
+            positions: vec![],
+        }
     }
 
     fn position(lat: Option<f64>, lon: Option<f64>) -> VehiclePosition {
@@ -601,13 +653,52 @@ mod tests {
         }
     }
 
+    /// The client keys its markers on this, so it has to survive a poll and tell two vehicles on
+    /// the same pattern apart.
+    #[test]
+    fn a_vehicle_is_identified_by_its_pattern_and_its_own_id() {
+        let shape = shape();
+        let build = |position| {
+            Vehicle::from_otp(&pattern(), Some(&shape), position).expect("has coordinates")
+        };
+
+        let mut first = position(Some(47.6), Some(-122.335));
+        first.vehicle_id = Some("1:7204".to_owned());
+        let mut second = position(Some(47.6), Some(-122.330));
+        second.vehicle_id = Some("1:7205".to_owned());
+        assert_ne!(build(first).id, build(second).id);
+
+        // A feed that publishes no vehicle id still has to identify its buses somehow.
+        let mut unnamed = position(Some(47.6), Some(-122.335));
+        unnamed.vehicle_id = None;
+        unnamed.label = Some("7204".to_owned());
+        assert_eq!(build(unnamed).id, "1:40:0:01/7204");
+    }
+
+    /// The route rides along with each vehicle so a client needn't join back to the plan's legs.
+    #[test]
+    fn a_vehicle_carries_what_it_is_running() {
+        let vehicle = Vehicle::from_otp(
+            &pattern(),
+            Some(&shape()),
+            position(Some(47.6), Some(-122.335)),
+        )
+        .expect("has coordinates");
+
+        let route = vehicle.route.expect("carried");
+        assert_eq!(route.short_name.as_deref(), Some("40"));
+        assert_eq!(route.color.as_deref(), Some("0080FF"));
+        assert_eq!(vehicle.vehicle_mode, Some(gtfs_graphql::TransitMode::Bus));
+        assert_eq!(vehicle.headsign.as_deref(), Some("Downtown Seattle"));
+    }
+
     /// OTP reports a vehicle at exactly 0,0 for a run it hasn't started, reusing the id of the
     /// bus that will make it - so keeping it both draws a dot off West Africa and, sharing a
     /// marker with the real vehicle, drags the real one there too.
     #[test]
     fn a_vehicle_at_null_island_is_dropped() {
         let shape = shape();
-        let build = |lat, lon| Vehicle::from_otp("1:40:0:01", Some(&shape), position(lat, lon));
+        let build = |lat, lon| Vehicle::from_otp(&pattern(), Some(&shape), position(lat, lon));
 
         assert!(build(Some(0.0), Some(0.0)).is_none());
         // Only exactly 0,0 - the Gulf of Guinea is a real place.
@@ -618,7 +709,7 @@ mod tests {
     #[test]
     fn a_vehicle_off_the_globe_is_dropped() {
         let shape = shape();
-        let build = |lat, lon| Vehicle::from_otp("1:40:0:01", Some(&shape), position(lat, lon));
+        let build = |lat, lon| Vehicle::from_otp(&pattern(), Some(&shape), position(lat, lon));
 
         assert!(build(Some(91.0), Some(-122.33)).is_none());
         assert!(build(Some(47.6), Some(181.0)).is_none());
@@ -633,7 +724,7 @@ mod tests {
             .map(|lon| {
                 let mut position = position(Some(47.600), Some(*lon));
                 position.label = Some(format!("{lon}"));
-                Vehicle::from_otp("1:40:0:01", Some(&shape), position).expect("has coordinates")
+                Vehicle::from_otp(&pattern(), Some(&shape), position).expect("has coordinates")
             })
             .collect()
     }
@@ -685,7 +776,7 @@ mod tests {
     #[test]
     fn a_vehicle_without_coordinates_is_dropped() {
         let shape = shape();
-        let build = |lat, lon| Vehicle::from_otp("1:40:0:01", Some(&shape), position(lat, lon));
+        let build = |lat, lon| Vehicle::from_otp(&pattern(), Some(&shape), position(lat, lon));
         assert!(build(Some(47.6), Some(-122.33)).is_some());
         assert!(build(Some(47.6), None).is_none());
         assert!(build(None, None).is_none());
@@ -694,21 +785,20 @@ mod tests {
     /// OTP has no shape for some patterns. Their vehicles are still worth drawing.
     #[test]
     fn a_pattern_without_a_shape_still_yields_a_vehicle() {
-        let vehicle = Vehicle::from_otp("1:40:0:01", None, position(Some(47.6), Some(-122.335)))
+        let vehicle = Vehicle::from_otp(&pattern(), None, position(Some(47.6), Some(-122.335)))
             .expect("has coordinates");
         assert!(vehicle.progress.is_none());
-        assert!(vehicle.track.is_empty());
+        assert!(vehicle.track.is_none());
         assert_eq!(vehicle.lat, 47.6);
     }
 
     #[test]
     fn an_undecodable_shape_is_dropped_rather_than_failing_the_request() {
-        let pattern = gtfs_graphql::PatternVehicles {
-            pattern_code: "1:40:0:01".to_owned(),
+        let undecodable = gtfs_graphql::PatternVehicles {
             geometry: Some("!!! not a polyline !!!".to_owned()),
-            positions: vec![],
+            ..pattern()
         };
-        assert!(shape_of(&pattern).is_none());
+        assert!(shape_of(&undecodable).is_none());
     }
 
     /// `heading_for` is the longitude of the stop OTP says the vehicle is working towards.
@@ -762,7 +852,7 @@ mod tests {
         let anchors = anchors_for(-122.340, 300, Some(-122.339), &stoptimes);
 
         assert_eq!(anchors.len(), 1, "should not have anchored on the far stop");
-        assert!(track(&shape(), &anchors).is_empty());
+        assert!(track(&shape(), &anchors).is_none());
     }
 
     /// Same shape of data, but the vehicle is where its next stop says it should be.
@@ -782,7 +872,7 @@ mod tests {
         let anchors = anchors_for(-122.325, 300, None, &stoptimes);
 
         assert_eq!(anchors.len(), 1);
-        assert!(track(&shape(), &anchors).is_empty());
+        assert!(track(&shape(), &anchors).is_none());
     }
 
     /// A vehicle standing at its next stop projects level with it. That's arrival, not a
@@ -806,7 +896,7 @@ mod tests {
         let anchors = anchors_for(-122.340, 300, Some(-122.220), &stoptimes);
 
         assert_eq!(anchors.len(), 1);
-        assert!(track(&shape(), &anchors).is_empty());
+        assert!(track(&shape(), &anchors).is_none());
     }
 
     /// The same distance at a pace a vehicle could actually keep is fine.
@@ -831,20 +921,23 @@ mod tests {
     fn the_track_starts_where_the_vehicle_is_and_walks_toward_the_next_stop() {
         let stoptimes = [stoptime(-122.320, 400), stoptime(-122.310, 600)];
         let anchors = anchors_for(-122.325, 300, Some(-122.320), &stoptimes);
-        let track = track(&shape(), &anchors);
+        let track = track(&shape(), &anchors).expect("has somewhere to go");
 
         assert!(
-            track.len() > 2,
+            track.points.len() > 2,
             "expected several samples, got {}",
-            track.len()
+            track.points.len()
         );
-        assert_eq!(track[0].time, at(300));
-        // Sampled at a fixed cadence...
-        assert_eq!(track[1].time - track[0].time, TRACK_STEP);
-        // ...running east, the way the shape does, and never past the last prediction.
-        assert!(track[1].lon > track[0].lon);
-        assert!(track.last().expect("non-empty").time <= at(600));
-        assert!(track.windows(2).all(|pair| pair[1].lon >= pair[0].lon));
+        assert_eq!(track.start_time, at(300));
+        // Evenly spaced in time, so a client indexes rather than searches.
+        assert_eq!(track.step_seconds, TRACK_STEP.num_seconds());
+        // Running east, the way the shape does, and never past the last prediction.
+        let lons: Vec<f64> = track.points.iter().map(|p| p[1]).collect();
+        assert!(lons[1] > lons[0]);
+        assert!(lons.windows(2).all(|pair| pair[1] >= pair[0]));
+        let ends_at = track.start_time
+            + TimeDelta::seconds(track.step_seconds * (track.points.len() as i64 - 1));
+        assert!(ends_at <= at(600));
     }
 
     /// A trip predicted hours out shouldn't produce hours of guessed positions.
@@ -852,9 +945,9 @@ mod tests {
     fn the_track_stops_at_the_horizon() {
         let stoptimes = [stoptime(-122.310, 300 + 60 * 60)];
         let anchors = anchors_for(-122.325, 300, Some(-122.310), &stoptimes);
-        let track = track(&shape(), &anchors);
+        let track = track(&shape(), &anchors).expect("has somewhere to go");
 
-        let span = track.last().expect("non-empty").time - track[0].time;
+        let span = TimeDelta::seconds(track.step_seconds * (track.points.len() as i64 - 1));
         assert!(span <= TRACK_HORIZON, "track ran {span} past the horizon");
     }
 }

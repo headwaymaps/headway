@@ -41,15 +41,13 @@ const UNKNOWN_PATTERN: PatternStyle = {
 export class TransitVehicle {
   readonly raw: TravelmuxVehicle;
   readonly style: PatternStyle;
-  /// `raw.track`'s timestamps as epoch millis, parsed once rather than per animation frame.
-  private readonly trackTimes: number[];
+  /// The track's start as epoch millis, parsed once rather than per animation frame.
+  private readonly trackStart: number;
 
   constructor(raw: TravelmuxVehicle, style: PatternStyle) {
     this.raw = raw;
     this.style = style;
-    this.trackTimes = (raw.track ?? []).map((waypoint) =>
-      Date.parse(waypoint.time),
-    );
+    this.trackStart = raw.track ? Date.parse(raw.track.startTime) : NaN;
   }
 
   /// Where the vehicle last actually reported being.
@@ -59,46 +57,44 @@ export class TransitVehicle {
 
   /// Where we reckon the vehicle is at `now`, walking the predicted track.
   ///
-  /// Before the track begins, or with no track at all, that's just the reported position. Past
-  /// its end we hold at the last point rather than carrying on off the end of the prediction.
+  /// The track's points are evenly spaced in time, so the pair either side of `now` is an index,
+  /// not a search. Before it begins, or with no track at all, that's just the reported position;
+  /// past its end we hold at the last point rather than running off the end of the prediction.
   positionAt(now: number): LngLat {
     const track = this.raw.track;
-    if (!track || track.length === 0) {
+    if (!track || track.points.length === 0) {
       return this.lngLat;
     }
-    if (now <= this.trackTimes[0]!) {
-      return new LngLat(track[0]!.lon, track[0]!.lat);
+    const at = (i: number) =>
+      new LngLat(track.points[i]![1], track.points[i]![0]);
+
+    const elapsed = (now - this.trackStart) / 1000 / track.stepSeconds;
+    if (!(elapsed > 0)) {
+      return at(0);
     }
-    const end = track.length - 1;
-    if (now >= this.trackTimes[end]!) {
-      return new LngLat(track[end]!.lon, track[end]!.lat);
+    const last = track.points.length - 1;
+    if (elapsed >= last) {
+      return at(last);
     }
-    for (let i = 1; i <= end; i++) {
-      const until = this.trackTimes[i]!;
-      if (until < now) {
-        continue;
-      }
-      const since = this.trackTimes[i - 1]!;
-      const from = track[i - 1]!;
-      const to = track[i]!;
-      const span = until - since;
-      const into = span > 0 ? (now - since) / span : 0;
-      return new LngLat(
-        from.lon + into * (to.lon - from.lon),
-        from.lat + into * (to.lat - from.lat),
-      );
-    }
-    return this.lngLat;
+
+    const i = Math.floor(elapsed);
+    const into = elapsed - i;
+    const from = track.points[i]!;
+    const to = track.points[i + 1]!;
+    return new LngLat(
+      from[1] + into * (to[1] - from[1]),
+      from[0] + into * (to[0] - from[0]),
+    );
   }
 
   /// Whether the dot has moved past the last thing the vehicle actually told us.
   isEstimatedAt(now: number): boolean {
-    return this.trackTimes.length > 0 && now > this.trackTimes[0]!;
+    return !!this.raw.track && now > this.trackStart;
   }
 
   /// Stable for as long as the vehicle keeps reporting, so it can key a marker.
   get markerKey(): string {
-    return `vehicle_${this.raw.patternCode}_${this.raw.vehicleId ?? this.raw.label ?? ''}`;
+    return `vehicle_${this.raw.id}`;
   }
 
   /// The number painted on the vehicle, phrased for the tooltip - "(vehicle 7193)".

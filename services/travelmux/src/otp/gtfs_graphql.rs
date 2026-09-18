@@ -627,7 +627,46 @@ struct VehiclePositionsQuery {
 struct VehiclePositionsPattern {
     code: String,
     pattern_geometry: Option<Geometry>,
+    /// What the vehicles on this pattern are running, so a client doesn't have to join them back
+    /// to the plan's legs to find out.
+    route: VehicleRoute,
+    headsign: Option<String>,
     vehicle_positions: Option<Vec<VehiclePosition>>,
+}
+
+#[derive(cynic::QueryFragment, Debug, Clone)]
+#[cynic(graphql_type = "Route")]
+pub struct VehicleRoute {
+    pub short_name: Option<String>,
+    pub long_name: Option<String>,
+    /// An RRGGBB hex color, without a leading "#".
+    pub color: Option<String>,
+    pub mode: Option<TransitMode>,
+}
+
+/// What kind of vehicle runs a route. A wider vocabulary than [`Mode`], which also has to
+/// describe walking and cycling.
+#[derive(cynic::Enum, Clone, Debug, PartialEq)]
+#[cynic(non_exhaustive)]
+pub enum TransitMode {
+    Airplane,
+    Bus,
+    CableCar,
+    Carpool,
+    Coach,
+    Ferry,
+    Funicular,
+    Gondola,
+    Monorail,
+    Rail,
+    SnowAndIce,
+    Subway,
+    Taxi,
+    Tram,
+    Trolleybus,
+    /// Anything else OTP might name, carried through as it spells it.
+    #[cynic(fallback)]
+    Other(String),
 }
 
 /// One queried pattern's live vehicles, with the shape they're running along.
@@ -635,8 +674,10 @@ struct VehiclePositionsPattern {
 pub struct PatternVehicles {
     pub pattern_code: String,
     /// The shape the pattern follows, as an encoded polyline. Its coordinates run in the
-    /// direction of travel, which is what makes a vehicle's heading recoverable from it.
+    /// direction of travel, which is what lets progress be measured along it.
     pub geometry: Option<String>,
+    pub route: VehicleRoute,
+    pub headsign: Option<String>,
     pub positions: Vec<VehiclePosition>,
 }
 
@@ -727,6 +768,8 @@ impl VehiclePositionsQuery {
                 geometry: pattern
                     .pattern_geometry
                     .and_then(|geometry| geometry.points),
+                route: pattern.route,
+                headsign: pattern.headsign,
                 positions: pattern.vehicle_positions.unwrap_or_default(),
             })
             .collect()
@@ -1252,6 +1295,9 @@ mod tests {
             {
               "code": "1:40:0:01",
               "patternGeometry": { "points": "abcd", "length": 2 },
+              "route": { "shortName": "40", "longName": "Downtown - Ballard",
+                         "color": "0080FF", "mode": "BUS" },
+              "headsign": "Downtown Seattle",
               "vehiclePositions": [
                 {
                   "vehicleId": "1:7204", "label": "7204", "lat": 47.6, "lon": -122.33,
@@ -1277,7 +1323,9 @@ mod tests {
             },
             // A pattern OTP knows but has no realtime for and no shape, and one it has
             // forgotten entirely.
-            { "code": "1:21:0:01", "patternGeometry": null, "vehiclePositions": [] },
+            { "code": "1:21:0:01", "patternGeometry": null, "headsign": null,
+              "route": { "shortName": "21", "longName": null, "color": null, "mode": null },
+              "vehiclePositions": [] },
             null
           ] }
         });
@@ -1316,6 +1364,11 @@ mod tests {
             first.expected_arrival(),
             DateTime::from_timestamp(1715965800, 0)
         );
+
+        // The route rides along with the vehicles, so a client needn't join back to the plan.
+        assert_eq!(patterns[0].route.short_name.as_deref(), Some("40"));
+        assert_eq!(patterns[0].route.mode, Some(TransitMode::Bus));
+        assert_eq!(patterns[0].headsign.as_deref(), Some("Downtown Seattle"));
 
         assert_eq!(patterns[1].geometry, None);
         assert!(patterns[1].positions.is_empty());

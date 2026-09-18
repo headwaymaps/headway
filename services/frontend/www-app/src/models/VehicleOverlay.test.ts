@@ -6,6 +6,7 @@ const NOW = new Date('2024-05-17T12:35:01-07:00');
 
 function vehicle(overrides: Partial<TravelmuxVehicle> = {}): TransitVehicle {
   const raw: TravelmuxVehicle = {
+    id: '1:40:0:01/1:7204',
     patternCode: '1:40:0:01',
     vehicleId: '1:7204',
     label: '7204',
@@ -58,16 +59,25 @@ describe('positionAt', () => {
       lat: 47.6,
       lon: -122.33,
       lastUpdated: new Date(T0).toISOString(),
-      track: [
-        { lat: 47.6, lon: -122.33, time: new Date(T0).toISOString() },
-        { lat: 47.6, lon: -122.32, time: new Date(T0 + 5000).toISOString() },
-        { lat: 47.6, lon: -122.31, time: new Date(T0 + 10000).toISOString() },
-      ],
+      track: {
+        startTime: new Date(T0).toISOString(),
+        stepSeconds: 5,
+        points: [
+          [47.6, -122.33],
+          [47.6, -122.32],
+          [47.6, -122.31],
+        ],
+      },
     });
 
   test('a vehicle with no track sits where it reported', () => {
     const v = vehicle({ track: undefined });
     expect(v.positionAt(T0 + 60000).lng).toEqual(v.lngLat.lng);
+  });
+
+  // The samples are evenly spaced, so the bracketing pair is an index rather than a search.
+  test('it indexes into the track by elapsed time', () => {
+    expect(tracked().positionAt(T0 + 7500).lng).toBeCloseTo(-122.315, 6);
   });
 
   test('at the start of the track it is where it reported', () => {
@@ -113,15 +123,14 @@ describe('labelFormatted', () => {
 });
 
 describe('markerKey', () => {
-  test('distinguishes vehicles serving the same pattern', () => {
-    expect(vehicle({ vehicleId: '1:7204' }).markerKey).not.toEqual(
-      vehicle({ vehicleId: '1:7205' }).markerKey,
+  // Identity is travelmux's to decide - it knows a vehicle reports under one id for as long as
+  // it's on a pattern. The client just needs it to be stable between polls.
+  test('follows the id travelmux gave the vehicle', () => {
+    expect(vehicle({ id: '1:40:0:01/1:7204' }).markerKey).not.toEqual(
+      vehicle({ id: '1:40:0:01/1:7205' }).markerKey,
     );
-  });
-
-  test('falls back to the label when a feed omits the vehicle id', () => {
-    expect(vehicle({ vehicleId: undefined, label: '7204' }).markerKey).toEqual(
-      'vehicle_1:40:0:01_7204',
+    expect(vehicle({ id: '1:40:0:01/1:7204' }).markerKey).toEqual(
+      vehicle({ id: '1:40:0:01/1:7204' }).markerKey,
     );
   });
 });
