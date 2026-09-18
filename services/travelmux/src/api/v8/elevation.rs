@@ -88,7 +88,6 @@ pub async fn get_elevation(
     let (sampled_geometry, elevation) =
         app_state.elevation().sample_elevations(&geometry, 100.0)?;
 
-    // Calculate total climb and fall
     let (total_climb_meters, total_fall_meters) = calculate_climb_and_fall(&elevation);
 
     Ok(ElevationResponseOk {

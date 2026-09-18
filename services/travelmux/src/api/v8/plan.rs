@@ -422,9 +422,7 @@ impl NonTransitLeg {
     }
 }
 
-/// One action taken by the user - like a turn or taking an exit.
-/// This was originally based on the schema of a valhalla_api::Maneuver, but it can be built from
-/// either OTP or Valhalla data.
+/// One action a traveler takes, from OTP or Valhalla.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Maneuver {

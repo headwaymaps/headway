@@ -238,25 +238,18 @@ fn anchors(
             continue;
         };
         let last = anchors.last().expect("seeded above");
-        // Nothing to pace towards a stop that's already overdue. On the vehicle's own next stop
-        // that means its position and its predictions disagree, and every stop after it is
-        // further still, so there's nothing here worth guessing from.
+        // An overdue next stop makes the report and prediction inconsistent.
         if time <= last.time {
             if anchors.len() == 1 {
                 return anchors;
             }
             continue;
         }
-        // A vehicle standing at its next stop projects level with it, or a touch past. That's
-        // not a disagreement, it's arrival - aim at the stop after instead.
+        // At or past the next stop means it has arrived; aim farther ahead.
         if stop <= last.progress {
             continue;
         }
-        // A span a vehicle would have to outrun a train to cover is the data contradicting
-        // itself. On the first span that's the position disagreeing with the predictions; later
-        // it's two predictions disagreeing with each other, which OTP also serves. Either way
-        // there's nothing to pace, so the track ends here - which on the first span means no
-        // track at all, and the vehicle simply sits where it was last seen.
+        // Stop when the report and predictions imply an implausible speed.
         let seconds = (time - last.time).num_milliseconds() as f64 / 1000.0;
         if (stop - last.progress) / seconds > MAX_PLAUSIBLE_SPEED {
             break;
@@ -437,8 +430,7 @@ fn nearby(
     vehicles
 }
 
-/// The shape a pattern follows, or `None` when OTP has none or it won't decode - in which case
-/// its vehicles are still drawn, just without a bearing.
+/// Decodes a pattern shape when OTP provides one.
 fn shape_of(pattern: &gtfs_graphql::PatternVehicles) -> Option<LineString> {
     let encoded = pattern.geometry.as_ref()?;
     decode_polyline(encoded, OTP_POLYLINE_PRECISION)

@@ -85,23 +85,7 @@ pub(crate) fn bearing_at_end(line_string: &LineString) -> Option<u16> {
     }
 }
 
-/// How far along `shape` the vehicle at `point` has got, in metres.
-///
-/// A GTFS shape's coordinates are ordered in the direction of travel, so distance along it is a
-/// measure of progress through the trip: comparing a vehicle's against a stop's says which side
-/// of that stop it is on. The GTFS spec is what guarantees that ordering
-/// (`shape_pt_sequence` increases along the trip); OTP's GraphQL schema doesn't restate it.
-///
-/// Hand-rolled because `geo` has no metric-generic equivalent - `LineLocatePoint` is Euclidean
-/// on degrees, and its own source says it awaits "a unified implementation rather than being
-/// Euclidean specific". Scaling its fraction by the shape's haversine length gets close but not
-/// close enough: measured over a day of Puget Sound vehicles that lands 112m out in the median
-/// and 1.9km at the 99th percentile, because a degree of longitude here is 0.67 of a degree of
-/// latitude and the fraction over-weights whichever way the shape happens to run. Stops average
-/// 255m apart, so that routinely puts a vehicle on the wrong side of the one it is judged by.
-///
-/// Where a shape passes near itself, as a loop or an out-and-back tail does, the nearest segment
-/// may not be the one the vehicle is really on, and the answer can be a long way out.
+/// Haversine distance along the nearest segment of `shape`.
 pub(crate) fn progress_along(shape: &LineString, point: Point) -> Option<f64> {
     use geo::{ClosestPoint, Distance, Haversine};
 

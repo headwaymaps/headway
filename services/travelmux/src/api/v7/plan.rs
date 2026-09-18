@@ -286,10 +286,7 @@ pub struct TransitLeg {
     /// Whether the leg's times reflect real-time data, rather than just the schedule.
     real_time: bool,
 
-    /// The pattern this ride follows, which is what `/v7/vehicle_positions` is keyed by.
-    ///
-    /// Only good for the life of this plan - OTP renumbers patterns whenever the transit data is
-    /// rebuilt.
+    /// Pattern code, valid until OTP rebuilds transit data.
     pattern_code: Option<String>,
 
     alerts: Vec<Alert>,
@@ -423,9 +420,7 @@ impl NonTransitLeg {
     }
 }
 
-/// One action taken by the user - like a turn or taking an exit.
-/// This was originally based on the schema of a valhalla_api::Maneuver, but it can be built from
-/// either OTP or Valhalla data.
+/// One action a traveler takes, from OTP or Valhalla.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Maneuver {
@@ -1291,7 +1286,6 @@ mod tests {
             transit_leg.get("route").unwrap().get("shortName").unwrap(),
             "21"
         );
-        // What a client polls /v7/vehicle_positions with.
         assert_eq!(
             transit_leg.get("patternCode").unwrap().as_str().unwrap(),
             "1:21:0:01"

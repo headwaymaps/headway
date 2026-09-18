@@ -9,10 +9,7 @@ use crate::otp::gtfs_graphql;
 use crate::valhalla::valhalla_api;
 use crate::{DistanceUnit, Error, TravelMode};
 
-/// A successful plan.
-///
-/// Unlike v6, there's no `_otp`/`_valhalla` echo of the upstream response: everything a client
-/// needs is in the itineraries themselves.
+/// A successful plan response.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanResponseOk {
