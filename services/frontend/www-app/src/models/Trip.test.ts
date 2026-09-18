@@ -24,6 +24,7 @@ function leg(mode: TravelmuxMode, distanceMeters: number): TravelmuxLeg {
       ? {
           vehicleMode: TransitVehicleMode.Bus,
           route: { shortName: '40' },
+          patternCode: '1:40:0:01',
           realTime: false,
           alerts: [],
         }
@@ -46,6 +47,23 @@ function trip(legs: TravelmuxLeg[]): Trip {
   };
   return new Trip(itinerary, DistanceUnits.Kilometers);
 }
+
+describe('patternCodes', () => {
+  test('names the patterns its transit legs ride, and no others', () => {
+    const t = trip([
+      leg(TravelmuxMode.Walk, 100),
+      leg(TravelmuxMode.Transit, 5000),
+      leg(TravelmuxMode.Walk, 200),
+      leg(TravelmuxMode.Transit, 3000),
+    ]);
+    // Two transit legs, two patterns - the walking either side contributes nothing.
+    expect(t.patternCodes).toEqual(['1:40:0:01', '1:40:0:01']);
+  });
+
+  test('a trip with no transit legs rides no patterns', () => {
+    expect(trip([leg(TravelmuxMode.Walk, 100)]).patternCodes).toEqual([]);
+  });
+});
 
 describe('nonTransitDistanceMeters', () => {
   test('sums the walking legs of a transit itinerary', () => {

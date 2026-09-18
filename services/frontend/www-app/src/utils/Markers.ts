@@ -107,6 +107,11 @@ export default {
 
     return new Marker({ element });
   },
+  /// Dim a vehicle marker, for one running a route the traveler hasn't selected.
+  setTransitVehicleFaded: (marker: Marker, faded: boolean): void => {
+    marker.getElement().classList.toggle('transit-vehicle--faded', faded);
+  },
+
   /// Re-aim a vehicle marker without rebuilding it, as its bearing changes between polls.
   setTransitVehicleBearing: (marker: Marker, bearing?: number): void => {
     const heading = marker

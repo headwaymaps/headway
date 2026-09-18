@@ -184,7 +184,7 @@ export default defineComponent({
       this.vehicleOverlay = undefined;
     },
     /// Draw the vehicles serving the trips on screen, for the feeds that report where they are.
-    startVehicleOverlay(map: BaseMapInterface, trips: Trip[]) {
+    startVehicleOverlay(map: BaseMapInterface, trips: Trip[], selected: Trip) {
       this.stopVehicleOverlay();
       if (!this.fromPlace || !this.toPlace) {
         return;
@@ -197,6 +197,7 @@ export default defineComponent({
       );
       this.vehicleOverlay = markRaw(overlay);
       overlay.start();
+      overlay.selectTrip(selected);
     },
     clickTrip(trip: Trip) {
       this.$data.activeTrip = trip;
@@ -282,7 +283,7 @@ export default defineComponent({
           const trips = result.value;
           this.trips = trips;
           this.renderTrips(0);
-          this.startVehicleOverlay(map, trips);
+          this.startVehicleOverlay(map, trips, trips[0]!);
           this.error = undefined;
         } else {
           this.trips = [];
@@ -376,6 +377,8 @@ export default defineComponent({
         }
       }
       getBaseMap()?.fitBounds(selectedTrip.bounds);
+
+      this.vehicleOverlay?.selectTrip(selectedTrip);
     },
   },
 });

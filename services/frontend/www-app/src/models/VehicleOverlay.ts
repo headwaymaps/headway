@@ -159,12 +159,30 @@ export default class VehicleOverlay {
   private timer?: ReturnType<typeof setInterval>;
   private animation?: number;
   private tracked: Map<string, TrackedVehicle> = new Map();
+  /// The patterns of the trip the traveler has picked. Vehicles on any other trip's patterns are
+  /// drawn dimmed. Empty means nothing is picked yet, and nothing is dimmed.
+  private selected: Set<string> = new Set();
 
   constructor(map: BaseMapInterface, from: LngLat, to: LngLat, trips: Trip[]) {
     this.map = map;
     this.from = from;
     this.to = to;
     this.trips = trips;
+  }
+
+  /// Bring the picked trip's vehicles forward and dim the rest.
+  selectTrip(trip?: Trip): void {
+    this.selected = new Set(trip?.patternCodes ?? []);
+    for (const tracked of this.tracked.values()) {
+      Markers.setTransitVehicleFaded(
+        tracked.marker,
+        this.isFaded(tracked.vehicle.raw.patternCode),
+      );
+    }
+  }
+
+  private isFaded(patternCode: string): boolean {
+    return this.selected.size > 0 && !this.selected.has(patternCode);
   }
 
   start(): void {
@@ -265,6 +283,10 @@ export default class VehicleOverlay {
         // Keep the marker: re-creating it restarts the pulse and drops any open tooltip.
         existing.vehicle = vehicle;
         Markers.setTransitVehicleBearing(existing.marker, raw.bearing);
+        Markers.setTransitVehicleFaded(
+          existing.marker,
+          this.isFaded(raw.patternCode),
+        );
         continue;
       }
 
@@ -277,6 +299,7 @@ export default class VehicleOverlay {
         ageText: () =>
           this.tracked.get(key)?.vehicle.freshnessFormatted() ?? '',
       }).setLngLat(vehicle.positionAt(Date.now()));
+      Markers.setTransitVehicleFaded(marker, this.isFaded(raw.patternCode));
       this.tracked.set(key, { marker, vehicle });
       this.map.pushMarker(key, marker);
     }

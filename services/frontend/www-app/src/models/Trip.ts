@@ -165,6 +165,11 @@ export default class Trip {
     return groups;
   }
 
+  /// The patterns this trip's transit legs ride, which is what live vehicles are keyed by.
+  get patternCodes(): string[] {
+    return this.legs.flatMap((leg) => leg.raw.transitLeg?.patternCode ?? []);
+  }
+
   get firstTransitLeg(): TripLeg | undefined {
     return this.legs.slice(0, 2).find((leg) => leg.transitLeg);
   }
