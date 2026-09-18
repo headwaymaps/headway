@@ -7,6 +7,7 @@
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder, Responder};
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::geometry::{LineString, Point};
+use geo::{Haversine, InterpolateLine};
 use polyline::decode_polyline;
 use serde::{Deserialize, Serialize};
 
@@ -15,8 +16,8 @@ use super::plan::Route;
 use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql;
+use crate::util::progress_along;
 use crate::util::serde_util::deserialize_point_from_lat_lon;
-use crate::util::{point_at, progress_along};
 use crate::Error;
 
 /// OTP encodes its polylines at 1e-5, the original Google scale.
@@ -322,7 +323,7 @@ fn track(shape: &LineString, anchors: &[Anchor]) -> Option<Track> {
         };
         let progress = before.progress + into * (after.progress - before.progress);
 
-        if let Some(point) = point_at(shape, progress) {
+        if let Some(point) = Haversine.point_at_distance_from_start(shape, progress) {
             points.push(rounded(point));
         }
         time += TRACK_STEP;
