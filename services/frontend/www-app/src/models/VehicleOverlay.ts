@@ -282,7 +282,6 @@ export default class VehicleOverlay {
       if (existing) {
         // Keep the marker: re-creating it restarts the pulse and drops any open tooltip.
         existing.vehicle = vehicle;
-        Markers.setTransitVehicleBearing(existing.marker, raw.bearing);
         Markers.setTransitVehicleFaded(
           existing.marker,
           this.isFaded(raw.patternCode),
@@ -293,7 +292,6 @@ export default class VehicleOverlay {
       const marker = Markers.transitVehicle({
         ...vehicle.style,
         vehicleLabel: vehicle.labelFormatted,
-        bearing: raw.bearing,
         // Reads through the map so it picks up each refresh's vehicle, not the one it was
         // built with.
         ageText: () =>

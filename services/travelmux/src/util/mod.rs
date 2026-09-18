@@ -85,60 +85,39 @@ pub(crate) fn bearing_at_end(line_string: &LineString) -> Option<u16> {
     }
 }
 
-/// Where a point sits on a shape: how far along it, and which way the shape runs there.
+/// How far along `shape` the vehicle at `point` has got, in metres.
 ///
-/// A GTFS shape's coordinates are ordered in the direction the vehicle travels, so the bearing
-/// says which way a vehicle on it is heading - unlike a bearing inferred from two successive
-/// positions, which says nothing while the vehicle is stopped and is noise while it crawls. The
-/// GTFS spec is what guarantees that ordering (`shape_pt_sequence` increases along the trip);
-/// OTP's GraphQL schema doesn't restate it.
+/// A GTFS shape's coordinates are ordered in the direction of travel, so distance along it is a
+/// measure of progress through the trip: comparing a vehicle's against a stop's says which side
+/// of that stop it is on. The GTFS spec is what guarantees that ordering
+/// (`shape_pt_sequence` increases along the trip); OTP's GraphQL schema doesn't restate it.
 ///
 /// Where a shape passes near itself, as a loop or an out-and-back tail does, the nearest segment
-/// may not be the one the vehicle is really on, and both answers can come back wrong.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct ShapePosition {
-    /// Metres from the start of the shape.
-    pub progress: f64,
-    /// Degrees clockwise from north.
-    pub bearing: u16,
-}
+/// may not be the one the vehicle is really on, and the answer can be a long way out.
+pub(crate) fn progress_along(shape: &LineString, point: Point) -> Option<f64> {
+    use geo::{ClosestPoint, Distance, Haversine};
 
-impl ShapePosition {
-    pub(crate) fn project(shape: &LineString, point: Point) -> Option<Self> {
-        use geo::{ClosestPoint, Distance, Haversine};
-
-        // (distance from `point`, the segment, how far along the shape the segment starts)
-        let mut nearest: Option<(f64, geo::Line, f64)> = None;
-        let mut travelled = 0.0;
-        for line in shape.lines() {
-            let projected = match line.closest_point(&point) {
-                geo::Closest::SinglePoint(projected) => projected,
-                geo::Closest::Intersection(projected) => projected,
-                geo::Closest::Indeterminate => continue,
-            };
-            let distance = Haversine.distance(projected, point);
-            if nearest
-                .as_ref()
-                .is_none_or(|(nearest, _, _)| distance < *nearest)
-            {
-                nearest = Some((distance, line, travelled));
-            }
-            travelled += Haversine.distance(Point::from(line.start), Point::from(line.end));
-        }
-
-        let (_, line, starts_at) = nearest?;
-        let along = match line.closest_point(&point) {
+    // (how far `point` is from the shape there, how far along the shape that is)
+    let mut nearest: Option<(f64, f64)> = None;
+    let mut travelled = 0.0;
+    for line in shape.lines() {
+        let start = Point::from(line.start);
+        let projected = match line.closest_point(&point) {
             geo::Closest::SinglePoint(projected) | geo::Closest::Intersection(projected) => {
-                Haversine.distance(Point::from(line.start), projected)
+                Some(projected)
             }
-            geo::Closest::Indeterminate => 0.0,
+            geo::Closest::Indeterminate => None,
         };
-
-        Some(Self {
-            progress: starts_at + along,
-            bearing: bearing_between(Point::from(line.start), Point::from(line.end))?,
-        })
+        if let Some(projected) = projected {
+            let distance = Haversine.distance(projected, point);
+            if nearest.is_none_or(|(nearest, _)| distance < nearest) {
+                nearest = Some((distance, travelled + Haversine.distance(start, projected)));
+            }
+        }
+        travelled += Haversine.distance(start, Point::from(line.end));
     }
+
+    nearest.map(|(_, progress)| progress)
 }
 
 /// The point `progress` metres along `shape`, clamped to its ends.
@@ -182,67 +161,51 @@ mod tests {
         ]
     }
 
-    fn bearing_at(shape: &LineString, point: Point) -> Option<u16> {
-        ShapePosition::project(shape, point).map(|position| position.bearing)
-    }
-
-    #[test]
-    fn a_vehicle_on_the_first_leg_heads_along_it() {
-        let on_the_eastbound_stretch = Point::new(-122.335, 47.6002);
-        assert_eq!(bearing_at(&corner(), on_the_eastbound_stretch), Some(89));
-    }
-
-    #[test]
-    fn a_vehicle_past_the_corner_heads_along_the_second_leg() {
-        let on_the_northbound_stretch = Point::new(-122.3298, 47.605);
-        assert_eq!(bearing_at(&corner(), on_the_northbound_stretch), Some(0));
-    }
-
-    /// The same road driven the other way is a different pattern with a reversed shape, which is
-    /// the whole reason a shape can answer this when two successive positions can't.
-    #[test]
-    fn the_reverse_shape_gives_the_opposite_bearing() {
-        let mut reversed = corner();
-        reversed.0.reverse();
-        let same_spot = Point::new(-122.335, 47.6002);
-
-        // Not exactly 180 apart: each is the bearing at the *start* of its own segment, and an
-        // east-west great circle's bearing drifts as it runs.
-        assert_eq!(bearing_at(&corner(), same_spot), Some(89));
-        assert_eq!(bearing_at(&reversed, same_spot), Some(270));
-    }
-
-    #[test]
-    fn a_shape_with_no_segments_has_no_position() {
-        assert_eq!(
-            ShapePosition::project(&LineString::new(vec![]), Point::new(0., 0.)),
-            None
-        );
+    fn first_leg() -> f64 {
+        Haversine.distance(Point::new(-122.340, 47.600), Point::new(-122.330, 47.600))
     }
 
     #[test]
     fn progress_accumulates_over_earlier_segments() {
         let shape = corner();
-        let first_leg =
-            Haversine.distance(Point::new(-122.340, 47.600), Point::new(-122.330, 47.600));
 
-        let at_the_start = ShapePosition::project(&shape, Point::new(-122.340, 47.600)).unwrap();
-        assert_relative_eq!(at_the_start.progress, 0.0, epsilon = 1.0);
+        let at_the_start = progress_along(&shape, Point::new(-122.340, 47.600)).unwrap();
+        assert_relative_eq!(at_the_start, 0.0, epsilon = 1.0);
 
-        let at_the_corner = ShapePosition::project(&shape, Point::new(-122.330, 47.600)).unwrap();
-        assert_relative_eq!(at_the_corner.progress, first_leg, epsilon = 1.0);
+        let halfway_along = progress_along(&shape, Point::new(-122.335, 47.600)).unwrap();
+        assert_relative_eq!(halfway_along, first_leg() / 2.0, epsilon = 1.0);
+
+        let at_the_corner = progress_along(&shape, Point::new(-122.330, 47.600)).unwrap();
+        assert_relative_eq!(at_the_corner, first_leg(), epsilon = 1.0);
 
         // Partway up the second leg: the whole first leg, plus what it has climbed.
-        let up_the_second = ShapePosition::project(&shape, Point::new(-122.330, 47.605)).unwrap();
-        assert!(up_the_second.progress > first_leg);
+        let up_the_second = progress_along(&shape, Point::new(-122.330, 47.605)).unwrap();
+        assert!(up_the_second > first_leg());
+    }
+
+    /// A vehicle off to the side of the road still counts as being where it is alongside.
+    #[test]
+    fn a_point_beside_the_shape_projects_onto_it() {
+        let just_north_of_the_line = Point::new(-122.335, 47.6004);
+        let progress = progress_along(&corner(), just_north_of_the_line).unwrap();
+
+        assert_relative_eq!(progress, first_leg() / 2.0, epsilon = 5.0);
+    }
+
+    #[test]
+    fn a_shape_with_no_segments_has_no_progress() {
+        assert_eq!(
+            progress_along(&LineString::new(vec![]), Point::new(0., 0.)),
+            None
+        );
     }
 
     #[test]
     fn point_at_is_the_inverse_of_progress() {
         let shape = corner();
         for spot in [Point::new(-122.3355, 47.600), Point::new(-122.330, 47.6039)] {
-            let position = ShapePosition::project(&shape, spot).unwrap();
-            let round_tripped = point_at(&shape, position.progress).unwrap();
+            let progress = progress_along(&shape, spot).unwrap();
+            let round_tripped = point_at(&shape, progress).unwrap();
             assert_relative_eq!(round_tripped.x(), spot.x(), epsilon = 1e-4);
             assert_relative_eq!(round_tripped.y(), spot.y(), epsilon = 1e-4);
         }

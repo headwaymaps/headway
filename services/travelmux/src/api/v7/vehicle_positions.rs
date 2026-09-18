@@ -16,7 +16,7 @@ use crate::api::AppState;
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql;
 use crate::util::serde_util::deserialize_point_from_lat_lon;
-use crate::util::{point_at, ShapePosition};
+use crate::util::{point_at, progress_along};
 use crate::Error;
 
 /// OTP encodes its polylines at 1e-5, the original Google scale.
@@ -117,15 +117,9 @@ pub struct Vehicle {
     lat: f64,
     lon: f64,
 
-    /// Degrees clockwise from north, as the feed reported it. Most feeds don't, so prefer
-    /// `bearing`, which is derived rather than published.
+    /// Degrees clockwise from north, as the feed reported it. Most feeds don't publish one.
     #[serde(skip_serializing_if = "Option::is_none")]
     heading: Option<f64>,
-
-    /// Degrees clockwise from north, taken from the direction the pattern's shape runs where the
-    /// vehicle sits on it. Available whether or not the feed publishes a heading of its own.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    bearing: Option<u16>,
 
     /// RFC 3339. When the vehicle reported this position.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -184,12 +178,12 @@ struct Anchor {
 /// and, on a loop, stops whose shape position is behind it.
 fn anchors(
     shape: &LineString,
-    position: &ShapePosition,
+    progress: f64,
     reported_at: DateTime<Utc>,
     stoptimes: &[gtfs_graphql::VehicleStoptime],
 ) -> Vec<Anchor> {
     let mut anchors = vec![Anchor {
-        progress: position.progress,
+        progress,
         time: reported_at,
     }];
     let horizon = reported_at + TRACK_HORIZON;
@@ -198,15 +192,15 @@ fn anchors(
         let (Some(point), Some(time)) = (stoptime.point(), stoptime.expected_arrival()) else {
             continue;
         };
-        let Some(stop) = ShapePosition::project(shape, point) else {
+        let Some(stop) = progress_along(shape, point) else {
             continue;
         };
         let last = anchors.last().expect("seeded above");
-        if stop.progress <= last.progress || time <= last.time {
+        if stop <= last.progress || time <= last.time {
             continue;
         }
         anchors.push(Anchor {
-            progress: stop.progress,
+            progress: stop,
             time,
         });
         if time >= horizon {
@@ -263,11 +257,11 @@ impl Vehicle {
     ) -> Option<Self> {
         let lat = position.lat?;
         let lon = position.lon?;
-        let on_shape = shape.and_then(|shape| ShapePosition::project(shape, Point::new(lon, lat)));
+        let progress = shape.and_then(|shape| progress_along(shape, Point::new(lon, lat)));
 
         // Guessing forward only makes sense from a report we can date.
-        let track = match (shape, &on_shape, position.last_update) {
-            (Some(shape), Some(on_shape), Some(reported_at)) => {
+        let track = match (shape, progress, position.last_update) {
+            (Some(shape), Some(progress), Some(reported_at)) => {
                 let stoptimes: Vec<_> = position
                     .trip
                     .stoptimes_for_date
@@ -275,7 +269,7 @@ impl Vehicle {
                     .into_iter()
                     .flatten()
                     .collect();
-                let anchors = anchors(shape, on_shape, reported_at.with_timezone(&Utc), &stoptimes);
+                let anchors = anchors(shape, progress, reported_at.with_timezone(&Utc), &stoptimes);
                 track(shape, &anchors)
             }
             _ => vec![],
@@ -288,8 +282,7 @@ impl Vehicle {
             lat,
             lon,
             heading: position.heading,
-            bearing: on_shape.map(|on_shape| on_shape.bearing),
-            progress: on_shape.map(|on_shape| on_shape.progress),
+            progress,
             last_updated: position.last_update,
             track,
         })
@@ -309,7 +302,7 @@ fn nearby(
 ) -> Vec<Vehicle> {
     let Some(boarding) = shape
         .zip(boarding_stop)
-        .and_then(|(shape, stop)| ShapePosition::project(shape, stop))
+        .and_then(|(shape, stop)| progress_along(shape, stop))
     else {
         return vehicles;
     };
@@ -320,7 +313,7 @@ fn nearby(
         let key = |vehicle: &Vehicle| {
             vehicle
                 .progress
-                .map(|progress| (progress - boarding.progress).abs())
+                .map(|progress| (progress - boarding).abs())
                 .unwrap_or(f64::MAX)
         };
         key(a).partial_cmp(&key(b)).unwrap_or(Ordering::Equal)
@@ -333,7 +326,7 @@ fn nearby(
             return false;
         };
         // Sitting exactly at the stop counts as still to come: it hasn't left yet.
-        if progress <= boarding.progress {
+        if progress <= boarding {
             upcoming += 1;
             upcoming <= UPCOMING_VEHICLES
         } else {
@@ -577,23 +570,12 @@ mod tests {
         assert!(build(None, None).is_none());
     }
 
-    #[test]
-    fn a_bearing_is_taken_from_the_shape() {
-        let vehicle = Vehicle::from_otp(
-            "1:40:0:01",
-            Some(&shape()),
-            position(Some(47.6), Some(-122.335)),
-        )
-        .expect("has coordinates");
-        assert_eq!(vehicle.bearing, Some(89));
-    }
-
     /// OTP has no shape for some patterns. Their vehicles are still worth drawing.
     #[test]
     fn a_pattern_without_a_shape_still_yields_a_vehicle() {
         let vehicle = Vehicle::from_otp("1:40:0:01", None, position(Some(47.6), Some(-122.335)))
             .expect("has coordinates");
-        assert_eq!(vehicle.bearing, None);
+        assert!(vehicle.progress.is_none());
         assert!(vehicle.track.is_empty());
         assert_eq!(vehicle.lat, 47.6);
     }
@@ -614,9 +596,9 @@ mod tests {
         stoptimes: &[VehicleStoptime],
     ) -> Vec<Anchor> {
         let shape = shape();
-        let on_shape =
-            ShapePosition::project(&shape, Point::new(vehicle_lon, 47.600)).expect("on the shape");
-        anchors(&shape, &on_shape, at(reported_at), stoptimes)
+        let progress =
+            progress_along(&shape, Point::new(vehicle_lon, 47.600)).expect("on the shape");
+        anchors(&shape, progress, at(reported_at), stoptimes)
     }
 
     /// OTP hands back the whole day's stop sequence, most of which is behind the vehicle.

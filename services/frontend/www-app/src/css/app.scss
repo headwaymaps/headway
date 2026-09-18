@@ -39,25 +39,6 @@
   opacity: 0.3;
 }
 
-// Rotated to the bearing, carrying the arrow around the rim with it.
-.transit-vehicle__heading {
-  position: absolute;
-  inset: 0;
-}
-
-.transit-vehicle__arrow {
-  position: absolute;
-  top: -5px;
-  left: 50%;
-  margin-left: -4px;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-bottom: 6px solid;
-  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
-}
-
 .transit-vehicle__pulse {
   position: absolute;
   inset: 0;

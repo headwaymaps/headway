@@ -89,12 +89,8 @@ export interface TravelmuxVehicle {
   label?: string;
   lat: number;
   lon: number;
-  /// Degrees clockwise from north, as the feed reported it. Most feeds don't, so prefer
-  /// `bearing`.
+  /// Degrees clockwise from north, as the feed reported it. Most feeds don't publish one.
   heading?: number;
-  /// Degrees clockwise from north, derived from the direction the route's shape runs where the
-  /// vehicle sits on it. Present whether or not the feed publishes a heading.
-  bearing?: number;
   /// RFC 3339. When the vehicle reported this position.
   lastUpdated?: string;
   /// Where travelmux guesses the vehicle goes next, to animate along between polls. The first

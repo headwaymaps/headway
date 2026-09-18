@@ -27,7 +27,7 @@ export default {
     return new Marker({ color: '#111111' });
   },
   /// A transit vehicle's live position: the emoji for its kind, ringed in the route's color and
-  /// pulsing to say the position is live.
+  /// pulsing to say the position is live, badged with the route it runs.
   ///
   /// `ageText` is called on hover rather than baked in, so the "as of" age is current at the
   /// moment the traveler reads it.
@@ -37,8 +37,6 @@ export default {
     routeName: string;
     badge?: string;
     vehicleLabel?: string;
-    /// Degrees clockwise from north. Omitted when the route's shape couldn't say.
-    bearing?: number;
     ageText: () => string;
   }): Marker => {
     const element = document.createElement('div');
@@ -47,19 +45,6 @@ export default {
     const pulse = document.createElement('div');
     pulse.className = 'transit-vehicle__pulse';
     pulse.style.backgroundColor = options.color;
-
-    // A rotated emoji just reads as broken, so the direction goes on a pointer that travels
-    // around the chip's rim instead. The pointer starts at 12 o'clock, which is north.
-    if (options.bearing !== undefined) {
-      const heading = document.createElement('div');
-      heading.className = 'transit-vehicle__heading';
-      heading.style.transform = `rotate(${options.bearing}deg)`;
-      const arrow = document.createElement('div');
-      arrow.className = 'transit-vehicle__arrow';
-      arrow.style.borderBottomColor = options.color;
-      heading.append(arrow);
-      element.append(heading);
-    }
 
     const vehicle = document.createElement('div');
     vehicle.className = 'transit-vehicle__vehicle';
@@ -116,15 +101,6 @@ export default {
     marker.getElement().classList.toggle('transit-vehicle--faded', faded);
   },
 
-  /// Re-aim a vehicle marker without rebuilding it, as its bearing changes between polls.
-  setTransitVehicleBearing: (marker: Marker, bearing?: number): void => {
-    const heading = marker
-      .getElement()
-      .querySelector<HTMLElement>('.transit-vehicle__heading');
-    if (heading && bearing !== undefined) {
-      heading.style.transform = `rotate(${bearing}deg)`;
-    }
-  },
   maneuver: (icon: string, rotation: number = 0): Marker => {
     const element = document.createElement('div');
     element.innerHTML = `
