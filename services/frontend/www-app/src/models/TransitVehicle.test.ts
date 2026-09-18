@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { TransitVehicle } from './VehicleOverlay';
+import TransitVehicle from './TransitVehicle';
 import {
   TransitVehicleMode,
   TravelmuxVehicle,
