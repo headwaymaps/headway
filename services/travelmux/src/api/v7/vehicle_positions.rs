@@ -9,7 +9,6 @@ use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::geometry::{LineString, Point};
 use polyline::decode_polyline;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 
 use super::error::PlanResponseErr;
 use super::plan::Route;
@@ -306,12 +305,13 @@ fn track(shape: &LineString, anchors: &[Anchor]) -> Option<Track> {
     let mut time = first.time;
     let end = last.time.min(first.time + TRACK_HORIZON);
     while time <= end {
-        // The pair of anchors this instant falls between.
+        // The pair of anchors this instant falls between. Never the first anchor: `time` starts
+        // at its own time and the search is for one strictly later.
         let next = anchors
             .iter()
             .position(|anchor| anchor.time > time)
             .unwrap_or(anchors.len() - 1);
-        let before = &anchors[next.saturating_sub(1)];
+        let before = &anchors[next - 1];
         let after = &anchors[next];
 
         let span = (after.time - before.time).num_milliseconds() as f64;
@@ -427,24 +427,27 @@ fn nearby(
         return vehicles;
     };
 
-    // Nearest first on each side of the stop. A vehicle we couldn't place on the shape sorts to
-    // the back, and the retain below drops it: there's no saying which side of the stop it is on.
+    // A vehicle we couldn't place on the shape can't be said to be on either side of the stop.
+    vehicles.retain(|vehicle| vehicle.progress.is_some());
+
+    // Nearest first, on whichever side of the stop it's on.
     vehicles.sort_by(|a, b| {
         let key = |vehicle: &Vehicle| {
-            vehicle
+            (vehicle
                 .progress
-                .map(|progress| (progress - boarding).abs())
-                .unwrap_or(f64::MAX)
+                .expect("unplaceable vehicles dropped above")
+                - boarding)
+                .abs()
         };
-        key(a).partial_cmp(&key(b)).unwrap_or(Ordering::Equal)
+        key(a).total_cmp(&key(b))
     });
 
     let mut upcoming = 0;
     let mut departed = 0;
     vehicles.retain(|vehicle| {
-        let Some(progress) = vehicle.progress else {
-            return false;
-        };
+        let progress = vehicle
+            .progress
+            .expect("unplaceable vehicles dropped above");
         // Sitting exactly at the stop counts as still to come: it hasn't left yet.
         if progress <= boarding {
             upcoming += 1;
