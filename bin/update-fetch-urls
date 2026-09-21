@@ -52,3 +52,10 @@ fi
 find "$APP_ROOT"/builds/*/k8s "$APP_ROOT"/builds/*/transit -type f \
     -exec "${SED_CMD[@]}" "s,${FROM},${TO}," {} +
 "${SED_CMD[@]}" "s,${FROM},${TO}," "${APP_ROOT}/services/pelias/generate_config/src/Area.ts"
+
+# A build's pelias config carries a dataHost for the deployment's artifact host.
+# The committed manifests have no such entry, so reverting drops it outright.
+if [ "$REVERT" -eq 1 ]; then
+    find "$APP_ROOT"/builds/*/k8s -type f \
+        -exec perl -0777 -pi -e 's/,\s*"dataHost":\s*"[^"]*"//g' {} +
+fi
