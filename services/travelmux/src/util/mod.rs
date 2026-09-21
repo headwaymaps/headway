@@ -84,3 +84,86 @@ pub(crate) fn bearing_at_end(line_string: &LineString) -> Option<u16> {
         bearing_between(second_to_last, last)
     }
 }
+
+/// Haversine distance along the nearest segment of `shape`.
+pub(crate) fn progress_along(shape: &LineString, point: Point) -> Option<f64> {
+    use geo::{Distance, Haversine, HaversineClosestPoint};
+
+    // (how far `point` is from the shape there, how far along the shape that is)
+    let mut nearest: Option<(f64, f64)> = None;
+    let mut travelled = 0.0;
+    for line in shape.lines() {
+        let start = Point::from(line.start);
+        let projected = match line.haversine_closest_point(&point) {
+            geo::Closest::SinglePoint(projected) | geo::Closest::Intersection(projected) => {
+                Some(projected)
+            }
+            // A degenerate segment comes back as its own start, never indeterminate.
+            geo::Closest::Indeterminate => None,
+        };
+        if let Some(projected) = projected {
+            let distance = Haversine.distance(projected, point);
+            if nearest.is_none_or(|(nearest, _)| distance < nearest) {
+                nearest = Some((distance, travelled + Haversine.distance(start, projected)));
+            }
+        }
+        travelled += Haversine.distance(start, Point::from(line.end));
+    }
+
+    nearest.map(|(_, progress)| progress)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+    use geo::line_string;
+
+    /// Two blocks east, then two blocks north.
+    fn corner() -> LineString {
+        line_string![
+            (x: -122.340, y: 47.600),
+            (x: -122.330, y: 47.600),
+            (x: -122.330, y: 47.610),
+        ]
+    }
+
+    fn first_leg() -> f64 {
+        Haversine.distance(Point::new(-122.340, 47.600), Point::new(-122.330, 47.600))
+    }
+
+    #[test]
+    fn progress_accumulates_over_earlier_segments() {
+        let shape = corner();
+
+        let at_the_start = progress_along(&shape, Point::new(-122.340, 47.600)).unwrap();
+        assert_relative_eq!(at_the_start, 0.0, epsilon = 1.0);
+
+        let halfway_along = progress_along(&shape, Point::new(-122.335, 47.600)).unwrap();
+        assert_relative_eq!(halfway_along, first_leg() / 2.0, epsilon = 1.0);
+
+        let at_the_corner = progress_along(&shape, Point::new(-122.330, 47.600)).unwrap();
+        assert_relative_eq!(at_the_corner, first_leg(), epsilon = 1.0);
+
+        // Partway up the second leg: the whole first leg, plus what it has climbed.
+        let up_the_second = progress_along(&shape, Point::new(-122.330, 47.605)).unwrap();
+        assert!(up_the_second > first_leg());
+    }
+
+    /// A vehicle off to the side of the road still counts as being where it is alongside.
+    #[test]
+    fn a_point_beside_the_shape_projects_onto_it() {
+        let just_north_of_the_line = Point::new(-122.335, 47.6004);
+        let progress = progress_along(&corner(), just_north_of_the_line).unwrap();
+
+        assert_relative_eq!(progress, first_leg() / 2.0, epsilon = 5.0);
+    }
+
+    #[test]
+    fn a_shape_with_no_segments_has_no_progress() {
+        assert_eq!(
+            progress_along(&LineString::new(vec![]), Point::new(0., 0.)),
+            None
+        );
+    }
+}
