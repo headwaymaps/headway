@@ -458,6 +458,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -576,6 +577,7 @@
                   "name": "1st Ave S & S Hanford St"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -644,6 +646,11 @@
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:21:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -704,6 +711,11 @@
                   "name": "Aurora Ave N & N 38th St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:5:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -804,6 +816,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -970,6 +983,7 @@
                   "name": "4th Ave S & S Hanford St"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -1026,6 +1040,11 @@
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:132:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -1086,6 +1105,11 @@
                   "name": "Aurora Ave N & N 38th St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:28:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -1186,6 +1210,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -1304,6 +1329,7 @@
                   "name": "1st Ave S & S Hanford St"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -1372,6 +1398,11 @@
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:21:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -1432,6 +1463,11 @@
                   "name": "Aurora Ave N & N 38th St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:5:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -1532,6 +1568,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -1830,6 +1867,7 @@
                   "name": "Prefontaine Pl S & Yesler Way"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -1886,6 +1924,11 @@
                   "name": "Aurora Ave N & N 46th St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:E Line:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -2070,6 +2113,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -2272,6 +2316,7 @@
                   "name": "Alaskan Way S & S Jackson St"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -2328,6 +2373,11 @@
                   "name": "Westlake Ave N & Mercer St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:C Line:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -2632,6 +2682,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -2750,6 +2801,7 @@
                   "name": "1st Ave S & S Hanford St"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -2818,6 +2870,11 @@
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:21:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -2878,6 +2935,11 @@
                   "name": "Aurora Ave N & N 38th St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:5:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -2978,6 +3040,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -3144,6 +3207,7 @@
                   "name": "4th Ave S & S Hanford St"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -3200,6 +3264,11 @@
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:132:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -3260,6 +3329,11 @@
                   "name": "Aurora Ave N & N 38th St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:28:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -3360,6 +3434,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],
@@ -3478,6 +3553,7 @@
                   "name": "1st Ave S & S Hanford St"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               },
               {
@@ -3546,6 +3622,11 @@
                   "name": "4th Ave S & S Royal Brougham Way"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:21:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -3606,6 +3687,11 @@
                   "name": "Aurora Ave N & N 38th St"
                 },
                 "transitLeg": true,
+                "trip": {
+                  "pattern": {
+                    "code": "1:5:0:01"
+                  }
+                },
                 "tripOnServiceDate": {
                   "realTimeTripState": {
                     "updated": false
@@ -3706,6 +3792,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],

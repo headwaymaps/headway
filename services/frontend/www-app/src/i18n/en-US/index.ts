@@ -87,6 +87,11 @@ export default {
   opening_hours_show_more_times: 'Show hours',
   opening_hours_hide_more_times: 'Hide hours',
   transit_alert_more_info: 'More info',
+  transit_vehicle_location_as_of_$timeDuration:
+    'Location as of {timeDuration} ago',
+  transit_vehicle_$label: '(vehicle {label})',
+  transit_vehicle_location_estimated_$timeDuration:
+    'Estimated \u00b7 confirmed {timeDuration} ago',
   search_results_not_found_header: 'No results found. 😢',
   search_results_not_found_subheader:
     'Something missing? Consider adding it to {osmLink} so it can eventually appear here.',

@@ -458,6 +458,7 @@
                   "name": "Destination"
                 },
                 "transitLeg": false,
+                "trip": null,
                 "tripOnServiceDate": null
               }
             ],

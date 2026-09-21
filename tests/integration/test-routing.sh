@@ -112,4 +112,45 @@ else
     echo "  Skipping v7 transit route (build has no transit zones)"
 fi
 
+# === v8 ===
+# Points are written lon,lat everywhere, in requests as well as responses.
+
+build_v8_route_url() {
+    local mode=$1
+    local from_lat=${2:-$START_LAT}
+    local from_lng=${3:-$START_LNG}
+    local to_lat=${4:-$END_LAT}
+    local to_lng=${5:-$END_LNG}
+    local num_itineraries=${6:-3}
+
+    echo "${FRONTEND_URL}/travelmux/v8/plan?fromPlace=${from_lng}%2C${from_lat}&toPlace=${to_lng}%2C${to_lat}&numItineraries=${num_itineraries}&mode=${mode}&preferredDistanceUnits=kilometers"
+}
+
+run_jq_test "v8 walking route" \
+    "$(build_v8_route_url WALK)" \
+    '.itineraries' \
+    '.itineraries | length > 0' \
+    '.itineraries[0].durationSeconds' \
+    '.itineraries[0].legs[0].fromPlace.location | length == 2' \
+    '.itineraries[0].legs[0].nonTransitLeg.maneuvers[0].startPoint | length == 2'
+
+run_jq_test "v8 car route" \
+    "$(build_v8_route_url CAR)" \
+    '.itineraries' \
+    '.itineraries | length > 0'
+
+if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
+    transit_url="$(build_v8_route_url TRANSIT "$START_LAT" "$START_LNG" "$TRANSIT_END_LAT" "$TRANSIT_END_LNG")"
+    transit_url="${transit_url}&dateTime=${TRANSIT_DATE}T${TRANSIT_TIME}"
+
+    run_jq_test "v8 transit route" \
+        "$transit_url" \
+        '.itineraries' \
+        '.itineraries | length > 0' \
+        '[.itineraries[].legs[] | select(.mode == "TRANSIT")] | length > 0' \
+        '[.itineraries[].legs[] | select(.mode == "TRANSIT") | .transitLeg.patternCode] | length > 0'
+else
+    echo "  Skipping v8 transit route (build has no transit zones)"
+fi
+
 print_test_summary "Routing"
