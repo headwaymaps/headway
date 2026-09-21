@@ -16,6 +16,28 @@ import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/utils/decodePolyline';
 import { i18n } from 'src/i18n/lang';
 
+/// The emoji standing in for a kind of transit vehicle.
+export function transitVehicleEmoji(mode: TransitVehicleMode): string {
+  switch (mode) {
+    case TransitVehicleMode.Rail:
+      return '🚆';
+    case TransitVehicleMode.Subway:
+      return '🚇';
+    case TransitVehicleMode.CableCar:
+    case TransitVehicleMode.Tram:
+      return '🚊';
+    case TransitVehicleMode.Funicular:
+      return '🚡';
+    case TransitVehicleMode.Gondola:
+      return '🚠';
+    case TransitVehicleMode.Ferry:
+      return '⛴️';
+    default:
+      // BUS, TRANSIT, and anything else OTP might name
+      return '🚍';
+  }
+}
+
 export default class Trip {
   raw: TravelmuxItinerary;
   preferredDistanceUnits: DistanceUnits;
@@ -143,6 +165,11 @@ export default class Trip {
     return groups;
   }
 
+  /// The patterns this trip's transit legs ride, which is what live vehicles are keyed by.
+  get patternCodes(): string[] {
+    return this.legs.flatMap((leg) => leg.raw.transitLeg?.patternCode ?? []);
+  }
+
   get firstTransitLeg(): TripLeg | undefined {
     return this.legs.slice(0, 2).find((leg) => leg.transitLeg);
   }
@@ -208,33 +235,18 @@ export class TripLeg {
   }
 
   get emoji(): string {
-    switch (this.raw.transitLeg?.vehicleMode) {
-      case undefined:
-        // not a transit leg - the traveler gets there themselves
-        switch (this.raw.mode) {
-          case TravelmuxMode.Bike:
-            return '🚲';
-          case TravelmuxMode.Drive:
-            return '🚙';
-          default:
-            return '🚶‍♀️';
-        }
-      case TransitVehicleMode.Rail:
-        return '🚆';
-      case TransitVehicleMode.Subway:
-        return '🚇';
-      case TransitVehicleMode.CableCar:
-      case TransitVehicleMode.Tram:
-        return '🚊';
-      case TransitVehicleMode.Funicular:
-        return '🚡';
-      case TransitVehicleMode.Gondola:
-        return '🚠';
-      case TransitVehicleMode.Ferry:
-        return '⛴️';
+    const vehicleMode = this.raw.transitLeg?.vehicleMode;
+    if (vehicleMode) {
+      return transitVehicleEmoji(vehicleMode);
+    }
+    // not a transit leg - the traveler gets there themselves
+    switch (this.raw.mode) {
+      case TravelmuxMode.Bike:
+        return '🚲';
+      case TravelmuxMode.Drive:
+        return '🚙';
       default:
-        // BUS, TRANSIT, and anything else OTP might name
-        return '🚍';
+        return '🚶‍♀️';
     }
   }
 
@@ -253,11 +265,11 @@ export class TripLeg {
   }
 
   get sourceLngLat(): LngLat {
-    return new LngLat(this.raw.fromPlace.lon, this.raw.fromPlace.lat);
+    return new LngLat(...this.raw.fromPlace.location);
   }
 
   get destinationLngLat(): LngLat {
-    return new LngLat(this.raw.toPlace.lon, this.raw.toPlace.lat);
+    return new LngLat(...this.raw.toPlace.location);
   }
 
   get departureLocationName(): string | undefined {
