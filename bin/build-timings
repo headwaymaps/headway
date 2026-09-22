@@ -4,10 +4,12 @@ set -e -o nounset
 
 # Show what past builds cost, from the history bin/build appends to.
 #
-#     bin/build-timings                   # every build, oldest first
-#     bin/build-timings Bogota            # just that area
-#     bin/build-timings --steps           # step breakdowns, newest build first
-#     bin/build-timings --steps --limit 1 # just the latest build's breakdown
+#     bin/build-timings                    # every build, oldest first
+#     bin/build-timings Bogota             # just that area
+#     bin/build-timings --steps            # step breakdowns, newest build first
+#     bin/build-timings --builds 1 --steps # just the latest build
+#
+# --builds N keeps the N most recent builds, in either view.
 #
 # By default very short steps are omitted. Show them:
 #
@@ -36,7 +38,7 @@ STEPS=""
 SHOW_ALL=""
 RECORD=""
 AREA=""
-LIMIT=0
+BUILDS=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --steps) STEPS=1 ;;
@@ -49,16 +51,16 @@ while [ $# -gt 0 ]; do
             fi
             shift
             ;;
-        --limit)
-            LIMIT="${2:-}"
-            if ! [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]]; then
-                echo "Error: --limit wants a positive count" >&2
+        --builds)
+            BUILDS="${2:-}"
+            if ! [[ "$BUILDS" =~ ^[1-9][0-9]*$ ]]; then
+                echo "Error: --builds wants a positive count" >&2
                 exit 1
             fi
             shift
             ;;
         --help | -h)
-            echo "usage: $0 [--steps | --all-steps] [--limit N] [AREA]"
+            echo "usage: $0 [--steps | --all-steps] [--builds N] [AREA]"
             echo "       $0 --record TIMING_FILE [AREA]"
             exit 0
             ;;
@@ -141,10 +143,15 @@ if [ ! -s "$HISTORY" ]; then
     exit 1
 fi
 
+# The builds both views work from: newest first, one JSON record per line.
+function selected_builds() {
+    jq -c -n --arg area "$AREA" --argjson builds "$BUILDS" \
+        '[inputs | select($area == "" or .area == $area)] | reverse
+         | if $builds > 0 then .[:$builds] else . end | .[]' "$HISTORY"
+}
+
 function records() {
-    jq -r --arg area "$AREA" \
-        'select($area == "" or .area == $area) | [.at, .area, .total_ms] | @tsv' \
-        "$HISTORY"
+    selected_builds | jq -r -s 'reverse[] | [.at, .area, .total_ms] | @tsv'
 }
 
 if [ -z "$(records)" ]; then
@@ -155,9 +162,7 @@ fi
 if [ -n "$STEPS" ]; then
     while IFS= read -r record; do
         print_steps "$record"
-    done < <(jq -c -n --arg area "$AREA" --argjson limit "$LIMIT" \
-        '[inputs | select($area == "" or .area == $area)] | reverse
-         | if $limit > 0 then .[:$limit] else . end | .[]' "$HISTORY")
+    done < <(selected_builds)
     echo
     exit 0
 fi
