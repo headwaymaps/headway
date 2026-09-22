@@ -87,8 +87,12 @@ function print_steps() {
     # Anything under 1% of the build is noise at this zoom.
     local floor=0
     [ -n "$SHOW_ALL" ] || floor=$total
-    steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' \
-        --argjson floor "$floor" <<< "$record")
+    # "~Headway.<func>" is the dagger span bracketing everything the module
+    # did in that phase, so it is the phase over again, not a step within it.
+    steps=$(jq -r '.steps_ms | to_entries
+        | map(select(.key | split("/") | last | startswith("~Headway.") | not))
+        | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[]
+        | "\(.key)\t\(.value)"' --argjson floor "$floor" <<< "$record")
 
     # Every row is shown as its share of the whole build.
     function fmt_share() {
