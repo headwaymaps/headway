@@ -31,6 +31,7 @@ use crate::TravelMode;
 // ===
 
 /// Everything needed to build a `planConnection` query.
+#[derive(Clone)]
 pub struct PlanParams<'a> {
     pub from: Point,
     pub to: Point,
@@ -44,6 +45,32 @@ pub struct PlanParams<'a> {
     pub arrive_by: bool,
     /// The graph's timezone, used to resolve a local [`PlanDateTime`] into an absolute instant.
     pub timezone: Option<Tz>,
+    /// Which cycling objective to optimize for. `None` leaves OTP on its default, `SAFE_STREETS`.
+    pub bike_route_preference: Option<BikeRoutePreference>,
+}
+
+/// A cycling objective we ask OTP to optimize for.
+///
+/// OTP's street search is a single A\*, so it returns one route per request. We issue one request
+/// per preference and present the distinct results together.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BikeRoutePreference {
+    Quieter,
+    Faster,
+}
+
+impl BikeRoutePreference {
+    /// Also the order they're returned to the client in.
+    pub const ALL: [BikeRoutePreference; 2] = [Self::Quieter, Self::Faster];
+
+    fn optimization(&self) -> CyclingOptimizationInput {
+        let cycling_type = match self {
+            Self::Quieter => CyclingOptimizationType::SafeStreets,
+            Self::Faster => CyclingOptimizationType::ShortestDuration,
+        };
+        CyclingOptimizationInput::Type(cycling_type)
+    }
 }
 
 /// When the traveler wants to travel.
@@ -135,6 +162,7 @@ struct PlanVariables {
     first: Option<i32>,
     date_time: Option<PlanDateTimeInput>,
     modes: Option<PlanModesInput>,
+    preferences: Option<PlanPreferencesInput>,
 }
 
 #[derive(cynic::InputObject, Debug)]
@@ -175,6 +203,36 @@ struct PlanTransitModesInput {
     access: Option<Vec<PlanAccessMode>>,
     egress: Option<Vec<PlanEgressMode>>,
     transfer: Option<Vec<PlanTransferMode>>,
+}
+
+#[derive(cynic::InputObject, Debug)]
+struct PlanPreferencesInput {
+    street: PlanStreetPreferencesInput,
+}
+
+#[derive(cynic::InputObject, Debug)]
+struct PlanStreetPreferencesInput {
+    bicycle: BicyclePreferencesInput,
+}
+
+#[derive(cynic::InputObject, Debug)]
+struct BicyclePreferencesInput {
+    optimization: CyclingOptimizationInput,
+}
+
+/// `@oneOf`: exactly one of these may be given, which the Rust enum enforces for us.
+#[derive(cynic::InputObject, Debug)]
+enum CyclingOptimizationInput {
+    Type(CyclingOptimizationType),
+}
+
+#[derive(cynic::Enum, Clone, Copy, Debug)]
+#[cynic(non_exhaustive)]
+enum CyclingOptimizationType {
+    ShortestDuration,
+    SafeStreets,
+    #[cynic(fallback)]
+    Unused,
 }
 
 // OTP has a separate street-mode enum per phase of a trip (direct, access, egress, transfer), each
@@ -283,10 +341,20 @@ impl PlanParams<'_> {
         })
     }
 
+    fn preferences_input(&self) -> Option<PlanPreferencesInput> {
+        let optimization = self.bike_route_preference?.optimization();
+        Some(PlanPreferencesInput {
+            street: PlanStreetPreferencesInput {
+                bicycle: BicyclePreferencesInput { optimization },
+            },
+        })
+    }
+
     fn build_query(&self) -> Operation<PlanConnectionQuery, PlanVariables> {
         let first = if self.is_direct() {
-            // For plain walking/cycling OTP returns a single itinerary, and downstream code
-            // assumes exactly one.
+            // OTP plans non-transit trips with a single A* over the street graph, so a direct
+            // search yields exactly one route no matter what we ask for here. Variety comes from
+            // issuing several searches with different objectives - see `BikeRoutePreference`.
             1
         } else {
             self.num_itineraries.try_into().unwrap_or(i32::MAX)
@@ -298,6 +366,7 @@ impl PlanParams<'_> {
             first: Some(first),
             date_time: self.date_time_input(),
             modes: Some(self.modes_input()),
+            preferences: self.preferences_input(),
         })
     }
 }
@@ -424,7 +493,8 @@ struct PlanConnectionQuery {
         destination: $destination,
         first: $first,
         dateTime: $date_time,
-        modes: $modes
+        modes: $modes,
+        preferences: $preferences
     )]
     plan_connection: Option<PlanConnection>,
 }
@@ -1468,6 +1538,7 @@ mod tests {
             date_time: None,
             arrive_by: false,
             timezone: None,
+            bike_route_preference: None,
         }
     }
 
@@ -1504,6 +1575,29 @@ mod tests {
         assert_eq!(vars["first"], 1);
         assert_eq!(vars["modes"]["directOnly"], true);
         assert_eq!(vars["modes"]["direct"][0], "WALK");
+    }
+
+    #[test]
+    fn bike_request_body_carries_no_preference_by_default() {
+        let vars = variables(&params(&[TravelMode::Bicycle]));
+        assert_eq!(vars["first"], 1);
+        assert_eq!(vars["modes"]["direct"][0], "BICYCLE");
+        assert_eq!(vars["preferences"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn each_bike_route_preference_asks_for_its_own_optimization() {
+        let optimization = |preference| {
+            let mut params = params(&[TravelMode::Bicycle]);
+            params.bike_route_preference = Some(preference);
+            variables(&params)["preferences"]["street"]["bicycle"]["optimization"]["type"].clone()
+        };
+
+        assert_eq!(optimization(BikeRoutePreference::Quieter), "SAFE_STREETS");
+        assert_eq!(
+            optimization(BikeRoutePreference::Faster),
+            "SHORTEST_DURATION"
+        );
     }
 
     #[test]

@@ -3,6 +3,19 @@
     <q-item-label v-if="trip.viaRoadsFormatted">
       {{ $t('via_$place', { place: trip.viaRoadsFormatted }) }}
     </q-item-label>
+    <div v-if="trip.raw.routePreferences?.length" class="route-preferences">
+      <q-badge
+        v-for="preference in trip.raw.routePreferences"
+        :key="preference"
+        rounded
+        :class="`route-preference route-preference--${preference}`"
+      >
+        <span class="route-preference-emoji" aria-hidden="true">
+          {{ preference === 'quieter' ? '🦦' : '⚡' }}
+        </span>
+        {{ $t(`route_preference_${preference}`) }}
+      </q-badge>
+    </div>
     <elevation-chart
       v-if="(isBicycle || isWalking) && elevationData.length > 0"
       :elevations="elevationData"
@@ -78,3 +91,32 @@ export default defineComponent({
   },
 });
 </script>
+
+<style scoped lang="scss">
+.route-preferences {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.route-preference {
+  color: white;
+  padding: 5px 10px;
+  font-weight: 500;
+}
+
+.route-preference-emoji {
+  font-size: 1.3em;
+  line-height: 0;
+  margin-right: 4px;
+  vertical-align: -0.1em;
+}
+
+.route-preference--quieter {
+  background: #5a9b5e;
+}
+
+.route-preference--faster {
+  background: #d66a62;
+}
+</style>

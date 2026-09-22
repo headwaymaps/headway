@@ -82,6 +82,7 @@ impl<'a> From<(&'a PlanQuery, Option<Tz>)> for gtfs_graphql::PlanParams<'a> {
             }),
             arrive_by: query.arrive_by,
             timezone,
+            bike_route_preference: None,
         }
     }
 }

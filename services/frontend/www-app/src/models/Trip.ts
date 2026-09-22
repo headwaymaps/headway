@@ -68,6 +68,17 @@ export default class Trip {
     return names.join(i18n.global.t('punctuation_list_seperator'));
   }
 
+  /// e.g. "Quieter" - or "Quieter · Faster" where one route is the best answer to several.
+  get routePreferencesFormatted(): string | null {
+    const preferences = this.raw.routePreferences ?? [];
+    if (preferences.length == 0) {
+      return null;
+    }
+    return preferences
+      .map((preference) => i18n.global.t(`route_preference_${preference}`))
+      .join(i18n.global.t('punctuation_route_preference_seperator'));
+  }
+
   get distanceFormatted(): string {
     return formatDistance(
       this.raw.distanceMeters,

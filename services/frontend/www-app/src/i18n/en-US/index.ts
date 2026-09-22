@@ -61,6 +61,9 @@ export default {
     walk: 'Walk',
   },
   punctuation_list_seperator: ', ',
+  punctuation_route_preference_seperator: ' · ',
+  route_preference_quieter: 'Comfier',
+  route_preference_faster: 'Faster',
   shortened_distances: {
     kilometers: 'km',
     miles: 'mi',

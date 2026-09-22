@@ -21,7 +21,11 @@ export interface TravelmuxItinerary {
   distanceMeters: number;
   bounds: { min: [number, number]; max: [number, number] };
   legs: TravelmuxLeg[];
+  /// Which cycling objectives this route is the best answer to. Absent for every other mode.
+  routePreferences?: BikeRoutePreference[];
 }
+
+export type BikeRoutePreference = 'quieter' | 'faster';
 
 export interface TravelmuxLeg {
   mode: TravelmuxMode;
