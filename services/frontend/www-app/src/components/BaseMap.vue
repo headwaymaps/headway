@@ -1,5 +1,9 @@
 <template>
   <div id="map"></div>
+  <MapDebugPanel
+    v-if="debugEnabled && mapReady"
+    :map="mapForDebug()"
+  />
 </template>
 
 <script lang="ts">
@@ -45,6 +49,8 @@ import TripLayerId from 'src/models/TripLayerId';
 import env from 'src/utils/env';
 import WrapperControl from 'src/ui/WrapperControl';
 import LocationControl from 'src/ui/LocationControl';
+import MapDebugPanel from 'src/components/MapDebugPanel.vue';
+import { debugEnabled } from 'src/utils/debug';
 
 export let map: MaplibreMap | null = null;
 const mapContainerId = 'map';
@@ -187,27 +193,33 @@ interface SimpleMarker {
 
 export default defineComponent({
   name: 'BaseMap',
+  components: { MapDebugPanel },
   data: function (): {
+    debugEnabled: boolean;
     flyToOptions?: FlyToOptions | undefined;
     boundsToFit?: LngLatBoundsLike | undefined;
     markers: Map<string, SimpleMarker>;
     layers: string[];
     loaded: boolean;
+    mapReady: boolean;
     touchHandlers: Map<BaseMapEventType, Array<BaseMapEventHandler>>;
     touchHandlerIdx: number;
   } {
     return {
+      debugEnabled,
       flyToOptions: undefined,
       boundsToFit: undefined,
       markers: new Map(),
       layers: [],
       loaded: false,
+      mapReady: false,
       touchHandlers: new Map(),
       touchHandlerIdx: 0,
     };
   },
   mounted: async function () {
     const map = await loadMap();
+    this.mapReady = true;
     // This might be the ugliest thing in this whole web app. Expose methods through an internal thing.
     baseMapMethods = {
       getCenter: () => map.getCenter(),
@@ -448,6 +460,12 @@ export default defineComponent({
     });
   },
   methods: {
+    mapForDebug(): MaplibreMap {
+      if (!map) {
+        throw new Error('Map is not ready');
+      }
+      return map;
+    },
     ensureMapLoaded(fn: (map: MaplibreMap) => void) {
       const mapCapture = map;
       if (mapCapture && this.loaded) {
