@@ -80,26 +80,32 @@ function children_of() {
 }
 
 function print_steps() {
-    local record="$1" steps when
+    local record="$1" steps when total
+    total=$(jq -r '.total_ms' <<< "$record")
     # Anything under 1% of the build is noise at this zoom.
     local floor=0
-    [ -n "$SHOW_ALL" ] || floor=$(jq -r '.total_ms' <<< "$record")
+    [ -n "$SHOW_ALL" ] || floor=$total
     steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' \
         --argjson floor "$floor" <<< "$record")
+
+    # Every row is shown as its share of the whole build.
+    function fmt_share() {
+        printf '%s (%d%%)' "$(fmt_duration "$1")" $(((($1 * 100) + (total / 2)) / total))
+    }
 
     when=$(jq -r '.at' <<< "$record")
     when=${when%:*Z}
     printf '\n%s %s (%s total)\n' \
-        "$(jq -r '.area' <<< "$record")" "${when/T/ }" "$(fmt_duration "$(jq -r '.total_ms' <<< "$record")")"
+        "$(jq -r '.area' <<< "$record")" "${when/T/ }" "$(fmt_duration "$total")"
 
     while IFS="$TAB" read -r phase ms; do
-        printf '  %-40s %s\n' "$phase" "$(fmt_duration "$ms")"
+        printf '  %-40s %s\n' "$phase" "$(fmt_share "$ms")"
         while IFS="$TAB" read -r step step_ms; do
             [ -n "$step" ] || continue
-            printf '    %-38s %s\n' "$step" "$(fmt_duration "$step_ms")"
+            printf '    %-38s %s\n' "$step" "$(fmt_share "$step_ms")"
             while IFS="$TAB" read -r child child_ms; do
                 [ -n "$child" ] || continue
-                printf '      %-36s %s\n' "$child" "$(fmt_duration "$child_ms")"
+                printf '      %-36s %s\n' "$child" "$(fmt_share "$child_ms")"
             done <<< "$(children_of "$steps" "${phase}/${step}")"
         done <<< "$(children_of "$steps" "$phase")"
     done <<< "$(grep -v "/" <<< "$steps")"
@@ -114,6 +120,10 @@ if [ -n "$RECORD" ]; then
 
     # Phases run in sequence, so their wall times add up to the build's.
     total=$(grep -v "/" "$RECORD" | awk -F"$TAB" '{ total += $2 } END { printf "%d", total }')
+    if [ "$total" -eq 0 ]; then
+        echo "No build timings were recorded." >&2
+        exit 0
+    fi
     steps_json=$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map({(.[0]): (.[1] | tonumber)}) | add' "$RECORD")
     record=$(jq -c -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg area "${AREA:-unknown}" \
         --argjson total "$total" --argjson steps "$steps_json" \
