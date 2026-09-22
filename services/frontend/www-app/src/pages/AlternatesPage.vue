@@ -345,6 +345,10 @@ export default defineComponent({
             map.removeLayer(TripLayerId.selectedLeg(tripIdx, legIdx));
           }
 
+          if (map.hasLayer(TripLayerId.legContext(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legContext(tripIdx, legIdx));
+          }
+
           if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
             continue;
           }
@@ -373,6 +377,18 @@ export default defineComponent({
       // Add selected trip last to be sure it's on top of the unselected trips
       for (let legIdx = 0; legIdx < selectedTrip.legs.length; legIdx++) {
         const leg = selectedTrip.legs[legIdx]!;
+        // Pushed before the leg's own layer so the ridden portion draws over it.
+        const context = leg.contextLayer();
+        if (
+          context &&
+          !map.hasLayer(TripLayerId.legContext(selectedIdx, legIdx))
+        ) {
+          map.pushTripLayer(
+            TripLayerId.legContext(selectedIdx, legIdx),
+            context.geometry,
+            context.paint,
+          );
+        }
         if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
           map.pushTripLayer(
             TripLayerId.selectedLeg(selectedIdx, legIdx),

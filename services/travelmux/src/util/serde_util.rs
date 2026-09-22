@@ -121,6 +121,20 @@ where
     serializer.serialize_str(&string)
 }
 
+/// Same, for a geometry we might not have.
+pub fn serialize_optional_line_string_as_polyline6<S>(
+    line_string: &Option<geo::LineString<f64>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match line_string {
+        Some(line_string) => serialize_line_string_as_polyline6(line_string, serializer),
+        None => serializer.serialize_none(),
+    }
+}
+
 pub fn serialize_rect_to_lng_lat<S: Serializer>(
     rect: &Rect,
     serializer: S,
