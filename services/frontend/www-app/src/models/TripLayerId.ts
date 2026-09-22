@@ -1,6 +1,8 @@
 enum LegPart {
   START = 'start',
   MIDDLE = 'middle',
+  /// The rest of the transit route, beyond the part this leg rides.
+  CONTEXT = 'context',
 }
 
 export default class TripLayerId {
@@ -27,6 +29,10 @@ export default class TripLayerId {
 
   static unselectedLeg(tripIdx: number, legIdx: number): TripLayerId {
     return new TripLayerId(tripIdx, legIdx, false, LegPart.MIDDLE);
+  }
+
+  static legContext(tripIdx: number, legIdx: number): TripLayerId {
+    return new TripLayerId(tripIdx, legIdx, true, LegPart.CONTEXT);
   }
 
   static legStart(tripIdx: number, legIdx: number): TripLayerId {

@@ -18,7 +18,8 @@ use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
     deserialize_point_from_lon_lat, serialize_line_string_as_polyline6,
-    serialize_point_as_lon_lat_pair, serialize_rect_to_lng_lat,
+    serialize_optional_line_string_as_polyline6, serialize_point_as_lon_lat_pair,
+    serialize_rect_to_lng_lat,
 };
 use crate::util::{bearing_at_end, bearing_at_start, convert_to_meters, extend_bounds};
 use crate::valhalla::valhalla_api;
@@ -291,11 +292,30 @@ pub struct TransitLeg {
     /// rebuilt.
     pattern_code: Option<String>,
 
+    /// The whole shape the pattern runs, as an encoded polyline. The leg's own geometry is the
+    /// slice of this the rider is aboard for.
+    #[serde(
+        serialize_with = "serialize_optional_line_string_as_polyline6",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pattern_geometry: Option<LineString>,
+
     alerts: Vec<Alert>,
+}
+
+impl TransitLeg {
+    /// Decodes a pattern's shape when OTP provides a decodable one.
+    fn shape_of(pattern: &gtfs_graphql::Pattern) -> Option<LineString> {
+        let encoded = pattern.pattern_geometry.as_ref()?.points.as_deref()?;
+        decode_polyline(encoded, Leg::OTP_GEOMETRY_PRECISION)
+            .inspect_err(|e| log::warn!("undecodable shape for pattern {}: {e}", pattern.code))
+            .ok()
+    }
 }
 
 impl From<&gtfs_graphql::Leg> for TransitLeg {
     fn from(leg: &gtfs_graphql::Leg) -> Self {
+        let pattern = leg.trip.as_ref().and_then(|trip| trip.pattern.as_ref());
         Self {
             vehicle_mode: leg.mode.clone(),
             route: leg.route.as_ref().map(Route::from),
@@ -306,11 +326,8 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
                 .as_ref()
                 .and_then(|trip| trip.real_time_trip_state.as_ref())
                 .is_some_and(|state| state.updated),
-            pattern_code: leg
-                .trip
-                .as_ref()
-                .and_then(|trip| trip.pattern.as_ref())
-                .map(|pattern| pattern.code.clone()),
+            pattern_code: pattern.map(|pattern| pattern.code.clone()),
+            pattern_geometry: pattern.and_then(TransitLeg::shape_of),
             alerts: leg
                 .alerts
                 .iter()
@@ -1187,6 +1204,7 @@ mod tests {
 
         let transit_leg = &first_itinerary.legs[1];
         assert_eq!(transit_leg.mode, TravelMode::Transit);
+        let ridden = transit_leg.geometry.clone();
         let ModeLeg::Transit(transit_leg) = &transit_leg.mode_leg else {
             panic!("expected transit leg")
         };
@@ -1196,6 +1214,12 @@ mod tests {
         assert!(route.color.is_none());
         assert_eq!(transit_leg.agency_name.as_deref(), Some("Metro Transit"));
         assert!(!transit_leg.real_time);
+
+        // The whole route the bus runs, which the ridden portion is a slice of.
+        let pattern = transit_leg.pattern_geometry.as_ref().unwrap();
+        assert!(pattern.0.len() > ridden.0.len());
+        assert!(pattern.0.contains(&ridden.0[0]));
+        assert!(pattern.0.contains(ridden.0.last().unwrap()));
     }
 
     #[test]
@@ -1289,6 +1313,12 @@ mod tests {
             transit_leg.get("patternCode").unwrap().as_str().unwrap(),
             "1:21:0:01"
         );
+        assert!(!transit_leg
+            .get("patternGeometry")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .is_empty());
 
         let alerts = transit_leg.get("alerts").unwrap().as_array().unwrap();
         let first_alert = alerts.first().unwrap().as_object().unwrap();

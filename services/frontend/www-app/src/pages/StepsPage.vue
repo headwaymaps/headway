@@ -204,6 +204,16 @@ export default defineComponent({
       for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
         const leg = trip.legs[legIdx]!;
 
+        // Pushed before the leg's own layer so the ridden portion draws over it.
+        const context = leg.contextLayer();
+        if (context) {
+          const contextLayerId = TripLayerId.legContext(tripIdx, legIdx);
+          layerIds.push(contextLayerId);
+          if (!map.hasLayer(contextLayerId)) {
+            map.pushTripLayer(contextLayerId, context.geometry, context.paint);
+          }
+        }
+
         const layerId = TripLayerId.selectedLeg(tripIdx, legIdx);
         layerIds.push(layerId);
 
