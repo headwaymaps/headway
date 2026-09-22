@@ -11,7 +11,7 @@ set -e -o nounset
 #
 # By default very short steps are omitted. Show them:
 #
-#     bin/build-timings --steps --show-all-steps
+#     bin/build-timings --all-steps
 #
 # bin/build ends a build with `--record`, which appends that build to the
 # history and prints its breakdown:
@@ -40,7 +40,7 @@ LIMIT=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --steps) STEPS=1 ;;
-        --show-all-steps) SHOW_ALL=1 ;;
+        --all-steps) STEPS=1 SHOW_ALL=1 ;;
         --record)
             RECORD="${2:-}"
             if [ -z "$RECORD" ]; then
@@ -58,7 +58,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --help | -h)
-            echo "usage: $0 [--steps] [--limit N] [--show-all-steps] [AREA]"
+            echo "usage: $0 [--steps | --all-steps] [--limit N] [AREA]"
             echo "       $0 --record TIMING_FILE [AREA]"
             exit 0
             ;;
