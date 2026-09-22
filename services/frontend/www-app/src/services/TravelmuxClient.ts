@@ -58,6 +58,9 @@ export interface TransitLeg {
   /// The pattern this ride follows, which is what vehicle positions are keyed by. Only meaningful
   /// for the life of the plan it came in - OTP renumbers patterns when transit data is rebuilt.
   patternCode?: string;
+  /// The whole shape the pattern runs, as an encoded polyline, 1e-6 scale. The leg's own geometry
+  /// is the slice of this the rider is aboard for.
+  patternGeometry?: string;
   alerts: TransitAlert[];
 }
 
@@ -119,7 +122,18 @@ export interface TravelmuxVehicle {
   lastUpdated: string;
   /// Where travelmux guesses the vehicle goes next, to animate along between polls.
   track?: TravelmuxTrack;
+  /// When this vehicle is at the rider's boarding stop. Absent when no boarding stop was asked
+  /// about, or when the vehicle's trip doesn't call there.
+  boardingStop?: TravelmuxBoardingStop;
 }
+
+/// When a vehicle is at the rider's boarding stop, on whichever side of it the vehicle is.
+///
+/// `arrival` is RFC 3339, not a countdown: a poll is held for 30 seconds, and a number of minutes
+/// would be that stale by the end of one.
+export type TravelmuxBoardingStop =
+  | { state: 'approaching'; arrival: string }
+  | { state: 'departed'; arrival: string };
 
 /// A pattern to report vehicles for, and where the rider boards it.
 export interface PatternRequest {

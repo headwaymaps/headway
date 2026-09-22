@@ -10,6 +10,17 @@ import { formatDuration } from 'src/utils/format';
 /// The color of a vehicle whose route doesn't name one, matching an active trip line.
 const DEFAULT_VEHICLE_COLOR = '#1296FF';
 
+/// Within this much of the boarding stop, a countdown is less use to a waiting rider than being
+/// told to look up.
+const ARRIVING_NOW_SECONDS = 30;
+
+/// A duration under a minute, which `formatDuration` would round up to "1 min" and overstate.
+function shortDuration(seconds: number): string {
+  return seconds < 60
+    ? i18n.global.t('times_shortform.$n_seconds', { n: Math.round(seconds) })
+    : formatDuration(seconds, 'shortform');
+}
+
 /// Where a vehicle is expected to be over the next few minutes, with its points ready to
 /// interpolate between.
 interface Track {
@@ -114,20 +125,37 @@ export default class TransitVehicle {
     return i18n.global.t('transit_vehicle_$label', { label: this.raw.label });
   }
 
+  /// When the vehicle reaches the rider's boarding stop, or how long ago it left it.
+  ///
+  /// Undefined when travelmux had nothing to say about the stop - the marker then just carries
+  /// the route and how fresh the position is.
+  boardingStopFormatted(now: Date = new Date()): string | undefined {
+    const boardingStop = this.raw.boardingStop;
+    if (!boardingStop) {
+      return undefined;
+    }
+
+    const seconds = (Date.parse(boardingStop.arrival) - now.getTime()) / 1000;
+    if (boardingStop.state === 'approaching') {
+      if (seconds <= ARRIVING_NOW_SECONDS) {
+        return i18n.global.t('transit_vehicle_arriving_now');
+      }
+      return i18n.global.t('transit_vehicle_arrives_in_$timeDuration', {
+        timeDuration: formatDuration(seconds, 'shortform'),
+      });
+    }
+    return i18n.global.t('transit_vehicle_departed_$timeDuration', {
+      timeDuration: shortDuration(Math.max(0, -seconds)),
+    });
+  }
+
   /// How much of this dot is reported and how much is guesswork, phrased for the traveler.
   ///
   /// Once the dot has left the reported position it says so: the position on screen is one
   /// nobody reported, and the honest thing is to name the last moment we actually knew.
   freshnessFormatted(now: Date = new Date()): string {
     const ageSeconds = Math.max(0, (now.getTime() - this.reportedAt) / 1000);
-    // Positions refresh about once a minute, so most ages land under one - where formatDuration
-    // would round 40 seconds up to "1 min" and overstate how fresh this is.
-    const timeDuration =
-      ageSeconds < 60
-        ? i18n.global.t('times_shortform.$n_seconds', {
-            n: Math.round(ageSeconds),
-          })
-        : formatDuration(ageSeconds, 'shortform');
+    const timeDuration = shortDuration(ageSeconds);
     const phrase = this.isEstimatedAt(now.getTime())
       ? 'transit_vehicle_location_estimated_$timeDuration'
       : 'transit_vehicle_location_as_of_$timeDuration';
