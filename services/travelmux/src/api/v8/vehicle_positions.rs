@@ -215,31 +215,40 @@ pub struct Track {
 /// An instant rather than a countdown: the client holds a poll for 30 seconds, and a number of
 /// minutes would be that stale by the end of one.
 #[derive(Debug, Serialize, Clone, PartialEq)]
-#[serde(tag = "state", rename_all = "camelCase")]
+#[serde(
+    tag = "state",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 enum BoardingStop {
     /// RFC 3339, UTC. When the trip expects to reach the stop.
-    Approaching { arrival: DateTime<Utc> },
+    Approaching {
+        arrival: DateTime<Utc>,
+        /// How many stops the vehicle still has to make, counting the rider's own. Absent when
+        /// OTP won't say which stop the vehicle is working towards.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        stops_away: Option<usize>,
+    },
     /// RFC 3339, UTC. When the trip was last expected at the stop.
     Departed { arrival: DateTime<Utc> },
 }
 
-/// When the trip expects to be at the rider's boarding stop, matching the requested point to one
-/// of the trip's own stops. `None` when the trip doesn't call there, or has no prediction for it.
-fn arrival_at(
+/// The trip's own stop standing in for the rider's boarding stop, and where it falls in the
+/// trip's stop sequence. `None` when the trip doesn't call there.
+fn boarding_stoptime<'a>(
     boarding: &Boarding,
-    stoptimes: &[gtfs_graphql::VehicleStoptime],
-) -> Option<DateTime<Utc>> {
-    let (nearest, distance) = stoptimes
+    stoptimes: &'a [gtfs_graphql::VehicleStoptime],
+) -> Option<(usize, &'a gtfs_graphql::VehicleStoptime)> {
+    let (index, stoptime, distance) = stoptimes
         .iter()
-        .filter_map(|stoptime| {
+        .enumerate()
+        .filter_map(|(index, stoptime)| {
             let distance = Haversine.distance(stoptime.point()?, boarding.point);
-            Some((stoptime, distance))
+            Some((index, stoptime, distance))
         })
-        .min_by(|a, b| a.1.total_cmp(&b.1))?;
+        .min_by(|a, b| a.2.total_cmp(&b.2))?;
 
-    (distance <= BOARDING_STOP_TOLERANCE)
-        .then(|| nearest.expected_arrival())
-        .flatten()
+    (distance <= BOARDING_STOP_TOLERANCE).then_some((index, stoptime))
 }
 
 /// Interpolating a shape yields far more digits than it means. A millionth of a degree is about
@@ -403,11 +412,21 @@ impl Vehicle {
         let track = track(shape, &anchors);
 
         let boarding_stop = boarding.and_then(|boarding| {
-            let arrival = arrival_at(boarding, &stoptimes)?;
-            Some(if progress <= boarding.progress {
-                BoardingStop::Approaching { arrival }
-            } else {
-                BoardingStop::Departed { arrival }
+            let (boarding_index, stoptime) = boarding_stoptime(boarding, &stoptimes)?;
+            let arrival = stoptime.expected_arrival()?;
+            if progress > boarding.progress {
+                return Some(BoardingStop::Departed { arrival });
+            }
+            // The stop the vehicle is working towards is one stop away, so the rider's own is
+            // one more than the stops between.
+            let stops_away = heading_for
+                .as_deref()
+                .and_then(|next| stoptimes.iter().position(|s| s.stop_id() == Some(next)))
+                .and_then(|heading_index| boarding_index.checked_sub(heading_index))
+                .map(|between| between + 1);
+            Some(BoardingStop::Approaching {
+                arrival,
+                stops_away,
             })
         });
 
@@ -576,7 +595,9 @@ pub async fn post_vehicle_positions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::otp::gtfs_graphql::{StoptimeStop, VehiclePosition, VehicleStoptime, VehicleTrip};
+    use crate::otp::gtfs_graphql::{
+        StopRelationship, StoptimeStop, VehiclePosition, VehicleStoptime, VehicleTrip,
+    };
     use geo::line_string;
 
     /// Midnight of the service day these fixtures run on.
@@ -811,7 +832,6 @@ mod tests {
         // The shape runs east, so a smaller longitude is further back along it. Spaced so no
         // two are equidistant from the stop, which would leave the order up to the sort.
         let vehicles = vehicles_at(&[-122.339, -122.336, -122.332, -122.329, -122.325, -122.305]);
-        let boarding_stop = Point::new(-122.330, 47.600);
 
         let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref());
 
@@ -1039,11 +1059,19 @@ mod tests {
     fn vehicle_boarding_at(
         vehicle_lon: f64,
         boarding_lon: f64,
+        heading_for: Option<f64>,
         stoptimes: Vec<VehicleStoptime>,
     ) -> Vehicle {
         let shape = shape();
         let mut position = position(Some(47.600), Some(vehicle_lon));
         position.trip.stoptimes_for_date = Some(stoptimes.into_iter().map(Some).collect());
+        position.stop_relationship = heading_for.map(|lon| StopRelationship {
+            stop: StoptimeStop {
+                gtfs_id: stop_id(lon),
+                lat: Some(47.600),
+                lon: Some(lon),
+            },
+        });
         Vehicle::from_otp(
             &pattern(),
             &shape,
@@ -1056,18 +1084,21 @@ mod tests {
     #[test]
     fn a_vehicle_short_of_the_boarding_stop_says_when_it_gets_there() {
         let stoptimes = vec![stoptime(-122.330, 400), stoptime(-122.320, 600)];
-        let vehicle = vehicle_boarding_at(-122.335, -122.330, stoptimes);
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, None, stoptimes);
 
         assert_eq!(
             vehicle.boarding_stop,
-            Some(BoardingStop::Approaching { arrival: at(400) })
+            Some(BoardingStop::Approaching {
+                arrival: at(400),
+                stops_away: None,
+            })
         );
     }
 
     #[test]
     fn a_vehicle_past_the_boarding_stop_says_when_it_was_there() {
         let stoptimes = vec![stoptime(-122.335, 200), stoptime(-122.320, 600)];
-        let vehicle = vehicle_boarding_at(-122.325, -122.335, stoptimes);
+        let vehicle = vehicle_boarding_at(-122.325, -122.335, None, stoptimes);
 
         assert_eq!(
             vehicle.boarding_stop,
@@ -1079,7 +1110,7 @@ mod tests {
     /// against its own clock would flip a late vehicle to "departed" while it was still coming.
     #[test]
     fn the_boarding_stop_is_written_as_a_state_and_an_instant() {
-        let vehicle = vehicle_boarding_at(-122.335, -122.330, vec![stoptime(-122.330, 400)]);
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, None, vec![stoptime(-122.330, 400)]);
         let json = serde_json::to_value(&vehicle).expect("serializes");
 
         assert_eq!(json["boardingStop"]["state"], "approaching");
@@ -1094,7 +1125,7 @@ mod tests {
     #[test]
     fn a_trip_that_does_not_call_at_the_boarding_stop_says_nothing() {
         let stoptimes = vec![stoptime(-122.320, 400), stoptime(-122.310, 600)];
-        let vehicle = vehicle_boarding_at(-122.335, -122.330, stoptimes);
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, None, stoptimes);
 
         assert_eq!(vehicle.boarding_stop, None);
     }
@@ -1108,5 +1139,71 @@ mod tests {
             Vehicle::from_otp(&pattern(), &shape, None, position).expect("has coordinates");
 
         assert_eq!(vehicle.boarding_stop, None);
+    }
+
+    /// Counting the rider's own stop: the stop the vehicle is working towards is one away.
+    #[test]
+    fn an_approaching_vehicle_counts_the_stops_to_the_rider() {
+        let stoptimes = vec![
+            stoptime(-122.336, 200),
+            stoptime(-122.334, 300),
+            stoptime(-122.332, 400),
+            stoptime(-122.330, 500),
+        ];
+        let vehicle = vehicle_boarding_at(-122.337, -122.330, Some(-122.336), stoptimes);
+
+        assert_eq!(
+            vehicle.boarding_stop,
+            Some(BoardingStop::Approaching {
+                arrival: at(500),
+                stops_away: Some(4),
+            })
+        );
+        let json = serde_json::to_value(&vehicle).expect("serializes");
+        assert_eq!(json["boardingStop"]["stopsAway"], 4);
+    }
+
+    #[test]
+    fn a_vehicle_working_towards_the_rider_is_one_stop_away() {
+        let stoptimes = vec![stoptime(-122.334, 300), stoptime(-122.330, 500)];
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, Some(-122.330), stoptimes);
+
+        assert_eq!(
+            vehicle.boarding_stop,
+            Some(BoardingStop::Approaching {
+                arrival: at(500),
+                stops_away: Some(1),
+            })
+        );
+    }
+
+    /// The position and the stop sequence are two sources, and a vehicle short of the stop by one
+    /// and past it by the other has no honest count - the arrival still stands.
+    #[test]
+    fn a_vehicle_already_past_the_rider_in_the_sequence_counts_no_stops() {
+        let stoptimes = vec![stoptime(-122.330, 300), stoptime(-122.320, 500)];
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, Some(-122.320), stoptimes);
+
+        assert_eq!(
+            vehicle.boarding_stop,
+            Some(BoardingStop::Approaching {
+                arrival: at(300),
+                stops_away: None,
+            })
+        );
+    }
+
+    /// A count of stops is a thing to wait through. One already gone by isn't.
+    #[test]
+    fn a_departed_vehicle_counts_no_stops() {
+        let stoptimes = vec![stoptime(-122.335, 200), stoptime(-122.320, 600)];
+        let vehicle = vehicle_boarding_at(-122.325, -122.335, Some(-122.320), stoptimes);
+
+        assert_eq!(
+            vehicle.boarding_stop,
+            Some(BoardingStop::Departed { arrival: at(200) })
+        );
+        let json = serde_json::to_value(&vehicle).expect("serializes");
+        assert!(json["boardingStop"].get("stopsAway").is_none());
     }
 }

@@ -146,6 +146,38 @@ describe('boardingStopFormatted', () => {
   });
 });
 
+describe('stopsAwayFormatted', () => {
+  function approaching(stopsAway?: number): TransitVehicle {
+    return vehicle({
+      boardingStop: {
+        state: 'approaching',
+        arrival: NOW.toISOString(),
+        stopsAway,
+      },
+    });
+  }
+
+  test('a vehicle a few stops up the route', () => {
+    expect(approaching(3).stopsAwayFormatted).toEqual('3 stops away');
+  });
+
+  test('a vehicle working towards the rider`s own stop', () => {
+    expect(approaching(1).stopsAwayFormatted).toEqual('next stop');
+  });
+
+  test('a vehicle whose feed won`t say which stop it is working towards', () => {
+    expect(approaching(undefined).stopsAwayFormatted).toBeUndefined();
+  });
+
+  // Nothing to wait through once it has been and gone.
+  test('a vehicle that has left the stop', () => {
+    const departed = vehicle({
+      boardingStop: { state: 'departed', arrival: NOW.toISOString() },
+    });
+    expect(departed.stopsAwayFormatted).toBeUndefined();
+  });
+});
+
 describe('labelFormatted', () => {
   test('a bus with a fleet number', () => {
     expect(vehicle({ label: '7193' }).labelFormatted).toEqual('(vehicle 7193)');

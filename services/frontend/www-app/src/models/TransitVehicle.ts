@@ -149,6 +149,22 @@ export default class TransitVehicle {
     });
   }
 
+  /// How many stops until the vehicle reaches the rider's, counting that stop itself.
+  ///
+  /// Undefined for a vehicle that has already been past: a count of stops is something to wait
+  /// through, and one that's gone by is nothing to wait for.
+  get stopsAwayFormatted(): string | undefined {
+    const boardingStop = this.raw.boardingStop;
+    if (boardingStop?.state !== 'approaching' || !boardingStop.stopsAway) {
+      return undefined;
+    }
+    return boardingStop.stopsAway === 1
+      ? i18n.global.t('transit_vehicle_next_stop')
+      : i18n.global.t('transit_vehicle_$n_stops_away', {
+          n: boardingStop.stopsAway,
+        });
+  }
+
   /// How much of this dot is reported and how much is guesswork, phrased for the traveler.
   ///
   /// Once the dot has left the reported position it says so: the position on screen is one
