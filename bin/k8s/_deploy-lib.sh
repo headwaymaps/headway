@@ -204,8 +204,19 @@ function deploy_lib_apply() {
             --from-file="gtfs-secrets.json=${secrets_file}"
     done
 
-    trap 'bin/revert-fetch-urls' EXIT
+    trap deploy_lib_revert_fetch_urls EXIT
     bin/update-fetch-urls
+    FETCH_URLS_UPDATED=true
 
     (cd "$CONFIG_DIR" && kubectl apply -f . -n "$NAMESPACE")
+    deploy_lib_revert_fetch_urls
+}
+
+FETCH_URLS_UPDATED=false
+
+# Puts the placeholder artifact host back, at most once.
+function deploy_lib_revert_fetch_urls() {
+    [ "$FETCH_URLS_UPDATED" = true ] || return 0
+    FETCH_URLS_UPDATED=false
+    bin/revert-fetch-urls
 }
