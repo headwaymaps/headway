@@ -12,6 +12,16 @@ set -e -o nounset
 # By default very short steps are omitted. Show them:
 #
 #     bin/build-timings --steps --show-all-steps
+#
+# bin/build ends a build with `--record`, which appends that build to the
+# history and prints its breakdown:
+#
+#     bin/build-timings --record <timing-file> Seattle
+#
+# The timing file is the TSV that bin/_build-timing.sh collected:
+# "<label>\t<milliseconds>". A label with no "/" is a phase's wall time. Within
+# a phase, "~name" is one of dagger's own top-level spans and anything else is
+# a step the module reported.
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
@@ -24,12 +34,21 @@ TAB=$(printf '\t')
 
 STEPS=""
 SHOW_ALL=""
+RECORD=""
 AREA=""
 LIMIT=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --steps) STEPS=1 ;;
         --show-all-steps) SHOW_ALL=1 ;;
+        --record)
+            RECORD="${2:-}"
+            if [ -z "$RECORD" ]; then
+                echo "Error: --record wants a timing file" >&2
+                exit 1
+            fi
+            shift
+            ;;
         --limit)
             LIMIT="${2:-}"
             if ! [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]]; then
@@ -40,6 +59,7 @@ while [ $# -gt 0 ]; do
             ;;
         --help | -h)
             echo "usage: $0 [--steps] [--limit N] [--show-all-steps] [AREA]"
+            echo "       $0 --record TIMING_FILE [AREA]"
             exit 0
             ;;
         *) AREA="$1" ;;
@@ -47,13 +67,67 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-if [ ! -s "$HISTORY" ]; then
-    echo "No build history yet - ${HISTORY} is written by bin/build." >&2
+if ! command -v jq > /dev/null; then
+    echo "Error: jq is required to read ${HISTORY}" >&2
     exit 1
 fi
 
-if ! command -v jq > /dev/null; then
-    echo "Error: jq is required to read ${HISTORY}" >&2
+function children_of() {
+    awk -F"$TAB" -v prefix="$2/" 'index($1, prefix) == 1 {
+        rest = substr($1, length(prefix) + 1)
+        if (index(rest, "/") == 0) { sub(/^~/, "", rest); print rest "\t" $2 }
+    }' <<< "$1"
+}
+
+function print_steps() {
+    local record="$1" steps when
+    # Anything under 1% of the build is noise at this zoom.
+    local floor=0
+    [ -n "$SHOW_ALL" ] || floor=$(jq -r '.total_ms' <<< "$record")
+    steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' \
+        --argjson floor "$floor" <<< "$record")
+
+    when=$(jq -r '.at' <<< "$record")
+    when=${when%:*Z}
+    printf '\n%s %s (%s total)\n' \
+        "$(jq -r '.area' <<< "$record")" "${when/T/ }" "$(fmt_duration "$(jq -r '.total_ms' <<< "$record")")"
+
+    while IFS="$TAB" read -r phase ms; do
+        printf '  %-40s %s\n' "$phase" "$(fmt_duration "$ms")"
+        while IFS="$TAB" read -r step step_ms; do
+            [ -n "$step" ] || continue
+            printf '    %-38s %s\n' "$step" "$(fmt_duration "$step_ms")"
+            while IFS="$TAB" read -r child child_ms; do
+                [ -n "$child" ] || continue
+                printf '      %-36s %s\n' "$child" "$(fmt_duration "$child_ms")"
+            done <<< "$(children_of "$steps" "${phase}/${step}")"
+        done <<< "$(children_of "$steps" "$phase")"
+    done <<< "$(grep -v "/" <<< "$steps")"
+}
+
+# Append a finished build to the history, then print it like any other.
+if [ -n "$RECORD" ]; then
+    if [ ! -s "$RECORD" ]; then
+        echo "No build timings were recorded." >&2
+        exit 0
+    fi
+
+    # Phases run in sequence, so their wall times add up to the build's.
+    total=$(grep -v "/" "$RECORD" | awk -F"$TAB" '{ total += $2 } END { printf "%d", total }')
+    steps_json=$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map({(.[0]): (.[1] | tonumber)}) | add' "$RECORD")
+    record=$(jq -c -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg area "${AREA:-unknown}" \
+        --argjson total "$total" --argjson steps "$steps_json" \
+        '{at: $at, area: $area, total_ms: $total, steps_ms: $steps}')
+
+    mkdir -p "$(dirname "$HISTORY")"
+    printf '%s\n' "$record" >> "$HISTORY"
+    print_steps "$record"
+    printf '\n  (appended to %s)\n' "$HISTORY"
+    exit 0
+fi
+
+if [ ! -s "$HISTORY" ]; then
+    echo "No build history yet - ${HISTORY} is written by bin/build." >&2
     exit 1
 fi
 
@@ -69,39 +143,6 @@ if [ -z "$(records)" ]; then
 fi
 
 if [ -n "$STEPS" ]; then
-    function children_of() {
-        awk -F"$TAB" -v prefix="$2/" 'index($1, prefix) == 1 {
-            rest = substr($1, length(prefix) + 1)
-            if (index(rest, "/") == 0) { sub(/^~/, "", rest); print rest "\t" $2 }
-        }' <<< "$1"
-    }
-
-    function print_steps() {
-        local record="$1" steps when
-        # Anything under 1% of the build is noise at this zoom.
-        local floor=0
-        [ -n "$SHOW_ALL" ] || floor=$(jq -r '.total_ms' <<< "$record")
-        steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' \
-            --argjson floor "$floor" <<< "$record")
-
-        when=$(jq -r '.at' <<< "$record")
-        when=${when%:*Z}
-        printf '\n%s %s (%s total)\n' \
-            "$(jq -r '.area' <<< "$record")" "${when/T/ }" "$(fmt_duration "$(jq -r '.total_ms' <<< "$record")")"
-
-        while IFS="$TAB" read -r phase ms; do
-            printf '  %-40s %s\n' "$phase" "$(fmt_duration "$ms")"
-            while IFS="$TAB" read -r step step_ms; do
-                [ -n "$step" ] || continue
-                printf '    %-38s %s\n' "$step" "$(fmt_duration "$step_ms")"
-                while IFS="$TAB" read -r child child_ms; do
-                    [ -n "$child" ] || continue
-                    printf '      %-36s %s\n' "$child" "$(fmt_duration "$child_ms")"
-                done <<< "$(children_of "$steps" "${phase}/${step}")"
-            done <<< "$(children_of "$steps" "$phase")"
-        done <<< "$(grep -v "/" <<< "$steps")"
-    }
-
     while IFS= read -r record; do
         print_steps "$record"
     done < <(jq -c -n --arg area "$AREA" --argjson limit "$LIMIT" \
