@@ -106,6 +106,46 @@ describe('positionAt', () => {
   });
 });
 
+describe('boardingStopFormatted', () => {
+  function arrivingIn(seconds: number, state: 'approaching' | 'departed') {
+    const arrival = new Date(NOW.getTime() + seconds * 1000).toISOString();
+    return vehicle({ boardingStop: { state, arrival } });
+  }
+
+  test('a vehicle still on its way counts down to the stop', () => {
+    expect(arrivingIn(180, 'approaching').boardingStopFormatted(NOW)).toEqual(
+      '3 min away',
+    );
+  });
+
+  // A countdown of seconds is no use to someone who should be looking up the street.
+  test('a vehicle about to arrive says so', () => {
+    expect(arrivingIn(20, 'approaching').boardingStopFormatted(NOW)).toEqual(
+      'Arriving now',
+    );
+  });
+
+  test('a vehicle that has left the stop says how long ago', () => {
+    expect(arrivingIn(-120, 'departed').boardingStopFormatted(NOW)).toEqual(
+      'Left 2 min ago',
+    );
+  });
+
+  // Travelmux decides which side of the stop a vehicle is on, so a late one can be past the stop
+  // with an arrival still a few seconds out.
+  test('a vehicle just past the stop does not count backwards', () => {
+    expect(arrivingIn(5, 'departed').boardingStopFormatted(NOW)).toEqual(
+      'Left 0 sec ago',
+    );
+  });
+
+  test('a vehicle travelmux said nothing about', () => {
+    expect(
+      vehicle({ boardingStop: undefined }).boardingStopFormatted(NOW),
+    ).toBeUndefined();
+  });
+});
+
 describe('labelFormatted', () => {
   test('a bus with a fleet number', () => {
     expect(vehicle({ label: '7193' }).labelFormatted).toEqual('(vehicle 7193)');

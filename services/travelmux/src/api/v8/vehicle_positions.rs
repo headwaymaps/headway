@@ -7,7 +7,7 @@
 use actix_web::{post, web, HttpRequest, HttpResponseBuilder, Responder};
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::geometry::{LineString, Point};
-use geo::{Haversine, InterpolateLine};
+use geo::{Distance, Haversine, InterpolateLine};
 use polyline::decode_polyline;
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +45,11 @@ const UPCOMING_VEHICLES: usize = 2;
 /// How many vehicles past the boarding stop to report. One is enough to show the rider what they
 /// just missed; more is clutter from a bus that's no longer theirs.
 const DEPARTED_VEHICLES: usize = 1;
+
+/// How far off a trip's own stops the requested boarding stop can sit and still be that stop.
+/// The client sends the boarding location out of the plan's leg, so this only absorbs the
+/// difference between where a leg starts and where the stop it started from is recorded.
+const BOARDING_STOP_TOLERANCE: f64 = 100.0;
 
 /// How finely the guess is sampled. The client walks between samples in a straight line, so this
 /// only has to be short enough that a bus doesn't round a corner inside one.
@@ -90,6 +95,23 @@ fn is_on_earth(point: Point) -> bool {
         && (-90.0..=90.0).contains(&lat)
         && (-180.0..=180.0).contains(&lon)
         && (lat != 0.0 || lon != 0.0)
+}
+
+/// Where the rider boards, placed on the pattern's shape.
+struct Boarding {
+    point: Point,
+    /// Metres along the pattern's shape.
+    progress: f64,
+}
+
+impl Boarding {
+    /// A boarding stop we can't place on the shape can't be compared to a vehicle's progress.
+    fn new(shape: &LineString, point: Point) -> Option<Self> {
+        Some(Self {
+            point,
+            progress: progress_along(shape, point)?,
+        })
+    }
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -158,6 +180,11 @@ pub struct Vehicle {
     #[serde(skip)]
     progress: f64,
 
+    /// When this vehicle is at the rider's boarding stop, and which side of it it's on. Absent
+    /// when the request named no boarding stop, or when the trip says nothing about it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    boarding_stop: Option<BoardingStop>,
+
     /// Where we guess the vehicle goes next, for a client to animate along between polls.
     ///
     /// Absent when there's nothing to predict from, in which case the vehicle just sits at
@@ -181,6 +208,38 @@ pub struct Track {
     /// At least two points, serialized as `[lon, lat]` pairs. The first is `lastUpdated`'s.
     #[serde(serialize_with = "serialize_points_as_lon_lat_pairs")]
     points: Vec<Point>,
+}
+
+/// When a vehicle is at the rider's boarding stop, on whichever side of it the vehicle is.
+///
+/// An instant rather than a countdown: the client holds a poll for 30 seconds, and a number of
+/// minutes would be that stale by the end of one.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(tag = "state", rename_all = "camelCase")]
+enum BoardingStop {
+    /// RFC 3339, UTC. When the trip expects to reach the stop.
+    Approaching { arrival: DateTime<Utc> },
+    /// RFC 3339, UTC. When the trip was last expected at the stop.
+    Departed { arrival: DateTime<Utc> },
+}
+
+/// When the trip expects to be at the rider's boarding stop, matching the requested point to one
+/// of the trip's own stops. `None` when the trip doesn't call there, or has no prediction for it.
+fn arrival_at(
+    boarding: &Boarding,
+    stoptimes: &[gtfs_graphql::VehicleStoptime],
+) -> Option<DateTime<Utc>> {
+    let (nearest, distance) = stoptimes
+        .iter()
+        .filter_map(|stoptime| {
+            let distance = Haversine.distance(stoptime.point()?, boarding.point);
+            Some((stoptime, distance))
+        })
+        .min_by(|a, b| a.1.total_cmp(&b.1))?;
+
+    (distance <= BOARDING_STOP_TOLERANCE)
+        .then(|| nearest.expected_arrival())
+        .flatten()
 }
 
 /// Interpolating a shape yields far more digits than it means. A millionth of a degree is about
@@ -309,6 +368,7 @@ impl Vehicle {
     fn from_otp(
         pattern: &gtfs_graphql::PatternVehicles,
         shape: &LineString,
+        boarding: Option<&Boarding>,
         position: gtfs_graphql::VehiclePosition,
     ) -> Option<Self> {
         let pattern_code = pattern.pattern_code.as_str();
@@ -342,6 +402,15 @@ impl Vehicle {
         );
         let track = track(shape, &anchors);
 
+        let boarding_stop = boarding.and_then(|boarding| {
+            let arrival = arrival_at(boarding, &stoptimes)?;
+            Some(if progress <= boarding.progress {
+                BoardingStop::Approaching { arrival }
+            } else {
+                BoardingStop::Departed { arrival }
+            })
+        });
+
         // A vehicle reports under one id for as long as it's on this pattern, so that plus the
         // pattern is stable between polls - which is all a client needs to keep a marker.
         let identifier = position
@@ -366,6 +435,7 @@ impl Vehicle {
             heading: position.heading,
             progress,
             last_updated,
+            boarding_stop,
             track,
         })
     }
@@ -376,12 +446,8 @@ impl Vehicle {
 ///
 /// A pattern runs its whole length, so most of its vehicles are miles from the trip and only
 /// crowd the map. Returns everything, unranked, when there's no boarding stop to rank against.
-fn nearby(
-    mut vehicles: Vec<Vehicle>,
-    shape: &LineString,
-    boarding_stop: Option<Point>,
-) -> Vec<Vehicle> {
-    let Some(boarding) = boarding_stop.and_then(|stop| progress_along(shape, stop)) else {
+fn nearby(mut vehicles: Vec<Vehicle>, boarding: Option<&Boarding>) -> Vec<Vehicle> {
+    let Some(boarding) = boarding.map(|boarding| boarding.progress) else {
         return vehicles;
     };
 
@@ -479,17 +545,20 @@ pub async fn post_vehicle_positions(
             let Some(shape) = shape_of(&pattern) else {
                 return Vec::new();
             };
-            let boarding_stop = requested
+            let boarding = requested
                 .iter()
                 .find(|request| request.code == pattern.pattern_code)
-                .and_then(|request| request.boarding_stop);
+                .and_then(|request| request.boarding_stop)
+                .and_then(|stop| Boarding::new(&shape, stop));
             let mut pattern = pattern;
             let positions = std::mem::take(&mut pattern.positions);
             let on_pattern: Vec<_> = positions
                 .into_iter()
-                .filter_map(|position| Vehicle::from_otp(&pattern, &shape, position))
+                .filter_map(|position| {
+                    Vehicle::from_otp(&pattern, &shape, boarding.as_ref(), position)
+                })
                 .collect();
-            nearby(on_pattern, &shape, boarding_stop)
+            nearby(on_pattern, boarding.as_ref())
         })
         .collect();
 
@@ -652,8 +721,9 @@ mod tests {
     #[test]
     fn a_vehicle_is_identified_by_its_pattern_and_its_own_id() {
         let shape = shape();
-        let build =
-            |position| Vehicle::from_otp(&pattern(), &shape, position).expect("has coordinates");
+        let build = |position| {
+            Vehicle::from_otp(&pattern(), &shape, None, position).expect("has coordinates")
+        };
 
         let mut first = position(Some(47.6), Some(-122.335));
         first.vehicle_id = Some("1:7204".to_owned());
@@ -671,8 +741,13 @@ mod tests {
     /// The route rides along with each vehicle so a client needn't join back to the plan's legs.
     #[test]
     fn a_vehicle_carries_what_it_is_running() {
-        let vehicle = Vehicle::from_otp(&pattern(), &shape(), position(Some(47.6), Some(-122.335)))
-            .expect("has coordinates");
+        let vehicle = Vehicle::from_otp(
+            &pattern(),
+            &shape(),
+            None,
+            position(Some(47.6), Some(-122.335)),
+        )
+        .expect("has coordinates");
 
         let route = vehicle.route;
         assert_eq!(route.short_name.as_deref(), Some("40"));
@@ -687,7 +762,7 @@ mod tests {
     #[test]
     fn a_vehicle_at_null_island_is_dropped() {
         let shape = shape();
-        let build = |lat, lon| Vehicle::from_otp(&pattern(), &shape, position(lat, lon));
+        let build = |lat, lon| Vehicle::from_otp(&pattern(), &shape, None, position(lat, lon));
 
         assert!(build(Some(0.0), Some(0.0)).is_none());
         // Only exactly 0,0 - the Gulf of Guinea is a real place.
@@ -698,7 +773,7 @@ mod tests {
     #[test]
     fn a_vehicle_off_the_globe_is_dropped() {
         let shape = shape();
-        let build = |lat, lon| Vehicle::from_otp(&pattern(), &shape, position(lat, lon));
+        let build = |lat, lon| Vehicle::from_otp(&pattern(), &shape, None, position(lat, lon));
 
         assert!(build(Some(91.0), Some(-122.33)).is_none());
         assert!(build(Some(47.6), Some(181.0)).is_none());
@@ -713,9 +788,14 @@ mod tests {
             .map(|lon| {
                 let mut position = position(Some(47.600), Some(*lon));
                 position.label = Some(format!("{lon}"));
-                Vehicle::from_otp(&pattern(), &shape, position).expect("has coordinates")
+                Vehicle::from_otp(&pattern(), &shape, None, position).expect("has coordinates")
             })
             .collect()
+    }
+
+    /// Where the rider boards, at `lon` along the shape.
+    fn boarding(shape: &LineString, lon: f64) -> Option<Boarding> {
+        Boarding::new(shape, Point::new(lon, 47.600))
     }
 
     fn labels(vehicles: &[Vehicle]) -> Vec<&str> {
@@ -733,7 +813,7 @@ mod tests {
         let vehicles = vehicles_at(&[-122.339, -122.336, -122.332, -122.329, -122.325, -122.305]);
         let boarding_stop = Point::new(-122.330, 47.600);
 
-        let nearby = nearby(vehicles, &shape, Some(boarding_stop));
+        let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref());
 
         // Nearest first: the one just past the stop, then the two still approaching it.
         // -122.339 is a third vehicle still approaching, -122.325 and -122.305 are further past.
@@ -742,17 +822,16 @@ mod tests {
 
     #[test]
     fn a_pattern_with_no_boarding_stop_reports_every_vehicle() {
-        let shape = shape();
         let vehicles = vehicles_at(&[-122.339, -122.335, -122.331, -122.329, -122.305]);
 
-        assert_eq!(nearby(vehicles, &shape, None).len(), 5);
+        assert_eq!(nearby(vehicles, None).len(), 5);
     }
 
     #[test]
     fn fewer_vehicles_than_we_would_show_is_fine() {
         let shape = shape();
         let vehicles = vehicles_at(&[-122.335]);
-        let nearby = nearby(vehicles, &shape, Some(Point::new(-122.330, 47.600)));
+        let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref());
 
         assert_eq!(labels(&nearby), ["-122.335"]);
     }
@@ -763,13 +842,13 @@ mod tests {
         let mut position = position(Some(47.6), Some(-122.335));
         position.last_update = None;
 
-        assert!(Vehicle::from_otp(&pattern(), &shape(), position).is_none());
+        assert!(Vehicle::from_otp(&pattern(), &shape(), None, position).is_none());
     }
 
     #[test]
     fn a_vehicle_without_coordinates_is_dropped() {
         let shape = shape();
-        let build = |lat, lon| Vehicle::from_otp(&pattern(), &shape, position(lat, lon));
+        let build = |lat, lon| Vehicle::from_otp(&pattern(), &shape, None, position(lat, lon));
         assert!(build(Some(47.6), Some(-122.33)).is_some());
         assert!(build(Some(47.6), None).is_none());
         assert!(build(None, None).is_none());
@@ -778,8 +857,13 @@ mod tests {
     /// Written the same way as every other point v8 reports.
     #[test]
     fn a_vehicle_reports_its_position_as_a_lon_lat_pair() {
-        let vehicle = Vehicle::from_otp(&pattern(), &shape(), position(Some(47.6), Some(-122.335)))
-            .expect("has coordinates");
+        let vehicle = Vehicle::from_otp(
+            &pattern(),
+            &shape(),
+            None,
+            position(Some(47.6), Some(-122.335)),
+        )
+        .expect("has coordinates");
         let json = serde_json::to_value(&vehicle).expect("serializes");
 
         assert_eq!(json["position"], serde_json::json!([-122.335, 47.6]));
@@ -949,5 +1033,80 @@ mod tests {
 
         let span = TimeDelta::seconds(track.step_seconds * (track.points.len() as i64 - 1));
         assert!(span <= TRACK_HORIZON, "track ran {span} past the horizon");
+    }
+
+    /// A vehicle built with the boarding stop and the day's stop sequence it would really carry.
+    fn vehicle_boarding_at(
+        vehicle_lon: f64,
+        boarding_lon: f64,
+        stoptimes: Vec<VehicleStoptime>,
+    ) -> Vehicle {
+        let shape = shape();
+        let mut position = position(Some(47.600), Some(vehicle_lon));
+        position.trip.stoptimes_for_date = Some(stoptimes.into_iter().map(Some).collect());
+        Vehicle::from_otp(
+            &pattern(),
+            &shape,
+            boarding(&shape, boarding_lon).as_ref(),
+            position,
+        )
+        .expect("has coordinates")
+    }
+
+    #[test]
+    fn a_vehicle_short_of_the_boarding_stop_says_when_it_gets_there() {
+        let stoptimes = vec![stoptime(-122.330, 400), stoptime(-122.320, 600)];
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, stoptimes);
+
+        assert_eq!(
+            vehicle.boarding_stop,
+            Some(BoardingStop::Approaching { arrival: at(400) })
+        );
+    }
+
+    #[test]
+    fn a_vehicle_past_the_boarding_stop_says_when_it_was_there() {
+        let stoptimes = vec![stoptime(-122.335, 200), stoptime(-122.320, 600)];
+        let vehicle = vehicle_boarding_at(-122.325, -122.335, stoptimes);
+
+        assert_eq!(
+            vehicle.boarding_stop,
+            Some(BoardingStop::Departed { arrival: at(200) })
+        );
+    }
+
+    /// The client reads the state off the wire; a client that had to infer it from the arrival
+    /// against its own clock would flip a late vehicle to "departed" while it was still coming.
+    #[test]
+    fn the_boarding_stop_is_written_as_a_state_and_an_instant() {
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, vec![stoptime(-122.330, 400)]);
+        let json = serde_json::to_value(&vehicle).expect("serializes");
+
+        assert_eq!(json["boardingStop"]["state"], "approaching");
+        assert_eq!(
+            json["boardingStop"]["arrival"],
+            serde_json::json!(at(400).to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+        );
+    }
+
+    /// Only the trip's own stops can date it, and a trip that doesn't call at the rider's stop
+    /// has nothing to say - better silent than announcing the stop next door.
+    #[test]
+    fn a_trip_that_does_not_call_at_the_boarding_stop_says_nothing() {
+        let stoptimes = vec![stoptime(-122.320, 400), stoptime(-122.310, 600)];
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, stoptimes);
+
+        assert_eq!(vehicle.boarding_stop, None);
+    }
+
+    #[test]
+    fn a_pattern_asked_about_without_a_boarding_stop_says_nothing() {
+        let shape = shape();
+        let mut position = position(Some(47.600), Some(-122.335));
+        position.trip.stoptimes_for_date = Some(vec![Some(stoptime(-122.330, 400))]);
+        let vehicle =
+            Vehicle::from_otp(&pattern(), &shape, None, position).expect("has coordinates");
+
+        assert_eq!(vehicle.boarding_stop, None);
     }
 }

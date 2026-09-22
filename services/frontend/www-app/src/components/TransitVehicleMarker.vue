@@ -26,6 +26,9 @@
           {{ vehicle.labelFormatted }}
         </span>
       </div>
+      <div v-if="boardingStop()" class="boarding-stop">
+        {{ boardingStop() }}
+      </div>
       <div class="age">
         <i class="material-icons realtime">rss_feed</i>
         <!-- Rendered only while hovered, so the age is current when it's read. -->
@@ -71,6 +74,10 @@ export default defineComponent({
       hovered,
       freshness: () =>
         props.vehicle.freshnessFormatted(
+          new Date(Date.now() + props.clockOffsetMs),
+        ),
+      boardingStop: () =>
+        props.vehicle.boardingStopFormatted(
           new Date(Date.now() + props.clockOffsetMs),
         ),
     };
@@ -189,6 +196,10 @@ export default defineComponent({
 
 .realtime {
   font-size: 13px;
+}
+
+.boarding-stop {
+  font-weight: 600;
 }
 
 .age {
