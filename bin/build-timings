@@ -4,9 +4,14 @@ set -e -o nounset
 
 # Show what past builds cost, from the history bin/build appends to.
 #
-#     bin/build-timings              # every build, oldest first
-#     bin/build-timings Bogota       # just that area
-#     bin/build-timings --steps      # the step breakdown of the latest build
+#     bin/build-timings                   # every build, oldest first
+#     bin/build-timings Bogota            # just that area
+#     bin/build-timings --steps           # step breakdowns, newest build first
+#     bin/build-timings --steps --limit 1 # just the latest build's breakdown
+#
+# By default very short steps are omitted. Show them:
+#
+#     bin/build-timings --steps --show-all-steps
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
@@ -18,16 +23,28 @@ BAR_WIDTH=24
 TAB=$(printf '\t')
 
 STEPS=""
+SHOW_ALL=""
 AREA=""
-for arg in "$@"; do
-    case "$arg" in
+LIMIT=0
+while [ $# -gt 0 ]; do
+    case "$1" in
         --steps) STEPS=1 ;;
+        --show-all-steps) SHOW_ALL=1 ;;
+        --limit)
+            LIMIT="${2:-}"
+            if ! [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]]; then
+                echo "Error: --limit wants a positive count" >&2
+                exit 1
+            fi
+            shift
+            ;;
         --help | -h)
-            echo "usage: $0 [--steps] [AREA]"
+            echo "usage: $0 [--steps] [--limit N] [--show-all-steps] [AREA]"
             exit 0
             ;;
-        *) AREA="$arg" ;;
+        *) AREA="$1" ;;
     esac
+    shift
 done
 
 if [ ! -s "$HISTORY" ]; then
@@ -52,33 +69,44 @@ if [ -z "$(records)" ]; then
 fi
 
 if [ -n "$STEPS" ]; then
-    latest=$(jq -c --arg area "$AREA" \
-        '[inputs | select($area == "" or .area == $area)] | last' -n "$HISTORY")
-    steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' <<< "$latest")
-
-    when=$(jq -r '.at' <<< "$latest")
-    when=${when%:*Z}
-    printf '\n%s %s (%s total)\n' \
-        "$(jq -r '.area' <<< "$latest")" "${when/T/ }" "$(fmt_duration "$(jq -r '.total_ms' <<< "$latest")")"
-
     function children_of() {
-        awk -F"$TAB" -v prefix="$1/" 'index($1, prefix) == 1 {
+        awk -F"$TAB" -v prefix="$2/" 'index($1, prefix) == 1 {
             rest = substr($1, length(prefix) + 1)
             if (index(rest, "/") == 0) { sub(/^~/, "", rest); print rest "\t" $2 }
-        }' <<< "$steps"
+        }' <<< "$1"
     }
 
-    while IFS="$TAB" read -r phase ms; do
-        printf '  %-40s %s\n' "$phase" "$(fmt_duration "$ms")"
-        while IFS="$TAB" read -r step step_ms; do
-            [ -n "$step" ] || continue
-            printf '    %-38s %s\n' "$step" "$(fmt_duration "$step_ms")"
-            while IFS="$TAB" read -r child child_ms; do
-                [ -n "$child" ] || continue
-                printf '      %-36s %s\n' "$child" "$(fmt_duration "$child_ms")"
-            done <<< "$(children_of "${phase}/${step}")"
-        done <<< "$(children_of "$phase")"
-    done <<< "$(grep -v "/" <<< "$steps")"
+    function print_steps() {
+        local record="$1" steps when
+        # Anything under 1% of the build is noise at this zoom.
+        local floor=0
+        [ -n "$SHOW_ALL" ] || floor=$(jq -r '.total_ms' <<< "$record")
+        steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' \
+            --argjson floor "$floor" <<< "$record")
+
+        when=$(jq -r '.at' <<< "$record")
+        when=${when%:*Z}
+        printf '\n%s %s (%s total)\n' \
+            "$(jq -r '.area' <<< "$record")" "${when/T/ }" "$(fmt_duration "$(jq -r '.total_ms' <<< "$record")")"
+
+        while IFS="$TAB" read -r phase ms; do
+            printf '  %-40s %s\n' "$phase" "$(fmt_duration "$ms")"
+            while IFS="$TAB" read -r step step_ms; do
+                [ -n "$step" ] || continue
+                printf '    %-38s %s\n' "$step" "$(fmt_duration "$step_ms")"
+                while IFS="$TAB" read -r child child_ms; do
+                    [ -n "$child" ] || continue
+                    printf '      %-36s %s\n' "$child" "$(fmt_duration "$child_ms")"
+                done <<< "$(children_of "$steps" "${phase}/${step}")"
+            done <<< "$(children_of "$steps" "$phase")"
+        done <<< "$(grep -v "/" <<< "$steps")"
+    }
+
+    while IFS= read -r record; do
+        print_steps "$record"
+    done < <(jq -c -n --arg area "$AREA" --argjson limit "$LIMIT" \
+        '[inputs | select($area == "" or .area == $area)] | reverse
+         | if $limit > 0 then .[:$limit] else . end | .[]' "$HISTORY")
     echo
     exit 0
 fi
