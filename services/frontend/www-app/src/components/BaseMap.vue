@@ -1,9 +1,6 @@
 <template>
   <div id="map"></div>
-  <MapDebugPanel
-    v-if="debugEnabled && mapReady"
-    :map="mapForDebug()"
-  />
+  <MapDebugPanel v-if="debugEnabled && mapReady" :map="mapForDebug()" />
 </template>
 
 <script lang="ts">
@@ -54,6 +51,10 @@ import { debugEnabled } from 'src/utils/debug';
 
 export let map: MaplibreMap | null = null;
 const mapContainerId = 'map';
+const mapStyle =
+  process.env.HEADWAY_LOCAL_STYLE === 'true'
+    ? '/local-style/basic-v3.json'
+    : '/tileserver/style/basic-v3';
 
 async function loadMap(): Promise<MaplibreMap> {
   let initialCenter: LngLatLike = [0, 0];
@@ -70,7 +71,7 @@ async function loadMap(): Promise<MaplibreMap> {
 
   const mapOptions: MapOptions = {
     container: mapContainerId,
-    style: '/tileserver/style/basic-v3',
+    style: mapStyle,
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
     attributionControl: false,

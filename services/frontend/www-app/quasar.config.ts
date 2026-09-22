@@ -1,5 +1,9 @@
 /* eslint-env node */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { Plugin } from 'vite';
+
 /*
  * This file runs in a Node context (it's NOT transpiled by Babel), so use only
  * the ES6 features that are supported by your Node version. https://node.green/
@@ -11,6 +15,62 @@
 import { defineConfig } from '#q-app/wrappers';
 
 const HEADWAY_HOST = 'https://maps.earth';
+
+// Serve the checked-out style locally, while its tiles, sprites, and fonts continue through the
+// /tileserver proxy. This makes it possible to iterate on a style against upstream world data.
+//   HEADWAY_LOCAL_STYLE=1 yarn dev
+const LOCAL_STYLE_ENABLED = process.env.HEADWAY_LOCAL_STYLE === '1';
+const LOCAL_STYLE_PATH = resolve(
+  __dirname,
+  '../../tileserver/assets/styles/basic-v3.json',
+);
+
+// Sprites and fonts come from a martin serving ./services/tileserver/assets, so new
+// sprites show up without publishing them, while tiles still come from upstream.
+//   HEADWAY_LOCAL_STYLE=1 HEADWAY_LOCAL_ASSETS=http://localhost:8095 yarn dev
+const LOCAL_ASSETS_HOST = process.env.HEADWAY_LOCAL_ASSETS;
+
+const localStylePlugin: Plugin = {
+  name: 'headway-local-style',
+  configureServer(server) {
+    if (!LOCAL_STYLE_ENABLED) {
+      return;
+    }
+
+    server.middlewares.use((request, response, next) => {
+      if (request.url?.split('?')[0] !== '/local-style/basic-v3.json') {
+        next();
+        return;
+      }
+
+      // maplibre rejects a relative sprite URL outright, so serve an absolute one.
+      const origin = `http://${request.headers.host}`;
+
+      const style = JSON.parse(readFileSync(LOCAL_STYLE_PATH, 'utf8'));
+      for (const source of Object.values(style.sources) as Array<{
+        url?: string;
+      }>) {
+        if (source.url?.startsWith('/')) {
+          source.url = `/tileserver${source.url}`;
+        }
+      }
+      const assetPrefix = LOCAL_ASSETS_HOST ? '/local-assets' : '/tileserver';
+      style.sprite = `${origin}${assetPrefix}${style.sprite}`;
+      style.glyphs = `${origin}${assetPrefix}${style.glyphs}`;
+
+      response.setHeader('Content-Type', 'application/json');
+      response.setHeader('Cache-Control', 'no-store');
+      response.end(JSON.stringify(style));
+    });
+
+    server.watcher.add(LOCAL_STYLE_PATH);
+    server.watcher.on('change', (path) => {
+      if (path === LOCAL_STYLE_PATH) {
+        server.ws.send({ type: 'full-reload' });
+      }
+    });
+  },
+};
 
 export default defineConfig((/* ctx */) => {
   return {
@@ -50,6 +110,9 @@ export default defineConfig((/* ctx */) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#build
     build: {
+      env: {
+        HEADWAY_LOCAL_STYLE: String(LOCAL_STYLE_ENABLED),
+      },
       target: {
         browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],
         node: 'node16',
@@ -84,6 +147,7 @@ export default defineConfig((/* ctx */) => {
       // viteVuePluginOptions: {},
 
       vitePlugins: [
+        localStylePlugin,
         [
           'vite-plugin-checker',
           {
@@ -101,9 +165,22 @@ export default defineConfig((/* ctx */) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
     devServer: {
+      // Keep port fallback and browser opening on the same loopback interface.
+      // Otherwise a service bound to 127.0.0.1 (for example Valhalla) can occupy
+      // a port that Vite only probes over IPv6, and the opened localhost URL
+      // reaches that other service instead of this dev server.
+      host: '127.0.0.1',
       // https: true
       open: true, // opens browser window automatically
       proxy: {
+        ...(LOCAL_ASSETS_HOST && {
+          '/local-assets': {
+            changeOrigin: true,
+            target: LOCAL_ASSETS_HOST,
+            rewrite: (path: string) =>
+              path.replace(/^\/local-assets/, '/tileserver'),
+          },
+        }),
         '/tileserver': {
           // martin tileserver needs to receive headers in order to expand relative paths to the right
           // protocol+host
