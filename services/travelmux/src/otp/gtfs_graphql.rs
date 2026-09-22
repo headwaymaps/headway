@@ -590,6 +590,8 @@ pub struct Pattern {
     /// `FeedId:RouteId:DirectionId:PatternVariantNumber`. OTP warns that these change whenever
     /// the transit data is rebuilt, so they're only good for the life of a plan.
     pub code: String,
+    /// The whole shape the pattern runs, of which a leg's geometry is the ridden slice.
+    pub pattern_geometry: Option<Geometry>,
 }
 
 /// A leg's trip, as it runs on the leg's service date.
@@ -1210,7 +1212,7 @@ mod tests {
             },
             {
               "mode": "BUS", "transitLeg": true, "distance": 5000.0, "duration": 1680.0,
-              "tripOnServiceDate": { "realTimeTripState": { "updated": true } }, "trip": { "pattern": { "code": "1:40:0:01" } }, "headsign": "Downtown",
+              "tripOnServiceDate": { "realTimeTripState": { "updated": true } }, "trip": { "pattern": { "code": "1:40:0:01", "patternGeometry": { "points": "wxyzabcd", "length": 20 } } }, "headsign": "Downtown",
               "start": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": { "time": "2024-05-17T10:08:00-07:00" } },
               "end": { "scheduledTime": "2024-05-17T10:35:00-07:00", "estimated": null },
               "from": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341, "arrival": null, "departure": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": null } },

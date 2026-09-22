@@ -181,9 +181,17 @@ export interface TransitAlertGroup {
   alerts: TransitAlert[];
 }
 
+/// The whole route behind a transit leg, and how to draw it.
+export interface TripLegContextLayer {
+  geometry: GeoJSON.LineString;
+  paint: LineLayerSpecification['paint'];
+}
+
 export class TripLeg {
   readonly raw: TravelmuxLeg;
   geometry: GeoJSON.LineString;
+  /// The whole route this leg rides part of, for transit legs the server has a shape for.
+  patternGeometry?: GeoJSON.LineString;
 
   constructor(raw: TravelmuxLeg) {
     this.raw = raw;
@@ -192,6 +200,13 @@ export class TripLeg {
       type: 'LineString',
       coordinates: points,
     };
+    const patternGeometry = this.raw.transitLeg?.patternGeometry;
+    if (patternGeometry) {
+      this.patternGeometry = {
+        type: 'LineString',
+        coordinates: decodePolyline(patternGeometry, 6),
+      };
+    }
   }
 
   get start(): LngLat {
@@ -274,6 +289,20 @@ export class TripLeg {
 
   get departureLocationName(): string | undefined {
     return this.raw.fromPlace.name;
+  }
+
+  /// The dimmed line for the rest of the route, drawn under an active transit leg. Absent for a
+  /// leg the server gave no pattern shape for.
+  contextLayer(): TripLegContextLayer | undefined {
+    const geometry = this.patternGeometry;
+    if (!geometry) {
+      return undefined;
+    }
+    const routeColor = this.raw.transitLeg?.route?.color;
+    const color = routeColor
+      ? `#${routeColor}`
+      : LineStyles.active['line-color'];
+    return { geometry, paint: LineStyles.context(color) };
   }
 
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
@@ -377,15 +406,24 @@ export async function fetchBestTrips(
 }
 
 export const LineStyles = {
-  activeColored(color: string): LineLayerSpecification['paint'] {
+  /// Half the width and mostly transparent, so the ridden portion drawn over it reads as the
+  /// emphasized part of the same line.
+  context(color: string): LineLayerSpecification['paint'] {
     return {
       'line-color': color,
       'line-width': 6,
+      'line-opacity': 0.35,
+    };
+  },
+  activeColored(color: string): LineLayerSpecification['paint'] {
+    return {
+      'line-color': color,
+      'line-width': 12,
     };
   },
   active: {
     'line-color': '#1296FF',
-    'line-width': 6,
+    'line-width': 12,
   },
   inactive: {
     'line-color': '#6FC1EE',
