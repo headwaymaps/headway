@@ -64,7 +64,7 @@ async function loadMap(): Promise<MaplibreMap> {
 
   const mapOptions: MapOptions = {
     container: mapContainerId,
-    style: '/tileserver/style/basic-v2',
+    style: '/tileserver/style/basic-v3',
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
     attributionControl: false,
