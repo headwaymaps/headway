@@ -118,24 +118,14 @@ function deploy_lib_require_clean_tree() {
     fi
 }
 
-# Verify gtfs secrets are preent - k8s configs will include `optional: false`
-# for a zone which requires auth.
-function deploy_lib_secret_required() {
-    local optional
-    optional=$(awk '/secretName: .*-gtfs-secrets/ { found = 1; next }
-                    found && /optional:/ { print $2; exit }' "$1")
-    [ "$optional" = "false" ]
-}
-
-# Fails, before anything reaches the cluster, if a zone the rendered configs
-# deploy is missing a file the deploy builds its ConfigMap or Secret from.
+# Fails, before anything reaches the cluster, on a zone the rendered configs
+# deploy but whose files this host cannot build its ConfigMap and Secret from.
 #
-# gtfs-secrets.json is gitignored, so a host with the whole source tree still
-# need not have it - and the apply that follows skips a missing one in silence,
-# leaving that zone's pods stuck on FailedMount for a Secret nobody created.
+# gtfs-secrets.json is gitignored, so a host holding the whole source tree still
+# need not have it, and one that has it can still be short a feed's entry.
 function deploy_lib_require_zone_files() {
     local build_dir manifest zone zone_file secrets_file
-    local no_zone=() no_secrets=()
+    local no_zone=() no_secrets=() unusable_secrets=()
     build_dir=$(deploy_lib_build_dir)
 
     source bin/_zone-file.sh
@@ -151,10 +141,13 @@ function deploy_lib_require_zone_files() {
             continue
         fi
 
-        deploy_lib_secret_required "$manifest" || continue
+        [ -n "$(zone_required_feeds "$zone_file" runtime)" ] || continue
+
         secrets_file=$(zone_secrets_file_for "$zone_file")
         if [ ! -s "$secrets_file" ]; then
             no_secrets+=("$secrets_file")
+        elif ! zone_credentials_usable "$zone_file" "$secrets_file"; then
+            unusable_secrets+=("$secrets_file")
         fi
     done
 
@@ -171,7 +164,17 @@ function deploy_lib_require_zone_files() {
         echo "" >&2
         echo "    bin/transit-credentials ${build_dir}" >&2
     fi
-    [ ${#no_zone[@]} -eq 0 ] && [ ${#no_secrets[@]} -eq 0 ] || exit 1
+    if [ ${#unusable_secrets[@]} -gt 0 ]; then
+        printf '%s\n' "${unusable_secrets[@]}" >&2
+        echo "👆 These zones have a credentials file that does not cover the" >&2
+        echo "feeds they run on - see the feeds named above. Fill them into the" >&2
+        echo "root gtfs-secrets.json on this host and fan it back out with" >&2
+        echo "" >&2
+        echo "    bin/transit-credentials ${build_dir}" >&2
+    fi
+    [ ${#no_zone[@]} -eq 0 ] \
+        && [ ${#no_secrets[@]} -eq 0 ] \
+        && [ ${#unusable_secrets[@]} -eq 0 ] || exit 1
 }
 
 # Applies a namespace's rendered configs, plus each zone's ConfigMap and Secret,
