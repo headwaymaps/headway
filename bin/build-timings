@@ -4,9 +4,26 @@ set -e -o nounset
 
 # Show what past builds cost, from the history bin/build appends to.
 #
-#     bin/build-timings              # every build, oldest first
-#     bin/build-timings Bogota       # just that area
-#     bin/build-timings --steps      # the step breakdown of the latest build
+#     bin/build-timings                    # every build, oldest first
+#     bin/build-timings Bogota             # just that area
+#     bin/build-timings --steps            # step breakdowns, newest build first
+#     bin/build-timings --builds 1 --steps # just the latest build
+#
+# --builds N keeps the N most recent builds, in either view.
+#
+# By default very short steps are omitted. Show them:
+#
+#     bin/build-timings --all-steps
+#
+# bin/build ends a build with `--record`, which appends that build to the
+# history and prints its breakdown:
+#
+#     bin/build-timings --record <timing-file> Seattle
+#
+# The timing file is the TSV that bin/_build-timing.sh collected:
+# "<label>\t<milliseconds>". A label with no "/" is a phase's wall time. Within
+# a phase, "~name" is one of dagger's own top-level spans and anything else is
+# a step the module reported.
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
@@ -18,32 +35,127 @@ BAR_WIDTH=24
 TAB=$(printf '\t')
 
 STEPS=""
+SHOW_ALL=""
+RECORD=""
 AREA=""
-for arg in "$@"; do
-    case "$arg" in
+BUILDS=0
+while [ $# -gt 0 ]; do
+    case "$1" in
         --steps) STEPS=1 ;;
+        --all-steps) STEPS=1 SHOW_ALL=1 ;;
+        --record)
+            RECORD="${2:-}"
+            if [ -z "$RECORD" ]; then
+                echo "Error: --record wants a timing file" >&2
+                exit 1
+            fi
+            shift
+            ;;
+        --builds)
+            BUILDS="${2:-}"
+            if ! [[ "$BUILDS" =~ ^[1-9][0-9]*$ ]]; then
+                echo "Error: --builds wants a positive count" >&2
+                exit 1
+            fi
+            shift
+            ;;
         --help | -h)
-            echo "usage: $0 [--steps] [AREA]"
+            echo "usage: $0 [--steps | --all-steps] [--builds N] [AREA]"
+            echo "       $0 --record TIMING_FILE [AREA]"
             exit 0
             ;;
-        *) AREA="$arg" ;;
+        *) AREA="$1" ;;
     esac
+    shift
 done
-
-if [ ! -s "$HISTORY" ]; then
-    echo "No build history yet - ${HISTORY} is written by bin/build." >&2
-    exit 1
-fi
 
 if ! command -v jq > /dev/null; then
     echo "Error: jq is required to read ${HISTORY}" >&2
     exit 1
 fi
 
+function children_of() {
+    awk -F"$TAB" -v prefix="$2/" 'index($1, prefix) == 1 {
+        rest = substr($1, length(prefix) + 1)
+        if (index(rest, "/") == 0) { sub(/^~/, "", rest); print rest "\t" $2 }
+    }' <<< "$1"
+}
+
+function print_steps() {
+    local record="$1" steps when total
+    total=$(jq -r '.total_ms' <<< "$record")
+    # Anything under 1% of the build is noise at this zoom.
+    local floor=0
+    [ -n "$SHOW_ALL" ] || floor=$total
+    # "~Headway.<func>" is the dagger span bracketing everything the module
+    # did in that phase, so it is the phase over again, not a step within it.
+    steps=$(jq -r '.steps_ms | to_entries
+        | map(select(.key | split("/") | last | startswith("~Headway.") | not))
+        | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[]
+        | "\(.key)\t\(.value)"' --argjson floor "$floor" <<< "$record")
+
+    # Every row is shown as its share of the whole build.
+    function fmt_share() {
+        printf '%s (%d%%)' "$(fmt_duration "$1")" $(((($1 * 100) + (total / 2)) / total))
+    }
+
+    when=$(jq -r '.at' <<< "$record")
+    when=${when%:*Z}
+    printf '\n%s %s (%s total)\n' \
+        "$(jq -r '.area' <<< "$record")" "${when/T/ }" "$(fmt_duration "$total")"
+
+    while IFS="$TAB" read -r phase ms; do
+        printf '  %-40s %s\n' "$phase" "$(fmt_share "$ms")"
+        while IFS="$TAB" read -r step step_ms; do
+            [ -n "$step" ] || continue
+            printf '    %-38s %s\n' "$step" "$(fmt_share "$step_ms")"
+            while IFS="$TAB" read -r child child_ms; do
+                [ -n "$child" ] || continue
+                printf '      %-36s %s\n' "$child" "$(fmt_share "$child_ms")"
+            done <<< "$(children_of "$steps" "${phase}/${step}")"
+        done <<< "$(children_of "$steps" "$phase")"
+    done <<< "$(grep -v "/" <<< "$steps")"
+}
+
+# Append a finished build to the history, then print it like any other.
+if [ -n "$RECORD" ]; then
+    if [ ! -s "$RECORD" ]; then
+        echo "No build timings were recorded." >&2
+        exit 0
+    fi
+
+    # Phases run in sequence, so their wall times add up to the build's.
+    total=$(grep -v "/" "$RECORD" | awk -F"$TAB" '{ total += $2 } END { printf "%d", total }')
+    if [ "$total" -eq 0 ]; then
+        echo "No build timings were recorded." >&2
+        exit 0
+    fi
+    steps_json=$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map({(.[0]): (.[1] | tonumber)}) | add' "$RECORD")
+    record=$(jq -c -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg area "${AREA:-unknown}" \
+        --argjson total "$total" --argjson steps "$steps_json" \
+        '{at: $at, area: $area, total_ms: $total, steps_ms: $steps}')
+
+    mkdir -p "$(dirname "$HISTORY")"
+    printf '%s\n' "$record" >> "$HISTORY"
+    print_steps "$record"
+    printf '\n  (appended to %s)\n' "$HISTORY"
+    exit 0
+fi
+
+if [ ! -s "$HISTORY" ]; then
+    echo "No build history yet - ${HISTORY} is written by bin/build." >&2
+    exit 1
+fi
+
+# The builds both views work from: newest first, one JSON record per line.
+function selected_builds() {
+    jq -c -n --arg area "$AREA" --argjson builds "$BUILDS" \
+        '[inputs | select($area == "" or .area == $area)] | reverse
+         | if $builds > 0 then .[:$builds] else . end | .[]' "$HISTORY"
+}
+
 function records() {
-    jq -r --arg area "$AREA" \
-        'select($area == "" or .area == $area) | [.at, .area, .total_ms] | @tsv' \
-        "$HISTORY"
+    selected_builds | jq -r -s 'reverse[] | [.at, .area, .total_ms] | @tsv'
 }
 
 if [ -z "$(records)" ]; then
@@ -52,33 +164,9 @@ if [ -z "$(records)" ]; then
 fi
 
 if [ -n "$STEPS" ]; then
-    latest=$(jq -c --arg area "$AREA" \
-        '[inputs | select($area == "" or .area == $area)] | last' -n "$HISTORY")
-    steps=$(jq -r '.steps_ms | to_entries | map(select(.value > 0)) | sort_by(-.value)[] | "\(.key)\t\(.value)"' <<< "$latest")
-
-    when=$(jq -r '.at' <<< "$latest")
-    when=${when%:*Z}
-    printf '\n%s %s (%s total)\n' \
-        "$(jq -r '.area' <<< "$latest")" "${when/T/ }" "$(fmt_duration "$(jq -r '.total_ms' <<< "$latest")")"
-
-    function children_of() {
-        awk -F"$TAB" -v prefix="$1/" 'index($1, prefix) == 1 {
-            rest = substr($1, length(prefix) + 1)
-            if (index(rest, "/") == 0) { sub(/^~/, "", rest); print rest "\t" $2 }
-        }' <<< "$steps"
-    }
-
-    while IFS="$TAB" read -r phase ms; do
-        printf '  %-40s %s\n' "$phase" "$(fmt_duration "$ms")"
-        while IFS="$TAB" read -r step step_ms; do
-            [ -n "$step" ] || continue
-            printf '    %-38s %s\n' "$step" "$(fmt_duration "$step_ms")"
-            while IFS="$TAB" read -r child child_ms; do
-                [ -n "$child" ] || continue
-                printf '      %-36s %s\n' "$child" "$(fmt_duration "$child_ms")"
-            done <<< "$(children_of "${phase}/${step}")"
-        done <<< "$(children_of "$phase")"
-    done <<< "$(grep -v "/" <<< "$steps")"
+    while IFS= read -r record; do
+        print_steps "$record"
+    done < <(selected_builds)
     echo
     exit 0
 fi

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Timings are scraped out of the build log by bin/build-timing-report, which
+// Timings are scraped out of the build log by bin/build-timings, which
 // keys on this prefix.
 const timingPrefix = "HEADWAY_TIMING"
 

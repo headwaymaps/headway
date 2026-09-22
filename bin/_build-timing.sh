@@ -91,5 +91,5 @@ function scrape_timings() {
 
 function build_timing_report() {
     [ -n "$TIMING_OWNER" ] || return 0
-    bin/build-timing-report "$TIMING_FILE" "$@"
+    bin/build-timings --record "$TIMING_FILE" "$@"
 }
