@@ -27,7 +27,10 @@
         </span>
       </div>
       <div v-if="boardingStop()" class="boarding-stop">
-        {{ boardingStop() }}
+        <span>{{ boardingStop() }}</span>
+        <span v-if="vehicle.stopsAwayFormatted" class="stops-away">
+          {{ vehicle.stopsAwayFormatted }}
+        </span>
       </div>
       <div class="age">
         <i class="material-icons realtime">rss_feed</i>
@@ -199,7 +202,16 @@ export default defineComponent({
 }
 
 .boarding-stop {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 600;
+}
+
+// An aside to the countdown, which is what a waiting rider reads first.
+.stops-away {
+  font-weight: 400;
+  opacity: 0.75;
 }
 
 .age {

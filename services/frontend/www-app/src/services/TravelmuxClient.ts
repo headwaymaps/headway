@@ -132,7 +132,12 @@ export interface TravelmuxVehicle {
 /// `arrival` is RFC 3339, not a countdown: a poll is held for 30 seconds, and a number of minutes
 /// would be that stale by the end of one.
 export type TravelmuxBoardingStop =
-  | { state: 'approaching'; arrival: string }
+  | {
+      state: 'approaching';
+      arrival: string;
+      /// How many stops the vehicle still has to make, counting the rider's own.
+      stopsAway?: number;
+    }
   | { state: 'departed'; arrival: string };
 
 /// A pattern to report vehicles for, and where the rider boards it.

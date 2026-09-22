@@ -95,6 +95,8 @@ export default {
   transit_vehicle_arriving_now: 'Arriving now',
   transit_vehicle_arrives_in_$timeDuration: '{timeDuration} away',
   transit_vehicle_departed_$timeDuration: 'Left {timeDuration} ago',
+  transit_vehicle_next_stop: 'next stop',
+  transit_vehicle_$n_stops_away: '{n} stops away',
   search_results_not_found_header: 'No results found. 😢',
   search_results_not_found_subheader:
     'Something missing? Consider adding it to {osmLink} so it can eventually appear here.',
