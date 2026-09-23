@@ -1,0 +1,5 @@
+<svg width="25" height="25" version="1.0" xmlns="http://www.w3.org/2000/svg">
+ <path style="color:#000;fill:#fff;-inkscape-stroke:none" d="M 10,0 V 1 H 8 V 3.0195312 C 5.8238148,4.0586126 4.0586126,5.8238148 3.0195312,8 H 1 v 2 H 0 v 2 1 2 h 1 v 2 H 3.0195312 C 4.0586126,19.176185 5.8238148,20.941387 8,21.980469 V 24 h 2 v 1 h 2 1 2 v -1 h 2 V 21.980469 C 19.176185,20.941387 20.941387,19.176185 21.980469,17 H 24 v -2 h 1 V 13 12 10 H 24 V 8 H 21.980469 C 20.941387,5.8238148 19.176185,4.0586126 17,3.0195312 V 1 H 15 V 0 h -2 -1 z"/>
+ <path style="color:#000;fill:#df4661;-inkscape-stroke:none" d="M 11,1 V 9 H 10 V 2 H 9 V 9 H 2 v 1 h 7 v 1 H 1 v 1 h 8 v 1 H 1 v 1 h 8 v 1 H 2 v 1 h 7 v 7 h 1 v -7 h 1 v 8 h 1 v -8 h 1 v 8 h 1 v -8 h 1 v 7 h 1 v -7 h 7 v -1 h -7 v -1 h 8 v -1 h -8 v -1 h 8 v -1 h -8 v -1 h 7 V 9 H 16 V 2 H 15 V 9 H 14 V 1 H 13 V 9 H 12 V 1 Z"/>
+ <circle style="fill:#fff;fill-rule:evenodd;stroke:#df4661;stroke-linejoin:round" cx="12.5" cy="12.5" r="9"/>
+</svg>
