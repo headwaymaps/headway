@@ -5073,7 +5073,7 @@
         "symbol-spacing": 500,
         "text-field": "{ref}",
         "text-font": [
-          "Roboto Regular"
+          "Overpass Heavy"
         ],
         "text-offset": [
           "match",
@@ -5693,7 +5693,7 @@
         "symbol-spacing": 500,
         "text-field": "{ref}",
         "text-font": [
-          "Roboto Regular"
+          "Overpass Bold"
         ],
         "text-offset": [
           0,
