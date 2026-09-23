@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "services/gtfs/transit-zoner",
   "services/gtfs/gtfout",
+  "services/tileserver/mlss",
   "services/travelmux",
 ]
 

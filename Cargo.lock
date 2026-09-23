@@ -2193,6 +2193,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mlss"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "multiversion"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
