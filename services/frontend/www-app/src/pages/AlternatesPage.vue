@@ -193,7 +193,9 @@ export default defineComponent({
       selected: Trip,
     ) {
       this.stopVehicleOverlay();
-      const overlay = new VehicleOverlay(map, from, to, trips);
+      const overlay = new VehicleOverlay(map, from, to, trips, (trip) =>
+        this.clickTrip(trip),
+      );
       this.vehicleOverlay = markRaw(overlay);
       overlay.start();
       overlay.selectTrip(selected);

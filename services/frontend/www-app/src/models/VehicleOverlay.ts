@@ -42,12 +42,22 @@ export default class VehicleOverlay {
   /// The patterns of the trip the traveler has picked. Vehicles on any other trip's patterns are
   /// drawn dimmed. Empty means nothing is picked yet, and nothing is dimmed.
   private selected: Set<string> = new Set();
+  /// Asked to select the trip a clicked vehicle runs. The page owns which trip is selected, so
+  /// an overlay whose page has nothing to select - one drawn over a single trip - leaves it unset.
+  private didClickTrip?: (trip: Trip) => void;
 
-  constructor(map: BaseMapInterface, from: LngLat, to: LngLat, trips: Trip[]) {
+  constructor(
+    map: BaseMapInterface,
+    from: LngLat,
+    to: LngLat,
+    trips: Trip[],
+    didClickTrip?: (trip: Trip) => void,
+  ) {
     this.map = map;
     this.from = from;
     this.to = to;
     this.trips = trips;
+    this.didClickTrip = didClickTrip;
   }
 
   /// Bring the picked trip's vehicles forward and dim the rest.
@@ -62,8 +72,39 @@ export default class VehicleOverlay {
     return this.selected.size > 0 && !this.selected.has(patternCode);
   }
 
+  /// The trip a click on a vehicle running this pattern should select: none when the rider is
+  /// already on it, and none when no trip on screen runs the pattern at all.
+  tripToSelect(patternCode: string): Trip | undefined {
+    if (this.selected.has(patternCode)) {
+      return undefined;
+    }
+    return this.trips.find((trip) => trip.patternCodes.includes(patternCode));
+  }
+
+  private clickVehicle(key: string, props: TransitVehicleMarkerProps): void {
+    this.pin(key);
+    const trip = this.tripToSelect(props.vehicle.raw.patternCode);
+    if (trip) {
+      this.didClickTrip?.(trip);
+    }
+  }
+
+  /// Hold one vehicle's popover open, releasing whatever was held before.
+  ///
+  /// The markers themselves carry which one it is, so a vehicle that stops being drawn takes its
+  /// pin with it.
+  private pin(key?: string): void {
+    for (const [candidate, tracked] of this.tracked) {
+      tracked.props.pinned = candidate === key;
+    }
+  }
+
+  /// A click the marker didn't claim landed on the map or on something else drawn over it.
+  private dismissPin = (): void => this.pin();
+
   start(): void {
     this.stop();
+    document.addEventListener('click', this.dismissPin);
     // Before the first refresh, so that an in-flight poll can tell it's still wanted.
     this.timer = setInterval(() => void this.poll(), POLL_INTERVAL_MS);
     void this.poll();
@@ -71,6 +112,7 @@ export default class VehicleOverlay {
   }
 
   stop(): void {
+    document.removeEventListener('click', this.dismissPin);
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = undefined;
@@ -179,13 +221,20 @@ export default class VehicleOverlay {
         vehicle,
         clockOffsetMs: this.clockOffsetMs,
         faded: this.isFaded(raw.patternCode),
+        pinned: false,
       });
       const element = document.createElement('div');
       // A component mounted by hand has no parent re-rendering it, so props alone would be read
       // once and never again. Spreading them inside an effect is that missing parent: every key
       // is a dependency, so writing one re-renders the marker.
       const stopRendering = watchEffect(() => {
-        render(h(TransitVehicleMarker, { ...props }), element);
+        render(
+          h(TransitVehicleMarker, {
+            ...props,
+            onPin: () => this.clickVehicle(key, props),
+          }),
+          element,
+        );
       });
       const marker = new Marker({ element }).setLngLat(
         vehicle.positionAt(Date.now() + this.clockOffsetMs),

@@ -170,7 +170,6 @@ export default class Trip {
     return groups;
   }
 
-  /// The patterns this trip's transit legs ride, which is what live vehicles are keyed by.
   /// Whether the change into `legIdx` happens at a transit stop, which the map already marks
   /// with a stop of its own.
   transfersAtStop(legIdx: number): boolean {
@@ -179,6 +178,7 @@ export default class Trip {
     return !!leg?.transitLeg || !!previous?.transitLeg;
   }
 
+  /// The patterns this trip's transit legs ride, which is what live vehicles are keyed by.
   get patternCodes(): string[] {
     return this.legs.flatMap((leg) => leg.raw.transitLeg?.patternCode ?? []);
   }

@@ -1,13 +1,18 @@
 <template>
   <div
     class="marker"
-    @mouseenter="hovered = true"
-    @mouseleave="hovered = false"
+    @mouseenter="popover.pointerEntered()"
+    @mouseleave="popover.pointerLeft()"
+    @click.stop="$emit('pin')"
   >
     <!-- Everything maplibre doesn't own, so it can be faded as a whole. -->
     <div class="contents" :class="{ faded }">
       <div class="pulse" :style="{ backgroundColor: vehicle.color }"></div>
-      <div class="chip" :style="{ borderColor: vehicle.color }">
+      <div
+        class="chip"
+        :class="{ pinned: popover.isPinned }"
+        :style="{ borderColor: vehicle.color }"
+      >
         {{ vehicle.emoji }}
       </div>
       <div
@@ -18,7 +23,7 @@
         {{ vehicle.badge }}
       </div>
     </div>
-    <div v-if="hovered" class="tooltip">
+    <div v-if="popover.isOpen" class="tooltip">
       <div class="route">
         <span>{{ vehicle.emoji }}</span>
         <span>{{ vehicle.routeName }}</span>
@@ -35,16 +40,27 @@
         </span>
       </div>
       <div class="age">
-        <!-- Rendered only while hovered, so the age is current when it's read. -->
-        <span>{{ freshness() }}</span>
+        <span>{{ freshness }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, ref } from 'vue';
+import {
+  computed,
+  defineComponent,
+  onUnmounted,
+  PropType,
+  ref,
+  watch,
+} from 'vue';
 import TransitVehicle from 'src/models/TransitVehicle';
+import VehiclePopover from 'src/models/VehiclePopover';
+
+/// How often the open tooltip re-reads the clock. The vehicle keeps moving between polls, so the
+/// countdown, the stop count and the age of the position all have to come down with it.
+const TICK_MS = 1000;
 
 export type TransitVehicleMarkerProps = {
   vehicle: TransitVehicle;
@@ -52,6 +68,8 @@ export type TransitVehicleMarkerProps = {
   clockOffsetMs: number;
   /// Set on a vehicle running a route the traveler hasn't picked.
   faded: boolean;
+  /// Set on the one vehicle whose popover the traveler has clicked open.
+  pinned: boolean;
 };
 
 /// A transit vehicle's live position: the emoji for its kind, ringed in the route's color and
@@ -71,23 +89,45 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
+    pinned: {
+      type: Boolean,
+      required: true,
+    },
   },
+  emits: ['pin'],
   setup(props) {
-    const hovered = ref(false);
+    const popover = ref(new VehiclePopover());
+    const tick = ref(Date.now());
+
+    // Only while the tooltip is open: nothing else on the marker reads the clock, and a map can
+    // carry dozens of these.
+    let ticker: ReturnType<typeof setInterval> | undefined;
+    const stopTicking = () => {
+      clearInterval(ticker);
+      ticker = undefined;
+    };
+    watch(
+      () => popover.value.isOpen,
+      (isOpen) => {
+        stopTicking();
+        tick.value = Date.now();
+        if (isOpen) {
+          ticker = setInterval(() => (tick.value = Date.now()), TICK_MS);
+        }
+      },
+    );
+    onUnmounted(stopTicking);
+
+    watch(
+      () => props.pinned,
+      (pinned) => popover.value.setPinned(pinned),
+    );
+
+    const now = computed(() => new Date(tick.value + props.clockOffsetMs));
     return {
-      hovered,
-      freshness: () =>
-        props.vehicle.freshnessFormatted(
-          new Date(Date.now() + props.clockOffsetMs),
-        ),
-      // Recomputed when the tooltip opens, so the countdown is current when it's read.
-      boardingStop: computed(() =>
-        hovered.value
-          ? props.vehicle.boardingStopRow(
-              new Date(Date.now() + props.clockOffsetMs),
-            )
-          : undefined,
-      ),
+      popover,
+      freshness: computed(() => props.vehicle.freshnessFormatted(now.value)),
+      boardingStop: computed(() => props.vehicle.boardingStopRow(now.value)),
     };
   },
 });
@@ -96,6 +136,7 @@ export default defineComponent({
 <style lang="scss" scoped>
 .marker {
   position: relative;
+  cursor: pointer;
   width: 22px;
   height: 22px;
 }
@@ -126,6 +167,14 @@ export default defineComponent({
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
   font-size: 12px;
   line-height: 1;
+}
+
+// A thicker ring on the vehicle whose popover is being read, so it stays findable among its
+// neighbours once the pointer has left it. The chip grows by what the ring gains, so the ring
+// thickens outwards and the emoji inside keeps its size.
+.chip.pinned {
+  inset: -2px;
+  border-width: 4px;
 }
 
 .pulse {
