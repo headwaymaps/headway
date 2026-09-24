@@ -27,14 +27,16 @@
 
 <script lang="ts">
 import { getBaseMap } from 'src/components/BaseMap.vue';
+import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import { TravelMode, DistanceUnits } from 'src/utils/models';
 import Place, { PlaceStorage } from 'src/models/Place';
-import { defineComponent, Component, Ref, ref } from 'vue';
+import { defineComponent, Component, markRaw, Ref, ref } from 'vue';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import TripLayerId from 'src/models/TripLayerId';
+import VehicleOverlay from 'src/models/VehicleOverlay';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery from 'src/models/TransitQuery';
@@ -78,10 +80,12 @@ export default defineComponent({
   data: function (): {
     trip?: Trip | undefined;
     tripMarkers: string[];
+    vehicleOverlay?: VehicleOverlay;
   } {
     return {
       trip: undefined,
       tripMarkers: [],
+      vehicleOverlay: undefined,
     };
   },
   mounted: async function () {
@@ -126,6 +130,9 @@ export default defineComponent({
         Markers.tripEnd().setLngLat(this.toPlace.point),
       );
     }
+  },
+  unmounted: function () {
+    this.stopVehicleOverlay();
   },
   methods: {
     componentForMode(mode: TravelMode): Component {
@@ -183,7 +190,28 @@ export default defineComponent({
         console.assert(trip);
         this.$data.trip = trip;
         this.renderTripLayer();
+        if (trip) {
+          this.startVehicleOverlay(map, trip);
+        }
       }
+    },
+    stopVehicleOverlay() {
+      this.vehicleOverlay?.stop();
+      this.vehicleOverlay = undefined;
+    },
+    /// Draw the vehicles serving this trip, and only this one - the alternates the traveler
+    /// passed over have no bearing on the route they're now reading the steps for.
+    startVehicleOverlay(map: BaseMapInterface, trip: Trip) {
+      this.stopVehicleOverlay();
+      const overlay = new VehicleOverlay(
+        map,
+        trip.legs[0]!.sourceLngLat,
+        trip.legs[trip.legs.length - 1]!.destinationLngLat,
+        [trip],
+      );
+      this.vehicleOverlay = markRaw(overlay);
+      overlay.start();
+      overlay.selectTrip(trip);
     },
     renderTripLayer() {
       const map = getBaseMap();
