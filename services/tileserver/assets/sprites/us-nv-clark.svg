@@ -1,0 +1,16 @@
+<svg width="30" height="20" viewBox="0 0 6.921 5.345" xml:space="preserve" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+  <clipPath clipPathUnits="userSpaceOnUse" id="a">
+   <path d="M 0,2520 H 1593 V 0 H 0 Z" transform="translate(-1269.384 -227.53)"/>
+  </clipPath>
+  <clipPath clipPathUnits="userSpaceOnUse" id="b">
+   <path d="M 0,2520 H 1593 V 0 H 0 Z" transform="translate(-1272.675 -238.77)"/>
+  </clipPath>
+  <clipPath clipPathUnits="userSpaceOnUse" id="c">
+   <path d="M 0,2520 H 1593 V 0 H 0 Z" transform="translate(-1273.756 -237.254)"/>
+  </clipPath>
+ </defs>
+ <path d="m 0,0 -2.346,8.135 c -0.032,0.112 -0.049,0.229 -0.049,0.351 0,0.531 0.328,0.985 0.793,1.173 l 3.712,1.493 c 0.366,0.148 0.766,0.229 1.186,0.229 0.419,0 0.819,-0.081 1.186,-0.229 L 8.193,9.659 C 8.658,9.471 8.986,9.017 8.986,8.486 8.986,8.364 8.969,8.247 8.937,8.135 L 6.591,0 Z" style="display:inline;fill:#003882;fill-opacity:1;fill-rule:evenodd;stroke:none" transform="matrix(.59863 0 0 -.4757 1.49 5.392)" clip-path="url(#a)"/>
+ <path d="M 0,0 C 0.396,0 0.773,-0.076 1.119,-0.213 L 4.992,-1.75 c 0.369,-0.147 0.629,-0.502 0.629,-0.917 0,-0.096 -0.013,-0.188 -0.038,-0.274 L 3.2,-11.085 h -6.4 l -2.382,8.144 c -0.026,0.086 -0.039,0.178 -0.039,0.274 0,0.415 0.26,0.77 0.629,0.917 l 3.874,1.537 C -0.773,-0.076 -0.396,0 0,0 m 0,0.156 c -0.417,0 -0.814,-0.08 -1.178,-0.224 l -3.873,-1.537 c -0.428,-0.17 -0.729,-0.582 -0.729,-1.062 0,-0.11 0.016,-0.217 0.045,-0.317 l 2.415,-8.257 h 6.64 l 2.415,8.257 c 0.03,0.1 0.046,0.207 0.046,0.317 0,0.48 -0.302,0.892 -0.73,1.062 L 1.178,-0.068 C 0.814,0.076 0.417,0.156 0,0.156" style="fill:#f7d117;fill-opacity:1;fill-rule:evenodd;stroke:none" transform="matrix(.59863 0 0 -.4757 3.46 .045)" clip-path="url(#b)"/>
+ <path d="m 0,0 2.326,-2.326 c 0.603,-0.603 0.604,-1.582 0,-2.186 L 0,-6.838 c -0.604,-0.604 -1.583,-0.604 -2.187,0 l -2.325,2.326 c -0.604,0.603 -0.604,1.582 -0.001,2.186 L -2.186,0 C -1.583,0.604 -0.604,0.604 0,0" style="display:inline;fill:#f7d117;fill-opacity:1;fill-rule:nonzero;stroke:none" transform="matrix(.59863 0 0 -.4757 4.107 .766)" clip-path="url(#c)"/>
+</svg>

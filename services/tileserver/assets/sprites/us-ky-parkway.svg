@@ -1,0 +1,5 @@
+<svg width="20" height="20" version="1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg">
+ <rect transform="scale(1 -1)" y="-20" width="20" height="20" rx="2" ry="2" fill="#003f87"/>
+ <use transform="matrix(.92938 0 0 -.92938 19977 4810.8)" width="300" height="240" fill="#fff" stroke="#000" stroke-linejoin="round" stroke-width="309" xlink:href="#state_outline"/>
+ <rect style="fill:#fff;fill-rule:evenodd;stroke:none" width="18" height="14" x="1" y="1" rx="1" ry="1"/>
+</svg>

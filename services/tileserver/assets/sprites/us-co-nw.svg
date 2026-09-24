@@ -1,0 +1,9 @@
+<svg width="20" height="22" viewBox="0 0 5.292 5.821" xmlns="http://www.w3.org/2000/svg">
+ <rect style="fill:#fff;stroke:#003f87;stroke-width:.264583;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none" width="5.027" height="5.556" x=".132" y=".132" rx=".529" ry=".529"/>
+ <path style="fill:#003f87;stroke:none;stroke-width:.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 1.0583334,2.1166666 1.5874998,-1.58749997 1.5875,1.58749987 z"/>
+ <path style="fill:#c4d600;stroke:none;stroke-width:.264583;stroke-linecap:round;stroke-linejoin:round" d="M.529 2.117H4.762V3.175H.529z"/>
+ <path style="fill:#fff;stroke:none;stroke-width:.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M 1.8520833,1.5874999 2.6458332,0.79374996 3.1749999,1.3229166 Z"/>
+ <path style="fill:#003f87;stroke:none;stroke-width:.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M.52916665 2.1166665 1.3229166 1.0583333 2.1166666 2.1166665ZM3.1749999 2.1166665l.7937499-.7937499.79375.7937499z"/>
+ <path style="fill:#fff;stroke:none;stroke-width:.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M.92604161 1.8520832 1.3229166 1.3229166 1.5874999 1.5874999ZM3.4395832 2.1166665 3.9687498 1.5874999 4.2333332 1.8520832ZM.79374997 2.1166665l1.32291663 1.0583333 2.6458332 0-2.6458332-1.0583333z"/>
+ <path style="fill:#003f87;stroke:none;stroke-width:.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 1.0583333,2.1166665 1.5874999,1.0583332 1.5875,1e-7 L 1.5875,2.1166665 Z"/>
+</svg>

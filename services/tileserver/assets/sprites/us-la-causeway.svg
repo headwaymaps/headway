@@ -1,0 +1,9 @@
+<svg width="20" height="20" viewBox="0 0 5.292 5.292" xmlns="http://www.w3.org/2000/svg">
+ <circle style="fill:#003f87;fill-opacity:1;stroke:none;stroke-width:.529167;stroke-dasharray:none;stroke-opacity:1" cx="2.646" cy="2.646" r="2.381"/>
+ <path style="fill:none;stroke:#000;stroke-width:.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M 0.57393869,1.4721195 3.4843553,4.9117028"/>
+ <g style="stroke:silver;stroke-opacity:1">
+  <path style="fill:none;stroke:silver;stroke-width:.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M.79374999 1.3229166 3.7041666 4.7624999M1.3229166 1.0583333l3.175 2.9104167M2.4915345 3.457596 3.3292987 2.8975169"/>
+ </g>
+ <circle style="fill:none;fill-opacity:1;stroke:silver;stroke-width:.529167;stroke-dasharray:none;stroke-opacity:1" cx="2.646" cy="2.646" r="2.117"/>
+ <circle style="fill:none;fill-opacity:1;stroke:#000;stroke-width:.26458333;stroke-dasharray:none;stroke-opacity:1" cx="2.646" cy="2.646" r="2.514"/>
+</svg>

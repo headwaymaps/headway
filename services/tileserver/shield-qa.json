@@ -1,0 +1,336 @@
+{
+ "_comment": "Resolved road_shield parameters for networks QA'd on the map. Changing a network listed here means it needs re-reviewing: diff before and after any bulk edit, and re-snapshot only once the change is approved.",
+ "networks": {
+  "US:AK": {
+   "icon-image": "us-state-ak",
+   "icon-size": 1.2,
+   "text-color": "#000000",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     0.24,
+     -0.45
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    3,
+    9.5,
+    4,
+    7.0,
+    5,
+    5.5
+   ]
+  },
+  "US:AZ": {
+   "icon-image": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    "us-state-az_2",
+    3,
+    "us-state-az_3"
+   ],
+   "icon-size": 1.2,
+   "text-color": "#000000",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     0.06,
+     -0.06
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    4,
+    8.5,
+    5,
+    7
+   ]
+  },
+  "US:CA": {
+   "icon-image": [
+    "case",
+    [
+     "<=",
+     [
+      "get",
+      "ref_length"
+     ],
+     2
+    ],
+    "us-state-ca_2",
+    "us-state-ca_3"
+   ],
+   "icon-size": 1.2,
+   "text-color": "#ffffff",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     0.0,
+     0.12
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    4,
+    8.5,
+    5,
+    7
+   ]
+  },
+  "US:FL": {
+   "icon-image": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    "us-state-fl_2",
+    3,
+    "us-state-fl_3"
+   ],
+   "icon-size": 1.2,
+   "text-color": "#000000",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     -0.15,
+     0.12
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    4,
+    8.5,
+    5,
+    7
+   ]
+  },
+  "US:NM": {
+   "icon-image": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    "us-state-nm_2",
+    3,
+    "us-state-nm_3"
+   ],
+   "icon-size": 0.96,
+   "text-color": "#000000",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     0.0,
+     0.05
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    4,
+    8.5,
+    5,
+    7
+   ]
+  },
+  "US:OR": {
+   "icon-image": [
+    "case",
+    [
+     "<=",
+     [
+      "get",
+      "ref_length"
+     ],
+     2
+    ],
+    "us-state-or_2",
+    "us-state-or_3"
+   ],
+   "icon-size": 1.2,
+   "text-color": "#000000",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     0.0,
+     -0.09
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    4,
+    8.5,
+    5,
+    7
+   ]
+  },
+  "US:WA": {
+   "icon-image": "us-state-wa",
+   "icon-size": 1.2,
+   "text-color": "#000000",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     -0.06,
+     -0.12
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    3,
+    9.0,
+    4,
+    6.5,
+    5,
+    5.5
+   ]
+  },
+  "us-highway": {
+   "icon-image": [
+    "case",
+    [
+     "<=",
+     [
+      "get",
+      "ref_length"
+     ],
+     2
+    ],
+    "us-highway_2",
+    "us-highway_3"
+   ],
+   "icon-size": 1.2,
+   "text-color": "#000000",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     0.0,
+     -0.06
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    4,
+    8.5,
+    5,
+    7
+   ]
+  },
+  "us-interstate": {
+   "icon-image": [
+    "case",
+    [
+     "<=",
+     [
+      "get",
+      "ref_length"
+     ],
+     2
+    ],
+    "us-interstate_2",
+    "us-interstate_3"
+   ],
+   "icon-size": 1.2,
+   "text-color": "#ffffff",
+   "text-field": [
+    "get",
+    "ref"
+   ],
+   "text-offset": [
+    "literal",
+    [
+     0.0,
+     0.06
+    ]
+   ],
+   "text-size": [
+    "step",
+    [
+     "get",
+     "ref_length"
+    ],
+    10,
+    4,
+    8.5,
+    5,
+    7
+   ]
+  }
+ }
+}

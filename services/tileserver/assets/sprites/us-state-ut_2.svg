@@ -1,0 +1,6 @@
+<svg width="20" height="20" xml:space="preserve" xmlns="http://www.w3.org/2000/svg">
+ <path style="fill:#fff;stroke:#000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill" d="M 1,19 V 17 L 1.5,16 C 1,15 0.805442,13.815584 1.5,12.5 0.995709,11.175694 1.290908,9.4367341 2.5,9 2.171926,7.7052888 2.809675,6.3353983 4,6 3.838799,4.9205713 5.022004,3.7063958 6,3.5 6.010804,2.5350613 7.495703,2.0834368 8.5,2 8.734866,1.1765641 9.199978,1 10,1 c 0.800022,0 1.265134,0.1765641 1.5,1 1.004297,0.083437 2.489196,0.5350613 2.5,1.5 0.977996,0.2063958 2.161201,1.4205713 2,2.5 1.190325,0.3353983 1.828074,1.7052888 1.5,3 1.209092,0.4367341 1.504291,2.175694 1,3.5 0.694558,1.315584 0.5,2.5 0,3.5 l 0.5,1 v 2 z"/>
+ <path style="fill-rule:evenodd;stroke-width:.0370067" d="M 11.3,18 C 11.3,17 11,16 10.011878,15.997778 9.0000001,15.995503 8.7,17 8.7,18 Z"/>
+ <path style="fill:none;stroke:#000;stroke-width:.6;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="m 1,16 c 6,3 12,3 18,0"/>
+ <path style="fill:none;stroke:#000;stroke-width:.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M8 1.5c1 1 3 1 4 0M5.5 3C7 4.5 13 4.5 14.5 3"/>
+</svg>

@@ -1,0 +1,4 @@
+<svg width="25" height="20" xmlns="http://www.w3.org/2000/svg">
+ <rect style="fill:#000;stroke:#000;stroke-width:1.88976;stroke-linecap:round;stroke-linejoin:round" width="23" height="18" x=".945" y="1" rx="1" ry="1"/>
+ <path d="M 0.93418902,2.0065727 C 0.94595902,4.2676391 0.94488002,10 0.94488002,10 L 1.94488,11.000146 0.94488001,13 c 0,0 -0.0164561,3.790645 0,6 H 10.94488 v -6 l -1,-1 -2,1 -2,-3 h -1 V 8 l -2,-3 V 2.0056146 H 0.94488001" style="fill:#fff;stroke-width:1.49897"/>
+</svg>
