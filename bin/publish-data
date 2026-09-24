@@ -130,4 +130,4 @@ panes_run || {
 }
 
 echo "Publishing complete."
-echo 'Next, deploy with `bin/k8s/rollout-latest` or `bin/k8s/apply-latest`'
+echo "Next, deploy with bin/k8s/rollout-latest ${CONFIG_DIR} or bin/k8s/apply-latest ${CONFIG_DIR}"

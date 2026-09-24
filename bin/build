@@ -33,7 +33,7 @@ source bin/_build-timing.sh
 
 status "Building ${HEADWAY_AREA} from ${CONFIG_DIR}"
 
-trap 'bin/revert-fetch-urls; build_timing_report "$HEADWAY_AREA"; timing_cleanup' EXIT
+trap 'bin/revert-fetch-urls; build_timing_report "$CONFIG_DIR"; timing_cleanup' EXIT
 bin/update-fetch-urls
 
 if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then

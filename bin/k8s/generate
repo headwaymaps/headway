@@ -7,21 +7,24 @@ cd "$APP_ROOT"
 
 function usage() {
 cat << EOF
-usage: $0 <build-dir> <namespace>
+usage: $0 <build-dir> <variant>
 
-Renders into <build-dir>/k8s/<namespace>, which is where the deploy scripts
-look for a namespace's manifests.
+<variant> must be latest or dev.
+
+Renders the named configuration variant into <build-dir>/k8s/<variant>. The
+deploy scripts select latest by default or dev with --dev, and always
+deploy to the lowercased build directory name as the Kubernetes namespace.
 
 examples:
 
 Use containers and map-data version tags as specified in bin/_headway_version.sh
-    $0 builds/planet planet
+    $0 builds/planet latest
 
 Use containers from a tag other than what's in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev $0 builds/planet planet-dev
+    HEADWAY_DATA_TAG=dev $0 builds/planet dev
 
 Use containers and map-data version tags other than what's specified in bin/_headway_version.sh
-    HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 builds/Seattle seattle-dev
+    HEADWAY_DATA_TAG=dev HEADWAY_CONTAINER_TAG=dev $0 builds/Seattle dev
 EOF
 }
 
@@ -30,8 +33,16 @@ if [ ! $# -eq 2 ]; then
     exit 1
 fi
 CONFIG_DIR="${1%/}"
-NAMESPACE="$2"
-OUTPUT_DIR="${CONFIG_DIR}/k8s/${NAMESPACE}"
+VARIANT="$2"
+case "$VARIANT" in
+    latest|dev) ;;
+    *)
+        echo "Error: variant must be latest or dev" >&2
+        usage >&2
+        exit 1
+        ;;
+esac
+OUTPUT_DIR="${CONFIG_DIR}/k8s/${VARIANT}"
 
 function log() {
     echo "$@" >&2

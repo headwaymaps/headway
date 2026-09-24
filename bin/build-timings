@@ -5,7 +5,7 @@ set -e -o nounset
 # Show what past builds cost, from the history bin/build appends to.
 #
 #     bin/build-timings                    # every build, oldest first
-#     bin/build-timings Bogota             # just that area
+#     bin/build-timings builds/Bogota      # just that build configuration
 #     bin/build-timings --steps            # step breakdowns, newest build first
 #     bin/build-timings --builds 1 --steps # just the latest build
 #
@@ -18,7 +18,7 @@ set -e -o nounset
 # bin/build ends a build with `--record`, which appends that build to the
 # history and prints its breakdown:
 #
-#     bin/build-timings --record <timing-file> Seattle
+#     bin/build-timings --record <timing-file> builds/Seattle
 #
 # The timing file is the TSV that bin/_build-timing.sh collected:
 # "<label>\t<milliseconds>". A label with no "/" is a phase's wall time. Within
@@ -37,6 +37,7 @@ TAB=$(printf '\t')
 STEPS=""
 SHOW_ALL=""
 RECORD=""
+BUILD_DIR=""
 AREA=""
 BUILDS=0
 while [ $# -gt 0 ]; do
@@ -60,14 +61,28 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --help | -h)
-            echo "usage: $0 [--steps | --all-steps] [--builds N] [AREA]"
-            echo "       $0 --record TIMING_FILE [AREA]"
+            echo "usage: $0 [--steps | --all-steps] [--builds N] [BUILD_DIR]"
+            echo "       $0 --record TIMING_FILE [BUILD_DIR]"
             exit 0
             ;;
-        *) AREA="$1" ;;
+        *)
+            if [ -n "$BUILD_DIR" ]; then
+                echo "Error: only one build directory may be specified" >&2
+                exit 1
+            fi
+            BUILD_DIR="${1%/}"
+            ;;
     esac
     shift
 done
+
+# Timings are stored against an area's data name, but callers select the build
+# configuration that produced it. Reading its .env keeps this interface aligned
+# with the rest of the build scripts and avoids guessing from the directory name.
+if [ -n "$BUILD_DIR" ]; then
+    source bin/_source-env.sh "$BUILD_DIR"
+    AREA="$HEADWAY_AREA"
+fi
 
 if ! command -v jq > /dev/null; then
     echo "Error: jq is required to read ${HISTORY}" >&2

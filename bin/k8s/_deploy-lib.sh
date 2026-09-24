@@ -5,9 +5,11 @@ set -o pipefail
 
 NAMESPACE=""
 CONFIG_DIR=""
+BUILD_DIR=""
 
-# Reads `<namespace> [--dev]` into NAMESPACE and CONFIG_DIR, and cds to the repo
-# root so the paths the callers use resolve.
+# Reads `<build-dir> [--dev]` into NAMESPACE and CONFIG_DIR. The namespace is
+# the lowercased build directory name; --dev selects the `dev` config variant,
+# otherwise it selects `latest`. Then cd to the repo root so caller paths resolve.
 function deploy_lib_parse_args() {
     local dev=false
 
@@ -18,8 +20,8 @@ function deploy_lib_parse_args() {
                 shift
                 ;;
             *)
-                if [ -z "$NAMESPACE" ]; then
-                    NAMESPACE="$1"
+                if [ -z "$BUILD_DIR" ]; then
+                    BUILD_DIR="${1%/}"
                 else
                     echo "Unknown argument: $1" >&2
                     exit 1
@@ -29,31 +31,27 @@ function deploy_lib_parse_args() {
         esac
     done
 
-    if [ -z "$NAMESPACE" ]; then
-        echo "Usage: $0 <namespace> [--dev]"
+    if [ -z "$BUILD_DIR" ]; then
+        echo "Usage: $0 <build-dir> [--dev]"
         echo "Examples:"
-        echo "  $0 planet"
-        echo "  $0 seattle --dev"
-        echo "  $0 planet --dev"
+        echo "  $0 builds/planet"
+        echo "  $0 builds/Seattle --dev"
+        echo "  $0 builds/planet --dev"
         exit 1
     fi
 
     cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 
-    local config_name="$NAMESPACE"
+    NAMESPACE=$(basename "$BUILD_DIR" | tr '[:upper:]' '[:lower:]')
+    local variant=latest
     if [ "$dev" = true ]; then
-        config_name="${NAMESPACE}-dev"
+        variant=dev
     fi
-    local matches=(builds/*/k8s/"${config_name}")
-    if [ ! -d "${matches[0]}" ]; then
-        echo "no rendered configs named ${config_name} in builds/*/k8s - run bin/k8s/generate first" >&2
+    CONFIG_DIR="${BUILD_DIR}/k8s/${variant}"
+    if [ ! -d "$CONFIG_DIR" ]; then
+        echo "no rendered configs at ${CONFIG_DIR} - run bin/k8s/generate first" >&2
         exit 1
     fi
-    if [ "${#matches[@]}" -gt 1 ]; then
-        echo "${config_name} is rendered under more than one build: ${matches[*]}" >&2
-        exit 1
-    fi
-    CONFIG_DIR="${matches[0]}"
 }
 function deploy_lib_build_dir() {
     echo "${CONFIG_DIR%/k8s/*}"
