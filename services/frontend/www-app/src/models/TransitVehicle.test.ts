@@ -106,42 +106,63 @@ describe('positionAt', () => {
   });
 });
 
-describe('boardingStopFormatted', () => {
-  function arrivingIn(seconds: number, state: 'approaching' | 'departed') {
+describe('boardingStopRow', () => {
+  function arrivingIn(
+    seconds: number,
+    state: 'approaching' | 'departed',
+    stopsAway?: number,
+  ) {
     const arrival = new Date(NOW.getTime() + seconds * 1000).toISOString();
-    return vehicle({ boardingStop: { state, arrival } });
+    return vehicle({ boardingStop: { state, arrival, stopsAway } });
   }
 
   test('a vehicle still on its way counts down to the stop', () => {
-    expect(arrivingIn(180, 'approaching').boardingStopFormatted(NOW)).toEqual(
-      '3 min away',
-    );
+    expect(arrivingIn(180, 'approaching').boardingStopRow(NOW)).toEqual({
+      text: 'Approaching',
+      countdown: { value: '3', unit: 'min' },
+    });
+  });
+
+  test('how many stops out leads, with the wait beside it', () => {
+    expect(arrivingIn(180, 'approaching', 4).boardingStopRow(NOW)).toEqual({
+      text: '4 stops away',
+      countdown: { value: '3', unit: 'min' },
+    });
   });
 
   // A countdown of seconds is no use to someone who should be looking up the street.
-  test('a vehicle about to arrive says so', () => {
-    expect(arrivingIn(20, 'approaching').boardingStopFormatted(NOW)).toEqual(
-      'Arriving now',
-    );
+  test('a vehicle about to arrive says so instead of counting', () => {
+    expect(arrivingIn(20, 'approaching').boardingStopRow(NOW)).toEqual({
+      text: 'Arriving now',
+    });
   });
 
-  test('a vehicle that has left the stop says how long ago', () => {
-    expect(arrivingIn(-120, 'departed').boardingStopFormatted(NOW)).toEqual(
-      'Left 2 min ago',
-    );
+  test('a wait of over an hour keeps the minutes', () => {
+    expect(
+      arrivingIn(3 * 3600 + 5 * 60, 'approaching').boardingStopRow(NOW),
+    ).toEqual({
+      text: 'Approaching',
+      countdown: { value: '3:05', unit: 'hr' },
+    });
+  });
+
+  test('a vehicle that has left the stop says how long ago, and nothing to wait for', () => {
+    expect(arrivingIn(-120, 'departed').boardingStopRow(NOW)).toEqual({
+      text: 'Left 2 min ago',
+    });
   });
 
   // Travelmux decides which side of the stop a vehicle is on, so a late one can be past the stop
   // with an arrival still a few seconds out.
   test('a vehicle just past the stop does not count backwards', () => {
-    expect(arrivingIn(5, 'departed').boardingStopFormatted(NOW)).toEqual(
-      'Left 0 sec ago',
-    );
+    expect(arrivingIn(5, 'departed').boardingStopRow(NOW)).toEqual({
+      text: 'Left 0 sec ago',
+    });
   });
 
   test('a vehicle travelmux said nothing about', () => {
     expect(
-      vehicle({ boardingStop: undefined }).boardingStopFormatted(NOW),
+      vehicle({ boardingStop: undefined }).boardingStopRow(NOW),
     ).toBeUndefined();
   });
 });
@@ -162,7 +183,7 @@ describe('stopsAwayFormatted', () => {
   });
 
   test('a vehicle working towards the rider`s own stop', () => {
-    expect(approaching(1).stopsAwayFormatted).toEqual('next stop');
+    expect(approaching(1).stopsAwayFormatted).toEqual('Next stop');
   });
 
   test('a vehicle whose feed won`t say which stop it is working towards', () => {
