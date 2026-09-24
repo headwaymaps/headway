@@ -249,9 +249,33 @@ export default defineComponent({
           map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(true));
         }
 
+        // Pushed after both lines, so the dots sit on top of them.
+        const stops = leg.stopsLayer();
+        if (stops) {
+          const stopsLayerId = TripLayerId.legStops(tripIdx, legIdx);
+          layerIds.push(stopsLayerId);
+          if (!map.hasLayer(stopsLayerId)) {
+            map.pushTripStopsLayer(stopsLayerId, stops.geometry, stops.paint);
+          }
+        }
+
+        const usedStops = leg.usedStopsLayer();
+        if (usedStops) {
+          const usedStopsLayerId = TripLayerId.legUsedStops(tripIdx, legIdx);
+          layerIds.push(usedStopsLayerId);
+          if (!map.hasLayer(usedStopsLayerId)) {
+            map.pushTripStopsLayer(
+              usedStopsLayerId,
+              usedStops.geometry,
+              usedStops.paint,
+            );
+          }
+        }
+
         const transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
         if (
           legIdx > 0 &&
+          !trip.transfersAtStop(legIdx) &&
           !this.tripMarkers.includes(transferLayerId.toString())
         ) {
           this.tripMarkers.push(transferLayerId.toString());

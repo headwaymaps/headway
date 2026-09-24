@@ -1,4 +1,9 @@
-import { LineLayerSpecification, LngLat, LngLatBounds } from 'maplibre-gl';
+import {
+  CircleLayerSpecification,
+  LineLayerSpecification,
+  LngLat,
+  LngLatBounds,
+} from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
 import {
@@ -166,6 +171,14 @@ export default class Trip {
   }
 
   /// The patterns this trip's transit legs ride, which is what live vehicles are keyed by.
+  /// Whether the change into `legIdx` happens at a transit stop, which the map already marks
+  /// with a stop of its own.
+  transfersAtStop(legIdx: number): boolean {
+    const leg = this.legs[legIdx];
+    const previous = this.legs[legIdx - 1];
+    return !!leg?.transitLeg || !!previous?.transitLeg;
+  }
+
   get patternCodes(): string[] {
     return this.legs.flatMap((leg) => leg.raw.transitLeg?.patternCode ?? []);
   }
@@ -187,11 +200,18 @@ export interface TripLegContextLayer {
   paint: LineLayerSpecification['paint'];
 }
 
+export interface TripLegStopsLayer {
+  geometry: GeoJSON.MultiPoint;
+  paint: CircleLayerSpecification['paint'];
+}
+
 export class TripLeg {
   readonly raw: TravelmuxLeg;
   geometry: GeoJSON.LineString;
   /// The whole route this leg rides part of, for transit legs the server has a shape for.
   patternGeometry?: GeoJSON.LineString;
+  /// Every stop that route calls at, in order.
+  patternStops?: GeoJSON.MultiPoint;
 
   constructor(raw: TravelmuxLeg) {
     this.raw = raw;
@@ -205,6 +225,15 @@ export class TripLeg {
       this.patternGeometry = {
         type: 'LineString',
         coordinates: decodePolyline(patternGeometry, 6),
+      };
+    }
+    // Travelmux packs the stops as a polyline too - it encodes a list of coordinates as well as
+    // it encodes a shape.
+    const patternStops = this.raw.transitLeg?.patternStops;
+    if (patternStops) {
+      this.patternStops = {
+        type: 'MultiPoint',
+        coordinates: decodePolyline(patternStops, 6),
       };
     }
   }
@@ -298,11 +327,43 @@ export class TripLeg {
     if (!geometry) {
       return undefined;
     }
+    return { geometry, paint: LineStyles.context(this.routeColor) };
+  }
+
+  /// A dot at each of the route's stops, so the rider can count what's between a vehicle and
+  /// their own stop. Absent for a leg the server gave no stops for.
+  stopsLayer(): TripLegStopsLayer | undefined {
+    const geometry = this.patternStops;
+    if (!geometry) {
+      return undefined;
+    }
+    return { geometry, paint: CircleStyles.stop(this.routeColor) };
+  }
+
+  /// The two stops the rider actually uses - where they board and where they get off - drawn
+  /// heavier than the ones the vehicle merely passes through.
+  usedStopsLayer(): TripLegStopsLayer | undefined {
+    if (!this.transitLeg) {
+      return undefined;
+    }
+    const board = this.sourceLngLat;
+    const alight = this.destinationLngLat;
+    return {
+      geometry: {
+        type: 'MultiPoint',
+        coordinates: [
+          [board.lng, board.lat],
+          [alight.lng, alight.lat],
+        ],
+      },
+      paint: CircleStyles.usedStop(this.routeColor),
+    };
+  }
+
+  /// The route's own color, or the active line's where the feed doesn't name one.
+  private get routeColor(): string {
     const routeColor = this.raw.transitLeg?.route?.color;
-    const color = routeColor
-      ? `#${routeColor}`
-      : LineStyles.active['line-color'];
-    return { geometry, paint: LineStyles.context(color) };
+    return routeColor ? `#${routeColor}` : LineStyles.active['line-color'];
   }
 
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
@@ -404,6 +465,27 @@ export async function fetchBestTrips(
     arriveBy,
   );
 }
+
+export const CircleStyles = {
+  /// A small hollow dot, reading as a bead on the route's line.
+  stop(color: string): CircleLayerSpecification['paint'] {
+    return {
+      'circle-radius': 3.5,
+      'circle-color': '#ffffff',
+      'circle-stroke-color': color,
+      'circle-stroke-width': 1.5,
+    };
+  },
+  /// The same bead, enlarged and heavily ringed, for a stop the rider gets on or off at.
+  usedStop(color: string): CircleLayerSpecification['paint'] {
+    return {
+      'circle-radius': 6,
+      'circle-color': '#ffffff',
+      'circle-stroke-color': color,
+      'circle-stroke-width': 6,
+    };
+  },
+};
 
 export const LineStyles = {
   /// Half the width and mostly transparent, so the ridden portion drawn over it reads as the

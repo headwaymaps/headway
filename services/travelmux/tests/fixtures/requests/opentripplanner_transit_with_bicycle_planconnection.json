@@ -649,7 +649,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:21:0:01",
-                    "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -715,7 +715,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:5:0:01",
-                    "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -1045,7 +1045,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:132:0:01",
-                    "patternGeometry": { "points": "cqjaHtksiVoF?oF?{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?oU?oU?", "length": 32 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "cqjaHtksiVoF?oF?{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?oU?oU?", "length": 32 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -1111,7 +1111,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:28:0:01",
-                    "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 193 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 193 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -1405,7 +1405,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:21:0:01",
-                    "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -1471,7 +1471,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:5:0:01",
-                    "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -1933,7 +1933,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:E Line:0:01",
-                    "patternGeometry": { "points": "o_paH~csiVwAvEwAvEUt@M^GPIHGLa@\\gC|BoC`C]ZuAjA??YVoCbCmCbCmC`CgCzB??GBmCbCeEvDiDxC??]XwChCm@j@kCbCIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@sB?qA?c@BwA?iAC}D?yF?{FByE?yD?uD?cE?aF?g[?g[?", "length": 176 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "o_paH~csiVwAvEwAvEUt@M^GPIHGLa@\\gC|BoC`C]ZuAjA??YVoCbCmCbCmC`CgCzB??GBmCbCeEvDiDxC??]XwChCm@j@kCbCIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@sB?qA?c@BwA?iAC}D?yF?{FByE?yD?uD?cE?aF?g[?g[?", "length": 176 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -2383,7 +2383,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:C Line:0:01",
-                    "patternGeometry": { "points": "ssoaH|utiVwAOwAOUCm@?k@?}@Ae@@WBg@Ne@Py@h@a@RqCzB??KJ{@uCSw@Uq@o@yBm@mBm@mBo@sBk@mBsBjB??[VmCbCmC`CgCzB??GBmCbCeEvDiDxC??]XwChCm@j@kCbCIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGaAwAaAsAcAwAw@iAKM_AsA{@kA??EIcAuAaAuAcAuAc@m@]e@aAuAKIM[GSAYa@B}@J??w@HiFAiFAaE???g@?gFCmGA]?mB?S@UDC@OFOF", "length": 90 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "ssoaH|utiVwAOwAOUCm@?k@?}@Ae@@WBg@Ne@Py@h@a@RqCzB??KJ{@uCSw@Uq@o@yBm@mBm@mBo@sBk@mBsBjB??[VmCbCmC`CgCzB??GBmCbCeEvDiDxC??]XwChCm@j@kCbCIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGaAwAaAsAcAwAw@iAKM_AsA{@kA??EIcAuAaAuAcAuAc@m@]e@aAuAKIM[GSAYa@B}@J??w@HiFAiFAaE???g@?gFCmGA]?mB?S@UDC@OFOF", "length": 90 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -2881,7 +2881,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:21:0:01",
-                    "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -2947,7 +2947,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:5:0:01",
-                    "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -3277,7 +3277,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:132:0:01",
-                    "patternGeometry": { "points": "cqjaHtksiVoF?oF?{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?oU?oU?", "length": 32 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "cqjaHtksiVoF?oF?{@?mL???I?_L?uA???kI?cJ???eA?kL?m@???mJCq@?gAWoCDkDLqB?_CCwAFQ?Y?W?G?sD?oU?oU?", "length": 32 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -3343,7 +3343,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:28:0:01",
-                    "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 193 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCAiIAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHsCfBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@qAXeATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 193 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -3637,7 +3637,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:21:0:01",
-                    "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "ojhaHvktiV_l@?_l@?gJ?gK???W?aL?cA???}I?s@???qJ?sA???uI?yK?@oC???g@?_AEyB?gB?cA?mC?cCAgBCiBEMACCCCAECI?{FAc@D[RQ?Y?W?G?sD?oU?oU?", "length": 45 }
                   }
                 },
                 "tripOnServiceDate": {
@@ -3703,7 +3703,7 @@
                 "trip": {
                   "pattern": {
                     "code": "1:5:0:01",
-                    "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
+                    "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "{emaHpksiVwT?wT?mD?e@?_L?}ECoDCqCAYLY@c@B[CIA??QCUMeDBuAtAILKJEJGLo@rBM^GPIHGLa@\\gB~A??_@\\oC`C]ZoBbBoCbCuBlB??WTmC`CoC~BmCbCqDbD??SRgErDwChCm@j@gA`A??cA`AIFGFGHIPMTOVKRO`@aB`DkBvD??k@jAyCdGyCbGiAtB??oAjCaAsAaAwAcAuAy@kAIIaCkDa@?wDZkB@??}BD]IsA?uB?_@?{@C_@As@CY???E?O?K?MBODM@KDMBOFOJIFKDODOFO@O@M?OAUEWG]M]IQEQEWC]E_@E]A_@GcC@[?o@?}CGcAEiAAoBEaBCsCA{@???mGAeJAi@???qDCcFAgCC]?Q?QBO?O@QBOBQDMBMBOFODQJOFMHSHiCbB??IBwCjBsAx@]RMFCB??YN[No@\\m@Va@R[Nc@Ri@Pi@Rs@Te@Nw@T_Cp@SD??}@ReATYHUDYDQDY@_AFo@Dg@Bq@?q@?eNB}Y@i@IYIYKQKOIi@c@US{@?oF?oF?", "length": 199 }
                   }
                 },
                 "tripOnServiceDate": {

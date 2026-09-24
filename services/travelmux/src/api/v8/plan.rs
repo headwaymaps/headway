@@ -300,6 +300,14 @@ pub struct TransitLeg {
     )]
     pattern_geometry: Option<LineString>,
 
+    /// Every stop the pattern calls at, in order, encoded as a polyline of their positions - the
+    /// same encoding as a shape, because it packs a list of coordinates just as well.
+    #[serde(
+        serialize_with = "serialize_optional_line_string_as_polyline6",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pattern_stops: Option<LineString>,
+
     alerts: Vec<Alert>,
 }
 
@@ -310,6 +318,22 @@ impl TransitLeg {
         decode_polyline(encoded, Leg::OTP_GEOMETRY_PRECISION)
             .inspect_err(|e| log::warn!("undecodable shape for pattern {}: {e}", pattern.code))
             .ok()
+    }
+
+    /// The positions of a pattern's stops, dropping any OTP couldn't place.
+    fn stops_of(pattern: &gtfs_graphql::Pattern) -> Option<LineString> {
+        let stops: Vec<_> = pattern
+            .stops
+            .as_ref()?
+            .iter()
+            .filter_map(|stop| {
+                Some(geo::Coord {
+                    x: stop.lon?,
+                    y: stop.lat?,
+                })
+            })
+            .collect();
+        (!stops.is_empty()).then(|| LineString::new(stops))
     }
 }
 
@@ -328,6 +352,7 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
                 .is_some_and(|state| state.updated),
             pattern_code: pattern.map(|pattern| pattern.code.clone()),
             pattern_geometry: pattern.and_then(TransitLeg::shape_of),
+            pattern_stops: pattern.and_then(TransitLeg::stops_of),
             alerts: leg
                 .alerts
                 .iter()
