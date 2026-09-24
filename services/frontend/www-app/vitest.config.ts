@@ -1,3 +1,4 @@
+import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
@@ -6,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 const srcDir = fileURLToPath(new URL('./src', import.meta.url));
 
 export default defineConfig({
+  // Some units under test reach a `.vue` component through their imports.
+  plugins: [vue()],
   resolve: {
     alias: [{ find: /^src\//, replacement: `${srcDir}/` }],
   },
