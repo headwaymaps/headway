@@ -137,8 +137,10 @@ export type TravelmuxBoardingStop =
   | {
       state: 'approaching';
       arrival: string;
-      /// How many stops the vehicle still has to make, counting the rider's own.
-      stopsAway?: number;
+      /// RFC 3339. When the vehicle is at each stop from the one it's working towards through
+      /// the rider's own, in order - the same predictions its track is paced by, so counting the
+      /// ones still ahead counts the stops the animated vehicle has yet to make.
+      stopArrivals?: string[];
     }
   | { state: 'departed'; arrival: string };
 

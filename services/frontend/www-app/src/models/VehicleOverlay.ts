@@ -158,11 +158,11 @@ export default class VehicleOverlay {
 
     this.clockOffsetMs = result.value.clockOffsetMs;
 
-    const stale = new Set(this.tracked.keys());
+    const reported = new Set<string>();
     for (const raw of result.value.vehicles) {
       const vehicle = new TransitVehicle(raw);
       const key = vehicle.markerKey;
-      stale.delete(key);
+      reported.add(key);
 
       const existing = this.tracked.get(key);
       if (existing) {
@@ -194,9 +194,14 @@ export default class VehicleOverlay {
       this.map.pushMarker(key, marker);
     }
 
-    // Vehicles that stopped reporting, or left the patterns we asked about.
-    for (const key of stale) {
-      this.removeMarker(key);
+    // A vehicle a poll didn't mention is usually a gap in the feed or a wobble in what travelmux
+    // ranks as nearby, not a bus that went away - so it keeps coasting along the track it already
+    // has, and is only dropped once that track is spent.
+    const now = Date.now() + this.clockOffsetMs;
+    for (const [key, tracked] of [...this.tracked]) {
+      if (!reported.has(key) && tracked.props.vehicle.hasExpiredAt(now)) {
+        this.removeMarker(key);
+      }
     }
   }
 }

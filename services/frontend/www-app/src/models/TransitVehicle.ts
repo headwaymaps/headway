@@ -14,6 +14,11 @@ const DEFAULT_VEHICLE_COLOR = '#1296FF';
 /// told to look up.
 const ARRIVING_NOW_SECONDS = 30;
 
+/// How long a vehicle keeps being drawn on its last report alone. This is as far ahead as
+/// travelmux predicts, so past it the dot has run off the end of its track and would only sit
+/// still, claiming a position nobody has confirmed in minutes.
+const COASTING_MS = 3 * 60 * 1000;
+
 /// A duration under a minute, which `formatDuration` would round up to "1 min" and overstate.
 function shortDuration(seconds: number): string {
   return seconds < 60
@@ -69,6 +74,8 @@ export default class TransitVehicle {
   private readonly reportedAt: number;
   /// The track, read off the wire once rather than per animation frame.
   private readonly track?: Track;
+  /// When the vehicle is at each stop up to and including the rider's, as epoch millis.
+  private readonly stopArrivals: number[];
 
   constructor(raw: TravelmuxVehicle) {
     this.raw = raw;
@@ -78,6 +85,10 @@ export default class TransitVehicle {
       stepSeconds: raw.track.stepSeconds,
       points: raw.track.points.map((point) => new LngLat(...point)),
     };
+    this.stopArrivals =
+      raw.boardingStop?.state === 'approaching'
+        ? (raw.boardingStop.stopArrivals ?? []).map(Date.parse)
+        : [];
   }
 
   /// The color of the chip's ring and the badge's border.
@@ -140,6 +151,11 @@ export default class TransitVehicle {
     return !!this.track && now > this.reportedAt;
   }
 
+  /// Whether the report this dot is drawn from is too old to keep drawing without a fresh one.
+  hasExpiredAt(now: number): boolean {
+    return now - this.reportedAt > COASTING_MS;
+  }
+
   /// Stable for as long as the vehicle keeps reporting, so it can key a marker.
   get markerKey(): string {
     return `vehicle_${this.raw.id}`;
@@ -178,7 +194,7 @@ export default class TransitVehicle {
       };
     }
 
-    const stops = this.stopsAwayFormatted;
+    const stops = this.stopsAwayFormatted(now);
     if (seconds <= ARRIVING_NOW_SECONDS) {
       // A countdown of seconds is less use to a waiting rider than being told to look up.
       return { text: stops ?? i18n.global.t('transit_vehicle_arriving_now') };
@@ -189,20 +205,22 @@ export default class TransitVehicle {
     };
   }
 
-  /// How many stops until the vehicle reaches the rider's, counting that stop itself.
+  /// How many stops until the vehicle reaches the rider's at `now`, counting that stop itself.
   ///
-  /// Undefined for a vehicle that has already been past: a count of stops is something to wait
-  /// through, and one that's gone by is nothing to wait for.
-  get stopsAwayFormatted(): string | undefined {
-    const boardingStop = this.raw.boardingStop;
-    if (boardingStop?.state !== 'approaching' || !boardingStop.stopsAway) {
+  /// Counted off the same predictions that place the dot, so the number comes down as the dot
+  /// passes stops rather than holding at whatever the last poll said. Undefined for a vehicle
+  /// that has been past: a count of stops is something to wait through, and one that's gone by
+  /// is nothing to wait for.
+  stopsAwayFormatted(now: Date = new Date()): string | undefined {
+    const stopsAway = this.stopArrivals.filter(
+      (arrival) => arrival > now.getTime(),
+    ).length;
+    if (stopsAway === 0) {
       return undefined;
     }
-    return boardingStop.stopsAway === 1
+    return stopsAway === 1
       ? i18n.global.t('transit_vehicle_next_stop')
-      : i18n.global.t('transit_vehicle_$n_stops_away', {
-          n: boardingStop.stopsAway,
-        });
+      : i18n.global.t('transit_vehicle_$n_stops_away', { n: stopsAway });
   }
 
   /// How much of this dot is reported and how much is guesswork, phrased for the traveler.
