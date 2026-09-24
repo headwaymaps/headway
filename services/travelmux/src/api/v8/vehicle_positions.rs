@@ -42,9 +42,9 @@ const MAX_PLAUSIBLE_SPEED: f64 = 30.0;
 /// actually pick the rider up.
 const UPCOMING_VEHICLES: usize = 2;
 
-/// How many vehicles past the boarding stop to report. One is enough to show the rider what they
-/// just missed; more is clutter from a bus that's no longer theirs.
-const DEPARTED_VEHICLES: usize = 1;
+/// How long after passing the rider's stop a vehicle is still worth drawing. Inside it the rider
+/// is looking at what they just missed; past it, at a bus that's no longer theirs.
+const DEPARTED_HORIZON: TimeDelta = TimeDelta::minutes(5);
 
 /// How far off a trip's own stops the requested boarding stop can sit and still be that stop.
 /// The client sends the boarding location out of the plan's leg, so this only absorbs the
@@ -224,10 +224,12 @@ enum BoardingStop {
     /// RFC 3339, UTC. When the trip expects to reach the stop.
     Approaching {
         arrival: DateTime<Utc>,
-        /// How many stops the vehicle still has to make, counting the rider's own. Absent when
-        /// OTP won't say which stop the vehicle is working towards.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        stops_away: Option<usize>,
+        /// RFC 3339, UTC. When the vehicle is at each stop from the one it's working towards
+        /// through the rider's own, in order - so a client counting the ones still ahead of the
+        /// clock counts the stops the vehicle has yet to make. Empty when OTP won't say which
+        /// stop the vehicle is working towards.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        stop_arrivals: Vec<DateTime<Utc>>,
     },
     /// RFC 3339, UTC. When the trip was last expected at the stop.
     Departed { arrival: DateTime<Utc> },
@@ -249,6 +251,27 @@ fn boarding_stoptime<'a>(
         .min_by(|a, b| a.2.total_cmp(&b.2))?;
 
     (distance <= BOARDING_STOP_TOLERANCE).then_some((index, stoptime))
+}
+
+/// When the trip is at each stop from the one the vehicle is working towards through the rider's
+/// own, in order.
+///
+/// These are the same predictions the track is paced by, so a client counting the ones still
+/// ahead of its clock counts the stops the animated vehicle has yet to pass. Empty when OTP
+/// won't say which stop the vehicle is working towards, or when it names one the rider's stop is
+/// already behind.
+fn stop_arrivals(
+    stoptimes: &[gtfs_graphql::VehicleStoptime],
+    heading_for: Option<usize>,
+    boarding_index: usize,
+) -> Vec<DateTime<Utc>> {
+    let Some(from) = heading_for.filter(|from| *from <= boarding_index) else {
+        return Vec::new();
+    };
+    stoptimes[from..=boarding_index]
+        .iter()
+        .filter_map(|stoptime| stoptime.expected_arrival())
+        .collect()
 }
 
 /// Interpolating a shape yields far more digits than it means. A millionth of a degree is about
@@ -281,7 +304,7 @@ fn anchors(
     shape: &LineString,
     progress: f64,
     reported_at: DateTime<Utc>,
-    heading_for: Option<&str>,
+    heading_for: Option<usize>,
     stoptimes: &[gtfs_graphql::VehicleStoptime],
 ) -> Vec<Anchor> {
     let mut anchors = vec![Anchor {
@@ -290,9 +313,7 @@ fn anchors(
     }];
     let horizon = reported_at + TRACK_HORIZON;
 
-    let Some(from) =
-        heading_for.and_then(|next| stoptimes.iter().position(|s| s.stop_id() == Some(next)))
-    else {
+    let Some(from) = heading_for else {
         return anchors;
     };
 
@@ -390,11 +411,6 @@ impl Vehicle {
         // the rider either.
         let last_updated = position.last_update?;
 
-        let heading_for = position
-            .stop_relationship
-            .as_ref()
-            .map(|relationship| relationship.stop.gtfs_id.clone());
-
         let stoptimes: Vec<_> = position
             .trip
             .stoptimes_for_date
@@ -402,11 +418,22 @@ impl Vehicle {
             .into_iter()
             .flatten()
             .collect();
+
+        // A stop OTP names that isn't in the sequence it gave us alongside is no stop of this
+        // trip's, so it's resolved here and everything downstream takes a stop we have.
+        let heading_for = position
+            .stop_relationship
+            .as_ref()
+            .and_then(|relationship| {
+                let next = relationship.stop.gtfs_id.as_str();
+                stoptimes.iter().position(|s| s.stop_id() == Some(next))
+            });
+
         let anchors = anchors(
             shape,
             progress,
             last_updated.with_timezone(&Utc),
-            heading_for.as_deref(),
+            heading_for,
             &stoptimes,
         );
         let track = track(shape, &anchors);
@@ -417,16 +444,9 @@ impl Vehicle {
             if progress > boarding.progress {
                 return Some(BoardingStop::Departed { arrival });
             }
-            // The stop the vehicle is working towards is one stop away, so the rider's own is
-            // one more than the stops between.
-            let stops_away = heading_for
-                .as_deref()
-                .and_then(|next| stoptimes.iter().position(|s| s.stop_id() == Some(next)))
-                .and_then(|heading_index| boarding_index.checked_sub(heading_index))
-                .map(|between| between + 1);
             Some(BoardingStop::Approaching {
                 arrival,
-                stops_away,
+                stop_arrivals: stop_arrivals(&stoptimes, heading_for, boarding_index),
             })
         });
 
@@ -458,14 +478,32 @@ impl Vehicle {
             track,
         })
     }
+
+    /// Whether the vehicle passed the rider's stop recently enough to still be worth drawing.
+    ///
+    /// A vehicle past the stop that the trip can't date went by either a minute ago or an hour
+    /// ago, and only one of those is the rider's business.
+    fn left_recently(&self, now: DateTime<Utc>) -> bool {
+        match &self.boarding_stop {
+            Some(BoardingStop::Departed { arrival }) => now - *arrival <= DEPARTED_HORIZON,
+            _ => false,
+        }
+    }
 }
 
 /// The handful of vehicles worth drawing for a rider boarding at `boarding_stop`: the ones just
-/// short of it, and the one that just left.
+/// short of it, and the ones that left it in the last few minutes.
 ///
 /// A pattern runs its whole length, so most of its vehicles are miles from the trip and only
 /// crowd the map. Returns everything, unranked, when there's no boarding stop to rank against.
-fn nearby(mut vehicles: Vec<Vehicle>, boarding: Option<&Boarding>) -> Vec<Vehicle> {
+///
+/// The departed side is bounded by the clock, not by a count: whether the rider still cares about
+/// a bus they watched pull away turns on how long ago it went, not on how many have crossed since.
+fn nearby(
+    mut vehicles: Vec<Vehicle>,
+    boarding: Option<&Boarding>,
+    now: DateTime<Utc>,
+) -> Vec<Vehicle> {
     let Some(boarding) = boarding.map(|boarding| boarding.progress) else {
         return vehicles;
     };
@@ -477,14 +515,12 @@ fn nearby(mut vehicles: Vec<Vehicle>, boarding: Option<&Boarding>) -> Vec<Vehicl
     });
 
     let mut upcoming = 0;
-    let mut departed = 0;
     vehicles.retain(|vehicle| {
         if vehicle.progress <= boarding {
             upcoming += 1;
             upcoming <= UPCOMING_VEHICLES
         } else {
-            departed += 1;
-            departed <= DEPARTED_VEHICLES
+            vehicle.left_recently(now)
         }
     });
     vehicles
@@ -558,6 +594,7 @@ pub async fn post_vehicle_positions(
         .map(|pattern| pattern.pattern_code.clone())
         .collect();
 
+    let now = Utc::now();
     let vehicles = vehicles
         .into_iter()
         .flat_map(|pattern| {
@@ -577,7 +614,7 @@ pub async fn post_vehicle_positions(
                     Vehicle::from_otp(&pattern, &shape, boarding.as_ref(), position)
                 })
                 .collect();
-            nearby(on_pattern, boarding.as_ref())
+            nearby(on_pattern, boarding.as_ref(), now)
         })
         .collect();
 
@@ -587,7 +624,7 @@ pub async fn post_vehicle_positions(
             .map(|request| request.code.clone())
             .filter(|code| !known.contains(code))
             .collect(),
-        server_time: Utc::now(),
+        server_time: now,
         vehicles,
     })
 }
@@ -598,6 +635,7 @@ mod tests {
     use crate::otp::gtfs_graphql::{
         StopRelationship, StoptimeStop, VehiclePosition, VehicleStoptime, VehicleTrip,
     };
+    use approx::assert_relative_eq;
     use geo::line_string;
 
     /// Midnight of the service day these fixtures run on.
@@ -802,14 +840,24 @@ mod tests {
         assert!(build(Some(47.6), Some(f64::INFINITY)).is_none());
     }
 
-    /// Vehicles strung along the shape, identified by their longitude.
-    fn vehicles_at(lons: &[f64]) -> Vec<Vehicle> {
+    /// Vehicles strung along the shape, each running a trip that calls at the rider's stop at
+    /// its own time. Identified by their longitude, given as `(longitude, arrival)`.
+    fn vehicles_at(boarding_lon: f64, vehicles: &[(f64, i32)]) -> Vec<Vehicle> {
         let shape = shape();
-        lons.iter()
-            .map(|lon| {
-                let mut position = position(Some(47.600), Some(*lon));
+        vehicles
+            .iter()
+            .map(|&(lon, arrival)| {
+                let mut position = position(Some(47.600), Some(lon));
                 position.label = Some(format!("{lon}"));
-                Vehicle::from_otp(&pattern(), &shape, None, position).expect("has coordinates")
+                position.trip.stoptimes_for_date =
+                    Some(vec![Some(stoptime(boarding_lon, arrival))]);
+                Vehicle::from_otp(
+                    &pattern(),
+                    &shape,
+                    boarding(&shape, boarding_lon).as_ref(),
+                    position,
+                )
+                .expect("has coordinates")
             })
             .collect()
     }
@@ -827,31 +875,95 @@ mod tests {
     }
 
     #[test]
-    fn keeps_the_two_vehicles_approaching_the_stop_and_the_one_that_just_left() {
+    fn keeps_the_two_vehicles_approaching_the_stop_and_the_ones_that_just_left() {
         let shape = shape();
         // The shape runs east, so a smaller longitude is further back along it. Spaced so no
         // two are equidistant from the stop, which would leave the order up to the sort.
-        let vehicles = vehicles_at(&[-122.339, -122.336, -122.332, -122.329, -122.325, -122.305]);
+        let vehicles = vehicles_at(
+            -122.330,
+            &[
+                (-122.339, 1200), // a third vehicle still approaching
+                (-122.336, 1150),
+                (-122.332, 1100),
+                (-122.329, 940), // left a minute ago
+                (-122.325, 880), // left two minutes ago
+                (-122.305, 400), // left ten minutes ago
+            ],
+        );
 
-        let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref());
+        let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref(), at(1000));
 
-        // Nearest first: the one just past the stop, then the two still approaching it.
-        // -122.339 is a third vehicle still approaching, -122.325 and -122.305 are further past.
-        assert_eq!(labels(&nearby), ["-122.329", "-122.332", "-122.336"]);
+        // Nearest first, and both recent departures kept.
+        assert_eq!(
+            labels(&nearby),
+            ["-122.329", "-122.332", "-122.325", "-122.336"]
+        );
+    }
+
+    /// The bus a rider watched pull away shouldn't blink out because the next one showed up.
+    #[test]
+    fn a_vehicle_that_just_left_survives_the_next_one_crossing_the_stop() {
+        let shape = shape();
+        // One a hair past the stop, one that went by two minutes earlier.
+        let vehicles = vehicles_at(-122.330, &[(-122.3299, 995), (-122.325, 880)]);
+
+        let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref(), at(1000));
+
+        assert_eq!(labels(&nearby), ["-122.3299", "-122.325"]);
+    }
+
+    #[test]
+    fn a_vehicle_that_left_long_ago_is_dropped() {
+        let shape = shape();
+        let vehicles = vehicles_at(-122.330, &[(-122.325, 880)]);
+
+        let stop = boarding(&shape, -122.330);
+        assert_eq!(
+            labels(&nearby(vehicles.clone(), stop.as_ref(), at(1000))),
+            ["-122.325"]
+        );
+        assert!(nearby(vehicles, stop.as_ref(), at(2800)).is_empty());
+    }
+
+    /// Without the trip's own time at the rider's stop there's no telling whether a vehicle past
+    /// it went by a minute ago or an hour ago.
+    #[test]
+    fn a_departed_vehicle_that_cannot_be_dated_is_dropped() {
+        let shape = shape();
+        let stop = boarding(&shape, -122.330);
+        let vehicle = Vehicle::from_otp(
+            &pattern(),
+            &shape,
+            stop.as_ref(),
+            position(Some(47.600), Some(-122.325)),
+        )
+        .expect("has coordinates");
+
+        assert_eq!(vehicle.boarding_stop, None);
+        assert!(nearby(vec![vehicle], stop.as_ref(), at(1000)).is_empty());
     }
 
     #[test]
     fn a_pattern_with_no_boarding_stop_reports_every_vehicle() {
-        let vehicles = vehicles_at(&[-122.339, -122.335, -122.331, -122.329, -122.305]);
+        let vehicles = vehicles_at(
+            -122.330,
+            &[
+                (-122.339, 1200),
+                (-122.335, 1100),
+                (-122.331, 1050),
+                (-122.329, 400),
+                (-122.305, 400),
+            ],
+        );
 
-        assert_eq!(nearby(vehicles, None).len(), 5);
+        assert_eq!(nearby(vehicles, None, at(1000)).len(), 5);
     }
 
     #[test]
     fn fewer_vehicles_than_we_would_show_is_fine() {
         let shape = shape();
-        let vehicles = vehicles_at(&[-122.335]);
-        let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref());
+        let vehicles = vehicles_at(-122.330, &[(-122.335, 1100)]);
+        let nearby = nearby(vehicles, boarding(&shape, -122.330).as_ref(), at(1000));
 
         assert_eq!(labels(&nearby), ["-122.335"]);
     }
@@ -909,14 +1021,13 @@ mod tests {
         let shape = shape();
         let progress =
             progress_along(&shape, Point::new(vehicle_lon, 47.600)).expect("on the shape");
-        let heading_for = heading_for.map(stop_id);
-        anchors(
-            &shape,
-            progress,
-            at(reported_at),
-            heading_for.as_deref(),
-            stoptimes,
-        )
+        let heading_for = heading_for.and_then(|lon| {
+            let id = stop_id(lon);
+            stoptimes
+                .iter()
+                .position(|s| s.stop_id() == Some(id.as_str()))
+        });
+        anchors(&shape, progress, at(reported_at), heading_for, stoptimes)
     }
 
     /// OTP hands back the whole day's stop sequence, most of which is behind the vehicle. The
@@ -1006,13 +1117,20 @@ mod tests {
         assert_eq!(anchors.len(), 2);
     }
 
-    /// A stop OTP names that isn't in the sequence we were given is no anchor either.
+    /// A stop OTP names that isn't in the sequence we were given is no stop of this trip's.
     #[test]
-    fn an_unknown_next_stop_gets_no_track() {
-        let stoptimes = [stoptime(-122.320, 400)];
-        let anchors = anchors_for(-122.325, 300, Some(-122.999), &stoptimes);
+    fn an_unknown_next_stop_gets_no_track_and_no_count() {
+        let stoptimes = vec![stoptime(-122.330, 400)];
+        let vehicle = vehicle_boarding_at(-122.335, -122.330, Some(-122.999), stoptimes);
 
-        assert_eq!(anchors.len(), 1);
+        assert!(vehicle.track.is_none());
+        assert_eq!(
+            vehicle.boarding_stop,
+            Some(BoardingStop::Approaching {
+                arrival: at(400),
+                stop_arrivals: vec![],
+            })
+        );
     }
 
     #[test]
@@ -1090,7 +1208,7 @@ mod tests {
             vehicle.boarding_stop,
             Some(BoardingStop::Approaching {
                 arrival: at(400),
-                stops_away: None,
+                stop_arrivals: vec![],
             })
         );
     }
@@ -1141,26 +1259,73 @@ mod tests {
         assert_eq!(vehicle.boarding_stop, None);
     }
 
-    /// Counting the rider's own stop: the stop the vehicle is working towards is one away.
+    /// What a client counting the arrivals still ahead of its clock shows.
+    fn stops_away_at(vehicle: &Vehicle, now: DateTime<Utc>) -> usize {
+        let Some(BoardingStop::Approaching { stop_arrivals, .. }) = &vehicle.boarding_stop else {
+            return 0;
+        };
+        stop_arrivals
+            .iter()
+            .filter(|arrival| **arrival > now)
+            .count()
+    }
+
+    /// Four stops to wait through, counting the rider's own: the stop the vehicle is working
+    /// towards is one away.
     #[test]
-    fn an_approaching_vehicle_counts_the_stops_to_the_rider() {
+    fn an_approaching_vehicle_dates_every_stop_up_to_the_rider() {
         let stoptimes = vec![
-            stoptime(-122.336, 200),
-            stoptime(-122.334, 300),
-            stoptime(-122.332, 400),
-            stoptime(-122.330, 500),
+            stoptime(-122.336, 400),
+            stoptime(-122.334, 500),
+            stoptime(-122.332, 600),
+            stoptime(-122.330, 700),
         ];
         let vehicle = vehicle_boarding_at(-122.337, -122.330, Some(-122.336), stoptimes);
 
         assert_eq!(
             vehicle.boarding_stop,
             Some(BoardingStop::Approaching {
-                arrival: at(500),
-                stops_away: Some(4),
+                arrival: at(700),
+                stop_arrivals: vec![at(400), at(500), at(600), at(700)],
             })
         );
+        assert_eq!(stops_away_at(&vehicle, at(300)), 4);
+
         let json = serde_json::to_value(&vehicle).expect("serializes");
-        assert_eq!(json["boardingStop"]["stopsAway"], 4);
+        assert_eq!(
+            json["boardingStop"]["stopArrivals"][0],
+            serde_json::json!(at(400).to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+        );
+    }
+
+    /// The dot keeps animating along its track between polls, so the count has to come down with
+    /// it rather than hold at what the poll said.
+    #[test]
+    fn the_count_falls_as_the_vehicle_reaches_each_stop() {
+        let stoptimes = vec![
+            stoptime(-122.336, 400),
+            stoptime(-122.334, 500),
+            stoptime(-122.332, 600),
+            stoptime(-122.330, 700),
+        ];
+        let vehicle = vehicle_boarding_at(-122.337, -122.330, Some(-122.336), stoptimes);
+
+        assert_eq!(stops_away_at(&vehicle, at(450)), 3);
+        assert_eq!(stops_away_at(&vehicle, at(650)), 1);
+        assert_eq!(stops_away_at(&vehicle, at(750)), 0);
+    }
+
+    /// The count and the dot are read off the same prediction, so the dot is at the stop at the
+    /// instant the count drops.
+    #[test]
+    fn a_stop_is_dated_for_when_the_track_reaches_it() {
+        let stoptimes = vec![stoptime(-122.336, 400), stoptime(-122.330, 700)];
+        let vehicle = vehicle_boarding_at(-122.337, -122.330, Some(-122.336), stoptimes);
+        let track = vehicle.track.as_ref().expect("has somewhere to go");
+
+        // The track is evenly spaced from the vehicle's own report, at(300).
+        let sample = ((at(400) - at(300)).num_seconds() / track.step_seconds) as usize;
+        assert_relative_eq!(track.points[sample].x(), -122.336, epsilon = 1e-4);
     }
 
     #[test]
@@ -1172,7 +1337,7 @@ mod tests {
             vehicle.boarding_stop,
             Some(BoardingStop::Approaching {
                 arrival: at(500),
-                stops_away: Some(1),
+                stop_arrivals: vec![at(500)],
             })
         );
     }
@@ -1188,7 +1353,7 @@ mod tests {
             vehicle.boarding_stop,
             Some(BoardingStop::Approaching {
                 arrival: at(300),
-                stops_away: None,
+                stop_arrivals: vec![],
             })
         );
     }
@@ -1204,6 +1369,6 @@ mod tests {
             Some(BoardingStop::Departed { arrival: at(200) })
         );
         let json = serde_json::to_value(&vehicle).expect("serializes");
-        assert!(json["boardingStop"].get("stopsAway").is_none());
+        assert!(json["boardingStop"].get("stopArrivals").is_none());
     }
 }

@@ -22,6 +22,11 @@ function vehicle(overrides: Partial<TravelmuxVehicle> = {}): TransitVehicle {
   return new TransitVehicle(raw);
 }
 
+/// When the vehicle is at each stop, as travelmux writes them: so many seconds after `NOW`.
+function arrivalsIn(...seconds: number[]): string[] {
+  return seconds.map((s) => new Date(NOW.getTime() + s * 1000).toISOString());
+}
+
 function reportedSecondsAgo(seconds: number): TransitVehicle {
   const lastUpdated = new Date(NOW.getTime() - seconds * 1000).toISOString();
   return vehicle({ lastUpdated });
@@ -106,14 +111,29 @@ describe('positionAt', () => {
   });
 });
 
+// A poll that doesn't mention a vehicle is usually a gap in the feed rather than a bus that went
+// away, so the overlay keeps drawing it until its report is older than anything travelmux would
+// have predicted from.
+describe('hasExpiredAt', () => {
+  const T0 = NOW.getTime();
+
+  test('a report from a few missed polls ago is still worth drawing', () => {
+    expect(vehicle().hasExpiredAt(T0 + 150 * 1000)).toBe(false);
+  });
+
+  test('a report older than the prediction horizon is not', () => {
+    expect(vehicle().hasExpiredAt(T0 + 181 * 1000)).toBe(true);
+  });
+});
+
 describe('boardingStopRow', () => {
   function arrivingIn(
     seconds: number,
     state: 'approaching' | 'departed',
-    stopsAway?: number,
+    stopArrivals?: string[],
   ) {
     const arrival = new Date(NOW.getTime() + seconds * 1000).toISOString();
-    return vehicle({ boardingStop: { state, arrival, stopsAway } });
+    return vehicle({ boardingStop: { state, arrival, stopArrivals } });
   }
 
   test('a vehicle still on its way counts down to the stop', () => {
@@ -124,7 +144,12 @@ describe('boardingStopRow', () => {
   });
 
   test('how many stops out leads, with the wait beside it', () => {
-    expect(arrivingIn(180, 'approaching', 4).boardingStopRow(NOW)).toEqual({
+    const fourStops = arrivingIn(
+      180,
+      'approaching',
+      arrivalsIn(45, 90, 135, 180),
+    );
+    expect(fourStops.boardingStopRow(NOW)).toEqual({
       text: '4 stops away',
       countdown: { value: '3', unit: 'min' },
     });
@@ -168,26 +193,41 @@ describe('boardingStopRow', () => {
 });
 
 describe('stopsAwayFormatted', () => {
-  function approaching(stopsAway?: number): TransitVehicle {
+  function approaching(stopArrivals?: string[]): TransitVehicle {
     return vehicle({
       boardingStop: {
         state: 'approaching',
         arrival: NOW.toISOString(),
-        stopsAway,
+        stopArrivals,
       },
     });
   }
 
   test('a vehicle a few stops up the route', () => {
-    expect(approaching(3).stopsAwayFormatted).toEqual('3 stops away');
+    expect(
+      approaching(arrivalsIn(60, 120, 180)).stopsAwayFormatted(NOW),
+    ).toEqual('3 stops away');
   });
 
   test('a vehicle working towards the rider`s own stop', () => {
-    expect(approaching(1).stopsAwayFormatted).toEqual('Next stop');
+    expect(approaching(arrivalsIn(60)).stopsAwayFormatted(NOW)).toEqual(
+      'Next stop',
+    );
+  });
+
+  // The dot animates on between polls, so the count comes down with it rather than holding at
+  // what the poll said.
+  test('a stop the vehicle has reached stops counting', () => {
+    const v = approaching(arrivalsIn(60, 120, 180));
+    const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
+
+    expect(v.stopsAwayFormatted(later(61))).toEqual('2 stops away');
+    expect(v.stopsAwayFormatted(later(121))).toEqual('Next stop');
+    expect(v.stopsAwayFormatted(later(181))).toBeUndefined();
   });
 
   test('a vehicle whose feed won`t say which stop it is working towards', () => {
-    expect(approaching(undefined).stopsAwayFormatted).toBeUndefined();
+    expect(approaching(undefined).stopsAwayFormatted(NOW)).toBeUndefined();
   });
 
   // Nothing to wait through once it has been and gone.
@@ -195,7 +235,7 @@ describe('stopsAwayFormatted', () => {
     const departed = vehicle({
       boardingStop: { state: 'departed', arrival: NOW.toISOString() },
     });
-    expect(departed.stopsAwayFormatted).toBeUndefined();
+    expect(departed.stopsAwayFormatted(NOW)).toBeUndefined();
   });
 });
 
