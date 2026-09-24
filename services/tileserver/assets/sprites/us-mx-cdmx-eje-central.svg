@@ -1,0 +1,5 @@
+<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+ <rect style="fill:#fff;fill-rule:evenodd;stroke:#000" width="19" height="19" x=".5" y=".5" rx="1.5" ry="1.5"/>
+ <circle style="fill:#000;fill-rule:evenodd;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke markers fill" cx="10" cy="10" r="6.5"/>
+ <path style="fill:#ffcd00;fill-rule:evenodd;stroke:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;paint-order:markers stroke fill" d="m 10,4 a 6,6 0 0 1 6,6 6,6 0 0 1 -6,6 v -6 z"/>
+</svg>

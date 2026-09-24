@@ -1,0 +1,5 @@
+<svg height="20" width="20" xmlns="http://www.w3.org/2000/svg">
+ <rect style="fill:#fff;fill-rule:evenodd;stroke:#000;stroke-width:1;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none" width="19" height="19" x=".5" y=".5" rx="1.5" ry="1.5"/>
+ <path style="fill:#6d2077;stroke-width:.349084" d="M 8.4819054,6.3039328 9.9909122,4.8013917 14.194408,8.9996495 H 17 L 9.9898697,2 7.0766614,4.9014896 Z M 10.019218,9 6.5148448,5.501737 3,9 Z"/>
+ <path style="fill:none;stroke:#df4661;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M 3,9.5 H 17"/>
+</svg>
