@@ -4711,13 +4711,13 @@
               "network"
             ],
             "us-state",
-            "route-1-network",
+          "route-1-network",
             "ca-transcanada",
-            "route-1-network",
+          "route-1-network",
             "ca-provincial-arterial",
-            "route-1-network",
+          "route-1-network",
             "ca-provincial",
-            "route-1-network",
+          "route-1-network",
             "road",
             [
               "match",
@@ -4726,9 +4726,9 @@
                 "route_1_network"
               ],
               "MX:CDMX:EJE:CENTRAL",
-            "route-1-network",
+          "route-1-network",
               "MX:CDMX:EJE:NTE",
-            "route-1-network",
+          "route-1-network",
               "MX:CDMX:EJE:OTE",
             "route-1-network",
               "MX:CDMX:EJE:PTE",
@@ -4774,661 +4774,358 @@
           ],
             "route-1-network",
           [
-            "match",
+            "let",
+            "shield_base",
             [
-              "get",
-              "route_1_network"
+              "match",
+              [
+                "get",
+                "route_1_network"
+              ],
+              "US:CA",
+              "us-state-ca",
+              "US:OR",
+              "us-state-or",
+              "US:AL",
+              "us-state-al",
+              "US:AR",
+              "us-state-ar",
+              "US:AZ",
+              "us-state-az",
+              "US:FL",
+              "us-state-fl",
+              "US:GA",
+              "us-state-ga",
+              "US:GU",
+              "us-state-gu",
+              "US:ID",
+              "us-state-id",
+              "US:KS",
+              "us-state-ks",
+              "US:LA",
+              "us-state-la",
+              "US:MN",
+              "us-state-mn",
+              "US:MO",
+              "us-state-mo",
+              "US:MP",
+              "us-state-mp",
+              "US:ND",
+              "us-state-nd",
+              "US:NH",
+              "us-state-nh",
+              "US:NM",
+              "us-state-nm",
+              "US:Navajo",
+              "us-state-navajo",
+              "US:OH",
+              "us-state-oh",
+              "US:OK",
+              "us-state-ok",
+              "US:PA",
+              "us-state-pa",
+              "US:SD",
+              "us-state-sd",
+              "US:UT",
+              "us-state-ut",
+              "US:VT",
+              "us-state-vt",
+              "US:WI",
+              "us-state-wi",
+              "CA:BC",
+              "us-ca-bc",
+              "CA:QC:A",
+              "us-ca-qc-a",
+              "CA:transcanada",
+              "us-ca-transcanada",
+              "CL:national",
+              "us-cl-national",
+              "CN:expressway",
+              "us-cn-expressway",
+              "EC:secundaria",
+              "us-ec-secundaria",
+              "IN:NH",
+              "us-in-nh",
+              "KR:expressway",
+              "us-kr-expressway",
+              "MX:MX",
+              "us-mx-mx",
+              "PE:national",
+              "us-pe-national",
+              "US:I:Business:Loop",
+              "us-i-business-loop",
+              "US:MN:Business",
+              "us-mn-business",
+              "US:OH:SCI",
+              "us-oh-sci",
+              "US:PA:Turnpike",
+              "us-pa-turnpike",
+              "co:national",
+              "us-co-national",
+              ""
             ],
-            "US:WA",
-            "us-state-wa",
-            "US:CA",
             [
               "case",
               [
-                "<=",
+                "!=",
                 [
-                  "get",
-                  "ref_length"
+                  "var",
+                  "shield_base"
                 ],
-                2
+                ""
               ],
-              "us-state-ca_2",
-              "us-state-ca_3"
-            ],
-            "US:OR",
-            [
-              "case",
               [
-                "<=",
+                "concat",
                 [
-                  "get",
-                  "ref_length"
+                  "var",
+                  "shield_base"
                 ],
-                2
+                [
+                  "case",
+                  [
+                    "<=",
+          [
+                      "get",
+                      "ref_length"
+                    ],
+                    2
+                  ],
+                  "_2",
+                  [
+                    "all",
+          [
+                      ">=",
+                      [
+                        "get",
+                        "ref_length"
+                      ],
+                      4
+                    ],
+                    [
+                      "match",
+                      [
+                        "get",
+                        "route_1_network"
+                      ],
+                      "US:Navajo",
+                      true,
+                      "CN:expressway",
+                      true,
+                      "EC:secundaria",
+                      true,
+                      "IN:NH",
+                      true,
+                      "MX:MX",
+                      true,
+                      false
+                    ]
+                  ],
+                  "_4",
+                  "_3"
+                ]
               ],
-              "us-state-or_2",
-              "us-state-or_3"
-            ],
-            "US:AK",
-            "us-state-ak",
-            "US:AL",
-            [
-              "step",
               [
-                "get",
-                "ref_length"
-              ],
-              "us-state-al_2",
-              3,
-              "us-state-al_3"
-            ],
-            "US:AR",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-ar_2",
-              3,
-              "us-state-ar_3"
-            ],
-            "US:AS",
-            "us-state-as",
-            "US:AZ",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-az_2",
-              3,
-              "us-state-az_3"
-            ],
-            "US:BIA",
-            "us-state-bia",
-            "US:CKC",
-            "us-state-ckc",
-            "US:CO",
-            "us-state-co",
-            "US:DC",
-            "us-state-dc",
-            "US:FL",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-fl_2",
-              3,
-              "us-state-fl_3"
-            ],
-            "US:GA",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-ga_2",
-              3,
-              "us-state-ga_3"
-            ],
-            "US:GLST",
-            "us-state-glst",
-            "US:GRR",
-            "us-state-grr",
-            "US:GU",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-gu_2",
-              3,
-              "us-state-gu_3"
-            ],
-            "US:ID",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-id_2",
-              3,
-              "us-state-id_3"
-            ],
-            "US:KS",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-ks_2",
-              3,
-              "us-state-ks_3"
-            ],
-            "US:LA",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-la_2",
-              3,
-              "us-state-la_3"
-            ],
-            "US:LHT",
-            "us-state-lht",
-            "US:MN",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-mn_2",
-              3,
-              "us-state-mn_3"
-            ],
-            "US:MO",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-mo_2",
-              3,
-              "us-state-mo_3"
-            ],
-            "US:MP",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-mp_2",
-              3,
-              "us-state-mp_3"
-            ],
-            "US:ND",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-nd_2",
-              3,
-              "us-state-nd_3"
-            ],
-            "US:NH",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-nh_2",
-              3,
-              "us-state-nh_3"
-            ],
-            "US:NHT",
-            "us-state-nht",
-            "US:NM",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-nm_2",
-              3,
-              "us-state-nm_3"
-            ],
-            "US:NV",
-            "us-state-nv",
-            "US:Navajo",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-navajo_2",
-              3,
-              "us-state-navajo_3",
-              4,
-              "us-state-navajo_4"
-            ],
-            "US:OH",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-oh_2",
-              3,
-              "us-state-oh_3"
-            ],
-            "US:OK",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-ok_2",
-              3,
-              "us-state-ok_3"
-            ],
-            "US:ORSB",
-            "us-state-orsb",
-            "US:PA",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-pa_2",
-              3,
-              "us-state-pa_3"
-            ],
-            "US:PANYNJ",
-            "us-state-panynj",
-            "US:PIPC",
-            "us-state-pipc",
-            "US:SC",
-            "us-state-sc",
-            "US:SD",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-sd_2",
-              3,
-              "us-state-sd_3"
-            ],
-            "US:UT",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-ut_2",
-              3,
-              "us-state-ut_3"
-            ],
-            "US:VT",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-vt_2",
-              3,
-              "us-state-vt_3"
-            ],
-            "US:WI",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-state-wi_2",
-              3,
-              "us-state-wi_3"
-            ],
-            "CA:BC",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-ca-bc_2",
-              3,
-              "us-ca-bc_3"
-            ],
-            "CA:NB:tertiary",
-            "us-ca-nb-tertiary",
-            "CA:NS:S",
-            "us-ca-ns-s",
-            "CA:NT",
-            "us-ca-nt",
-            "CA:ON:Hamilton:Expressway",
-            "us-ca-on-hamilton-expressway",
-            "CA:ON:Toronto:Expressway",
-            "us-ca-on-toronto-expressway",
-            "CA:ON:primary",
-            "us-ca-on-primary",
-            "CA:PE",
-            "us-ca-pe",
-            "CA:QC:A",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-ca-qc-a_2",
-              3,
-              "us-ca-qc-a_3"
-            ],
-            "CA:QC:R",
-            "us-ca-qc-r",
-            "CA:SK:secondary",
-            "us-ca-sk-secondary",
-            "CA:transcanada",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-ca-transcanada_2",
-              3,
-              "us-ca-transcanada_3"
-            ],
-            "CA:transcanada:namedRoute",
-            "us-ca-transcanada-namedroute_2",
-            "CL:national",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-cl-national_2",
-              3,
-              "us-cl-national_3"
-            ],
-            "CN:expressway",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-cn-expressway_2",
-              3,
-              "us-cn-expressway_3",
-              4,
-              "us-cn-expressway_4"
-            ],
-            "EC:secundaria",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-ec-secundaria_2",
-              3,
-              "us-ec-secundaria_3",
-              4,
-              "us-ec-secundaria_4"
-            ],
-            "GLCT",
-            "us-glct",
-            "GLCT:Loop",
-            "us-glct-loop",
-            "ID:national",
-            "us-id-national",
-            "IN:NH",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-in-nh_2",
-              3,
-              "us-in-nh_3",
-              4,
-              "us-in-nh_4"
-            ],
-            "KR:expressway",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-kr-expressway_2",
-              3,
-              "us-kr-expressway_3"
-            ],
-            "MX:CDMX:EJE:CENTRAL",
-            "us-mx-cdmx-eje-central",
-            "MX:CDMX:EJE:NTE",
-            "us-mx-cdmx-eje-nte",
-            "MX:CDMX:EJE:OTE",
-            "us-mx-cdmx-eje-ote",
-            "MX:CDMX:EJE:PTE",
-            "us-mx-cdmx-eje-pte",
-            "MX:CDMX:EJE:SUR",
-            "us-mx-cdmx-eje-sur",
-            "MX:MX",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-mx-mx_2",
-              3,
-              "us-mx-mx_3",
-              4,
-              "us-mx-mx_4"
-            ],
-            "NL:DR:Hunebed_Highway",
-            "us-nl-dr-hunebed-highway",
-            "NZ:Touring:AH",
-            "us-nz-touring-ah",
-            "NZ:Touring:CNZWT",
-            "us-nz-touring-cnzwt",
-            "NZ:Touring:MWT",
-            "us-nz-touring-mwt",
-            "NZ:Touring:PCH",
-            "us-nz-touring-pch",
-            "NZ:Touring:SLH",
-            "us-nz-touring-slh",
-            "NZ:Touring:SSR",
-            "us-nz-touring-ssr",
-            "NZ:Touring:TCDH",
-            "us-nz-touring-tcdh",
-            "NZ:Touring:TEH",
-            "us-nz-touring-teh",
-            "NZ:Touring:VLH",
-            "us-nz-touring-vlh",
-            "NZ:WRR",
-            "us-nz-wrr",
-            "PE:national",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-pe-national_2",
-              3,
-              "us-pe-national_3"
-            ],
-            "PK:motorway",
-            "us-pk-motorway",
-            "TW:freeway",
-            "us-tw-freeway",
-            "US:AL:Baldwin:Foley_Beach_Express",
-            "us-al-baldwin-foley-beach-express",
-            "US:AZ:Indian",
-            "us-az-indian",
-            "US:AZ:Scenic",
-            "us-az-scenic",
-            "US:CA:San_Francisco:49_Mile_Scenic_Drive",
-            "us-ca-san-francisco-49-mile-scenic-drive",
-            "US:CO:E470",
-            "us-co-e470",
-            "US:CO:NW",
-            "us-co-nw",
-            "US:CO:Scenic",
-            "us-co-scenic",
-            "US:CT:Parkway",
-            "us-ct-parkway",
-            "US:FL:Toll",
-            "us-fl-toll",
-            "US:FL:Turnpike",
-            "us-fl-turnpike",
-            "US:I:Business:Loop",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-i-business-loop_2",
-              3,
-              "us-i-business-loop_3"
-            ],
-            "US:IL:Cook:Chicago:Skyway",
-            "us-il-cook-chicago-skyway",
-            "US:IN:JHMHT",
-            "us-in-jhmht",
-            "US:IN:Toll",
-            "us-in-toll",
-            "US:KS:Turnpike",
-            "us-ks-turnpike",
-            "US:KY:Parkway",
-            "us-ky-parkway",
-            "US:LA:Causeway",
-            "us-la-causeway",
-            "US:MA:Turnpike",
-            "us-ma-turnpike",
-            "US:ME:Turnpike",
-            "us-me-turnpike",
-            "US:MN:Business",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-mn-business_2",
-              3,
-              "us-mn-business_3"
-            ],
-            "US:MT:secondary",
-            "us-mt-secondary",
-            "US:NE:Scenic",
-            "us-ne-scenic",
-            "US:NH:Turnpike",
-            "us-nh-turnpike",
-            "US:NJ:ACE",
-            "us-nj-ace",
-            "US:NJ:GSP",
-            "us-nj-gsp",
-            "US:NJ:NJTP",
-            "us-nj-njtp",
-            "US:NM:Frontage",
-            "us-nm-frontage",
-            "US:NPS:Blue_Ridge",
-            "us-nps-blue-ridge",
-            "US:NPS:Natchez_Trace",
-            "us-nps-natchez-trace",
-            "US:NV:Clark",
-            "us-nv-clark",
-            "US:NY:Parkway:LI",
-            "us-ny-parkway-li",
-            "US:NY:Parkway:LOSP",
-            "us-ny-parkway-losp",
-            "US:NY:Parkway:NYC",
-            "us-ny-parkway-nyc",
-            "US:NY:STE",
-            "us-ny-ste",
-            "US:NY:Scenic",
-            "us-ny-scenic",
-            "US:NY:TBTA",
-            "us-ny-tbta",
-            "US:NY:Thruway",
-            "us-ny-thruway",
-            "US:OH:ASD",
-            "us-oh-asd",
-            "US:OH:HOL",
-            "us-oh-hol",
-            "US:OH:JHMHT",
-            "us-oh-jhmht",
-            "US:OH:OEC",
-            "us-oh-oec",
-            "US:OH:SCI",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-oh-sci_2",
-              3,
-              "us-oh-sci_3"
-            ],
-            "US:OH:TUS:Salem",
-            "us-oh-tus-salem",
-            "US:OH:Turnpike",
-            "us-oh-turnpike",
-            "US:OK:Turnpike",
-            "us-ok-turnpike",
-            "US:PA:Turnpike",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-pa-turnpike_2",
-              3,
-              "us-pa-turnpike_3"
-            ],
-            "US:SD:Custer:CSP",
-            "us-sd-custer-csp",
-            "US:TN:primary",
-            "us-tn-primary",
-            "US:TX:Fort_Bend:FBCTRA",
-            "us-tx-fort-bend-fbctra",
-            "US:WI:Rustic",
-            "us-wi-rustic",
-            "co:national",
-            [
-              "step",
-              [
-                "get",
-                "ref_length"
-              ],
-              "us-co-national_2",
-              3,
-              "us-co-national_3"
-            ],
-            [
-              "concat",
-              "default_",
-              [
-                "to-string",
+                "match",
                 [
                   "get",
-                  "ref_length"
+                  "route_1_network"
+                ],
+                "US:WA",
+                "us-state-wa",
+                "US:AK",
+                "us-state-ak",
+                "US:AS",
+                "us-state-as",
+                "US:BIA",
+                "us-state-bia",
+                "US:CKC",
+                "us-state-ckc",
+                "US:CO",
+                "us-state-co",
+                "US:DC",
+                "us-state-dc",
+                "US:GLST",
+                "us-state-glst",
+                "US:GRR",
+                "us-state-grr",
+                "US:LHT",
+                "us-state-lht",
+                "US:NHT",
+                "us-state-nht",
+                "US:NV",
+                "us-state-nv",
+                "US:ORSB",
+                "us-state-orsb",
+                "US:PANYNJ",
+                "us-state-panynj",
+                "US:PIPC",
+                "us-state-pipc",
+                "US:SC",
+                "us-state-sc",
+                "CA:NB:tertiary",
+                "us-ca-nb-tertiary",
+                "CA:NS:S",
+                "us-ca-ns-s",
+                "CA:NT",
+                "us-ca-nt",
+                "CA:ON:Hamilton:Expressway",
+                "us-ca-on-hamilton-expressway",
+                "CA:ON:Toronto:Expressway",
+                "us-ca-on-toronto-expressway",
+                "CA:ON:primary",
+                "us-ca-on-primary",
+                "CA:PE",
+                "us-ca-pe",
+                "CA:QC:R",
+                "us-ca-qc-r",
+                "CA:SK:secondary",
+                "us-ca-sk-secondary",
+                "CA:transcanada:namedRoute",
+                "us-ca-transcanada-namedroute_2",
+                "GLCT",
+                "us-glct",
+                "GLCT:Loop",
+                "us-glct-loop",
+                "ID:national",
+                "us-id-national",
+                "MX:CDMX:EJE:CENTRAL",
+                "us-mx-cdmx-eje-central",
+                "MX:CDMX:EJE:NTE",
+                "us-mx-cdmx-eje-nte",
+                "MX:CDMX:EJE:OTE",
+                "us-mx-cdmx-eje-ote",
+                "MX:CDMX:EJE:PTE",
+                "us-mx-cdmx-eje-pte",
+                "MX:CDMX:EJE:SUR",
+                "us-mx-cdmx-eje-sur",
+                "NL:DR:Hunebed_Highway",
+                "us-nl-dr-hunebed-highway",
+                "NZ:Touring:AH",
+                "us-nz-touring-ah",
+                "NZ:Touring:CNZWT",
+                "us-nz-touring-cnzwt",
+                "NZ:Touring:MWT",
+                "us-nz-touring-mwt",
+                "NZ:Touring:PCH",
+                "us-nz-touring-pch",
+                "NZ:Touring:SLH",
+                "us-nz-touring-slh",
+                "NZ:Touring:SSR",
+                "us-nz-touring-ssr",
+                "NZ:Touring:TCDH",
+                "us-nz-touring-tcdh",
+                "NZ:Touring:TEH",
+                "us-nz-touring-teh",
+                "NZ:Touring:VLH",
+                "us-nz-touring-vlh",
+                "NZ:WRR",
+                "us-nz-wrr",
+                "PK:motorway",
+                "us-pk-motorway",
+                "TW:freeway",
+                "us-tw-freeway",
+                "US:AL:Baldwin:Foley_Beach_Express",
+                "us-al-baldwin-foley-beach-express",
+                "US:AZ:Indian",
+                "us-az-indian",
+                "US:AZ:Scenic",
+                "us-az-scenic",
+                "US:CA:San_Francisco:49_Mile_Scenic_Drive",
+                "us-ca-san-francisco-49-mile-scenic-drive",
+                "US:CO:E470",
+                "us-co-e470",
+                "US:CO:NW",
+                "us-co-nw",
+                "US:CO:Scenic",
+                "us-co-scenic",
+                "US:CT:Parkway",
+                "us-ct-parkway",
+                "US:FL:Toll",
+                "us-fl-toll",
+                "US:FL:Turnpike",
+                "us-fl-turnpike",
+                "US:IL:Cook:Chicago:Skyway",
+                "us-il-cook-chicago-skyway",
+                "US:IN:JHMHT",
+                "us-in-jhmht",
+                "US:IN:Toll",
+                "us-in-toll",
+                "US:KS:Turnpike",
+                "us-ks-turnpike",
+                "US:KY:Parkway",
+                "us-ky-parkway",
+                "US:LA:Causeway",
+                "us-la-causeway",
+                "US:MA:Turnpike",
+                "us-ma-turnpike",
+                "US:ME:Turnpike",
+                "us-me-turnpike",
+                "US:MT:secondary",
+                "us-mt-secondary",
+                "US:NE:Scenic",
+                "us-ne-scenic",
+                "US:NH:Turnpike",
+                "us-nh-turnpike",
+                "US:NJ:ACE",
+                "us-nj-ace",
+                "US:NJ:GSP",
+                "us-nj-gsp",
+                "US:NJ:NJTP",
+                "us-nj-njtp",
+                "US:NM:Frontage",
+                "us-nm-frontage",
+                "US:NPS:Blue_Ridge",
+                "us-nps-blue-ridge",
+                "US:NPS:Natchez_Trace",
+                "us-nps-natchez-trace",
+                "US:NV:Clark",
+                "us-nv-clark",
+                "US:NY:Parkway:LI",
+                "us-ny-parkway-li",
+                "US:NY:Parkway:LOSP",
+                "us-ny-parkway-losp",
+                "US:NY:Parkway:NYC",
+                "us-ny-parkway-nyc",
+                "US:NY:STE",
+                "us-ny-ste",
+                "US:NY:Scenic",
+                "us-ny-scenic",
+                "US:NY:TBTA",
+                "us-ny-tbta",
+                "US:NY:Thruway",
+                "us-ny-thruway",
+                "US:OH:ASD",
+                "us-oh-asd",
+                "US:OH:HOL",
+                "us-oh-hol",
+                "US:OH:JHMHT",
+                "us-oh-jhmht",
+                "US:OH:OEC",
+                "us-oh-oec",
+                "US:OH:TUS:Salem",
+                "us-oh-tus-salem",
+                "US:OH:Turnpike",
+                "us-oh-turnpike",
+                "US:OK:Turnpike",
+                "us-ok-turnpike",
+                "US:SD:Custer:CSP",
+                "us-sd-custer-csp",
+                "US:TN:primary",
+                "us-tn-primary",
+                "US:TX:Fort_Bend:FBCTRA",
+                "us-tx-fort-bend-fbctra",
+                "US:WI:Rustic",
+                "us-wi-rustic",
+                [
+                  "concat",
+                  "default_",
+                  [
+                    "to-string",
+                    [
+                      "get",
+                      "ref_length"
+                    ]
+                  ]
                 ]
               ]
             ]
@@ -5568,7 +5265,7 @@
             ]
           ],
             "route-1-network",
-          [
+                    [
             "match",
             [
               "get",
@@ -5586,7 +5283,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.12
               ]
             ],
@@ -5594,7 +5291,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.09
               ]
             ],
@@ -5610,7 +5307,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.18
               ]
             ],
@@ -5626,7 +5323,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.45
               ]
             ],
@@ -5642,23 +5339,15 @@
             [
               "literal",
               [
-                0.0,
-                -0.05
-              ]
-            ],
-            "US:CKC",
-            [
-              "literal",
-              [
                 0,
-                0.1
+                -0.05
               ]
             ],
             "US:CO",
             [
               "literal",
               [
-                0.0,
+                0,
                 0.45
               ]
             ],
@@ -5666,7 +5355,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.327
               ]
             ],
@@ -5686,27 +5375,11 @@
                 0.06
               ]
             ],
-            "US:GLST",
-            [
-              "literal",
-              [
-                0,
-                0.1
-              ]
-            ],
-            "US:GRR",
-            [
-              "literal",
-              [
-                0,
-                0.1
-              ]
-            ],
             "US:GU",
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5722,7 +5395,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5730,23 +5403,15 @@
             [
               "literal",
               [
-                0.0,
-                0.24
-              ]
-            ],
-            "US:LHT",
-            [
-              "literal",
-              [
                 0,
-                0.1
+                0.24
               ]
             ],
             "US:MN",
             [
               "literal",
               [
-                0.0,
+                0,
                 0.24
               ]
             ],
@@ -5754,7 +5419,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.18
               ]
             ],
@@ -5762,7 +5427,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5782,19 +5447,11 @@
                 -0.06
               ]
             ],
-            "US:NHT",
-            [
-              "literal",
-              [
-                0,
-                0.1
-              ]
-            ],
             "US:NM",
             [
               "literal",
               [
-                0.0,
+                0,
                 0.05
               ]
             ],
@@ -5802,7 +5459,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.3
               ]
             ],
@@ -5810,7 +5467,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5818,7 +5475,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.12
               ]
             ],
@@ -5826,47 +5483,23 @@
             [
               "literal",
               [
-                0.0,
-                0.24
-              ]
-            ],
-            "US:ORSB",
-            [
-              "literal",
-              [
                 0,
-                0.1
+                0.24
               ]
             ],
             "US:PA",
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
-              ]
-            ],
-            "US:PANYNJ",
-            [
-              "literal",
-              [
-                0,
-                0.1
-              ]
-            ],
-            "US:PIPC",
-            [
-              "literal",
-              [
-                0,
-                0.1
               ]
             ],
             "US:SC",
             [
               "literal",
               [
-                0.0,
+                0,
                 0.18
               ]
             ],
@@ -5882,7 +5515,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5890,7 +5523,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.18
               ]
             ],
@@ -5898,7 +5531,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.18
               ]
             ],
@@ -5906,7 +5539,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5922,7 +5555,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5930,7 +5563,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.327
               ]
             ],
@@ -5938,7 +5571,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5946,7 +5579,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5954,7 +5587,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.24
               ]
             ],
@@ -5962,7 +5595,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5970,7 +5603,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5978,7 +5611,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -5986,7 +5619,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.491
               ]
             ],
@@ -5994,7 +5627,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.109
               ]
             ],
@@ -6002,7 +5635,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6010,7 +5643,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.06
               ]
             ],
@@ -6018,7 +5651,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.24
               ]
             ],
@@ -6026,7 +5659,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6034,7 +5667,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6042,7 +5675,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6050,7 +5683,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.12
               ]
             ],
@@ -6058,7 +5691,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.24
               ]
             ],
@@ -6066,7 +5699,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.24
               ]
             ],
@@ -6074,7 +5707,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6082,7 +5715,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.277
               ]
             ],
@@ -6106,7 +5739,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.277
               ]
             ],
@@ -6114,7 +5747,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6122,7 +5755,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.12
               ]
             ],
@@ -6130,7 +5763,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6138,7 +5771,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6146,7 +5779,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6154,7 +5787,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6162,7 +5795,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6170,7 +5803,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6178,7 +5811,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6186,7 +5819,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6194,7 +5827,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6202,7 +5835,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6210,7 +5843,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.18
               ]
             ],
@@ -6218,7 +5851,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.3
               ]
             ],
@@ -6226,7 +5859,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6234,7 +5867,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6242,7 +5875,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.06
               ]
             ],
@@ -6250,7 +5883,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6258,7 +5891,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6266,7 +5899,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.48
               ]
             ],
@@ -6274,7 +5907,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.545
               ]
             ],
@@ -6282,7 +5915,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6290,7 +5923,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6306,7 +5939,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6314,7 +5947,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6322,7 +5955,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6330,7 +5963,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6338,7 +5971,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6346,7 +5979,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6354,7 +5987,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.24
               ]
             ],
@@ -6362,7 +5995,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6370,7 +6003,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6378,7 +6011,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6386,7 +6019,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.24
               ]
             ],
@@ -6394,7 +6027,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.092
               ]
             ],
@@ -6402,7 +6035,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6410,7 +6043,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6418,7 +6051,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6426,7 +6059,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6434,7 +6067,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6442,7 +6075,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.12
               ]
             ],
@@ -6450,7 +6083,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6458,7 +6091,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6466,7 +6099,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.06
               ]
             ],
@@ -6482,7 +6115,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6490,7 +6123,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.36
               ]
             ],
@@ -6498,7 +6131,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6506,7 +6139,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6514,7 +6147,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6522,7 +6155,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6530,7 +6163,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.12
               ]
             ],
@@ -6546,7 +6179,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6554,7 +6187,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6578,7 +6211,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6586,7 +6219,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6594,7 +6227,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 0.06
               ]
             ],
@@ -6610,7 +6243,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.3
               ]
             ],
@@ -6618,7 +6251,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.36
               ]
             ],
@@ -6634,7 +6267,7 @@
             [
               "literal",
               [
-                0.0,
+                0,
                 -0.24
               ]
             ],
@@ -8147,278 +7780,209 @@
           "us-highway",
           1.2,
             "route-1-network",
-          [
-            "match",
+                    [
+            "case",
             [
-              "get",
-              "route_1_network"
+              "in",
+              [
+                "get",
+                "route_1_network"
+              ],
+              [
+                "literal",
+                [
+                  "US:WA",
+                  "US:CA",
+                  "US:OR",
+                  "US:AK",
+                  "US:AL",
+                  "US:AR",
+                  "US:AS",
+                  "US:AZ",
+                  "US:BIA",
+                  "US:CKC",
+                  "US:CO",
+                  "US:DC",
+                  "US:FL",
+                  "US:GA",
+                  "US:GLST",
+                  "US:GRR",
+                  "US:GU",
+                  "US:ID",
+                  "US:KS",
+                  "US:LA",
+                  "US:LHT",
+                  "US:MN",
+                  "US:MO",
+                  "US:MP",
+                  "US:ND",
+                  "US:NH",
+                  "US:NHT",
+                  "US:NM",
+                  "US:NV",
+                  "US:Navajo",
+                  "US:OH",
+                  "US:OK",
+                  "US:ORSB",
+                  "US:PA",
+                  "US:PANYNJ",
+                  "US:PIPC",
+                  "US:SC",
+                  "US:SD",
+                  "US:UT",
+                  "US:VT",
+                  "US:WI",
+                  "CA:BC",
+                  "CA:NB:tertiary",
+                  "CA:NS:S",
+                  "CA:NT",
+                  "CA:ON:Hamilton:Expressway",
+                  "CA:ON:Toronto:Expressway",
+                  "CA:ON:primary",
+                  "CA:PE",
+                  "CA:QC:A",
+                  "CA:QC:R",
+                  "CA:SK:secondary",
+                  "CA:transcanada",
+                  "CA:transcanada:namedRoute",
+                  "CL:national",
+                  "CN:expressway",
+                  "EC:secundaria",
+                  "GLCT",
+                  "GLCT:Loop",
+                  "ID:national",
+                  "IN:NH",
+                  "KR:expressway",
+                  "MX:CDMX:EJE:CENTRAL",
+                  "MX:CDMX:EJE:NTE",
+                  "MX:CDMX:EJE:OTE",
+                  "MX:CDMX:EJE:PTE",
+                  "MX:CDMX:EJE:SUR",
+                  "MX:MX",
+                  "NL:DR:Hunebed_Highway",
+                  "NZ:Touring:AH",
+                  "NZ:Touring:CNZWT",
+                  "NZ:Touring:MWT",
+                  "NZ:Touring:PCH",
+                  "NZ:Touring:SLH",
+                  "NZ:Touring:SSR",
+                  "NZ:Touring:TCDH",
+                  "NZ:Touring:TEH",
+                  "NZ:Touring:VLH",
+                  "NZ:WRR",
+                  "PE:national",
+                  "PK:motorway",
+                  "TW:freeway",
+                  "US:AL:Baldwin:Foley_Beach_Express",
+                  "US:AZ:Indian",
+                  "US:AZ:Scenic",
+                  "US:CA:San_Francisco:49_Mile_Scenic_Drive",
+                  "US:CO:E470",
+                  "US:CO:NW",
+                  "US:CO:Scenic",
+                  "US:CT:Parkway",
+                  "US:FL:Toll",
+                  "US:FL:Turnpike",
+                  "US:I:Business:Loop",
+                  "US:IL:Cook:Chicago:Skyway",
+                  "US:IN:JHMHT",
+                  "US:IN:Toll",
+                  "US:KS:Turnpike",
+                  "US:KY:Parkway",
+                  "US:LA:Causeway",
+                  "US:MA:Turnpike",
+                  "US:ME:Turnpike",
+                  "US:MN:Business",
+                  "US:MT:secondary",
+                  "US:NE:Scenic",
+                  "US:NH:Turnpike",
+                  "US:NJ:ACE",
+                  "US:NJ:GSP",
+                  "US:NJ:NJTP",
+                  "US:NM:Frontage",
+                  "US:NPS:Blue_Ridge",
+                  "US:NPS:Natchez_Trace",
+                  "US:NV:Clark",
+                  "US:NY:Parkway:LI",
+                  "US:NY:Parkway:LOSP",
+                  "US:NY:Parkway:NYC",
+                  "US:NY:STE",
+                  "US:NY:Scenic",
+                  "US:NY:TBTA",
+                  "US:NY:Thruway",
+                  "US:OH:ASD",
+                  "US:OH:HOL",
+                  "US:OH:JHMHT",
+                  "US:OH:OEC",
+                  "US:OH:SCI",
+                  "US:OH:TUS:Salem",
+                  "US:OH:Turnpike",
+                  "US:OK:Turnpike",
+                  "US:PA:Turnpike",
+                  "US:SD:Custer:CSP",
+                  "US:TN:primary",
+                  "US:TX:Fort_Bend:FBCTRA",
+                  "US:WI:Rustic",
+                  "co:national"
+                ]
+              ]
             ],
-            "US:WA",
-            1.2,
-            "US:CA",
-            1.2,
-            "US:OR",
-            1.2,
-            "US:AK",
-            1.2,
-            "US:AL",
-            1.2,
-            "US:AR",
-            1.2,
-            "US:AS",
-            1.2,
-            "US:AZ",
-            1.2,
-            "US:BIA",
-            1.0,
-            "US:CKC",
-            1.333,
-            "US:CO",
-            1.2,
-            "US:DC",
-            1.091,
-            "US:FL",
-            1.2,
-            "US:GA",
-            1.2,
-            "US:GLST",
-            1.2,
-            "US:GRR",
-            1.2,
-            "US:GU",
-            1.0,
-            "US:ID",
-            1.2,
-            "US:KS",
-            1.2,
-            "US:LA",
-            1.2,
-            "US:LHT",
-            1.2,
-            "US:MN",
-            1.2,
-            "US:MO",
-            1.2,
-            "US:MP",
-            1.2,
-            "US:ND",
-            1.2,
-            "US:NH",
-            1.2,
-            "US:NHT",
-            1.143,
-            "US:NM",
-            0.96,
-            "US:NV",
-            1.0,
-            "US:Navajo",
-            1.0,
-            "US:OH",
-            1.2,
-            "US:OK",
-            1.2,
-            "US:ORSB",
-            1.2,
-            "US:PA",
-            1.2,
-            "US:PANYNJ",
-            1.263,
-            "US:PIPC",
-            1.2,
-            "US:SC",
-            1.2,
-            "US:SD",
-            1.2,
-            "US:UT",
-            1.2,
-            "US:VT",
-            1.2,
-            "US:WI",
-            1.2,
-            "CA:BC",
-            1.2,
-            "CA:NB:tertiary",
-            1.2,
-            "CA:NS:S",
-            1.143,
-            "CA:NT",
-            1.091,
-            "CA:ON:Hamilton:Expressway",
-            1.2,
-            "CA:ON:Toronto:Expressway",
-            1.2,
-            "CA:ON:primary",
-            1.2,
-            "CA:PE",
-            1.2,
-            "CA:QC:A",
-            1.2,
-            "CA:QC:R",
-            1.2,
-            "CA:SK:secondary",
-            1.091,
-            "CA:transcanada",
-            1.091,
-            "CA:transcanada:namedRoute",
-            1.091,
-            "CL:national",
-            1.2,
-            "CN:expressway",
-            1.2,
-            "EC:secundaria",
-            1.2,
-            "GLCT",
-            1.2,
-            "GLCT:Loop",
-            1.2,
-            "ID:national",
-            1.2,
-            "IN:NH",
-            1.2,
-            "KR:expressway",
-            1.2,
-            "MX:CDMX:EJE:CENTRAL",
-            1.2,
-            "MX:CDMX:EJE:NTE",
-            0.923,
-            "MX:CDMX:EJE:OTE",
-            1.2,
-            "MX:CDMX:EJE:PTE",
-            1.2,
-            "MX:CDMX:EJE:SUR",
-            0.923,
-            "MX:MX",
-            1.2,
-            "NL:DR:Hunebed_Highway",
-            1.2,
-            "NZ:Touring:AH",
-            1.2,
-            "NZ:Touring:CNZWT",
-            1.2,
-            "NZ:Touring:MWT",
-            1.2,
-            "NZ:Touring:PCH",
-            1.2,
-            "NZ:Touring:SLH",
-            1.2,
-            "NZ:Touring:SSR",
-            1.2,
-            "NZ:Touring:TCDH",
-            1.2,
-            "NZ:Touring:TEH",
-            0.9,
-            "NZ:Touring:VLH",
-            1.2,
-            "NZ:WRR",
-            1.2,
-            "PE:national",
-            1.2,
-            "PK:motorway",
-            1.2,
-            "TW:freeway",
-            1.2,
-            "US:AL:Baldwin:Foley_Beach_Express",
-            1.0,
-            "US:AZ:Indian",
-            1.2,
-            "US:AZ:Scenic",
-            1.2,
-            "US:CA:San_Francisco:49_Mile_Scenic_Drive",
-            1.2,
-            "US:CO:E470",
-            1.2,
-            "US:CO:NW",
-            1.091,
-            "US:CO:Scenic",
-            1.2,
-            "US:CT:Parkway",
-            1.2,
-            "US:FL:Toll",
-            1.091,
-            "US:FL:Turnpike",
-            1.2,
-            "US:I:Business:Loop",
-            1.2,
-            "US:IL:Cook:Chicago:Skyway",
-            1.2,
-            "US:IN:JHMHT",
-            1.091,
-            "US:IN:Toll",
-            1.2,
-            "US:KS:Turnpike",
-            1.2,
-            "US:KY:Parkway",
-            1.2,
-            "US:LA:Causeway",
-            1.2,
-            "US:MA:Turnpike",
-            1.2,
-            "US:ME:Turnpike",
-            1.2,
-            "US:MN:Business",
-            1.2,
-            "US:MT:secondary",
-            0.923,
-            "US:NE:Scenic",
-            0.863,
-            "US:NH:Turnpike",
-            1.2,
-            "US:NJ:ACE",
-            1.2,
-            "US:NJ:GSP",
-            1.2,
-            "US:NJ:NJTP",
-            1.2,
-            "US:NM:Frontage",
-            1.2,
-            "US:NPS:Blue_Ridge",
-            1.2,
-            "US:NPS:Natchez_Trace",
-            1.2,
-            "US:NV:Clark",
-            1.2,
-            "US:NY:Parkway:LI",
-            1.2,
-            "US:NY:Parkway:LOSP",
-            1.2,
-            "US:NY:Parkway:NYC",
-            1.2,
-            "US:NY:STE",
-            1.2,
-            "US:NY:Scenic",
-            1.2,
-            "US:NY:TBTA",
-            1.091,
-            "US:NY:Thruway",
-            1.2,
-            "US:OH:ASD",
-            1.2,
-            "US:OH:HOL",
-            1.2,
-            "US:OH:JHMHT",
-            1.2,
-            "US:OH:OEC",
-            1.2,
-            "US:OH:SCI",
-            1.2,
-            "US:OH:TUS:Salem",
-            1.2,
-            "US:OH:Turnpike",
-            1.2,
-            "US:OK:Turnpike",
-            1.2,
-            "US:PA:Turnpike",
-            1.2,
-            "US:SD:Custer:CSP",
-            1.2,
-            "US:TN:primary",
-            1.2,
-            "US:TX:Fort_Bend:FBCTRA",
-            1.2,
-            "US:WI:Rustic",
-            1.2,
-            "co:national",
-            1.2,
+            [
+              "match",
+              [
+                "get",
+                "route_1_network"
+              ],
+              "US:BIA",
+              1,
+              "US:CKC",
+              1.333,
+              "US:DC",
+              1.091,
+              "US:GU",
+              1,
+              "US:NHT",
+              1.143,
+              "US:NM",
+              0.96,
+              "US:NV",
+              1,
+              "US:Navajo",
+              1,
+              "US:PANYNJ",
+              1.263,
+              "CA:NS:S",
+              1.143,
+              "CA:NT",
+              1.091,
+              "CA:SK:secondary",
+              1.091,
+              "CA:transcanada",
+              1.091,
+              "CA:transcanada:namedRoute",
+              1.091,
+              "MX:CDMX:EJE:NTE",
+              0.923,
+              "MX:CDMX:EJE:SUR",
+              0.923,
+              "NZ:Touring:TEH",
+              0.9,
+              "US:AL:Baldwin:Foley_Beach_Express",
+              1,
+              "US:CO:NW",
+              1.091,
+              "US:FL:Toll",
+              1.091,
+              "US:IN:JHMHT",
+              1.091,
+              "US:MT:secondary",
+              0.923,
+              "US:NE:Scenic",
+              0.863,
+              "US:NY:TBTA",
+              1.091,
+              1.2
+            ],
             0.8
           ],
           0.8
