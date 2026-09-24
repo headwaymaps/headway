@@ -12,6 +12,40 @@ import { PatternRequest, TravelmuxClient } from 'src/services/TravelmuxClient';
 /// this just re-fetches a position we already have.
 const POLL_INTERVAL_MS = 30_000;
 
+/// How long a marker takes to close the gap between where it was drawn and where a fresh report
+/// says the vehicle actually is.
+const TRACK_CORRECTION_MS = 1_000;
+
+/// Carries a marker from the position it was drawn at onto a replacement track.
+export class TrackCorrection {
+  private from?: { point: LngLat; startedAt: number };
+
+  /// Start correcting from the position currently on screen.
+  begin(point: LngLat, now: number): void {
+    this.from = { point, startedAt: now };
+  }
+
+  /// Where to draw a marker whose track puts it at `target`.
+  apply(target: LngLat, now: number): LngLat {
+    const from = this.from;
+    if (!from) {
+      return target;
+    }
+
+    const progress = Math.min(1, (now - from.startedAt) / TRACK_CORRECTION_MS);
+    if (progress === 1) {
+      this.from = undefined;
+      return target;
+    }
+
+    const eased = progress * progress * (3 - 2 * progress);
+    return new LngLat(
+      from.point.lng + eased * (target.lng - from.point.lng),
+      from.point.lat + eased * (target.lat - from.point.lat),
+    );
+  }
+}
+
 /// A vehicle we're drawing, and the marker drawing it. The marker outlives a poll so it can be
 /// animated between them - and so a tooltip being read doesn't vanish underneath the reader.
 ///
@@ -21,6 +55,7 @@ interface TrackedVehicle {
   marker: Marker;
   element: HTMLElement;
   props: TransitVehicleMarkerProps;
+  correction: TrackCorrection;
   stopRendering: () => void;
 }
 
@@ -164,7 +199,9 @@ export default class VehicleOverlay {
     const frame = () => {
       const now = Date.now() + this.clockOffsetMs;
       for (const tracked of this.tracked.values()) {
-        tracked.marker.setLngLat(tracked.props.vehicle.positionAt(now));
+        tracked.marker.setLngLat(
+          tracked.correction.apply(tracked.props.vehicle.positionAt(now), now),
+        );
       }
       this.animation = requestAnimationFrame(frame);
     };
@@ -198,7 +235,9 @@ export default class VehicleOverlay {
       return;
     }
 
+    const previousNow = Date.now() + this.clockOffsetMs;
     this.clockOffsetMs = result.value.clockOffsetMs;
+    const now = Date.now() + this.clockOffsetMs;
 
     const reported = new Set<string>();
     for (const raw of result.value.vehicles) {
@@ -209,6 +248,13 @@ export default class VehicleOverlay {
       const existing = this.tracked.get(key);
       if (existing) {
         // Keep the marker: re-creating it restarts the pulse and drops any open tooltip.
+        existing.correction.begin(
+          existing.correction.apply(
+            existing.props.vehicle.positionAt(previousNow),
+            previousNow,
+          ),
+          now,
+        );
         existing.props.vehicle = vehicle;
         existing.props.clockOffsetMs = this.clockOffsetMs;
         existing.props.faded = this.isFaded(raw.patternCode);
@@ -236,17 +282,20 @@ export default class VehicleOverlay {
           element,
         );
       });
-      const marker = new Marker({ element }).setLngLat(
-        vehicle.positionAt(Date.now() + this.clockOffsetMs),
-      );
-      this.tracked.set(key, { marker, element, props, stopRendering });
+      const marker = new Marker({ element }).setLngLat(vehicle.positionAt(now));
+      this.tracked.set(key, {
+        marker,
+        element,
+        props,
+        correction: new TrackCorrection(),
+        stopRendering,
+      });
       this.map.pushMarker(key, marker);
     }
 
     // A vehicle a poll didn't mention is usually a gap in the feed or a wobble in what travelmux
     // ranks as nearby, not a bus that went away - so it keeps coasting along the track it already
     // has, and is only dropped once that track is spent.
-    const now = Date.now() + this.clockOffsetMs;
     for (const [key, tracked] of [...this.tracked]) {
       if (!reported.has(key) && tracked.props.vehicle.hasExpiredAt(now)) {
         this.removeMarker(key);

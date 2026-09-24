@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { LngLat } from 'maplibre-gl';
 import Trip from './Trip';
-import VehicleOverlay from './VehicleOverlay';
+import VehicleOverlay, { TrackCorrection } from './VehicleOverlay';
 import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import {
   TransitVehicleMode,
@@ -45,6 +45,31 @@ function overlay(trips: Trip[]): VehicleOverlay {
   const point = new LngLat(-122.3, 47.5);
   return new VehicleOverlay({} as BaseMapInterface, point, point, trips);
 }
+
+describe('TrackCorrection', () => {
+  test('places a newly appearing marker on its track', () => {
+    const correction = new TrackCorrection();
+
+    expect(correction.apply(new LngLat(-122.3, 47.5), 0).lng).toEqual(-122.3);
+  });
+
+  test('eases a refreshed track from the position already drawn', () => {
+    const correction = new TrackCorrection();
+    correction.begin(new LngLat(0, 0), 0);
+
+    expect(correction.apply(new LngLat(10, 0), 500).lng).toEqual(5);
+    expect(correction.apply(new LngLat(20, 0), 1000).lng).toEqual(20);
+  });
+
+  test('starts a second refresh from a correction already in progress', () => {
+    const correction = new TrackCorrection();
+    correction.begin(new LngLat(0, 0), 0);
+    const current = correction.apply(new LngLat(10, 0), 500);
+    correction.begin(current, 500);
+
+    expect(correction.apply(new LngLat(20, 0), 500).lng).toEqual(5);
+  });
+});
 
 describe('tripToSelect', () => {
   const routeForty = trip('1:40:0:01');
