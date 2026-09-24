@@ -137,9 +137,12 @@ Networks
 --------
 
 `network` in the tiles is OpenMapTiles' coarse value — `us-interstate`,
-`us-highway`, `us-state`. The specific state lives in `route_1_network` as
-`US:WA`, `US:CA` and so on, which is what Americana keys its definitions by, so
-`icon-image` matches on `network` first and `route_1_network` within `us-state`.
+`us-highway`, `us-state`, `ca-transcanada`, `ca-provincial-arterial`,
+`ca-provincial`, or the generic `road`. The specific road system lives in
+`route_1_network` as `US:WA`, `CA:BC`, `MX:MX`, and so on, which is what
+Americana keys its definitions by. The shield expressions map the three Canadian
+network values, plus the Mexican `road` features whose `route_1_network` is a
+known Mexican system, through the shared `route-1-network` matcher.
 
 Recreational route relations put the network's scope in `network` rather than a
 road network, so `lwn`, `rwn`, `ncn` and their siblings are filtered out of the

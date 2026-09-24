@@ -4705,8 +4705,44 @@
         "icon-image": [
           "match",
           [
-            "get",
-            "network"
+            "match",
+            [
+              "get",
+              "network"
+            ],
+            "us-state",
+            "route-1-network",
+            "ca-transcanada",
+            "route-1-network",
+            "ca-provincial-arterial",
+            "route-1-network",
+            "ca-provincial",
+            "route-1-network",
+            "road",
+            [
+              "match",
+              [
+                "get",
+                "route_1_network"
+              ],
+              "MX:CDMX:EJE:CENTRAL",
+            "route-1-network",
+              "MX:CDMX:EJE:NTE",
+            "route-1-network",
+              "MX:CDMX:EJE:OTE",
+            "route-1-network",
+              "MX:CDMX:EJE:PTE",
+            "route-1-network",
+              "MX:CDMX:EJE:SUR",
+            "route-1-network",
+              "MX:MX",
+            "route-1-network",
+              "road"
+            ],
+            [
+              "get",
+              "network"
+            ]
           ],
           "us-interstate",
           [
@@ -4736,7 +4772,7 @@
             "us-highway_2",
             "us-highway_3"
           ],
-          "us-state",
+            "route-1-network",
           [
             "match",
             [
@@ -5426,10 +5462,26 @@
         "text-field": [
           "match",
           [
-            "get",
-            "network"
+            "match",
+            ["get", "network"],
+            "us-state", "route-1-network",
+            "ca-transcanada", "route-1-network",
+            "ca-provincial-arterial", "route-1-network",
+            "ca-provincial", "route-1-network",
+            "road",
+            [
+              "match", ["get", "route_1_network"],
+              "MX:CDMX:EJE:CENTRAL", "route-1-network",
+              "MX:CDMX:EJE:NTE", "route-1-network",
+              "MX:CDMX:EJE:OTE", "route-1-network",
+              "MX:CDMX:EJE:PTE", "route-1-network",
+              "MX:CDMX:EJE:SUR", "route-1-network",
+              "MX:MX", "route-1-network",
+              "road"
+            ],
+            ["get", "network"]
           ],
-          "us-state",
+            "route-1-network",
           [
             "match",
             [
@@ -5480,8 +5532,24 @@
         "text-offset": [
           "match",
           [
-            "get",
-            "network"
+            "match",
+            ["get", "network"],
+            "us-state", "route-1-network",
+            "ca-transcanada", "route-1-network",
+            "ca-provincial-arterial", "route-1-network",
+            "ca-provincial", "route-1-network",
+            "road",
+            [
+              "match", ["get", "route_1_network"],
+              "MX:CDMX:EJE:CENTRAL", "route-1-network",
+              "MX:CDMX:EJE:NTE", "route-1-network",
+              "MX:CDMX:EJE:OTE", "route-1-network",
+              "MX:CDMX:EJE:PTE", "route-1-network",
+              "MX:CDMX:EJE:SUR", "route-1-network",
+              "MX:MX", "route-1-network",
+              "road"
+            ],
+            ["get", "network"]
           ],
           "us-interstate",
           [
@@ -5499,7 +5567,7 @@
               -0.06
             ]
           ],
-          "us-state",
+            "route-1-network",
           [
             "match",
             [
@@ -6590,10 +6658,26 @@
         "text-size": [
           "match",
           [
-            "get",
-            "network"
+            "match",
+            ["get", "network"],
+            "us-state", "route-1-network",
+            "ca-transcanada", "route-1-network",
+            "ca-provincial-arterial", "route-1-network",
+            "ca-provincial", "route-1-network",
+            "road",
+            [
+              "match", ["get", "route_1_network"],
+              "MX:CDMX:EJE:CENTRAL", "route-1-network",
+              "MX:CDMX:EJE:NTE", "route-1-network",
+              "MX:CDMX:EJE:OTE", "route-1-network",
+              "MX:CDMX:EJE:PTE", "route-1-network",
+              "MX:CDMX:EJE:SUR", "route-1-network",
+              "MX:MX", "route-1-network",
+              "road"
+            ],
+            ["get", "network"]
           ],
-          "us-state",
+            "route-1-network",
           [
             "match",
             [
@@ -8039,14 +8123,30 @@
         "icon-size": [
           "match",
           [
-            "get",
-            "network"
+            "match",
+            ["get", "network"],
+            "us-state", "route-1-network",
+            "ca-transcanada", "route-1-network",
+            "ca-provincial-arterial", "route-1-network",
+            "ca-provincial", "route-1-network",
+            "road",
+            [
+              "match", ["get", "route_1_network"],
+              "MX:CDMX:EJE:CENTRAL", "route-1-network",
+              "MX:CDMX:EJE:NTE", "route-1-network",
+              "MX:CDMX:EJE:OTE", "route-1-network",
+              "MX:CDMX:EJE:PTE", "route-1-network",
+              "MX:CDMX:EJE:SUR", "route-1-network",
+              "MX:MX", "route-1-network",
+              "road"
+            ],
+            ["get", "network"]
           ],
           "us-interstate",
           1.2,
           "us-highway",
           1.2,
-          "us-state",
+            "route-1-network",
           [
             "match",
             [
@@ -8328,12 +8428,28 @@
         "text-color": [
           "match",
           [
-            "get",
-            "network"
+            "match",
+            ["get", "network"],
+            "us-state", "route-1-network",
+            "ca-transcanada", "route-1-network",
+            "ca-provincial-arterial", "route-1-network",
+            "ca-provincial", "route-1-network",
+            "road",
+            [
+              "match", ["get", "route_1_network"],
+              "MX:CDMX:EJE:CENTRAL", "route-1-network",
+              "MX:CDMX:EJE:NTE", "route-1-network",
+              "MX:CDMX:EJE:OTE", "route-1-network",
+              "MX:CDMX:EJE:PTE", "route-1-network",
+              "MX:CDMX:EJE:SUR", "route-1-network",
+              "MX:MX", "route-1-network",
+              "road"
+            ],
+            ["get", "network"]
           ],
           "us-interstate",
           "#ffffff",
-          "us-state",
+            "route-1-network",
           [
             "match",
             [
