@@ -21,6 +21,38 @@ function shortDuration(seconds: number): string {
     : formatDuration(seconds, 'shortform');
 }
 
+/// A countdown split at the unit, so a view can set the unit in smaller type than the number.
+function countdown(seconds: number): Countdown {
+  if (seconds < 60) {
+    return {
+      value: `${Math.round(seconds)}`,
+      unit: i18n.global.t('times_unit.seconds'),
+    };
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) {
+    return {
+      value: `${minutes}`,
+      unit: i18n.global.t('times_unit.minutes'),
+    };
+  }
+  const hours = Math.floor(minutes / 60);
+  return {
+    value: `${hours}:${`${minutes - hours * 60}`.padStart(2, '0')}`,
+    unit: i18n.global.t('times_unit.hours'),
+  };
+}
+
+/// How long until a vehicle reaches the stop, with the unit kept apart from the number.
+export type Countdown = { value: string; unit?: string };
+
+/// What the popover says about the rider's boarding stop: where the vehicle is in the stop
+/// sequence, and - while it's still on its way - how long the wait is.
+export type BoardingStopRow = {
+  text: string;
+  countdown?: Countdown;
+};
+
 /// Where a vehicle is expected to be over the next few minutes, with its points ready to
 /// interpolate between.
 interface Track {
@@ -125,28 +157,36 @@ export default class TransitVehicle {
     return i18n.global.t('transit_vehicle_$label', { label: this.raw.label });
   }
 
-  /// When the vehicle reaches the rider's boarding stop, or how long ago it left it.
+  /// The boarding-stop line of the popover: how far up the route the vehicle still is, and how
+  /// long until it gets here.
   ///
   /// Undefined when travelmux had nothing to say about the stop - the marker then just carries
   /// the route and how fresh the position is.
-  boardingStopFormatted(now: Date = new Date()): string | undefined {
+  boardingStopRow(now: Date = new Date()): BoardingStopRow | undefined {
     const boardingStop = this.raw.boardingStop;
     if (!boardingStop) {
       return undefined;
     }
 
     const seconds = (Date.parse(boardingStop.arrival) - now.getTime()) / 1000;
-    if (boardingStop.state === 'approaching') {
-      if (seconds <= ARRIVING_NOW_SECONDS) {
-        return i18n.global.t('transit_vehicle_arriving_now');
-      }
-      return i18n.global.t('transit_vehicle_arrives_in_$timeDuration', {
-        timeDuration: formatDuration(seconds, 'shortform'),
-      });
+    if (boardingStop.state === 'departed') {
+      // Nothing left to wait through, so no countdown - just how long ago it went by.
+      return {
+        text: i18n.global.t('transit_vehicle_departed_$timeDuration', {
+          timeDuration: shortDuration(Math.max(0, -seconds)),
+        }),
+      };
     }
-    return i18n.global.t('transit_vehicle_departed_$timeDuration', {
-      timeDuration: shortDuration(Math.max(0, -seconds)),
-    });
+
+    const stops = this.stopsAwayFormatted;
+    if (seconds <= ARRIVING_NOW_SECONDS) {
+      // A countdown of seconds is less use to a waiting rider than being told to look up.
+      return { text: stops ?? i18n.global.t('transit_vehicle_arriving_now') };
+    }
+    return {
+      text: stops ?? i18n.global.t('transit_vehicle_approaching'),
+      countdown: countdown(seconds),
+    };
   }
 
   /// How many stops until the vehicle reaches the rider's, counting that stop itself.

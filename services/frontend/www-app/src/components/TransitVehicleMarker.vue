@@ -26,14 +26,15 @@
           {{ vehicle.labelFormatted }}
         </span>
       </div>
-      <div v-if="boardingStop()" class="boarding-stop">
-        <span>{{ boardingStop() }}</span>
-        <span v-if="vehicle.stopsAwayFormatted" class="stops-away">
-          {{ vehicle.stopsAwayFormatted }}
+      <div v-if="boardingStop" class="boarding-stop">
+        <span>{{ boardingStop.text }}</span>
+        <span v-if="boardingStop.countdown" class="countdown">
+          {{ boardingStop.countdown.value
+          }}<span class="unit">{{ boardingStop.countdown.unit }}</span>
+          <i class="material-icons realtime">rss_feed</i>
         </span>
       </div>
       <div class="age">
-        <i class="material-icons realtime">rss_feed</i>
         <!-- Rendered only while hovered, so the age is current when it's read. -->
         <span>{{ freshness() }}</span>
       </div>
@@ -42,7 +43,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, ref } from 'vue';
+import { computed, defineComponent, PropType, ref } from 'vue';
 import TransitVehicle from 'src/models/TransitVehicle';
 
 export type TransitVehicleMarkerProps = {
@@ -79,10 +80,14 @@ export default defineComponent({
         props.vehicle.freshnessFormatted(
           new Date(Date.now() + props.clockOffsetMs),
         ),
-      boardingStop: () =>
-        props.vehicle.boardingStopFormatted(
-          new Date(Date.now() + props.clockOffsetMs),
-        ),
+      // Recomputed when the tooltip opens, so the countdown is current when it's read.
+      boardingStop: computed(() =>
+        hovered.value
+          ? props.vehicle.boardingStopRow(
+              new Date(Date.now() + props.clockOffsetMs),
+            )
+          : undefined,
+      ),
     };
   },
 });
@@ -191,33 +196,42 @@ export default defineComponent({
   font-weight: 600;
 }
 
-// Reads as an aside to the route, which is the thing being identified.
+// Reads as an aside to the route, which is the thing being identified, and sits on the trailing
+// edge above the wait - the same column the iOS marker puts it in.
 .label {
+  margin-left: auto;
   font-weight: 400;
   opacity: 0.75;
 }
 
+// Marks the countdown as coming off the live feed, where the age line below only dates it.
 .realtime {
-  font-size: 13px;
+  margin-left: 2px;
+  font-size: 12px;
+  vertical-align: -1px;
 }
 
 .boarding-stop {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  align-items: baseline;
+  gap: 12px;
   font-weight: 600;
 }
 
-// An aside to the countdown, which is what a waiting rider reads first.
-.stops-away {
+// Pushed to the trailing edge, so a column of vehicles lines its waits up.
+.countdown {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.unit {
+  margin-left: 1px;
+  font-size: 9px;
   font-weight: 400;
   opacity: 0.75;
 }
 
 .age {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   opacity: 0.8;
 }
 </style>

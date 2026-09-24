@@ -32,6 +32,12 @@ export default {
     $n_hour: '{n} hour',
     $n_hours: '{n} hours',
   },
+  /// Just the unit of a duration, for a view that sets the number and the unit differently.
+  times_unit: {
+    seconds: 'sec',
+    minutes: 'min',
+    hours: 'hr',
+  },
   times_shortform: {
     $n_seconds: '{n} sec',
     $n_minute: '{n} min',
@@ -93,9 +99,9 @@ export default {
   transit_vehicle_location_estimated_$timeDuration:
     'Estimated \u00b7 confirmed {timeDuration} ago',
   transit_vehicle_arriving_now: 'Arriving now',
-  transit_vehicle_arrives_in_$timeDuration: '{timeDuration} away',
+  transit_vehicle_approaching: 'Approaching',
   transit_vehicle_departed_$timeDuration: 'Left {timeDuration} ago',
-  transit_vehicle_next_stop: 'next stop',
+  transit_vehicle_next_stop: 'Next stop',
   transit_vehicle_$n_stops_away: '{n} stops away',
   search_results_not_found_header: 'No results found. 😢',
   search_results_not_found_subheader:
