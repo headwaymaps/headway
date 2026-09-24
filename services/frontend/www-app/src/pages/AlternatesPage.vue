@@ -349,13 +349,21 @@ export default defineComponent({
             map.removeLayer(TripLayerId.legContext(tripIdx, legIdx));
           }
 
+          if (map.hasLayer(TripLayerId.legStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legStops(tripIdx, legIdx));
+          }
+
+          if (map.hasLayer(TripLayerId.legUsedStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legUsedStops(tripIdx, legIdx));
+          }
+
           if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
             continue;
           }
 
           const layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
           map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(false));
-          if (legIdx > 0) {
+          if (legIdx > 0 && !trip.transfersAtStop(legIdx)) {
             const transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
             map.pushMarker(
               transferLayerId.toString(),
@@ -394,6 +402,26 @@ export default defineComponent({
             TripLayerId.selectedLeg(selectedIdx, legIdx),
             leg.geometry,
             leg.paintStyle(true),
+          );
+        }
+        // Pushed after both lines, so the dots sit on top of them.
+        const stops = leg.stopsLayer();
+        if (stops && !map.hasLayer(TripLayerId.legStops(selectedIdx, legIdx))) {
+          map.pushTripStopsLayer(
+            TripLayerId.legStops(selectedIdx, legIdx),
+            stops.geometry,
+            stops.paint,
+          );
+        }
+        const usedStops = leg.usedStopsLayer();
+        if (
+          usedStops &&
+          !map.hasLayer(TripLayerId.legUsedStops(selectedIdx, legIdx))
+        ) {
+          map.pushTripStopsLayer(
+            TripLayerId.legUsedStops(selectedIdx, legIdx),
+            usedStops.geometry,
+            usedStops.paint,
           );
         }
       }

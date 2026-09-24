@@ -592,6 +592,16 @@ pub struct Pattern {
     pub code: String,
     /// The whole shape the pattern runs, of which a leg's geometry is the ridden slice.
     pub pattern_geometry: Option<Geometry>,
+    /// Every stop the pattern calls at, in the order it calls at them.
+    pub stops: Option<Vec<PatternStop>>,
+}
+
+/// A stop on a pattern, as a place to mark on the map.
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "Stop")]
+pub struct PatternStop {
+    pub lat: Option<f64>,
+    pub lon: Option<f64>,
 }
 
 /// A leg's trip, as it runs on the leg's service date.
@@ -1212,7 +1222,7 @@ mod tests {
             },
             {
               "mode": "BUS", "transitLeg": true, "distance": 5000.0, "duration": 1680.0,
-              "tripOnServiceDate": { "realTimeTripState": { "updated": true } }, "trip": { "pattern": { "code": "1:40:0:01", "patternGeometry": { "points": "wxyzabcd", "length": 20 } } }, "headsign": "Downtown",
+              "tripOnServiceDate": { "realTimeTripState": { "updated": true } }, "trip": { "pattern": { "code": "1:40:0:01", "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "wxyzabcd", "length": 20 } } }, "headsign": "Downtown",
               "start": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": { "time": "2024-05-17T10:08:00-07:00" } },
               "end": { "scheduledTime": "2024-05-17T10:35:00-07:00", "estimated": null },
               "from": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341, "arrival": null, "departure": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": null } },
@@ -1296,7 +1306,7 @@ mod tests {
           "data": { "patternsByIds": [
             {
               "code": "1:40:0:01",
-              "patternGeometry": { "points": "abcd", "length": 2 },
+              "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "abcd", "length": 2 },
               "route": { "shortName": "40", "longName": "Downtown - Ballard",
                          "color": "0080FF", "mode": "BUS" },
               "headsign": "Downtown Seattle",
@@ -1325,7 +1335,7 @@ mod tests {
             },
             // A pattern OTP knows but has no realtime for and no shape, and one it has
             // forgotten entirely.
-            { "code": "1:21:0:01", "patternGeometry": null, "headsign": null,
+            { "code": "1:21:0:01", "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": null, "headsign": null,
               "route": { "shortName": "21", "longName": null, "color": null, "mode": null },
               "vehiclePositions": [] },
             null

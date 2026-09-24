@@ -3,6 +3,10 @@ enum LegPart {
   MIDDLE = 'middle',
   /// The rest of the transit route, beyond the part this leg rides.
   CONTEXT = 'context',
+  /// A dot at every stop the transit route calls at.
+  STOPS = 'stops',
+  /// The stops this leg boards and alights at, drawn heavier than the rest.
+  USED_STOPS = 'used_stops',
 }
 
 export default class TripLayerId {
@@ -33,6 +37,14 @@ export default class TripLayerId {
 
   static legContext(tripIdx: number, legIdx: number): TripLayerId {
     return new TripLayerId(tripIdx, legIdx, true, LegPart.CONTEXT);
+  }
+
+  static legStops(tripIdx: number, legIdx: number): TripLayerId {
+    return new TripLayerId(tripIdx, legIdx, true, LegPart.STOPS);
+  }
+
+  static legUsedStops(tripIdx: number, legIdx: number): TripLayerId {
+    return new TripLayerId(tripIdx, legIdx, true, LegPart.USED_STOPS);
   }
 
   static legStart(tripIdx: number, legIdx: number): TripLayerId {
