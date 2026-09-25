@@ -27,22 +27,25 @@ test('PlaceId.gid', () => {
 
 test('PlaceId.location', () => {
   expect(PlaceId.location(new LngLat(12.3, 45.6)).serialized()).toBe(
-    '12.3,45.6',
+    '45.6,12.3',
   );
 
   expect(PlaceId.location(new LngLat(12.3, 45.6)).urlEncoded()).toBe(
-    '12.3%2C45.6',
+    '45.6%2C12.3',
   );
 
-  expect(PlaceId.deserialize('12.3,45.6').gid).toEqual(undefined);
+  expect(PlaceId.deserialize('45.6,12.3').gid).toEqual(undefined);
 
-  expect(PlaceId.deserialize('12.3,45.6').location).toEqual(
+  expect(PlaceId.deserialize('45.6,12.3').location).toEqual(
     new LngLat(12.3, 45.6),
   );
 
-  expect(PlaceId.urlDecoded('12.3%2C45.6')).toEqual(
+  expect(PlaceId.urlDecoded('45.6%2C12.3')).toEqual(
     PlaceId.location(new LngLat(12.3, 45.6)),
   );
+
+  // `Number` treats whitespace as zero; a malformed URL must not become Null Island.
+  expect(PlaceId.deserialize(' ,12.3').location).toBeUndefined();
 });
 
 describe('PlaceId#osmVenueId', () => {

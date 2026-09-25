@@ -29,7 +29,7 @@ export class PlaceId {
 
   serialized(): string {
     if (this.location) {
-      return `${this.location.lng},${this.location.lat}`;
+      return `${this.location.lat},${this.location.lng}`;
     } else {
       return this.gid!;
     }
@@ -45,17 +45,29 @@ export class PlaceId {
   }
 
   public static deserialize(serialized: string): PlaceId {
-    if (/([0-9.-]+,[0-9.-]+)/.test(serialized)) {
-      const lngLat = serialized.split(',');
-      console.assert!(lngLat.length == 2, 'unexpected length', lngLat);
-      const location = new LngLat(
-        parseFloat(lngLat[0]!),
-        parseFloat(lngLat[1]!),
-      );
+    const location = PlaceId.parseLocation(serialized);
+    if (location) {
       return PlaceId.location(location);
     } else {
       return PlaceId.gid(serialized);
     }
+  }
+
+  /// Coordinate pairs in URLs are latitude first.
+  private static parseLocation(serialized: string): LngLat | undefined {
+    const fields = serialized.split(',');
+    if (
+      fields.length != 2 ||
+      fields.some((field) => field.trim().length == 0)
+    ) {
+      return undefined;
+    }
+    const first = Number(fields[0]);
+    const second = Number(fields[1]);
+    if (!isFinite(first) || !isFinite(second)) {
+      return undefined;
+    }
+    return new LngLat(second, first);
   }
 
   get type(): string {
