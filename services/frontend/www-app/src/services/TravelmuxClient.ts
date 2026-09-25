@@ -63,6 +63,10 @@ export interface TransitLeg {
   patternGeometry?: string;
   /// Every stop the pattern calls at, in order, their positions packed as a polyline.
   patternStops?: string;
+  /// The stops beyond the ridden portion, packed the same way.
+  contextStops?: string;
+  /// Where the rider boards and alights, packed the same way.
+  riddenStops?: string;
   alerts: TransitAlert[];
 }
 

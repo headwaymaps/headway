@@ -250,6 +250,22 @@ export default defineComponent({
         }
 
         // Pushed after both lines, so the dots sit on top of them.
+        const contextStops = leg.contextStopsLayer();
+        if (contextStops) {
+          const contextStopsLayerId = TripLayerId.legContextStops(
+            tripIdx,
+            legIdx,
+          );
+          layerIds.push(contextStopsLayerId);
+          if (!map.hasLayer(contextStopsLayerId)) {
+            map.pushTripStopsLayer(
+              contextStopsLayerId,
+              contextStops.geometry,
+              contextStops.paint,
+            );
+          }
+        }
+
         const stops = leg.stopsLayer();
         if (stops) {
           const stopsLayerId = TripLayerId.legStops(tripIdx, legIdx);

@@ -5,6 +5,8 @@ enum LegPart {
   CONTEXT = 'context',
   /// A dot at every stop the transit route calls at.
   STOPS = 'stops',
+  /// The same, for the stops beyond the part the rider is aboard for.
+  CONTEXT_STOPS = 'context_stops',
   /// The stops this leg boards and alights at, drawn heavier than the rest.
   USED_STOPS = 'used_stops',
 }
@@ -41,6 +43,10 @@ export default class TripLayerId {
 
   static legStops(tripIdx: number, legIdx: number): TripLayerId {
     return new TripLayerId(tripIdx, legIdx, true, LegPart.STOPS);
+  }
+
+  static legContextStops(tripIdx: number, legIdx: number): TripLayerId {
+    return new TripLayerId(tripIdx, legIdx, true, LegPart.CONTEXT_STOPS);
   }
 
   static legUsedStops(tripIdx: number, legIdx: number): TripLayerId {
