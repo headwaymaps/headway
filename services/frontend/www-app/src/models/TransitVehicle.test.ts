@@ -138,7 +138,6 @@ describe('boardingStopRow', () => {
 
   test('a vehicle still on its way counts down to the stop', () => {
     expect(arrivingIn(180, 'approaching').boardingStopRow(NOW)).toEqual({
-      text: 'Approaching',
       countdown: { value: '3', unit: 'min' },
     });
   });
@@ -166,7 +165,6 @@ describe('boardingStopRow', () => {
     expect(
       arrivingIn(3 * 3600 + 5 * 60, 'approaching').boardingStopRow(NOW),
     ).toEqual({
-      text: 'Approaching',
       countdown: { value: '3:05', unit: 'hr' },
     });
   });

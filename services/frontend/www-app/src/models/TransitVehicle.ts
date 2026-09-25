@@ -14,6 +14,9 @@ const DEFAULT_VEHICLE_COLOR = '#1296FF';
 /// told to look up.
 const ARRIVING_NOW_SECONDS = 30;
 
+/// How far past its predicted arrival a vehicle is still called arriving.
+const PAST_STOP_GRACE_SECONDS = 15;
+
 /// How long a vehicle keeps being drawn on its last report alone. This is as far ahead as
 /// travelmux predicts, so past it the dot has run off the end of its track and would only sit
 /// still, claiming a position nobody has confirmed in minutes.
@@ -54,7 +57,8 @@ export type Countdown = { value: string; unit?: string };
 /// What the popover says about the rider's boarding stop: where the vehicle is in the stop
 /// sequence, and - while it's still on its way - how long the wait is.
 export type BoardingStopRow = {
-  text: string;
+  /// Absent when the feed won't say how many stops are left - the countdown says the rest.
+  text?: string;
   countdown?: Countdown;
 };
 
@@ -194,13 +198,17 @@ export default class TransitVehicle {
       };
     }
 
-    const stops = this.stopsAwayFormatted(now);
+    // Only once it's clearly gone: these positions are predictions, and a rider still at the stop
+    // shouldn't be told they've been passed on the strength of a few seconds' drift.
+    if (seconds < -PAST_STOP_GRACE_SECONDS) {
+      return { text: i18n.global.t('transit_vehicle_past_stop') };
+    }
     if (seconds <= ARRIVING_NOW_SECONDS) {
-      // A countdown of seconds is less use to a waiting rider than being told to look up.
-      return { text: stops ?? i18n.global.t('transit_vehicle_arriving_now') };
+      // Which stop it's at matters less than telling a waiting rider to look up.
+      return { text: i18n.global.t('transit_vehicle_arriving_now') };
     }
     return {
-      text: stops ?? i18n.global.t('transit_vehicle_approaching'),
+      text: this.stopsAwayFormatted(now),
       countdown: countdown(seconds),
     };
   }
