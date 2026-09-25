@@ -87,22 +87,14 @@ pub(crate) fn bearing_at_end(line_string: &LineString) -> Option<u16> {
 
 /// The point on `shape` nearest to `point`.
 pub(crate) fn closest_point_on(shape: &LineString, point: Point) -> Option<Point> {
-    use geo::{Distance, Haversine, HaversineClosestPoint};
+    use geo::HaversineClosestPoint;
 
-    shape
-        .lines()
-        .filter_map(|line| match line.haversine_closest_point(&point) {
-            geo::Closest::SinglePoint(projected) | geo::Closest::Intersection(projected) => {
-                Some(projected)
-            }
-            // A degenerate segment comes back as its own start, never indeterminate.
-            geo::Closest::Indeterminate => None,
-        })
-        .min_by(|a, b| {
-            Haversine
-                .distance(*a, point)
-                .total_cmp(&Haversine.distance(*b, point))
-        })
+    match shape.haversine_closest_point(&point) {
+        geo::Closest::SinglePoint(projected) | geo::Closest::Intersection(projected) => {
+            Some(projected)
+        }
+        geo::Closest::Indeterminate => None,
+    }
 }
 
 /// Haversine distance along the nearest segment of `shape`.
