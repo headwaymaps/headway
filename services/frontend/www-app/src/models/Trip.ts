@@ -212,6 +212,10 @@ export class TripLeg {
   patternGeometry?: GeoJSON.LineString;
   /// Every stop that route calls at, in order.
   patternStops?: GeoJSON.MultiPoint;
+  /// The stops beyond the part the rider is aboard for.
+  contextStops?: GeoJSON.MultiPoint;
+  /// The two stops the rider uses, drawn onto the route the same way the rest are.
+  riddenStops?: GeoJSON.MultiPoint;
 
   constructor(raw: TravelmuxLeg) {
     this.raw = raw;
@@ -234,6 +238,20 @@ export class TripLeg {
       this.patternStops = {
         type: 'MultiPoint',
         coordinates: decodePolyline(patternStops, 6),
+      };
+    }
+    const contextStops = this.raw.transitLeg?.contextStops;
+    if (contextStops) {
+      this.contextStops = {
+        type: 'MultiPoint',
+        coordinates: decodePolyline(contextStops, 6),
+      };
+    }
+    const riddenStops = this.raw.transitLeg?.riddenStops;
+    if (riddenStops) {
+      this.riddenStops = {
+        type: 'MultiPoint',
+        coordinates: decodePolyline(riddenStops, 6),
       };
     }
   }
@@ -340,24 +358,23 @@ export class TripLeg {
     return { geometry, paint: CircleStyles.stop(this.routeColor) };
   }
 
+  /// The stops beyond the ridden portion, faded like the line they sit on.
+  contextStopsLayer(): TripLegStopsLayer | undefined {
+    const geometry = this.contextStops;
+    if (!geometry) {
+      return undefined;
+    }
+    return { geometry, paint: CircleStyles.contextStop(this.routeColor) };
+  }
+
   /// The two stops the rider actually uses - where they board and where they get off - drawn
   /// heavier than the ones the vehicle merely passes through.
   usedStopsLayer(): TripLegStopsLayer | undefined {
-    if (!this.transitLeg) {
+    const geometry = this.riddenStops;
+    if (!geometry) {
       return undefined;
     }
-    const board = this.sourceLngLat;
-    const alight = this.destinationLngLat;
-    return {
-      geometry: {
-        type: 'MultiPoint',
-        coordinates: [
-          [board.lng, board.lat],
-          [alight.lng, alight.lat],
-        ],
-      },
-      paint: CircleStyles.usedStop(this.routeColor),
-    };
+    return { geometry, paint: CircleStyles.usedStop(this.routeColor) };
   }
 
   /// The route's own color, or the active line's where the feed doesn't name one.
@@ -473,7 +490,15 @@ export const CircleStyles = {
       'circle-radius': 3.5,
       'circle-color': '#ffffff',
       'circle-stroke-color': color,
-      'circle-stroke-width': 1.5,
+      'circle-stroke-width': 2.5,
+    };
+  },
+  /// The same bead, faded to match the line beyond the ridden portion.
+  contextStop(color: string): CircleLayerSpecification['paint'] {
+    return {
+      ...CircleStyles.stop(color),
+      'circle-opacity': 0.45,
+      'circle-stroke-opacity': 0.45,
     };
   },
   /// The same bead, enlarged and heavily ringed, for a stop the rider gets on or off at.
@@ -494,7 +519,7 @@ export const LineStyles = {
     return {
       'line-color': color,
       'line-width': 5,
-      'line-opacity': 0.35,
+      'line-opacity': 0.45,
     };
   },
   activeColored(color: string): LineLayerSpecification['paint'] {
@@ -505,7 +530,7 @@ export const LineStyles = {
   },
   active: {
     'line-color': '#1296FF',
-    'line-width': 10,
+    'line-width': 8,
   },
   inactive: {
     'line-color': '#6FC1EE',
@@ -514,11 +539,11 @@ export const LineStyles = {
   walkingActive: {
     'line-color': '#1296FF',
     'line-dasharray': [0, 1.5],
-    'line-width': 8,
+    'line-width': 6,
   },
   walkingInactive: {
     'line-color': '#6FC1EE',
     'line-dasharray': [0, 1.5],
-    'line-width': 8,
+    'line-width': 4,
   },
 };

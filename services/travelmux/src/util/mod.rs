@@ -85,6 +85,18 @@ pub(crate) fn bearing_at_end(line_string: &LineString) -> Option<u16> {
     }
 }
 
+/// The point on `shape` nearest to `point`.
+pub(crate) fn closest_point_on(shape: &LineString, point: Point) -> Option<Point> {
+    use geo::HaversineClosestPoint;
+
+    match shape.haversine_closest_point(&point) {
+        geo::Closest::SinglePoint(projected) | geo::Closest::Intersection(projected) => {
+            Some(projected)
+        }
+        geo::Closest::Indeterminate => None,
+    }
+}
+
 /// Haversine distance along the nearest segment of `shape`.
 pub(crate) fn progress_along(shape: &LineString, point: Point) -> Option<f64> {
     use geo::{Distance, Haversine, HaversineClosestPoint};
