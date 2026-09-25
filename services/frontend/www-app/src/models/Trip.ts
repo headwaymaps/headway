@@ -479,33 +479,33 @@ export const CircleStyles = {
   /// The same bead, enlarged and heavily ringed, for a stop the rider gets on or off at.
   usedStop(color: string): CircleLayerSpecification['paint'] {
     return {
-      'circle-radius': 6,
+      'circle-radius': 5,
       'circle-color': '#ffffff',
       'circle-stroke-color': color,
-      'circle-stroke-width': 6,
+      'circle-stroke-width': 5,
     };
   },
 };
 
 export const LineStyles = {
-  /// Half the width and mostly transparent, so the ridden portion drawn over it reads as the
-  /// emphasized part of the same line.
+  /// Narrower and mostly transparent, so the ridden portion drawn over it reads as the emphasized
+  /// part of the same line.
   context(color: string): LineLayerSpecification['paint'] {
     return {
       'line-color': color,
-      'line-width': 6,
+      'line-width': 5,
       'line-opacity': 0.35,
     };
   },
   activeColored(color: string): LineLayerSpecification['paint'] {
     return {
       'line-color': color,
-      'line-width': 12,
+      'line-width': 8,
     };
   },
   active: {
     'line-color': '#1296FF',
-    'line-width': 12,
+    'line-width': 10,
   },
   inactive: {
     'line-color': '#6FC1EE',
