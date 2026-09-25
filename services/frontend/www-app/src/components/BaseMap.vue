@@ -131,6 +131,7 @@ export interface BaseMapInterface {
   getCenter: () => LngLat;
   getBounds: () => LngLatBounds;
   flyTo: (location: LngLatLike, options?: FlyToOptions) => void;
+  panBy: (offset: [number, number]) => void;
   flyToPlace: (place: Place, options?: FlyToOptions) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   setCursor: (key: string) => void;
@@ -235,6 +236,7 @@ export default defineComponent({
       setCursor: this.setCursor,
       flyToPlace: this.flyToPlace,
       flyTo: this.flyTo,
+      panBy: (offset: [number, number]) => map.panBy(offset),
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
       hasMarker: this.hasMarker,
