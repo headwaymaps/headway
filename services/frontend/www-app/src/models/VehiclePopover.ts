@@ -6,9 +6,6 @@ export enum PopoverState {
 }
 
 /// The popover on a transit vehicle marker: hovering previews it, a click pins it open.
-///
-/// A pinned popover ignores the pointer entirely - the marker crawls out from under a still
-/// pointer as the vehicle moves, which would otherwise take the popover with it.
 export default class VehiclePopover {
   state: PopoverState = PopoverState.Closed;
 

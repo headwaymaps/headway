@@ -269,6 +269,18 @@ pub(crate) enum ModeLeg {
     NonTransit(Box<NonTransitLeg>),
 }
 
+/// A line through `coords`, or nothing to draw when there are none.
+fn line_of(coords: Vec<geo::Coord>) -> Option<LineString> {
+    (!coords.is_empty()).then(|| LineString::new(coords))
+}
+
+/// A pattern's stops, split at the ends of the portion the rider is aboard for.
+#[derive(Default)]
+struct PatternStops {
+    ridden: Option<LineString>,
+    context: Option<LineString>,
+}
+
 /// A ride on a transit vehicle.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -345,33 +357,37 @@ impl TransitLeg {
         pattern: &gtfs_graphql::Pattern,
         shape: &LineString,
         ridden: &LineString,
-    ) -> (Option<LineString>, Option<LineString>) {
+    ) -> PatternStops {
         let Some(stops) = pattern.stops.as_ref() else {
-            return (None, None);
+            return PatternStops::default();
         };
-        let ends: Vec<_> = ridden
+        let [Some(boarded), Some(alighted)] = ridden
             .points()
-            .filter_map(|point| progress_along(shape, point))
-            .collect();
-        let (boarded, alighted) = match ends[..] {
-            [boarded, alighted] => (boarded, alighted),
-            _ => return (None, None),
+            .map(|point| progress_along(shape, point))
+            .collect::<Vec<_>>()[..]
+        else {
+            return PatternStops::default();
         };
 
-        let (ridden, context): (Vec<_>, Vec<_>) = stops
-            .iter()
-            .filter_map(|stop| {
-                let stop = Point::new(stop.lon?, stop.lat?);
-                let on_shape = closest_point_on(shape, stop).unwrap_or(stop);
-                let progress = progress_along(shape, on_shape)?;
-                Some((on_shape.into(), (boarded..=alighted).contains(&progress)))
-            })
-            .partition(|(_, is_ridden)| *is_ridden);
-        let line = |stops: Vec<(geo::Coord, bool)>| {
-            let coords: Vec<_> = stops.into_iter().map(|(coord, _)| coord).collect();
-            (!coords.is_empty()).then(|| LineString::new(coords))
-        };
-        (line(ridden), line(context))
+        let (mut ridden, mut context) = (vec![], vec![]);
+        for stop in stops {
+            let Some(stop) = stop.lon.zip(stop.lat).map(|(x, y)| Point::new(x, y)) else {
+                continue;
+            };
+            let on_shape = closest_point_on(shape, stop).unwrap_or(stop);
+            let Some(progress) = progress_along(shape, on_shape) else {
+                continue;
+            };
+            if (boarded..=alighted).contains(&progress) {
+                ridden.push(on_shape.into());
+            } else {
+                context.push(on_shape.into());
+            }
+        }
+        PatternStops {
+            ridden: line_of(ridden),
+            context: line_of(context),
+        }
     }
 
     /// Where the rider boards and alights, on the shape for the same reason.
@@ -399,7 +415,7 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
             (Some(pattern), Some(shape), Some(ridden)) => {
                 TransitLeg::stops_of(pattern, shape, ridden)
             }
-            _ => (None, None),
+            _ => PatternStops::default(),
         };
         Self {
             vehicle_mode: leg.mode.clone(),
@@ -413,8 +429,8 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
                 .is_some_and(|state| state.updated),
             pattern_code: pattern.map(|pattern| pattern.code.clone()),
             pattern_geometry: shape.clone(),
-            pattern_stops: stops.0,
-            context_stops: stops.1,
+            pattern_stops: stops.ridden,
+            context_stops: stops.context,
             ridden_stops: ridden_stops.clone(),
             alerts: leg
                 .alerts

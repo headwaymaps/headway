@@ -12,8 +12,7 @@ import { PatternRequest, TravelmuxClient } from 'src/services/TravelmuxClient';
 /// this just re-fetches a position we already have.
 const POLL_INTERVAL_MS = 30_000;
 
-/// How long a marker takes to close the gap between where it was drawn and where a fresh report
-/// says the vehicle actually is.
+/// How long a marker takes to close on a fresh report's position.
 const TRACK_CORRECTION_MS = 1_000;
 
 /// Carries a marker from the position it was drawn at onto a replacement track.
@@ -92,8 +91,7 @@ export default class VehicleOverlay {
   /// The patterns of the trip the traveler has picked. Vehicles on any other trip's patterns are
   /// drawn dimmed. Empty means nothing is picked yet, and nothing is dimmed.
   private selected: Set<string> = new Set();
-  /// Asked to select the trip a clicked vehicle runs. The page owns which trip is selected, so
-  /// an overlay whose page has nothing to select - one drawn over a single trip - leaves it unset.
+  /// Asked to select the trip a clicked vehicle runs; unset where there's nothing to choose.
   private didClickTrip?: (trip: Trip) => void;
 
   constructor(
@@ -122,8 +120,7 @@ export default class VehicleOverlay {
     return this.selected.size > 0 && !this.selected.has(patternCode);
   }
 
-  /// The trip a click on a vehicle running this pattern should select: none when the rider is
-  /// already on it, and none when no trip on screen runs the pattern at all.
+  /// The trip a click on this pattern should select, if it isn't already showing.
   tripToSelect(patternCode: string): Trip | undefined {
     if (this.selected.has(patternCode)) {
       return undefined;
@@ -142,8 +139,7 @@ export default class VehicleOverlay {
     this.revealPopover(key);
   }
 
-  /// Pan by however much of a newly pinned popover is off screen, so a vehicle near the map's
-  /// edge can still be read.
+  /// Pan by however much of a newly pinned popover is off screen.
   private revealPopover(key: string): void {
     const element = this.tracked.get(key)?.element;
     if (!element) {
