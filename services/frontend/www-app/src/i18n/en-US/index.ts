@@ -99,7 +99,7 @@ export default {
   transit_vehicle_location_estimated_$timeDuration:
     'Estimated \u00b7 confirmed {timeDuration} ago',
   transit_vehicle_arriving_now: 'Arriving now',
-  transit_vehicle_approaching: 'Approaching',
+  transit_vehicle_past_stop: 'Past your stop',
   transit_vehicle_departed_$timeDuration: 'Left {timeDuration} ago',
   transit_vehicle_next_stop: 'Next stop',
   transit_vehicle_$n_stops_away: '{n} stops away',

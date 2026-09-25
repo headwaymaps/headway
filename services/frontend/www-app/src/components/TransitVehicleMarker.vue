@@ -32,7 +32,7 @@
         </span>
       </div>
       <div v-if="boardingStop" class="boarding-stop">
-        <span>{{ boardingStop.text }}</span>
+        <span v-if="boardingStop.text">{{ boardingStop.text }}</span>
         <span v-if="boardingStop.countdown" class="countdown">
           {{ boardingStop.countdown.value
           }}<span class="unit">{{ boardingStop.countdown.unit }}</span>
