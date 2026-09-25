@@ -17,9 +17,8 @@ const ARRIVING_NOW_SECONDS = 30;
 /// How far past its predicted arrival a vehicle is still called arriving.
 const PAST_STOP_GRACE_SECONDS = 15;
 
-/// How long a vehicle keeps being drawn on its last report alone. This is as far ahead as
-/// travelmux predicts, so past it the dot has run off the end of its track and would only sit
-/// still, claiming a position nobody has confirmed in minutes.
+/// How long a vehicle keeps being drawn on its last report alone, matching how far ahead
+/// travelmux predicts.
 const COASTING_MS = 3 * 60 * 1000;
 
 /// A duration under a minute, which `formatDuration` would round up to "1 min" and overstate.

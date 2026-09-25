@@ -210,12 +210,12 @@ export class TripLeg {
   geometry: GeoJSON.LineString;
   /// The whole route this leg rides part of, for transit legs the server has a shape for.
   patternGeometry?: GeoJSON.LineString;
-  /// Every stop that route calls at, in order.
-  patternStops?: GeoJSON.MultiPoint;
+  /// Every ordinary stop on the portion of the route the rider travels, in order.
+  riddenStops?: GeoJSON.MultiPoint;
   /// The stops beyond the part the rider is aboard for.
   contextStops?: GeoJSON.MultiPoint;
-  /// The two stops the rider uses, drawn onto the route the same way the rest are.
-  riddenStops?: GeoJSON.MultiPoint;
+  /// The stops where the rider boards and alights, drawn onto the route.
+  onOffStops?: GeoJSON.MultiPoint;
 
   constructor(raw: TravelmuxLeg) {
     this.raw = raw;
@@ -233,11 +233,11 @@ export class TripLeg {
     }
     // Travelmux packs the stops as a polyline too - it encodes a list of coordinates as well as
     // it encodes a shape.
-    const patternStops = this.raw.transitLeg?.patternStops;
-    if (patternStops) {
-      this.patternStops = {
+    const riddenStops = this.raw.transitLeg?.riddenStops;
+    if (riddenStops) {
+      this.riddenStops = {
         type: 'MultiPoint',
-        coordinates: decodePolyline(patternStops, 6),
+        coordinates: decodePolyline(riddenStops, 6),
       };
     }
     const contextStops = this.raw.transitLeg?.contextStops;
@@ -247,11 +247,11 @@ export class TripLeg {
         coordinates: decodePolyline(contextStops, 6),
       };
     }
-    const riddenStops = this.raw.transitLeg?.riddenStops;
-    if (riddenStops) {
-      this.riddenStops = {
+    const onOffStops = this.raw.transitLeg?.onOffStops;
+    if (onOffStops) {
+      this.onOffStops = {
         type: 'MultiPoint',
-        coordinates: decodePolyline(riddenStops, 6),
+        coordinates: decodePolyline(onOffStops, 6),
       };
     }
   }
@@ -350,8 +350,8 @@ export class TripLeg {
 
   /// A dot at each of the route's stops, so the rider can count what's between a vehicle and
   /// their own stop. Absent for a leg the server gave no stops for.
-  stopsLayer(): TripLegStopsLayer | undefined {
-    const geometry = this.patternStops;
+  riddenStopsLayer(): TripLegStopsLayer | undefined {
+    const geometry = this.riddenStops;
     if (!geometry) {
       return undefined;
     }
@@ -367,10 +367,9 @@ export class TripLeg {
     return { geometry, paint: CircleStyles.contextStop(this.routeColor) };
   }
 
-  /// The two stops the rider actually uses - where they board and where they get off - drawn
-  /// heavier than the ones the vehicle merely passes through.
-  usedStopsLayer(): TripLegStopsLayer | undefined {
-    const geometry = this.riddenStops;
+  /// The stops where the rider boards and alights, drawn heavier than the ordinary route stops.
+  onOffStopsLayer(): TripLegStopsLayer | undefined {
+    const geometry = this.onOffStops;
     if (!geometry) {
       return undefined;
     }

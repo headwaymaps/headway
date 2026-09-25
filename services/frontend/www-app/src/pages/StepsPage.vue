@@ -266,24 +266,31 @@ export default defineComponent({
           }
         }
 
-        const stops = leg.stopsLayer();
-        if (stops) {
-          const stopsLayerId = TripLayerId.legStops(tripIdx, legIdx);
-          layerIds.push(stopsLayerId);
-          if (!map.hasLayer(stopsLayerId)) {
-            map.pushTripStopsLayer(stopsLayerId, stops.geometry, stops.paint);
+        const riddenStops = leg.riddenStopsLayer();
+        if (riddenStops) {
+          const riddenStopsLayerId = TripLayerId.legRiddenStops(
+            tripIdx,
+            legIdx,
+          );
+          layerIds.push(riddenStopsLayerId);
+          if (!map.hasLayer(riddenStopsLayerId)) {
+            map.pushTripStopsLayer(
+              riddenStopsLayerId,
+              riddenStops.geometry,
+              riddenStops.paint,
+            );
           }
         }
 
-        const usedStops = leg.usedStopsLayer();
-        if (usedStops) {
-          const usedStopsLayerId = TripLayerId.legUsedStops(tripIdx, legIdx);
-          layerIds.push(usedStopsLayerId);
-          if (!map.hasLayer(usedStopsLayerId)) {
+        const onOffStops = leg.onOffStopsLayer();
+        if (onOffStops) {
+          const onOffStopsLayerId = TripLayerId.legOnOffStops(tripIdx, legIdx);
+          layerIds.push(onOffStopsLayerId);
+          if (!map.hasLayer(onOffStopsLayerId)) {
             map.pushTripStopsLayer(
-              usedStopsLayerId,
-              usedStops.geometry,
-              usedStops.paint,
+              onOffStopsLayerId,
+              onOffStops.geometry,
+              onOffStops.paint,
             );
           }
         }
