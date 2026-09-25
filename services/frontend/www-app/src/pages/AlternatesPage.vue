@@ -351,16 +351,16 @@ export default defineComponent({
             map.removeLayer(TripLayerId.legContext(tripIdx, legIdx));
           }
 
-          if (map.hasLayer(TripLayerId.legStops(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.legStops(tripIdx, legIdx));
+          if (map.hasLayer(TripLayerId.legRiddenStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legRiddenStops(tripIdx, legIdx));
           }
 
           if (map.hasLayer(TripLayerId.legContextStops(tripIdx, legIdx))) {
             map.removeLayer(TripLayerId.legContextStops(tripIdx, legIdx));
           }
 
-          if (map.hasLayer(TripLayerId.legUsedStops(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.legUsedStops(tripIdx, legIdx));
+          if (map.hasLayer(TripLayerId.legOnOffStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legOnOffStops(tripIdx, legIdx));
           }
 
           if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
@@ -429,23 +429,26 @@ export default defineComponent({
             contextStops.paint,
           );
         }
-        const stops = leg.stopsLayer();
-        if (stops && !map.hasLayer(TripLayerId.legStops(selectedIdx, legIdx))) {
-          map.pushTripStopsLayer(
-            TripLayerId.legStops(selectedIdx, legIdx),
-            stops.geometry,
-            stops.paint,
-          );
-        }
-        const usedStops = leg.usedStopsLayer();
+        const riddenStops = leg.riddenStopsLayer();
         if (
-          usedStops &&
-          !map.hasLayer(TripLayerId.legUsedStops(selectedIdx, legIdx))
+          riddenStops &&
+          !map.hasLayer(TripLayerId.legRiddenStops(selectedIdx, legIdx))
         ) {
           map.pushTripStopsLayer(
-            TripLayerId.legUsedStops(selectedIdx, legIdx),
-            usedStops.geometry,
-            usedStops.paint,
+            TripLayerId.legRiddenStops(selectedIdx, legIdx),
+            riddenStops.geometry,
+            riddenStops.paint,
+          );
+        }
+        const onOffStops = leg.onOffStopsLayer();
+        if (
+          onOffStops &&
+          !map.hasLayer(TripLayerId.legOnOffStops(selectedIdx, legIdx))
+        ) {
+          map.pushTripStopsLayer(
+            TripLayerId.legOnOffStops(selectedIdx, legIdx),
+            onOffStops.geometry,
+            onOffStops.paint,
           );
         }
       }

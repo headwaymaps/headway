@@ -61,12 +61,12 @@ export interface TransitLeg {
   /// The whole shape the pattern runs, as an encoded polyline, 1e-6 scale. The leg's own geometry
   /// is the slice of this the rider is aboard for.
   patternGeometry?: string;
-  /// Every stop the pattern calls at, in order, their positions packed as a polyline.
-  patternStops?: string;
+  /// Every ordinary stop on the portion of the pattern the rider travels, in order.
+  riddenStops?: string;
   /// The stops beyond the ridden portion, packed the same way.
   contextStops?: string;
   /// Where the rider boards and alights, packed the same way.
-  riddenStops?: string;
+  onOffStops?: string;
   alerts: TransitAlert[];
 }
 
