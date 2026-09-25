@@ -46,6 +46,21 @@ export class TrackCorrection {
   }
 }
 
+/// How far to pan to bring `inner` inside `outer`, or undefined when it already is.
+function overflow(
+  inner: DOMRect,
+  outer: DOMRect,
+): [number, number] | undefined {
+  const margin = 8;
+  const x =
+    Math.max(0, outer.left + margin - inner.left) -
+    Math.max(0, inner.right - outer.right + margin);
+  const y =
+    Math.max(0, outer.top + margin - inner.top) -
+    Math.max(0, inner.bottom - outer.bottom + margin);
+  return x === 0 && y === 0 ? undefined : [-x, -y];
+}
+
 /// A vehicle we're drawing, and the marker drawing it. The marker outlives a poll so it can be
 /// animated between them - and so a tooltip being read doesn't vanish underneath the reader.
 ///
@@ -120,8 +135,35 @@ export default class VehicleOverlay {
     this.pin(key);
     const trip = this.tripToSelect(props.vehicle.raw.patternCode);
     if (trip) {
+      // Selecting frames the whole route, which puts the vehicle well inside the map.
       this.didClickTrip?.(trip);
+      return;
     }
+    this.revealPopover(key);
+  }
+
+  /// Pan by however much of a newly pinned popover is off screen, so a vehicle near the map's
+  /// edge can still be read.
+  private revealPopover(key: string): void {
+    const element = this.tracked.get(key)?.element;
+    if (!element) {
+      return;
+    }
+    // Next frame, because the popover is only measurable once it has been rendered.
+    requestAnimationFrame(() => {
+      const popover = element.querySelector('.tooltip');
+      const viewport = element.closest('.maplibregl-map');
+      if (!popover || !viewport) {
+        return;
+      }
+      const offset = overflow(
+        popover.getBoundingClientRect(),
+        viewport.getBoundingClientRect(),
+      );
+      if (offset) {
+        this.map.panBy(offset);
+      }
+    });
   }
 
   /// Hold one vehicle's popover open, releasing whatever was held before.
