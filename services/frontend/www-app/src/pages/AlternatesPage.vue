@@ -355,6 +355,10 @@ export default defineComponent({
             map.removeLayer(TripLayerId.legStops(tripIdx, legIdx));
           }
 
+          if (map.hasLayer(TripLayerId.legContextStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legContextStops(tripIdx, legIdx));
+          }
+
           if (map.hasLayer(TripLayerId.legUsedStops(tripIdx, legIdx))) {
             map.removeLayer(TripLayerId.legUsedStops(tripIdx, legIdx));
           }
@@ -378,8 +382,15 @@ export default defineComponent({
           map.on('mouseout', layerId.toString(), () => {
             map.setCursor('');
           });
+          // Resolved when the line is clicked rather than when it was drawn: a later search
+          // replaces the trips, and selecting one looks them up by identity.
           map.on('click', layerId.toString(), () => {
-            this.clickTrip(trip);
+            // Cast for the same reason the list item's handler does: reactive unwrapping loses
+            // the class's private members.
+            const clicked = this.trips[tripIdx] as Trip | undefined;
+            if (clicked) {
+              this.clickTrip(clicked);
+            }
           });
         }
       }
@@ -407,6 +418,17 @@ export default defineComponent({
           );
         }
         // Pushed after both lines, so the dots sit on top of them.
+        const contextStops = leg.contextStopsLayer();
+        if (
+          contextStops &&
+          !map.hasLayer(TripLayerId.legContextStops(selectedIdx, legIdx))
+        ) {
+          map.pushTripStopsLayer(
+            TripLayerId.legContextStops(selectedIdx, legIdx),
+            contextStops.geometry,
+            contextStops.paint,
+          );
+        }
         const stops = leg.stopsLayer();
         if (stops && !map.hasLayer(TripLayerId.legStops(selectedIdx, legIdx))) {
           map.pushTripStopsLayer(
