@@ -56,8 +56,10 @@ services:
     #   test: nc -z localhost 8000
     #   interval: 5s
     #   start_period: 60s
-    # ports:
-    #   - "9002:8000"
+    # Published on loopback so a travelmux running outside compose - `cargo run`
+    # during development - can reach it.
+    ports:
+      - "127.0.0.1:9002:8000"
   transit-zoner:
     image: ghcr.io/headwaymaps/transit-zoner:latest
     restart: always
@@ -118,8 +120,9 @@ services:
     depends_on:
       valhalla-init:
         condition: service_completed_successfully
-    # ports:
-    #   - "9001:8002"
+    # Published for the same reason as opentripplanner's, above.
+    ports:
+      - "127.0.0.1:9001:8002"
   frontend-init:
     image: ghcr.io/headwaymaps/headway-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
@@ -153,6 +156,7 @@ services:
     depends_on:
       - "pelias-api"
       - "tileserver"
+      - "transit-zoner"
       - "travelmux"
       - "valhalla"
   pelias-config-init:

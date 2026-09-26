@@ -33,6 +33,7 @@
     "@quasar/cli": "^2.5.0",
     "@quasar/quasar-app-extension-testing": "^2.0.4",
     "@types/lodash": "^4.14.202",
+    "@vitejs/plugin-vue": "^6.0.5",
     "@types/node": "^22.10.2",
     "autoprefixer": "^10.4.17",
     "eslint": "^9.16.0",

@@ -27,14 +27,16 @@
 
 <script lang="ts">
 import { getBaseMap } from 'src/components/BaseMap.vue';
+import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import { TravelMode, DistanceUnits } from 'src/utils/models';
 import Place, { PlaceStorage } from 'src/models/Place';
-import { defineComponent, Component, Ref, ref } from 'vue';
+import { defineComponent, Component, markRaw, Ref, ref } from 'vue';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import TripLayerId from 'src/models/TripLayerId';
+import VehicleOverlay from 'src/models/VehicleOverlay';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery from 'src/models/TransitQuery';
@@ -78,10 +80,12 @@ export default defineComponent({
   data: function (): {
     trip?: Trip | undefined;
     tripMarkers: string[];
+    vehicleOverlay?: VehicleOverlay;
   } {
     return {
       trip: undefined,
       tripMarkers: [],
+      vehicleOverlay: undefined,
     };
   },
   mounted: async function () {
@@ -126,6 +130,9 @@ export default defineComponent({
         Markers.tripEnd().setLngLat(this.toPlace.point),
       );
     }
+  },
+  unmounted: function () {
+    this.stopVehicleOverlay();
   },
   methods: {
     componentForMode(mode: TravelMode): Component {
@@ -183,7 +190,28 @@ export default defineComponent({
         console.assert(trip);
         this.$data.trip = trip;
         this.renderTripLayer();
+        if (trip) {
+          this.startVehicleOverlay(map, trip);
+        }
       }
+    },
+    stopVehicleOverlay() {
+      this.vehicleOverlay?.stop();
+      this.vehicleOverlay = undefined;
+    },
+    /// Draw the vehicles serving this trip, and only this one - the alternates the traveler
+    /// passed over have no bearing on the route they're now reading the steps for.
+    startVehicleOverlay(map: BaseMapInterface, trip: Trip) {
+      this.stopVehicleOverlay();
+      const overlay = new VehicleOverlay(
+        map,
+        trip.legs[0]!.sourceLngLat,
+        trip.legs[trip.legs.length - 1]!.destinationLngLat,
+        [trip],
+      );
+      this.vehicleOverlay = markRaw(overlay);
+      overlay.start();
+      overlay.selectTrip(trip);
     },
     renderTripLayer() {
       const map = getBaseMap();
@@ -204,6 +232,16 @@ export default defineComponent({
       for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
         const leg = trip.legs[legIdx]!;
 
+        // Pushed before the leg's own layer so the ridden portion draws over it.
+        const context = leg.contextLayer();
+        if (context) {
+          const contextLayerId = TripLayerId.legContext(tripIdx, legIdx);
+          layerIds.push(contextLayerId);
+          if (!map.hasLayer(contextLayerId)) {
+            map.pushTripLayer(contextLayerId, context.geometry, context.paint);
+          }
+        }
+
         const layerId = TripLayerId.selectedLeg(tripIdx, legIdx);
         layerIds.push(layerId);
 
@@ -211,9 +249,56 @@ export default defineComponent({
           map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(true));
         }
 
+        // Pushed after both lines, so the dots sit on top of them.
+        const contextStops = leg.contextStopsLayer();
+        if (contextStops) {
+          const contextStopsLayerId = TripLayerId.legContextStops(
+            tripIdx,
+            legIdx,
+          );
+          layerIds.push(contextStopsLayerId);
+          if (!map.hasLayer(contextStopsLayerId)) {
+            map.pushTripStopsLayer(
+              contextStopsLayerId,
+              contextStops.geometry,
+              contextStops.paint,
+            );
+          }
+        }
+
+        const riddenStops = leg.riddenStopsLayer();
+        if (riddenStops) {
+          const riddenStopsLayerId = TripLayerId.legRiddenStops(
+            tripIdx,
+            legIdx,
+          );
+          layerIds.push(riddenStopsLayerId);
+          if (!map.hasLayer(riddenStopsLayerId)) {
+            map.pushTripStopsLayer(
+              riddenStopsLayerId,
+              riddenStops.geometry,
+              riddenStops.paint,
+            );
+          }
+        }
+
+        const onOffStops = leg.onOffStopsLayer();
+        if (onOffStops) {
+          const onOffStopsLayerId = TripLayerId.legOnOffStops(tripIdx, legIdx);
+          layerIds.push(onOffStopsLayerId);
+          if (!map.hasLayer(onOffStopsLayerId)) {
+            map.pushTripStopsLayer(
+              onOffStopsLayerId,
+              onOffStops.geometry,
+              onOffStops.paint,
+            );
+          }
+        }
+
         const transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
         if (
           legIdx > 0 &&
+          !trip.transfersAtStop(legIdx) &&
           !this.tripMarkers.includes(transferLayerId.toString())
         ) {
           this.tripMarkers.push(transferLayerId.toString());

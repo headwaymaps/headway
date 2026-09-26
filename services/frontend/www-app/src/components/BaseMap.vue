@@ -18,6 +18,7 @@ import {
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 setWorkerUrl(maplibreWorkerUrl);
 import type {
+  CircleLayerSpecification,
   ColorSpecification,
   DataDrivenPropertyValueSpecification,
   ExpressionSpecification,
@@ -130,6 +131,7 @@ export interface BaseMapInterface {
   getCenter: () => LngLat;
   getBounds: () => LngLatBounds;
   flyTo: (location: LngLatLike, options?: FlyToOptions) => void;
+  panBy: (offset: [number, number]) => void;
   flyToPlace: (place: Place, options?: FlyToOptions) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   setCursor: (key: string) => void;
@@ -148,6 +150,11 @@ export interface BaseMapInterface {
     layerId: TripLayerId,
     geometry: GeoJSON.Geometry,
     paint: LineLayerSpecification['paint'],
+  ) => void;
+  pushTripStopsLayer: (
+    layerId: TripLayerId,
+    geometry: GeoJSON.Geometry,
+    paint: CircleLayerSpecification['paint'],
   ) => void;
   hasLayer: (layerId: TripLayerId) => boolean;
   removeLayersExcept: (layerIds: TripLayerId[]) => void;
@@ -229,6 +236,7 @@ export default defineComponent({
       setCursor: this.setCursor,
       flyToPlace: this.flyToPlace,
       flyTo: this.flyTo,
+      panBy: (offset: [number, number]) => map.panBy(offset),
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
       hasMarker: this.hasMarker,
@@ -237,6 +245,7 @@ export default defineComponent({
       removeMarkersExcept: this.removeMarkersExcept,
       pushLayer: this.pushLayer,
       pushTripLayer: this.pushTripLayer,
+      pushTripStopsLayer: this.pushTripStopsLayer,
       hasLayer: this.hasLayer,
       removeLayer: this.removeLayer,
       removeLayersExcept: this.removeLayersExcept,
@@ -550,6 +559,30 @@ export default defineComponent({
             'line-join': 'round',
             'line-cap': 'round',
           },
+          paint,
+        },
+        'symbol',
+      );
+    },
+    pushTripStopsLayer(
+      layerId: TripLayerId,
+      geometry: GeoJSON.Geometry,
+      paint: CircleLayerSpecification['paint'],
+    ): void {
+      this.pushLayer(
+        layerId,
+        {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry,
+          },
+        },
+        {
+          id: layerId.toString(),
+          type: 'circle',
+          source: layerId.toString(),
           paint,
         },
         'symbol',

@@ -55,6 +55,7 @@ function fetch_opentripplanner {
           legs {
             mode transitLeg distance duration headsign
             tripOnServiceDate { realTimeTripState { updated } }
+            trip { pattern { code } }
             start { scheduledTime estimated { time } }
             end { scheduledTime estimated { time } }
             from { name lat lon arrival { scheduledTime estimated { time } } departure { scheduledTime estimated { time } } }

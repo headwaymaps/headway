@@ -17,9 +17,14 @@ use crate::otp::gtfs_graphql::{self, PlanDateTime};
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
-    deserialize_point_from_lat_lon, serialize_line_string_as_polyline6, serialize_rect_to_lng_lat,
+    deserialize_point_from_lon_lat, serialize_line_string_as_polyline6,
+    serialize_optional_line_string_as_polyline6, serialize_point_as_lon_lat_pair,
+    serialize_rect_to_lng_lat,
 };
-use crate::util::{bearing_at_end, bearing_at_start, convert_to_meters, extend_bounds};
+use crate::util::{
+    bearing_at_end, bearing_at_start, closest_point_on, convert_to_meters, extend_bounds,
+    progress_along,
+};
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
@@ -27,10 +32,10 @@ use crate::{DistanceUnit, Error, TravelMode};
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanQuery {
-    #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
+    #[serde(deserialize_with = "deserialize_point_from_lon_lat")]
     to_place: Point,
 
-    #[serde(deserialize_with = "deserialize_point_from_lat_lon")]
+    #[serde(deserialize_with = "deserialize_point_from_lon_lat")]
     from_place: Point,
 
     num_itineraries: u32,
@@ -199,8 +204,9 @@ impl Itinerary {
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct Place {
-    #[serde(flatten)]
-    location: LonLat,
+    /// `[lon, lat]`.
+    #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
+    location: Point,
     /// Transit stops have names. Places the user picked usually don't.
     name: Option<String>,
 }
@@ -208,10 +214,7 @@ struct Place {
 impl From<&gtfs_graphql::Place> for Place {
     fn from(value: &gtfs_graphql::Place) -> Self {
         Self {
-            location: LonLat {
-                lat: value.lat,
-                lon: value.lon,
-            },
+            location: Point::new(value.lon, value.lat),
             name: value.name.clone(),
         }
     }
@@ -220,7 +223,7 @@ impl From<&gtfs_graphql::Place> for Place {
 impl From<valhalla_api::LonLat> for Place {
     fn from(value: LonLat) -> Self {
         Self {
-            location: value,
+            location: value.into(),
             name: None,
         }
     }
@@ -266,6 +269,18 @@ pub(crate) enum ModeLeg {
     NonTransit(Box<NonTransitLeg>),
 }
 
+/// A line through `coords`, or nothing to draw when there are none.
+fn line_of(coords: Vec<geo::Coord>) -> Option<LineString> {
+    (!coords.is_empty()).then(|| LineString::new(coords))
+}
+
+/// A pattern's stops, split at the ends of the portion the rider is aboard for.
+#[derive(Default)]
+struct SplitStops {
+    ridden: Option<LineString>,
+    context: Option<LineString>,
+}
+
 /// A ride on a transit vehicle.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -286,14 +301,121 @@ pub struct TransitLeg {
     /// Whether the leg's times reflect real-time data, rather than just the schedule.
     real_time: bool,
 
-    /// Pattern code, valid until OTP rebuilds transit data.
+    /// The pattern this ride follows, which is what `/v8/vehicle_positions` is keyed by.
+    ///
+    /// Only good for the life of this plan - OTP renumbers patterns whenever the transit data is
+    /// rebuilt.
     pattern_code: Option<String>,
+
+    /// The whole shape the pattern runs, as an encoded polyline. The leg's own geometry is the
+    /// slice of this the rider is aboard for.
+    #[serde(
+        serialize_with = "serialize_optional_line_string_as_polyline6",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pattern_geometry: Option<LineString>,
+
+    /// Every ordinary stop on the portion of the pattern the rider travels, in order.
+    #[serde(
+        serialize_with = "serialize_optional_line_string_as_polyline6",
+        skip_serializing_if = "Option::is_none"
+    )]
+    ridden_stops: Option<LineString>,
+
+    /// The pattern's stops beyond the ridden portion, which the map draws faded like the line
+    /// under them.
+    #[serde(
+        serialize_with = "serialize_optional_line_string_as_polyline6",
+        skip_serializing_if = "Option::is_none"
+    )]
+    context_stops: Option<LineString>,
+
+    /// Where the rider boards and alights, on the pattern's shape.
+    #[serde(
+        serialize_with = "serialize_optional_line_string_as_polyline6",
+        skip_serializing_if = "Option::is_none"
+    )]
+    on_off_stops: Option<LineString>,
 
     alerts: Vec<Alert>,
 }
 
+impl TransitLeg {
+    /// Decodes a pattern's shape when OTP provides a decodable one.
+    fn shape_of(pattern: &gtfs_graphql::Pattern) -> Option<LineString> {
+        let encoded = pattern.pattern_geometry.as_ref()?.points.as_deref()?;
+        decode_polyline(encoded, Leg::OTP_GEOMETRY_PRECISION)
+            .inspect_err(|e| log::warn!("undecodable shape for pattern {}: {e}", pattern.code))
+            .ok()
+    }
+
+    /// A pattern's stops, split at the ends of the ridden portion and drawn onto the shape rather
+    /// than where the feed puts them: a stop sits at the kerb, and a dot a few metres off the line
+    /// it belongs to reads as a mistake.
+    fn stops_of(
+        pattern: &gtfs_graphql::Pattern,
+        shape: &LineString,
+        ridden: &LineString,
+    ) -> SplitStops {
+        let Some(stops) = pattern.stops.as_ref() else {
+            return SplitStops::default();
+        };
+        let [Some(boarded), Some(alighted)] = ridden
+            .points()
+            .map(|point| progress_along(shape, point))
+            .collect::<Vec<_>>()[..]
+        else {
+            return SplitStops::default();
+        };
+
+        let (mut ridden, mut context) = (vec![], vec![]);
+        for stop in stops {
+            let Some(stop) = stop.lon.zip(stop.lat).map(|(x, y)| Point::new(x, y)) else {
+                continue;
+            };
+            let on_shape = closest_point_on(shape, stop).unwrap_or(stop);
+            let Some(progress) = progress_along(shape, on_shape) else {
+                continue;
+            };
+            if (boarded..=alighted).contains(&progress) {
+                ridden.push(on_shape.into());
+            } else {
+                context.push(on_shape.into());
+            }
+        }
+        SplitStops {
+            ridden: line_of(ridden),
+            context: line_of(context),
+        }
+    }
+
+    /// Where the rider boards and alights, on the shape for the same reason.
+    fn on_off_stops_of(leg: &gtfs_graphql::Leg, shape: &LineString) -> LineString {
+        LineString::new(
+            [&leg.from, &leg.to]
+                .into_iter()
+                .map(|place| {
+                    let stop = Point::new(place.lon, place.lat);
+                    closest_point_on(shape, stop).unwrap_or(stop).into()
+                })
+                .collect(),
+        )
+    }
+}
+
 impl From<&gtfs_graphql::Leg> for TransitLeg {
     fn from(leg: &gtfs_graphql::Leg) -> Self {
+        let pattern = leg.trip.as_ref().and_then(|trip| trip.pattern.as_ref());
+        let shape = pattern.and_then(TransitLeg::shape_of);
+        let on_off_stops = shape
+            .as_ref()
+            .map(|shape| TransitLeg::on_off_stops_of(leg, shape));
+        let stops = match (pattern, shape.as_ref(), on_off_stops.as_ref()) {
+            (Some(pattern), Some(shape), Some(ridden)) => {
+                TransitLeg::stops_of(pattern, shape, ridden)
+            }
+            _ => SplitStops::default(),
+        };
         Self {
             vehicle_mode: leg.mode.clone(),
             route: leg.route.as_ref().map(Route::from),
@@ -304,11 +426,11 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
                 .as_ref()
                 .and_then(|trip| trip.real_time_trip_state.as_ref())
                 .is_some_and(|state| state.updated),
-            pattern_code: leg
-                .trip
-                .as_ref()
-                .and_then(|trip| trip.pattern.as_ref())
-                .map(|pattern| pattern.code.clone()),
+            pattern_code: pattern.map(|pattern| pattern.code.clone()),
+            pattern_geometry: shape.clone(),
+            ridden_stops: stops.ridden,
+            context_stops: stops.context,
+            on_off_stops,
             alerts: leg
                 .alerts
                 .iter()
@@ -433,7 +555,9 @@ pub struct Maneuver {
     pub duration_seconds: f64,
     pub r#type: ManeuverType,
     pub verbal_post_transition_instruction: Option<String>,
-    pub start_point: LonLat,
+    /// `[lon, lat]`.
+    #[serde(serialize_with = "serialize_point_as_lon_lat_pair")]
+    pub start_point: Point,
     pub bearing_before: u16,
     pub bearing_after: u16,
 }
@@ -460,7 +584,7 @@ impl Maneuver {
             street_names: valhalla.street_names,
             duration_seconds: valhalla.time,
             r#type: valhalla.r#type,
-            start_point: Point(leg_geometry[valhalla.begin_shape_index as usize]).into(),
+            start_point: Point(leg_geometry[valhalla.begin_shape_index as usize]),
             verbal_post_transition_instruction: valhalla.verbal_post_transition_instruction,
             distance_meters: convert_to_meters(valhalla.length, units),
             bearing_before,
@@ -518,10 +642,7 @@ impl Maneuver {
             verbal_post_transition_instruction,
             distance_meters,
             duration_seconds,
-            start_point: LonLat {
-                lat: otp.lat.unwrap_or(0.0),
-                lon: otp.lon.unwrap_or(0.0),
-            },
+            start_point: Point::new(otp.lon.unwrap_or(0.0), otp.lat.unwrap_or(0.0)),
             bearing_before,
             bearing_after,
             geometry,
@@ -759,7 +880,7 @@ impl actix_web::Responder for PlanResponseOk {
     }
 }
 
-#[get("/v7/plan")]
+#[get("/v8/plan")]
 pub async fn get_plan(
     query: web::Query<PlanQuery>,
     req: HttpRequest,
@@ -966,11 +1087,11 @@ mod tests {
         );
 
         assert_relative_eq!(
-            geo::Point::from(first_leg.from_place.location),
+            first_leg.from_place.location,
             geo::point!(x: -122.339414, y: 47.575837)
         );
         assert_relative_eq!(
-            geo::Point::from(first_leg.to_place.location),
+            first_leg.to_place.location,
             geo::point!(x:-122.347234, y: 47.651048)
         );
         assert!(first_leg.to_place.name.is_none());
@@ -1004,7 +1125,7 @@ mod tests {
             non_transit_leg.maneuvers[0].clone()
         }
 
-        let base = "fromPlace=47.575837,-122.339414&toPlace=47.651048,-122.347234&numItineraries=1&mode=WALK";
+        let base = "fromPlace=-122.339414,47.575837&toPlace=-122.347234,47.651048&numItineraries=1&mode=WALK";
 
         let imperial = first_maneuver(&format!("{base}&preferredDistanceUnits=miles"));
         assert_eq!(
@@ -1096,7 +1217,7 @@ mod tests {
             json["units"].as_str().unwrap().to_string()
         }
 
-        let base = "fromPlace=47.575837,-122.339414&toPlace=47.651048,-122.347234&numItineraries=1&mode=WALK";
+        let base = "fromPlace=-122.339414,47.575837&toPlace=-122.347234,47.651048&numItineraries=1&mode=WALK";
         assert_eq!(
             requested_units(&format!("{base}&preferredDistanceUnits=miles")),
             "miles"
@@ -1163,11 +1284,11 @@ mod tests {
         );
 
         assert_relative_eq!(
-            geo::Point::from(first_leg.from_place.location),
+            first_leg.from_place.location,
             geo::point!(x: -122.339414, y: 47.575837)
         );
         assert_relative_eq!(
-            geo::Point::from(first_leg.to_place.location),
+            first_leg.to_place.location,
             geo::point!(x: -122.334106, y: 47.575924)
         );
         assert_eq!(
@@ -1186,6 +1307,7 @@ mod tests {
 
         let transit_leg = &first_itinerary.legs[1];
         assert_eq!(transit_leg.mode, TravelMode::Transit);
+        let ridden = transit_leg.geometry.clone();
         let ModeLeg::Transit(transit_leg) = &transit_leg.mode_leg else {
             panic!("expected transit leg")
         };
@@ -1195,6 +1317,12 @@ mod tests {
         assert!(route.color.is_none());
         assert_eq!(transit_leg.agency_name.as_deref(), Some("Metro Transit"));
         assert!(!transit_leg.real_time);
+
+        // The whole route the bus runs, which the ridden portion is a slice of.
+        let pattern = transit_leg.pattern_geometry.as_ref().unwrap();
+        assert!(pattern.0.len() > ridden.0.len());
+        assert!(pattern.0.contains(&ridden.0[0]));
+        assert!(pattern.0.contains(ridden.0.last().unwrap()));
     }
 
     #[test]
@@ -1250,10 +1378,7 @@ mod tests {
             "bearingBefore": 182,
             "distanceMeters": 19.15,
             "instruction": "Walk south on East Marginal Way South.",
-            "startPoint": {
-                "lat": 47.5758346,
-                "lon": -122.3392181
-            },
+            "startPoint": [-122.3392181, 47.5758346],
             "streetNames": ["East Marginal Way South"],
             "type": 1,
             "verbalPostTransitionInstruction": "Continue for 60 feet."
@@ -1286,10 +1411,17 @@ mod tests {
             transit_leg.get("route").unwrap().get("shortName").unwrap(),
             "21"
         );
+        // What a client polls /v8/vehicle_positions with.
         assert_eq!(
             transit_leg.get("patternCode").unwrap().as_str().unwrap(),
             "1:21:0:01"
         );
+        assert!(!transit_leg
+            .get("patternGeometry")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .is_empty());
 
         let alerts = transit_leg.get("alerts").unwrap().as_array().unwrap();
         let first_alert = alerts.first().unwrap().as_object().unwrap();
@@ -1357,10 +1489,7 @@ mod tests {
             "verbalPostTransitionInstruction": "Continue for 60 feet.",
             // 0.011 miles, as valhalla reported it
             "distanceMeters": 17.70274,
-            "startPoint": {
-                "lat": 47.575836,
-                "lon": -122.339216
-            },
+            "startPoint": [-122.339216, 47.575836],
             "streetNames": ["East Marginal Way South"],
         });
         assert_eq!(first_maneuver, &expected_maneuver);
@@ -1413,7 +1542,7 @@ mod tests {
             "distanceMeters": 2218.0,
             "instruction": "Drive northeast on Fauntleroy Way Southwest.",
             "type": 2,
-            "startPoint": { "lon": -122.398, "lat": 47.564},
+            "startPoint": [-122.398, 47.564],
             "streetNames": ["Fauntleroy Way Southwest"],
             "verbalPostTransitionInstruction": "Continue for 2 miles.",
         });

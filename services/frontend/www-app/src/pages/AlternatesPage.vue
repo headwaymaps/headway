@@ -58,8 +58,8 @@
   </div>
 </template>
 <script lang="ts">
-import { getBaseMap } from 'src/components/BaseMap.vue';
-import { Component, defineComponent, Ref, ref } from 'vue';
+import { getBaseMap, type BaseMapInterface } from 'src/components/BaseMap.vue';
+import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
@@ -72,10 +72,12 @@ import Trip, {
   TripFetchErrorCode,
 } from 'src/models/Trip';
 import TripLayerId from 'src/models/TripLayerId';
+import VehicleOverlay from 'src/models/VehicleOverlay';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
+import { LngLat } from 'maplibre-gl';
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -115,6 +117,7 @@ export default defineComponent({
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
+    vehicleOverlay?: VehicleOverlay;
     TravelMode: typeof TravelMode;
   } {
     return {
@@ -123,6 +126,7 @@ export default defineComponent({
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
+      vehicleOverlay: undefined,
       TravelMode: TravelMode,
     };
   },
@@ -130,6 +134,9 @@ export default defineComponent({
     mode: async function (): Promise<void> {
       await this.updateTrips();
     },
+  },
+  unmounted: function () {
+    this.stopVehicleOverlay();
   },
   mounted: async function () {
     if (this.to != '_') {
@@ -172,6 +179,26 @@ export default defineComponent({
         default:
           throw new Error(`unexpected mode: ${mode ?? 'none'}`);
       }
+    },
+    stopVehicleOverlay() {
+      this.vehicleOverlay?.stop();
+      this.vehicleOverlay = undefined;
+    },
+    /// Draw the vehicles serving the trips on screen, for the feeds that report where they are.
+    startVehicleOverlay(
+      map: BaseMapInterface,
+      from: LngLat,
+      to: LngLat,
+      trips: Trip[],
+      selected: Trip,
+    ) {
+      this.stopVehicleOverlay();
+      const overlay = new VehicleOverlay(map, from, to, trips, (trip) =>
+        this.clickTrip(trip),
+      );
+      this.vehicleOverlay = markRaw(overlay);
+      overlay.start();
+      overlay.selectTrip(selected);
     },
     clickTrip(trip: Trip) {
       this.$data.activeTrip = trip;
@@ -232,6 +259,7 @@ export default defineComponent({
 
       map.removeAllLayers();
       map.removeAllMarkers();
+      this.stopVehicleOverlay();
 
       if (this.fromPlace && this.toPlace) {
         this.isLoading = true;
@@ -256,6 +284,13 @@ export default defineComponent({
           const trips = result.value;
           this.trips = trips;
           this.renderTrips(0);
+          this.startVehicleOverlay(
+            map,
+            this.fromPlace.point,
+            this.toPlace.point,
+            trips,
+            trips[0]!,
+          );
           this.error = undefined;
         } else {
           this.trips = [];
@@ -312,13 +347,29 @@ export default defineComponent({
             map.removeLayer(TripLayerId.selectedLeg(tripIdx, legIdx));
           }
 
+          if (map.hasLayer(TripLayerId.legContext(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legContext(tripIdx, legIdx));
+          }
+
+          if (map.hasLayer(TripLayerId.legRiddenStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legRiddenStops(tripIdx, legIdx));
+          }
+
+          if (map.hasLayer(TripLayerId.legContextStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legContextStops(tripIdx, legIdx));
+          }
+
+          if (map.hasLayer(TripLayerId.legOnOffStops(tripIdx, legIdx))) {
+            map.removeLayer(TripLayerId.legOnOffStops(tripIdx, legIdx));
+          }
+
           if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
             continue;
           }
 
           const layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
           map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(false));
-          if (legIdx > 0) {
+          if (legIdx > 0 && !trip.transfersAtStop(legIdx)) {
             const transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
             map.pushMarker(
               transferLayerId.toString(),
@@ -331,8 +382,15 @@ export default defineComponent({
           map.on('mouseout', layerId.toString(), () => {
             map.setCursor('');
           });
+          // Resolved when the line is clicked rather than when it was drawn: a later search
+          // replaces the trips, and selecting one looks them up by identity.
           map.on('click', layerId.toString(), () => {
-            this.clickTrip(trip);
+            // Cast for the same reason the list item's handler does: reactive unwrapping loses
+            // the class's private members.
+            const clicked = this.trips[tripIdx] as Trip | undefined;
+            if (clicked) {
+              this.clickTrip(clicked);
+            }
           });
         }
       }
@@ -340,6 +398,18 @@ export default defineComponent({
       // Add selected trip last to be sure it's on top of the unselected trips
       for (let legIdx = 0; legIdx < selectedTrip.legs.length; legIdx++) {
         const leg = selectedTrip.legs[legIdx]!;
+        // Pushed before the leg's own layer so the ridden portion draws over it.
+        const context = leg.contextLayer();
+        if (
+          context &&
+          !map.hasLayer(TripLayerId.legContext(selectedIdx, legIdx))
+        ) {
+          map.pushTripLayer(
+            TripLayerId.legContext(selectedIdx, legIdx),
+            context.geometry,
+            context.paint,
+          );
+        }
         if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
           map.pushTripLayer(
             TripLayerId.selectedLeg(selectedIdx, legIdx),
@@ -347,8 +417,44 @@ export default defineComponent({
             leg.paintStyle(true),
           );
         }
+        // Pushed after both lines, so the dots sit on top of them.
+        const contextStops = leg.contextStopsLayer();
+        if (
+          contextStops &&
+          !map.hasLayer(TripLayerId.legContextStops(selectedIdx, legIdx))
+        ) {
+          map.pushTripStopsLayer(
+            TripLayerId.legContextStops(selectedIdx, legIdx),
+            contextStops.geometry,
+            contextStops.paint,
+          );
+        }
+        const riddenStops = leg.riddenStopsLayer();
+        if (
+          riddenStops &&
+          !map.hasLayer(TripLayerId.legRiddenStops(selectedIdx, legIdx))
+        ) {
+          map.pushTripStopsLayer(
+            TripLayerId.legRiddenStops(selectedIdx, legIdx),
+            riddenStops.geometry,
+            riddenStops.paint,
+          );
+        }
+        const onOffStops = leg.onOffStopsLayer();
+        if (
+          onOffStops &&
+          !map.hasLayer(TripLayerId.legOnOffStops(selectedIdx, legIdx))
+        ) {
+          map.pushTripStopsLayer(
+            TripLayerId.legOnOffStops(selectedIdx, legIdx),
+            onOffStops.geometry,
+            onOffStops.paint,
+          );
+        }
       }
       getBaseMap()?.fitBounds(selectedTrip.bounds);
+
+      this.vehicleOverlay?.selectTrip(selectedTrip);
     },
   },
 });
