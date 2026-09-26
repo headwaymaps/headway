@@ -129,15 +129,11 @@ pub(crate) fn progress_along(shape: &LineString, point: Point) -> Option<f64> {
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use geo::line_string;
+    use geo::wkt;
 
     /// Two blocks east, then two blocks north.
     fn corner() -> LineString {
-        line_string![
-            (x: -122.340, y: 47.600),
-            (x: -122.330, y: 47.600),
-            (x: -122.330, y: 47.610),
-        ]
+        wkt!(LINESTRING(-122.340 47.600, -122.330 47.600, -122.330 47.610))
     }
 
     fn first_leg() -> f64 {

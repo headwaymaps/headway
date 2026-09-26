@@ -636,7 +636,7 @@ mod tests {
         StopRelationship, StoptimeStop, VehiclePosition, VehicleStoptime, VehicleTrip,
     };
     use approx::assert_relative_eq;
-    use geo::line_string;
+    use geo::wkt;
 
     /// Midnight of the service day these fixtures run on.
     const SERVICE_DAY: i64 = 1_716_015_600;
@@ -648,10 +648,7 @@ mod tests {
     /// A straight run due east. A degree of longitude here is about 75km, so the stops below sit
     /// roughly 750m apart.
     fn shape() -> LineString {
-        line_string![
-            (x: -122.340, y: 47.600),
-            (x: -122.300, y: 47.600),
-        ]
+        wkt!(LINESTRING(-122.340 47.600, -122.300 47.600))
     }
 
     /// A stop at `lon` along the shape, due `arrival` seconds after midnight. Its id names its
