@@ -13,7 +13,7 @@ use super::error::{PlanResponseErr, PlanResponseOk};
 use super::TravelModes;
 use crate::api::AppState;
 use crate::error::ErrorType;
-use crate::otp::gtfs_graphql::{self, PlanDateTime};
+use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
@@ -28,6 +28,8 @@ use crate::util::{
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
+use futures::future::join_all;
+use url::Url;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -80,6 +82,7 @@ impl<'a> From<(&'a PlanQuery, Option<chrono_tz::Tz>)> for gtfs_graphql::PlanPara
             date_time: query.date_time,
             arrive_by: query.arrive_by,
             timezone,
+            bike_route_preference: None,
         }
     }
 }
@@ -101,6 +104,10 @@ pub struct Itinerary {
     bounds: Rect,
 
     pub(crate) legs: Vec<Leg>,
+
+    /// Which cycling objectives this route is the best answer to. Empty for every other mode.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub(crate) route_preferences: Vec<BikeRoutePreference>,
 }
 
 impl Itinerary {
@@ -153,6 +160,7 @@ impl Itinerary {
             distance_meters: convert_to_meters(valhalla.summary.length, valhalla.units),
             bounds,
             legs,
+            route_preferences: vec![],
         }
     }
 
@@ -197,6 +205,7 @@ impl Itinerary {
             distance_meters: legs.iter().map(|leg| leg.distance_meters).sum(),
             bounds: itinerary_bounds,
             legs,
+            route_preferences: vec![],
         })
     }
 }
@@ -906,11 +915,6 @@ pub async fn _get_plan(
             if primary_mode == &TravelMode::Bicycle || primary_mode == &TravelMode::Walk {
                 match otp_plan(&query, req, &app_state, primary_mode).await {
                     Ok(otp_response) => {
-                        debug_assert_eq!(
-                            1,
-                            otp_response.itineraries.len(),
-                            "expected exactly one itinerary from OTP"
-                        );
                         // Prefer OTP response when available - anecdotally, it tends to be higher quality than Valhalla routes for
                         // walking and cycling.
                         //
@@ -1013,8 +1017,12 @@ async fn otp_plan(
     log::debug!("found matching router. Querying OTP GraphQL at: {endpoint}");
 
     let params = gtfs_graphql::PlanParams::from((&**query, timezone));
-
     let client = reqwest::Client::new();
+
+    if primary_mode == &TravelMode::Bicycle && query.num_itineraries > 1 {
+        return bike_plans(&client, &endpoint, &params, query.instruction_units()).await;
+    }
+
     let plan = gtfs_graphql::plan_connection(&client, &endpoint, &params)
         .await
         .map_err(|e| {
@@ -1023,6 +1031,78 @@ async fn otp_plan(
         })?;
 
     PlanResponseOk::from_otp(*primary_mode, plan, query.instruction_units())
+}
+
+/// Plan a bike trip once per [`BikeRoutePreference`], and offer the results that differ.
+async fn bike_plans(
+    client: &reqwest::Client,
+    endpoint: &Url,
+    params: &gtfs_graphql::PlanParams<'_>,
+    instruction_units: DistanceUnit,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let plans = join_all(BikeRoutePreference::ALL.map(|preference| {
+        let params = gtfs_graphql::PlanParams {
+            bike_route_preference: Some(preference),
+            ..params.clone()
+        };
+        let client = client.clone();
+        async move {
+            let plan = gtfs_graphql::plan_connection(&client, endpoint, &params).await;
+            (preference, plan)
+        }
+    }))
+    .await;
+
+    let mut planned = vec![];
+    let mut last_error = None;
+    for (preference, plan) in plans {
+        let response = plan.map_err(PlanResponseErr::from).and_then(|plan| {
+            PlanResponseOk::from_otp(TravelMode::Bicycle, plan, instruction_units)
+        });
+        match response {
+            Ok(response) => planned.extend(
+                response
+                    .itineraries
+                    .into_iter()
+                    .map(|itinerary| (preference, itinerary)),
+            ),
+            Err(e) => {
+                log::warn!("OTP failed to plan a {preference:?} bike route: {e}");
+                last_error = Some(e);
+            }
+        }
+    }
+
+    match last_error {
+        Some(e) if planned.is_empty() => Err(e),
+        _ => Ok(PlanResponseOk::from_bike_routes(planned)),
+    }
+}
+
+/// How much time the faster route has to save before it's worth offering as a second option.
+const WORTHWHILE_TIME_SAVING_SECONDS: f64 = 60.0;
+
+impl PlanResponseOk {
+    /// The planned routes worth showing, in [`BikeRoutePreference::ALL`] order.
+    ///
+    /// A route that no preference improves on is offered once, tagged with each of them.
+    fn from_bike_routes(planned: Vec<(BikeRoutePreference, Itinerary)>) -> Self {
+        let mut kept: Vec<Itinerary> = vec![];
+        for (preference, mut itinerary) in planned {
+            let saves_time = |other: &Itinerary| {
+                other.duration_seconds - itinerary.duration_seconds
+                    >= WORTHWHILE_TIME_SAVING_SECONDS
+            };
+            match kept.iter_mut().find(|other| !saves_time(other)) {
+                Some(other) => other.route_preferences.push(preference),
+                None => {
+                    itinerary.route_preferences.push(preference);
+                    kept.push(itinerary);
+                }
+            }
+        }
+        PlanResponseOk { itineraries: kept }
+    }
 }
 
 #[cfg(test)]
@@ -1050,6 +1130,74 @@ mod tests {
         plan_result_from_fixture(&format!(
             "tests/fixtures/requests/opentripplanner_{name}_planconnection.json"
         ))
+    }
+
+    fn bike_itinerary() -> Itinerary {
+        let response = PlanResponseOk::from_otp(
+            TravelMode::Bicycle,
+            otp_plan("bicycle"),
+            DistanceUnit::Miles,
+        )
+        .unwrap();
+        response.itineraries.into_iter().next().unwrap()
+    }
+
+    /// The same route, planned to take `seconds` less.
+    fn quicker_by(itinerary: &Itinerary, seconds: f64) -> Itinerary {
+        let mut quicker = itinerary.clone();
+        quicker.duration_seconds -= seconds;
+        quicker
+    }
+
+    #[test]
+    fn a_faster_route_worth_taking_is_offered_on_its_own() {
+        let quieter = bike_itinerary();
+        let faster = quicker_by(&quieter, 159.0);
+        let routes = PlanResponseOk::from_bike_routes(vec![
+            (BikeRoutePreference::Quieter, quieter),
+            (BikeRoutePreference::Faster, faster),
+        ]);
+
+        assert_eq!(2, routes.itineraries.len());
+        assert_eq!(
+            vec![BikeRoutePreference::Quieter],
+            routes.itineraries[0].route_preferences
+        );
+        assert_eq!(
+            vec![BikeRoutePreference::Faster],
+            routes.itineraries[1].route_preferences
+        );
+    }
+
+    #[test]
+    fn a_faster_route_that_saves_only_seconds_is_folded_in() {
+        let quieter = bike_itinerary();
+        let barely_faster = quicker_by(&quieter, 3.0);
+        let routes = PlanResponseOk::from_bike_routes(vec![
+            (BikeRoutePreference::Quieter, quieter),
+            (BikeRoutePreference::Faster, barely_faster),
+        ]);
+
+        assert_eq!(1, routes.itineraries.len());
+        assert_eq!(
+            vec![BikeRoutePreference::Quieter, BikeRoutePreference::Faster],
+            routes.itineraries[0].route_preferences
+        );
+    }
+
+    #[test]
+    fn the_same_route_planned_twice_is_offered_once() {
+        let itinerary = bike_itinerary();
+        let routes = PlanResponseOk::from_bike_routes(vec![
+            (BikeRoutePreference::Quieter, itinerary.clone()),
+            (BikeRoutePreference::Faster, itinerary),
+        ]);
+
+        assert_eq!(1, routes.itineraries.len());
+        assert_eq!(
+            vec![BikeRoutePreference::Quieter, BikeRoutePreference::Faster],
+            routes.itineraries[0].route_preferences
+        );
     }
 
     #[test]
