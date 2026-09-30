@@ -1,0 +1,39 @@
+#!/bin/bash
+# Run the frontend with this checkout's style, sprites, and fonts over upstream tiles.
+#
+#     bin/dev-local-assets
+#
+# Override HEADWAY_HOST to take tiles from somewhere other than maps.earth, or
+# ASSETS_PORT if 8095 is taken.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ASSETS_DIR="$REPO_ROOT/services/tileserver/assets"
+ASSETS_PORT="${ASSETS_PORT:-8095}"
+
+if ! command -v martin > /dev/null; then
+    echo "martin not found; install it with: cargo install martin" >&2
+    exit 1
+fi
+
+MARTIN_CONFIG="$(mktemp)"
+cat > "$MARTIN_CONFIG" << EOF
+sprites:
+  paths: ['$ASSETS_DIR/sprites']
+fonts:
+  paths: ['$ASSETS_DIR/fonts']
+EOF
+
+cleanup() {
+    kill "$MARTIN_PID" 2> /dev/null || true
+    rm -f "$MARTIN_CONFIG"
+}
+trap cleanup EXIT
+
+martin --config "$MARTIN_CONFIG" --listen-addresses "127.0.0.1:$ASSETS_PORT" &
+MARTIN_PID=$!
+
+cd "$REPO_ROOT/services/frontend/www-app"
+[ -d node_modules ] || yarn install
+HEADWAY_LOCAL_STYLE=1 HEADWAY_LOCAL_ASSETS="http://localhost:$ASSETS_PORT" yarn dev
