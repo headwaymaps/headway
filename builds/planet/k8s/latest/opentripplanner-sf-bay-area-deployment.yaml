@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-17-4a49362c.obj.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-30-45b609db.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -79,4 +79,4 @@ spec:
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-13-0-2026-09-17-4543ce30
+            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-13-0-2026-09-30-ec3426c9
