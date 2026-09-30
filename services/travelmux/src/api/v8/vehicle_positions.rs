@@ -516,12 +516,21 @@ fn nearby(
 
     let mut upcoming = 0;
     vehicles.retain(|vehicle| {
-        if vehicle.progress <= boarding {
+        let keep = if vehicle.progress <= boarding {
             upcoming += 1;
             upcoming <= UPCOMING_VEHICLES
         } else {
             vehicle.left_recently(now)
-        }
+        };
+        log::debug!(
+            "{} {} boarding stop: vehicle {:.0}m along, stop {:.0}m along, {:?}",
+            if keep { "keeping" } else { "dropping" },
+            vehicle.id,
+            vehicle.progress,
+            boarding,
+            vehicle.boarding_stop,
+        );
+        keep
     });
     vehicles
 }
@@ -608,13 +617,21 @@ pub async fn post_vehicle_positions(
                 .and_then(|stop| Boarding::new(&shape, stop));
             let mut pattern = pattern;
             let positions = std::mem::take(&mut pattern.positions);
+            let reported = positions.len();
             let on_pattern: Vec<_> = positions
                 .into_iter()
                 .filter_map(|position| {
                     Vehicle::from_otp(&pattern, &shape, boarding.as_ref(), position)
                 })
                 .collect();
-            nearby(on_pattern, boarding.as_ref(), now)
+            let placed = on_pattern.len();
+            let nearby = nearby(on_pattern, boarding.as_ref(), now);
+            log::debug!(
+                "pattern {}: otp reported {reported}, placed {placed}, kept {}",
+                pattern.pattern_code,
+                nearby.len(),
+            );
+            nearby
         })
         .collect();
 
