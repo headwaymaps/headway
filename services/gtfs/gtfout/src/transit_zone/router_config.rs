@@ -41,42 +41,89 @@ pub struct SkippedRealtime {
     pub reason: String,
 }
 
+/// One agency's stream, with its credential already folded into the request.
+struct Source {
+    url: String,
+    headers: Option<BTreeMap<String, String>>,
+}
+
 impl RouterConfig {
-    pub fn for_zone(zone: &Zone, credentials: &FeedConfig) -> (Self, Vec<SkippedRealtime>) {
+    /// Refuses a static feed carrying more than one realtime feed for a stream. OTP keys realtime
+    /// data by static feed and replaces it on every poll, so the second feed would spend its life
+    /// erasing the first.
+    pub fn for_zone(
+        zone: &Zone,
+        credentials: &FeedConfig,
+    ) -> std::result::Result<(Self, Vec<SkippedRealtime>), String> {
         let mut updaters = Vec::new();
         let mut skipped = Vec::new();
         for feed in &zone.feeds {
+            let mut resolved = Vec::new();
             for realtime in &feed.realtime {
-                let streams: Vec<_> = realtime.urls.streams().collect();
-                if streams.is_empty() {
+                if realtime.urls.streams().next().is_none() {
                     continue;
                 }
-                let credential = match credential(realtime, credentials) {
-                    Ok(credential) => credential,
-                    Err(skip) => {
-                        skipped.push(skip);
-                        continue;
-                    }
-                };
-                for (stream, url) in streams {
-                    let (kind, frequency) = otp_updater(stream);
-                    updaters.push(Updater {
-                        feed_id: feed.feed_onestop_id.clone(),
-                        kind: kind.to_owned(),
-                        frequency: format!("{frequency}s"),
-                        url: match &credential {
-                            Some(credential) => credential.url(url),
-                            None => url.to_owned(),
-                        },
-                        headers: credential.as_ref().and_then(AuthKindSecret::headers),
-                    });
+                match credential(realtime, credentials) {
+                    Ok(credential) => resolved.push((realtime, credential)),
+                    Err(skip) => skipped.push(skip),
                 }
+            }
+
+            for stream in StreamKind::ALL {
+                let mut sources = sources_for(&resolved, stream);
+                if sources.len() > 1 {
+                    return Err(format!(
+                        "{} has {} realtime feeds publishing {}, and OTP holds one per feed - each \
+                         poll would erase the last. Name the one feed that covers this schedule.",
+                        feed.feed_onestop_id,
+                        sources.len(),
+                        stream.zone_key(),
+                    ));
+                }
+                let Some(source) = sources.pop() else {
+                    continue;
+                };
+                updaters.push(Updater {
+                    feed_id: feed.feed_onestop_id.clone(),
+                    kind: stream.otp_updater_type().to_owned(),
+                    frequency: format!("{}s", stream.poll_seconds()),
+                    url: source.url,
+                    headers: source.headers,
+                });
             }
         }
         updaters.sort();
         updaters.dedup();
-        (Self { updaters }, skipped)
+        Ok((Self { updaters }, skipped))
     }
+}
+
+/// Every agency publishing one stream into a static feed, one entry per distinct url.
+///
+/// A url two realtime feeds share is one stream to fetch, not two - King County Metro and the
+/// Seattle Streetcar publish into the same bucket.
+fn sources_for(
+    resolved: &[(&ZoneRealtime, Option<AuthKindSecret>)],
+    stream: StreamKind,
+) -> Vec<Source> {
+    let mut sources: Vec<Source> = Vec::new();
+    for (realtime, credential) in resolved {
+        let Some(url) = realtime.urls.url(stream) else {
+            continue;
+        };
+        let url = match credential {
+            Some(credential) => credential.url(url),
+            None => url.to_owned(),
+        };
+        if sources.iter().any(|existing| existing.url == url) {
+            continue;
+        }
+        sources.push(Source {
+            url,
+            headers: credential.as_ref().and_then(AuthKindSecret::headers),
+        });
+    }
+    sources
 }
 
 /// Which of a zone's credentials to name.
@@ -120,14 +167,33 @@ impl Zone {
     }
 }
 
-/// What OTP calls a stream, and how often it should poll it. Our policy, not
-/// anything the atlas says, which is why it lives here rather than on
-/// [`StreamKind`].
-fn otp_updater(kind: StreamKind) -> (&'static str, u32) {
-    match kind {
-        StreamKind::TripUpdates => ("stop-time-updater", 60),
-        StreamKind::VehiclePositions => ("vehicle-positions", 60),
-        StreamKind::Alerts => ("real-time-alerts", 300),
+/// What a stream is called and how often it's read. Our policy rather than anything the atlas
+/// says, so it lives beside the config it shapes.
+impl StreamKind {
+    /// What OTP calls the updater for this stream.
+    fn otp_updater_type(self) -> &'static str {
+        match self {
+            Self::TripUpdates => "stop-time-updater",
+            Self::VehiclePositions => "vehicle-positions",
+            Self::Alerts => "real-time-alerts",
+        }
+    }
+
+    /// How often this stream is worth re-reading.
+    fn poll_seconds(self) -> u32 {
+        match self {
+            Self::TripUpdates | Self::VehiclePositions => 60,
+            Self::Alerts => 300,
+        }
+    }
+
+    /// How the zone file spells this stream, for naming the one a feed doubled up on.
+    fn zone_key(self) -> &'static str {
+        match self {
+            Self::TripUpdates => "trip_updates",
+            Self::VehiclePositions => "vehicle_positions",
+            Self::Alerts => "alerts",
+        }
     }
 }
 
@@ -181,11 +247,41 @@ mod tests {
     }
 
     fn realtime(urls: RealtimeUrls, authorization: Option<Authorization>) -> ZoneRealtime {
+        named_realtime("f-c23-kcm~rt", urls, authorization)
+    }
+
+    fn named_realtime(
+        feed_onestop_id: &str,
+        urls: RealtimeUrls,
+        authorization: Option<Authorization>,
+    ) -> ZoneRealtime {
         ZoneRealtime {
-            feed_onestop_id: "f-c23-kcm~rt".into(),
+            feed_onestop_id: feed_onestop_id.into(),
             urls,
             authorization,
         }
+    }
+
+    /// One agency publishing every stream at its own urls.
+    fn agency(feed_onestop_id: &str, host: &str) -> ZoneRealtime {
+        named_realtime(
+            feed_onestop_id,
+            RealtimeUrls {
+                trip_updates: Some(format!("https://{host}/tu.pb")),
+                vehicle_positions: Some(format!("https://{host}/vp.pb")),
+                alerts: Some(format!("https://{host}/a.pb")),
+            },
+            None,
+        )
+    }
+
+    fn updaters_of(config: &RouterConfig, kind: &str) -> Vec<String> {
+        config
+            .updaters
+            .iter()
+            .filter(|u| u.kind == kind)
+            .map(|u| u.url.clone())
+            .collect()
     }
 
     fn auth(kind: AuthKind) -> Authorization {
@@ -216,14 +312,62 @@ mod tests {
     }
 
     #[test]
+    fn a_lone_agency_is_polled_directly() {
+        let zone = zone(vec![agency("f-kcm~rt", "kcm.example")]);
+        let (config, _) = zone.router_config(&FeedConfig::default()).unwrap();
+
+        assert_eq!(
+            updaters_of(&config, "vehicle-positions"),
+            ["https://kcm.example/vp.pb"]
+        );
+    }
+
+    #[test]
+    fn two_agencies_publishing_the_same_url_are_one_stream_to_fetch() {
+        let zone = zone(vec![
+            agency("f-kcm~rt", "kcm.example"),
+            agency("f-streetcar~rt", "kcm.example"),
+        ]);
+        let (config, _) = zone.router_config(&FeedConfig::default()).unwrap();
+
+        assert_eq!(
+            updaters_of(&config, "vehicle-positions"),
+            ["https://kcm.example/vp.pb"]
+        );
+    }
+
+    /// OTP would let the second updater erase the first on every poll, so the zone is refused
+    /// rather than deployed half-working. Alerts included: nothing in a committed zone needs two
+    /// of those either, and a rule with an exception is a rule nobody remembers.
+    #[test]
+    fn two_realtime_feeds_for_one_stream_is_refused() {
+        let zone = zone(vec![
+            agency("f-kcm~rt", "kcm.example"),
+            agency("f-st~rt", "st.example"),
+        ]);
+        let error = zone
+            .router_config(&FeedConfig::default())
+            .expect_err("two feeds on one stream cannot both reach OTP");
+
+        assert!(error.contains("f-c23-kcm"), "{error}");
+        assert!(
+            error.contains("vehicle_positions")
+                || error.contains("trip_updates")
+                || error.contains("alerts"),
+            "{error}"
+        );
+    }
+
+    #[test]
     fn each_stream_becomes_its_own_updater() {
         let urls = RealtimeUrls {
             trip_updates: Some("https://example.com/tu.pb".to_owned()),
             alerts: Some("https://example.com/a.pb".to_owned()),
             vehicle_positions: None,
         };
-        let (config, skipped) =
-            zone(vec![realtime(urls, None)]).router_config(&FeedConfig::default());
+        let (config, skipped) = zone(vec![realtime(urls, None)])
+            .router_config(&FeedConfig::default())
+            .unwrap();
 
         assert!(skipped.is_empty());
         let kinds: Vec<&str> = config.updaters.iter().map(|u| u.kind.as_str()).collect();
@@ -238,7 +382,9 @@ mod tests {
             ..Default::default()
         };
         let auth = Some(auth(query_param("key")));
-        let (config, _) = zone(vec![realtime(urls, auth)]).router_config(&token());
+        let (config, _) = zone(vec![realtime(urls, auth)])
+            .router_config(&token())
+            .unwrap();
 
         assert_eq!(
             config.updaters[0].url,
@@ -253,7 +399,9 @@ mod tests {
             ..Default::default()
         };
         let auth = Some(auth(header("X-Api-Key")));
-        let (config, _) = zone(vec![realtime(urls, auth)]).router_config(&token());
+        let (config, _) = zone(vec![realtime(urls, auth)])
+            .router_config(&token())
+            .unwrap();
 
         let headers = config.updaters[0].headers.as_ref().unwrap();
         assert_eq!(headers["X-Api-Key"], "s3cret");
@@ -269,7 +417,9 @@ mod tests {
         let auth = Some(auth(AuthKind::BasicAuth));
         let credentials =
             secrets(r#"[{"feed_id": "f-c23-kcm~rt", "username": "u", "password": "p"}]"#);
-        let (config, skipped) = zone(vec![realtime(urls, auth)]).router_config(&credentials);
+        let (config, skipped) = zone(vec![realtime(urls, auth)])
+            .router_config(&credentials)
+            .unwrap();
 
         assert!(skipped.is_empty());
         let headers = config.updaters[0].headers.as_ref().unwrap();
@@ -284,8 +434,9 @@ mod tests {
             ..Default::default()
         };
         let auth = Some(auth(query_param("key")));
-        let (config, skipped) =
-            zone(vec![realtime(urls, auth)]).router_config(&FeedConfig::default());
+        let (config, skipped) = zone(vec![realtime(urls, auth)])
+            .router_config(&FeedConfig::default())
+            .unwrap();
 
         assert!(config.updaters.is_empty());
         assert!(skipped[0].reason.contains("gtfs-secrets.json"));
@@ -338,7 +489,7 @@ mod tests {
 
     #[test]
     fn a_zone_without_realtime_renders_an_empty_config() {
-        let (config, skipped) = zone(vec![]).router_config(&FeedConfig::default());
+        let (config, skipped) = zone(vec![]).router_config(&FeedConfig::default()).unwrap();
 
         assert!(skipped.is_empty());
         assert_eq!(serde_json::to_string(&config).unwrap(), "{}");

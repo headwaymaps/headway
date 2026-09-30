@@ -1,8 +1,9 @@
-use gtfout::atlas::dmfr::FeedId;
+use gtfout::atlas::dmfr::{FeedId, StreamKind};
 use gtfout::feed_config::FeedConfig;
 use gtfout::transit_zone::router_config::Scope;
 use gtfout::transit_zone::zone::{Zone, VERSION};
 
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 fn committed_zones() -> Vec<PathBuf> {
@@ -79,6 +80,75 @@ fn zone_directory_names_are_valid_k8s_object_names() {
     }
 }
 
+/// OTP replaces a feed's realtime data on every poll, so a second updater of the same kind on the
+/// same feed would spend its life erasing the first. Whatever a zone declares, the rendered config
+/// has to come out with one of each.
+#[test]
+fn no_feed_gets_two_updaters_of_the_same_kind() {
+    for path in committed_zones() {
+        let zone = Zone::load(&path).unwrap();
+        let credentials: FeedConfig = zone
+            .required_feeds(Scope::All)
+            .into_iter()
+            .map(|feed_id| (feed_id, "test-token".to_owned()))
+            .collect();
+        let (config, _) = zone.router_config(&credentials).unwrap();
+
+        let mut seen: HashMap<(&FeedId, &str), usize> = HashMap::new();
+        for updater in &config.updaters {
+            *seen
+                .entry((&updater.feed_id, updater.kind.as_str()))
+                .or_default() += 1;
+        }
+        for ((feed_id, kind), count) in seen {
+            assert_eq!(
+                count,
+                1,
+                "{}: {feed_id} has {count} {kind} updaters",
+                path.display()
+            );
+        }
+    }
+}
+
+/// A static feed carrying two realtime feeds for one stream would come up quietly with only one
+/// of them, so it is refused instead. No committed zone should be in that shape.
+#[test]
+fn no_committed_zone_names_two_realtime_feeds_for_one_stream() {
+    for path in committed_zones() {
+        let zone = Zone::load(&path).unwrap();
+        let credentials: FeedConfig = zone
+            .required_feeds(Scope::All)
+            .into_iter()
+            .map(|feed_id| (feed_id, "test-token".to_owned()))
+            .collect();
+
+        // Distinct urls, not realtime feeds: King County Metro and the Seattle Streetcar publish
+        // into the same bucket, so they are one stream to fetch and need no merging.
+        let doubled_up = zone.feeds.iter().any(|feed| {
+            StreamKind::ALL.iter().any(|stream| {
+                feed.realtime
+                    .iter()
+                    .filter_map(|rt| rt.urls.url(*stream))
+                    .collect::<HashSet<_>>()
+                    .len()
+                    > 1
+            })
+        });
+
+        assert!(
+            !doubled_up,
+            "{}: names two realtime feeds for one stream",
+            path.display()
+        );
+        assert!(
+            zone.router_config(&credentials).is_ok(),
+            "{}: refused to render",
+            path.display()
+        );
+    }
+}
+
 #[test]
 fn rendered_updaters_name_feeds_the_graph_will_have() {
     for path in committed_zones() {
@@ -89,7 +159,7 @@ fn rendered_updaters_name_feeds_the_graph_will_have() {
             .into_iter()
             .map(|feed_id| (feed_id, "test-token".to_owned()))
             .collect();
-        let (config, _skipped) = zone.router_config(&credentials);
+        let (config, _skipped) = zone.router_config(&credentials).unwrap();
 
         let built: Vec<FeedId> = zone
             .feeds

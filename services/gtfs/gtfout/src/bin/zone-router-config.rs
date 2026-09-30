@@ -41,7 +41,7 @@ fn main() -> Result<()> {
     }
 
     let credentials = FeedConfig::from_file(&args.credentials_file)?;
-    let (router_config, skipped) = zone.router_config(&credentials);
+    let (router_config, skipped) = zone.router_config(&credentials)?;
 
     for skip in &skipped {
         eprintln!(
