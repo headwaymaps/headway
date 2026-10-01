@@ -42,7 +42,10 @@ impl Zone {
     }
 
     /// The zone's OTP config, with `credentials` resolved into it.
-    pub fn router_config(&self, credentials: &FeedConfig) -> (RouterConfig, Vec<SkippedRealtime>) {
+    pub fn router_config(
+        &self,
+        credentials: &FeedConfig,
+    ) -> std::result::Result<(RouterConfig, Vec<SkippedRealtime>), String> {
         RouterConfig::for_zone(self, credentials)
     }
 }

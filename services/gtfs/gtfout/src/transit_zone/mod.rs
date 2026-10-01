@@ -134,7 +134,9 @@ mod tests {
         );
         assert_eq!(reloaded_feed.realtime.len(), 1);
 
-        let (config, skipped) = reloaded.router_config(&crate::feed_config::FeedConfig::default());
+        let (config, skipped) = reloaded
+            .router_config(&crate::feed_config::FeedConfig::default())
+            .unwrap();
         assert!(skipped.is_empty());
         assert_eq!(config.updaters.len(), 1);
         assert_eq!(config.updaters[0].feed_id, FeedId::from("f-c23-kcm"));

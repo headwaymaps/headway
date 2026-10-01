@@ -13,7 +13,7 @@ spec:
         app: opentripplanner-los-angeles
       annotations:
         # Roll the pod if the zone file changes
-        headway/zone-checksum: "0ae63a555a47"
+        headway/zone-checksum: "416e2c20c5b6"
     spec:
       initContainers:
         - name: init
@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-09-17-cd7682e2.obj.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-09-30-70c26404.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -79,4 +79,4 @@ spec:
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-260817-0-13-0-2026-09-17-0fc87d07
+            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-260817-0-13-0-2026-09-30-da4b80c6

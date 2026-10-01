@@ -93,3 +93,16 @@ function build_timing_report() {
     [ -n "$TIMING_OWNER" ] || return 0
     bin/build-timings --record "$TIMING_FILE" "$@"
 }
+
+# Printed last, under the timing report, by whichever script owns it.
+function build_next_steps() {
+    [ -n "$TIMING_OWNER" ] || return 0
+    cat <<EOS
+
+Artifacts pinned in $1/artifacts.json. The k8s manifests still point at the
+previous artifacts until you regenerate and commit them:
+
+    bin/publish-data $1 [--host remote.host.com]
+    bin/k8s/regenerate-all
+EOS
+}
