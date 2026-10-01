@@ -102,7 +102,7 @@ yourself instead, see [TRANSIT_ZONER.md](./TRANSIT_ZONER.md).
 3. Build the transit artifacts and restart the stack:
 
    ```sh
-   bin/build-transit builds/Amsterdam
+   bin/build builds/Amsterdam --transit-only
    bin/reset-services builds/Amsterdam
    ```
 

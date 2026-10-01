@@ -27,8 +27,12 @@ import (
 )
 
 type Headway struct {
-	Area      string
-	OSMExport *OSMExport
+	Area                      string
+	OSMExport                 *OSMExport
+	TransitConfigDir          *dagger.Directory
+	GTFSSecrets               *dagger.Secret
+	MaxConcurrentTransitZones int
+	BuildTransitOnly          bool
 	// The repository root.
 	RepoDir       *dagger.Directory
 	IsPlanetBuild bool
@@ -210,7 +214,7 @@ type OSMExport struct {
 
 func New(
 	// +defaultPath="./"
-	// +ignore=["data", "target", "**/node_modules", ".worktrees", ".git", "*.osm.pbf", "*.mbtiles"]
+	// +ignore=["data", "target", "**/node_modules", ".worktrees", ".git", "*.osm.pbf", "*.mbtiles", "**/gtfs-secrets.json"]
 	repoDir *dagger.Directory) *Headway {
 	return &Headway{RepoDir: repoDir}
 }
@@ -225,16 +229,36 @@ func (h *Headway) WithArea(
 	// Local OSM PBF file to mount, if missing will download from bbike based on area name
 	// +defaultPath=""
 	localPbf *dagger.File,
+
+	// +optional
+	// +ignore=["**/.env", "**/gtfs-secrets.json"]
+	transitDir *dagger.Directory,
+
+	// +optional
+	gtfsSecrets *dagger.Secret,
+
+	// +optional
+	maxConcurrentTransitZones int,
 ) *Headway {
 	h.IsPlanetBuild = countries == "ALL"
 	h.Countries = countries
 	h.Area = area
+	h.TransitConfigDir = transitDir
+	h.GTFSSecrets = gtfsSecrets
+	h.MaxConcurrentTransitZones = maxConcurrentTransitZones
 	if localPbf == nil {
 		h.OSMExport = h.DownloadPBF(area)
 	} else {
 		h.OSMExport = h.LocalPBF(localPbf)
 	}
 
+	return h
+}
+
+// Makes Build export only transit artifacts. Requires WithArea to have a
+// transit directory.
+func (h *Headway) TransitOnly() *Headway {
+	h.BuildTransitOnly = true
 	return h
 }
 
@@ -265,6 +289,41 @@ func getEnvWithDefault(envVariable, defaultValue string) string {
 //
 // +cache="never"
 func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
+	if h.BuildTransitOnly && h.TransitConfigDir == nil {
+		return nil, fmt.Errorf("transit-only requires --transit-dir")
+	}
+
+	var mapOutput, transitOutput *dagger.Directory
+	group, groupCtx := errgroup.WithContext(ctx)
+	if !h.BuildTransitOnly {
+		group.Go(func() error {
+			var err error
+			mapOutput, err = h.buildAllExceptTransit(groupCtx)
+			return err
+		})
+	}
+	if h.TransitConfigDir != nil {
+		group.Go(func() error {
+			var err error
+			transitOutput, err = h.BuildTransit(groupCtx, h.TransitConfigDir, h.GTFSSecrets, h.MaxConcurrentTransitZones)
+			return err
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	output := dag.Directory()
+	if mapOutput != nil {
+		output = mapOutput
+	}
+	if transitOutput != nil {
+		output = output.WithDirectory("transit", transitOutput)
+	}
+	return output, nil
+}
+
+func (h *Headway) buildAllExceptTransit(ctx context.Context) (*dagger.Directory, error) {
 
 	if h.Area == "" {
 		return nil, fmt.Errorf("Area is required")

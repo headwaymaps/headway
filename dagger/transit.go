@@ -5,6 +5,7 @@ import (
 	"dagger/headway/internal/dagger"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 )
 
 const defaultMaxConcurrentZones = 3
+
+var transitZoneNamePattern = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
 type TransitZone struct {
 	Headway *Headway
@@ -55,6 +58,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	elevations := dag.Directory()
 	zoneFiles, err := transitZoneFiles(ctx, transitConfigDir)
 	if err != nil {
+		return nil, err
+	}
+	if err := lintTransitZoneNames(zoneFiles); err != nil {
 		return nil, err
 	}
 
@@ -182,6 +188,18 @@ type transitZoneFile struct {
 	name string
 
 	path string
+}
+
+func lintTransitZoneNames(zoneFiles []transitZoneFile) error {
+	if len(zoneFiles) == 0 {
+		return fmt.Errorf("no */zone.json in transit config - nothing to build")
+	}
+	for _, entry := range zoneFiles {
+		if !transitZoneNamePattern.MatchString(entry.name) || len(entry.name) > 40 {
+			return fmt.Errorf("transit zone %q is not a valid k8s object name", entry.name)
+		}
+	}
+	return nil
 }
 
 func transitZoneFiles(ctx context.Context, transitConfigDir *dagger.Directory) ([]transitZoneFile, error) {

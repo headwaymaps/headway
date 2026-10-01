@@ -27,7 +27,7 @@ bin/k8s/apply-latest builds/planet
 ## Deploying a transit rebuild
 
 ```sh
-bin/build-transit builds/planet
+bin/build builds/planet --transit-only
 bin/publish-data builds/planet --host <asset-host>
 bin/k8s/generate builds/planet latest
 bin/k8s/apply-latest builds/planet

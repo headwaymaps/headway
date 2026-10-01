@@ -2,8 +2,8 @@
 # Collect step timings out of a dagger build. Source this, run dagger through
 # `timed_dagger`, and print the summary at the end with `build_timing_report`.
 
-# A nested build (bin/build calling bin/build-transit) collects into the outer
-# script's file, so its steps land in the one report.
+# A caller can set HEADWAY_TIMING_FILE to collect several invocations in one
+# report.
 if [ -n "${HEADWAY_TIMING_FILE:-}" ]; then
     TIMING_FILE="$HEADWAY_TIMING_FILE"
     TIMING_OWNER=""
