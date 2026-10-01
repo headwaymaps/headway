@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -123.2,
+    "min_lat": 45.2,
+    "max_lon": -122.2,
+    "max_lat": 45.9
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-c20-trimet",
+      "provider": "TriMet, Portland Streetcar, Portland Aerial Tram",
+      "url": "http://developer.trimet.org/schedule/gtfs.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-trimet~rt",
+          "urls": {
+            "trip_updates": "http://developer.trimet.org/ws/V1/TripUpdate",
+            "vehicle_positions": "http://developer.trimet.org/ws/gtfs/VehiclePositions",
+            "alerts": "http://developer.trimet.org/ws/V1/FeedSpecAlerts"
+          },
+          "authorization": {
+            "type": "query_param",
+            "param_name": "appID",
+            "info_url": "https://developer.trimet.org/GTFS.shtml"
+          }
+        }
+      ]
+    },
+    {
+      "feed_onestop_id": "f-c20g-c~tran",
+      "provider": "C-TRAN",
+      "url": "https://www.c-tran.com/images/Google/GoogleTransitUpload.zip",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-c20g-c~tran~rt",
+          "urls": {
+            "trip_updates": "http://gtfs-rt.c-tran.org/gtfsrealtime/TripUpdates",
+            "vehicle_positions": "http://gtfs-rt.c-tran.org/gtfsrealtime/VehiclePositions"
+          }
+        }
+      ]
+    },
+    {
+      "feed_onestop_id": "f-c20-wilsonville~or~us",
+      "provider": "South Metro Area Regional Transit (SMART)",
+      "url": "https://mysmartbus.com/gtfs",
+      "realtime": [
+        {
+          "feed_onestop_id": "f-c20-wilsonville~or~us~rt",
+          "urls": {
+            "trip_updates": "https://mysmartbus.com/gtfs-rt/tripupdates",
+            "vehicle_positions": "https://mysmartbus.com/gtfs-rt/vehiclepositions",
+            "alerts": "https://mysmartbus.com/gtfs-rt/alerts"
+          }
+        }
+      ]
+    }
+  ]
+}
