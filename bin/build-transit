@@ -34,7 +34,7 @@ source bin/_build-timing.sh
 
 status "Building transit for ${HEADWAY_AREA} from ${CONFIG_DIR}"
 
-trap 'bin/revert-fetch-urls; build_timing_report "$CONFIG_DIR"; timing_cleanup' EXIT
+trap 'exit_code=$?; bin/revert-fetch-urls; build_timing_report "$CONFIG_DIR"; timing_cleanup; [ $exit_code -ne 0 ] || build_next_steps "$CONFIG_DIR"' EXIT
 bin/update-fetch-urls
 
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
@@ -86,11 +86,3 @@ timed_dagger transit -c "with-area ${HEADWAY_AREA} ${USE_LOCAL_PBF} | build-tran
 
 status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"
-
-cat <<EOS
-
-Transit artifacts written to data/${HEADWAY_AREA}/transit and artifacts pinned.
-
-To publish the artifacts to the asset host:
-    bin/publish-data ${CONFIG_DIR} [--host remote.host.com]
-EOS
