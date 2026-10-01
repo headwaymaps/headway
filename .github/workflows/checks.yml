@@ -54,6 +54,21 @@ jobs:
           version: "latest"
       - name: Copy .bin-env
         run: cp .bin-env-example .bin-env
+      # bbbike intermittently times out from GitHub's runners. bin/build uses a
+      # Bogota.osm.pbf at the repo root instead of downloading one, so keep a
+      # cached copy there, fetched from our mirror when the cache is cold.
+      - name: Cache Bogota extract
+        id: bogota-pbf
+        uses: actions/cache@v6
+        with:
+          path: Bogota.osm.pbf
+          key: bogota-osm-pbf-v1
+      - name: Fetch Bogota extract
+        if: steps.bogota-pbf.outputs.cache-hit != 'true'
+        run: |
+          fetch() { curl --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 600 -o Bogota.osm.pbf "$1"; }
+          fetch https://data.maps.earth/bbbike/Bogota/Bogota.osm.pbf \
+            || fetch https://download.bbbike.org/osm/bbbike/Bogota/Bogota.osm.pbf
       - name: Build data artifacts
         run: bin/build builds/Bogota
       - name: Upload data artifacts
