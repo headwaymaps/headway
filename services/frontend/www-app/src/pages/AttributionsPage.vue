@@ -11,7 +11,10 @@
   </div>
 
   <div class="bottom-card attributions">
-    <h1>{{ $t('attributions') }}</h1>
+    <header>
+      <h1>{{ $t('attributions') }}</h1>
+      <q-btn flat round dense icon="close" to="/" />
+    </header>
     <p>
       Headway is mostly other people's work, stitched together. We're grateful
       to everyone who builds and shares the open data and open source software
@@ -197,10 +200,17 @@ export default defineComponent({
 .attributions {
   padding: 8px 16px 16px;
 
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
   h1 {
     font-size: 1.3rem;
     line-height: 1.4;
-    margin: 0 0 8px;
+    margin: 0;
   }
 
   h2 {
