@@ -421,15 +421,11 @@ func martinBinary() *dagger.File {
 	// To build from source (e.g. for debugging a fork), set this to true
 	const buildFromSource = true
 	if buildFromSource {
-		// WithEnvVariable("CACHE_BUSTER", time.Now().String()).
-		return rustContainer("git").
-			WithExec([]string{"git", "clone", "--branch", "mkirk/tilejson-encoding-2026-07-30", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
-			WithWorkdir("/martin").
-			WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
-			File("target/release/martin")
+		source := dag.Git("https://github.com/michaelkirk/martin.git").Branch("mkirk/tilejson-encoding-2026-07-30").Tree()
+		return rustBinaries(source, "martin", "--no-default-features", "--features", martinFeatures).File("martin")
 	} else {
 		const martinVersion = "1.10.1"
-		return rustContainer().
+		return rustBuildContainer().
 			WithExec([]string{"cargo", "install", "--locked", "--version", martinVersion, "--no-default-features", "--features", martinFeatures, "martin"}).
 			File("/usr/local/cargo/bin/martin")
 	}
@@ -647,11 +643,7 @@ func (h *Headway) LocalPBF(
 // ===
 
 func (h *Headway) TravelmuxServer(ctx context.Context) *dagger.File {
-	return rustContainer().
-		WithMountedDirectory("/repo", h.rustWorkspace("services/travelmux")).
-		WithWorkdir("/repo").
-		WithExec([]string{"cargo", "build", "--release", "--package", "travelmux"}).
-		File("/repo/target/release/travelmux-server")
+	return h.rustWorkspaceBinaries("services/travelmux").File("travelmux-server")
 }
 
 func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container {
@@ -677,11 +669,7 @@ func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container 
 }
 
 func (h *Headway) TransitZonerServer(ctx context.Context) *dagger.File {
-	return rustContainer().
-		WithMountedDirectory("/repo", h.rustWorkspace("services/gtfs/transit-zoner", "services/gtfs/gtfout")).
-		WithWorkdir("/repo").
-		WithExec([]string{"cargo", "build", "--release", "--package", "transit-zoner"}).
-		File("/repo/target/release/transit-zoner")
+	return h.rustWorkspaceBinaries("services/gtfs/transit-zoner", "services/gtfs/gtfout").File("transit-zoner")
 }
 
 func (h *Headway) TransitZonerServeContainer(ctx context.Context,
@@ -797,12 +785,65 @@ func (h *Headway) rustWorkspace(workspaceMembers ...string) *dagger.Directory {
 	return workspace
 }
 
-func rustContainer(packages ...string) *dagger.Container {
-	container := dag.Container().From("rust:bookworm")
-	if len(packages) == 0 {
-		return container
+const cargoTargetDir = "/cargo-target"
+
+const (
+	cargoRegistryVolume = "cargo-registry"
+	cargoTargetVolume   = "cargo-target"
+)
+
+func rustCachesContainer() *dagger.Container {
+	container := slimContainer().
+		// The volumes' contents aren't part of the cache key, so always rerun.
+		WithEnvVariable("CACHE_BUSTER", time.Now().String())
+	for _, volume := range []string{cargoRegistryVolume, cargoTargetVolume} {
+		container = container.WithMountedCache("/caches/"+volume, dag.CacheVolume(volume))
 	}
-	return WithAptPackages(container, packages...)
+	return container
+}
+
+// Copies the Rust build caches out of the engine, to carry them between CI runs.
+//
+// +cache="never"
+func (h *Headway) ExportRustCaches() *dagger.Directory {
+	return rustCachesContainer().
+		// Extracted crate sources are regenerated from the downloaded .crate files.
+		WithExec([]string{"sh", "-c", "mkdir /export && tar -C /caches --exclude=./" + cargoRegistryVolume + "/src -cf - . | tar -C /export -xpf -"}).
+		Directory("/export")
+}
+
+// Seeds the Rust build caches from a directory made by ExportRustCaches.
+//
+// +cache="never"
+func (h *Headway) ImportRustCaches(ctx context.Context, caches *dagger.Directory) error {
+	_, err := rustCachesContainer().
+		WithMountedDirectory("/import", caches).
+		WithExec([]string{"cp", "-a", "/import/.", "/caches/"}).
+		Sync(ctx)
+	return err
+}
+
+// rustBuildContainer shares cargo's downloads and build output between all Rust builds, so rebuilds are incremental.
+func rustBuildContainer() *dagger.Container {
+	return dag.Container().From("rust:bookworm").
+		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume(cargoRegistryVolume)).
+		WithMountedCache(cargoTargetDir, dag.CacheVolume(cargoTargetVolume)).
+		WithEnvVariable("CARGO_TARGET_DIR", cargoTargetDir)
+}
+
+// rustBinaries builds the crate at cratePath within workDir, returning the directory holding its binaries.
+func rustBinaries(workDir *dagger.Directory, cratePath string, cargoArgs ...string) *dagger.Directory {
+	const installRoot = "/usr/local/installed"
+	return rustBuildContainer().
+		WithMountedDirectory("/src", workDir).
+		WithWorkdir("/src").
+		WithExec(append([]string{"cargo", "install", "--locked", "--path", cratePath, "--root", installRoot}, cargoArgs...)).
+		Directory(installRoot + "/bin")
+}
+
+// rustWorkspaceBinaries builds a member of our cargo workspace.
+func (h *Headway) rustWorkspaceBinaries(workspaceMember string, pathDependencies ...string) *dagger.Directory {
+	return rustBinaries(h.rustWorkspace(append(pathDependencies, workspaceMember)...), workspaceMember)
 }
 
 func slimNodeContainer(packages ...string) *dagger.Container {

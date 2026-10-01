@@ -313,13 +313,7 @@ func (h *Headway) DownloadGtfsIndexAtCommit(ctx context.Context, commit string) 
 }
 
 func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
-	container := rustContainer().
-		WithMountedDirectory("/repo", h.rustWorkspace("services/gtfs/gtfout")).
-		WithWorkdir("/repo").
-		WithExec([]string{"cargo", "build", "--release",
-			"--package", "gtfout"})
-
-	return container.Directory("/repo/target/release")
+	return h.rustWorkspaceBinaries("services/gtfs/gtfout")
 }
 
 func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {

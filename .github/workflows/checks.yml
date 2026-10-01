@@ -69,6 +69,23 @@ jobs:
           fetch() { curl --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 600 -o Bogota.osm.pbf "$1"; }
           fetch https://data.maps.earth/bbbike/Bogota/Bogota.osm.pbf \
             || fetch https://download.bbbike.org/osm/bbbike/Bogota/Bogota.osm.pbf
+      - name: Pick Rust cache month
+        id: rust-cache
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      # Read-only: build_images saves this cache. Its builds already compile
+      # gtfout's dependencies, and with two writers the next run would restore
+      # whichever job finished last.
+      - name: Restore Rust build caches
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/rust-caches
+          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: dagger-rust-${{ steps.rust-cache.outputs.month }}-
+      - name: Import Rust build caches
+        run: |
+          if [ -d ~/rust-caches ]; then
+            dagger call import-rust-caches --caches ~/rust-caches
+          fi
       - name: Build data artifacts
         run: bin/build builds/Bogota
       - name: Upload data artifacts
@@ -95,8 +112,34 @@ jobs:
         uses: dagger/dagger-for-github@v8.4.1
         with:
           version: "latest"
+      - name: Pick Rust cache month
+        id: rust-cache
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      # Shared with build_data, which only reads it. Restarted monthly, since
+      # cargo's build output keeps every old build.
+      - name: Restore Rust build caches
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/rust-caches
+          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: dagger-rust-${{ steps.rust-cache.outputs.month }}-
+      - name: Import Rust build caches
+        run: |
+          if [ -d ~/rust-caches ]; then
+            dagger call import-rust-caches --caches ~/rust-caches
+          fi
       - name: Build service images
         run: bin/build-images
+      - name: Export Rust build caches
+        run: |
+          rm -rf ~/rust-caches
+          dagger call export-rust-caches export --path ~/rust-caches
+          du -sh ~/rust-caches/*
+      - name: Save Rust build caches
+        uses: actions/cache/save@v6
+        with:
+          path: ~/rust-caches
+          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Save Docker images
         run: docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep headway) | zstd -T0 > docker-images.tar.zst
       - name: Upload Docker images
