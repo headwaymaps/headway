@@ -3,18 +3,18 @@ cache_size_mb: 1024
 pmtiles:
   sources:
     areamap-mlt:
-      path: ../../data/Bogota/Bogota.pmtiles
+      path: "${DATA_PATH}/Bogota/Bogota.pmtiles"
       output_format: mlt
       convert_to_mlt:
         allow_shared_dict: false
         allow_fastpfor: false
     areamap-mvt:
-      path: ../../data/Bogota/Bogota.pmtiles
+      path: "${DATA_PATH}/Bogota/Bogota.pmtiles"
       output_format: mvt
 mbtiles:
   sources:
-    landcover: ../../data/Bogota/landcover.mbtiles
-    terrain: ../../data/Bogota/terrain.mbtiles
+    landcover: "${DATA_PATH}/Bogota/landcover.mbtiles"
+    terrain: "${DATA_PATH}/Bogota/terrain.mbtiles"
 styles:
   paths: ['./assets/styles']
 sprites:

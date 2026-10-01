@@ -83,6 +83,7 @@ export default {
   transit_timeline_wait_for_transit_$timeDuration: 'wait up to {timeDuration}',
   edit_poi_button: 'Edit Details',
   edit_poi_on_osm_button: 'Edit on OpenStreetMap',
+  attributions: 'Attributions',
   edit_poi_about_osm:
     'This data is from OpenStreetMap, a community maintained mapping project. You can edit OpenStreetMap, and your edits will eventually be reflected here.',
   opening_hours_is_open: 'Open',

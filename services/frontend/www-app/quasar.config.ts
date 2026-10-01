@@ -188,8 +188,7 @@ export default defineConfig((/* ctx */) => {
           '/local-assets': {
             changeOrigin: true,
             target: LOCAL_ASSETS_HOST,
-            rewrite: (path: string) =>
-              path.replace(/^\/local-assets/, '/tileserver'),
+            rewrite: (path: string) => path.replace(/^\/local-assets/, ''),
           },
         }),
         '/tileserver': {
