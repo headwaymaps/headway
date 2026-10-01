@@ -28,6 +28,16 @@
               :label="aboutLinkText"
             />
           </q-item>
+          <q-item>
+            <q-btn
+              dense
+              icon="favorite"
+              no-caps
+              flat
+              to="/attributions"
+              :label="$t('attributions')"
+            />
+          </q-item>
           <q-item v-if="contactUrl && contactLinkText">
             <q-btn
               dense

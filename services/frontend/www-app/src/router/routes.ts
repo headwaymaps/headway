@@ -88,6 +88,18 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  {
+    path: '/attributions',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        name: 'attributions',
+        path: '/attributions',
+        component: () => import('pages/AttributionsPage.vue'),
+      },
+    ],
+  },
+
   // Always leave this as last one,
   // but you can also remove it
   {
