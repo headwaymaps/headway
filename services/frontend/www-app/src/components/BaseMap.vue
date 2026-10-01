@@ -8,7 +8,9 @@ import { defineComponent } from 'vue';
 import ScaleControl from 'src/ui/ScaleControl';
 import {
   AttributionControl,
+  LngLatBounds,
   Map as MaplibreMap,
+  MercatorCoordinate,
   NavigationControl,
   setWorkerUrl,
 } from 'maplibre-gl';
@@ -27,7 +29,6 @@ import type {
   LayerSpecification,
   LineLayerSpecification,
   LngLat,
-  LngLatBounds,
   LngLatBoundsLike,
   LngLatLike,
   MapLayerEventType,
@@ -52,6 +53,8 @@ import { debugEnabled } from 'src/utils/debug';
 
 export let map: MaplibreMap | null = null;
 const mapContainerId = 'map';
+// Flying further than this is a long, dizzying detour, so we jump instead.
+const MAX_ANIMATED_DISTANCE_IN_TILES = 4;
 const mapStyle =
   process.env.HEADWAY_LOCAL_STYLE === 'true'
     ? '/local-style/basic-v3.json'
@@ -669,9 +672,20 @@ export default defineComponent({
         this.flyTo(place.point, options);
       }
     },
+    shouldAnimateTo(destination: LngLatLike): boolean {
+      if (!map) {
+        return false;
+      }
+      const from = MercatorCoordinate.fromLngLat(map.getCenter());
+      const to = MercatorCoordinate.fromLngLat(destination);
+      const distanceInTiles =
+        Math.hypot(to.x - from.x, to.y - from.y) * 2 ** map.getZoom();
+      return distanceInTiles <= MAX_ANIMATED_DISTANCE_IN_TILES;
+    },
     flyTo: function (location: LngLatLike, options: FlyToOptions = {}): void {
       if (this.loaded) {
         options['center'] = location;
+        options['animate'] = this.shouldAnimateTo(location);
         map?.flyTo(options, { flying: true });
       } else {
         this.$data.flyToOptions = options;
@@ -687,6 +701,9 @@ export default defineComponent({
       options = { ...defaultOptions, ...(options || {}) };
 
       if (this.loaded) {
+        options.animate = this.shouldAnimateTo(
+          LngLatBounds.convert(bounds).getCenter(),
+        );
         map?.fitBounds(bounds, options);
       } else {
         this.$data.boundsToFit = bounds;
