@@ -790,8 +790,10 @@ func downloadContainer() *dagger.Container {
 }
 
 func downloadFile(url string) *dagger.File {
+	// wget's defaults (a 900s read timeout, 20 tries) spend most of an hour
+	// on a host that has stopped answering.
 	container := downloadContainer().
-		WithExec([]string{"wget", "-nv", "-U", "headway/1.0", "-O", "/data/file", url})
+		WithExec([]string{"wget", "-nv", "-U", "headway/1.0", "--timeout=60", "--tries=5", "--waitretry=10", "--retry-connrefused", "-O", "/data/file", url})
 	return container.File("/data/file")
 }
 
