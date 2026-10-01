@@ -41,16 +41,18 @@ fi
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
 
-mkdir -p unzipped
+UNZIPPED=$(mktemp -d)
+trap 'rm -rf "$UNZIPPED"' EXIT
+
 (cd "$INPUT_DIR" && ls *.zip) | while read zip_file
 do
-  unzip -d unzipped/$(basename $zip_file .zip) "$INPUT_DIR/$zip_file"
+  unzip -d "$UNZIPPED/$(basename $zip_file .zip)" "$INPUT_DIR/$zip_file"
 done
 
 
-for gtfs in unzipped/*
+for gtfs in "$UNZIPPED"/*
 do
-  assume-bikes-allowed < "${gtfs}/routes.txt" > tmp-routes.txt
-  mv tmp-routes.txt "${gtfs}/routes.txt"
+  assume-bikes-allowed < "${gtfs}/routes.txt" > "$UNZIPPED/tmp-routes.txt"
+  mv "$UNZIPPED/tmp-routes.txt" "${gtfs}/routes.txt"
   (cd "$gtfs" && zip -r "${OUTPUT_DIR}/$(basename ${gtfs}).zip" .)
 done

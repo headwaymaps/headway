@@ -470,10 +470,13 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 
 	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
 
-	container = container.
-		WithMountedFile("/tmp/planetile-fixture-sources.tar", downloadFile(fixturesUrl)).
+	sources := downloadContainer().
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"sh", "-c", "tar -x --directory /data/sources -f /tmp/planetile-fixture-sources.tar"}).
+		WithExec([]string{"bash", "-o", "pipefail", "-c", `wget -nv -U headway/1.0 -O - "$0" | tar -x --directory /data/sources`, fixturesUrl}).
+		Directory("/data/sources")
+
+	container = container.
+		WithMountedDirectory("/data/sources", sources).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
 	entrypoint, err := container.Entrypoint(ctx)
@@ -528,7 +531,8 @@ func valhallaBaseContainer() *dagger.Container {
 func valhallaBuildContainer() *dagger.Container {
 	return valhallaBaseContainer().
 		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite > valhalla.json"}).
-		WithExec([]string{"sh", "-c", "valhalla_build_timezones > /tiles/timezones.sqlite"})
+		// valhalla_build_timezones leaves its mktemp scratch copy of the output behind.
+		WithExec([]string{"sh", "-c", "export TMPDIR=$(mktemp -d) && valhalla_build_timezones > /tiles/timezones.sqlite && rm -r $TMPDIR"})
 }
 
 // Builds Valhalla routing tiles
@@ -644,7 +648,7 @@ func (h *Headway) LocalPBF(
 
 func (h *Headway) TravelmuxServer(ctx context.Context) *dagger.File {
 	return rustContainer().
-		WithMountedDirectory("/repo", h.RepoDir).
+		WithMountedDirectory("/repo", h.rustWorkspace("services/travelmux")).
 		WithWorkdir("/repo").
 		WithExec([]string{"cargo", "build", "--release", "--package", "travelmux"}).
 		File("/repo/target/release/travelmux-server")
@@ -674,7 +678,7 @@ func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container 
 
 func (h *Headway) TransitZonerServer(ctx context.Context) *dagger.File {
 	return rustContainer().
-		WithMountedDirectory("/repo", h.RepoDir).
+		WithMountedDirectory("/repo", h.rustWorkspace("services/gtfs/transit-zoner", "services/gtfs/gtfout")).
 		WithWorkdir("/repo").
 		WithExec([]string{"cargo", "build", "--release", "--package", "transit-zoner"}).
 		File("/repo/target/release/transit-zoner")
@@ -766,6 +770,31 @@ func slimContainer(packages ...string) *dagger.Container {
 		return container
 	}
 	return WithAptPackages(container, packages...)
+}
+
+// Must match the workspace members in Cargo.toml.
+var rustWorkspaceMembers = []string{
+	"services/gtfs/transit-zoner",
+	"services/gtfs/gtfout",
+	"services/travelmux",
+}
+
+// rustWorkspace is the cargo workspace with sources for only the given workspace members.
+func (h *Headway) rustWorkspace(workspaceMembers ...string) *dagger.Directory {
+	workspace := dag.Directory().
+		WithFile("Cargo.toml", h.RepoDir.File("Cargo.toml")).
+		WithFile("Cargo.lock", h.RepoDir.File("Cargo.lock"))
+	for _, workspaceMember := range rustWorkspaceMembers {
+		if slices.Contains(workspaceMembers, workspaceMember) {
+			workspace = workspace.WithDirectory(workspaceMember, h.RepoDir.Directory(workspaceMember))
+		} else {
+			// cargo loads every workspace member, so the rest need a manifest and a target.
+			workspace = workspace.
+				WithFile(workspaceMember+"/Cargo.toml", h.RepoDir.File(workspaceMember+"/Cargo.toml")).
+				WithNewFile(workspaceMember+"/src/lib.rs", "")
+		}
+	}
+	return workspace
 }
 
 func rustContainer(packages ...string) *dagger.Container {

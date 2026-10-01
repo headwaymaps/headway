@@ -243,29 +243,28 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 	// +optional
 	gtfsSecrets *dagger.Secret) *dagger.Directory {
-	servicesDir := t.Headway.ServiceDir("gtfs")
-
 	gtfout := t.Headway.Gtfout(ctx)
 
 	container := slimContainer("ca-certificates", "zip", "unzip").
-		WithMountedDirectory("/app", servicesDir).
-		WithWorkdir("/app").
+		WithMountedFile("/usr/local/bin/build_gtfs.sh", t.Headway.ServiceDir("gtfs").File("build_gtfs.sh")).
 		WithMountedFile("/usr/local/bin/assume-bikes-allowed", gtfout.File("assume-bikes-allowed")).
 		WithMountedFile("/usr/local/bin/download-feeds", gtfout.File("download-feeds"))
 
 	container = container.WithMountedFile(zoneFilePath, t.TransitFeeds)
 
-	downloadArgs := []string{"download-feeds", "--zone", zoneFilePath, "--output", "downloaded"}
+	downloadArgs := []string{"download-feeds", "--zone", zoneFilePath, "--output", "/downloaded"}
 
 	if gtfsSecrets != nil {
 		container = container.WithMountedSecret(GtfsSecretsPath, gtfsSecrets)
 		downloadArgs = append(downloadArgs, "--credentials-file", GtfsSecretsPath)
 	}
 
+	downloaded := container.WithExec(downloadArgs).Directory("/downloaded")
+
 	return container.
-		WithExec(downloadArgs).
-		WithExec([]string{"sh", "-c", "./build_gtfs.sh --input downloaded --output ./output"}).
-		Directory("./output")
+		WithMountedDirectory("/downloaded", downloaded).
+		WithExec([]string{"bash", "/usr/local/bin/build_gtfs.sh", "--input", "/downloaded", "--output", "/output"}).
+		Directory("/output")
 }
 
 // gtfs-secrets.json, in transitland's secrets.json format, which is how gtfout
@@ -277,12 +276,16 @@ const zoneFilePath = "/run/secrets/zone.json"
 func (t *TransitZone) BBox(ctx context.Context) (*Bbox, error) {
 	container := slimContainer("unzip").
 		WithMountedFile("/usr/local/bin/gtfs-bbox", t.Headway.Gtfout(ctx).File("gtfs-bbox")).
-		WithExec([]string{"mkdir", "-p", "/app"}).
-		WithExec([]string{"mkdir", "-p", "/app/gtfs"}).
-		WithWorkdir("/app").
-		WithMountedDirectory("/app/gtfs_zips", t.GTFSDir).
-		WithExec([]string{"sh", "-c", "cd gtfs_zips && ls *.zip | while read zip_file; do unzip -d ../gtfs/$(basename $zip_file .zip) $zip_file; done"}).
-		WithExec([]string{"sh", "-c", "gtfs-bbox gtfs/*"})
+		WithMountedDirectory("/gtfs_zips", t.GTFSDir).
+		WithExec([]string{"bash", "-c", `
+			set -e
+			unzipped=$(mktemp -d)
+			for zip_file in /gtfs_zips/*.zip; do
+				unzip -q -d "$unzipped/$(basename "$zip_file" .zip)" "$zip_file" > /dev/null
+			done
+			gtfs-bbox "$unzipped"/*
+			rm -rf "$unzipped"
+		`})
 
 	bboxStr, err := container.Stdout(ctx)
 	if err != nil {
@@ -311,7 +314,7 @@ func (h *Headway) DownloadGtfsIndexAtCommit(ctx context.Context, commit string) 
 
 func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
 	container := rustContainer().
-		WithMountedDirectory("/repo", h.RepoDir).
+		WithMountedDirectory("/repo", h.rustWorkspace("services/gtfs/gtfout")).
 		WithWorkdir("/repo").
 		WithExec([]string{"cargo", "build", "--release",
 			"--package", "gtfout"})
