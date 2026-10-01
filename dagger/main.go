@@ -27,8 +27,12 @@ import (
 )
 
 type Headway struct {
-	Area      string
-	OSMExport *OSMExport
+	Area                      string
+	OSMExport                 *OSMExport
+	TransitConfigDir          *dagger.Directory
+	GTFSSecrets               *dagger.Secret
+	MaxConcurrentTransitZones int
+	BuildTransitOnly          bool
 	// The repository root.
 	RepoDir       *dagger.Directory
 	IsPlanetBuild bool
@@ -116,18 +120,19 @@ func buildDate() string {
 	return time.Now().UTC().Format("2006-01-02")
 }
 
-// build the artifacts concurrently. The group's own wall time is recorded as a
-// step of phase, and each artifact below it - those overlap, so they explain
+// build the artifacts concurrently. The group's own wall time is recorded under
+// prefix, and each artifact below it - those overlap, so they explain
 // where the group's time went without adding up to it.
-func buildAll(ctx context.Context, phase string, artifacts []*Artifact) error {
-	defer recordTiming(phase+"/"+artifactsTimingStep, time.Now())
+func buildAll(ctx context.Context, prefix string, artifacts []*Artifact) error {
+	artifactsLabel := join("/", prefix, artifactsTimingStep)
+	defer recordTiming(artifactsLabel, time.Now())
 
 	group, groupCtx := errgroup.WithContext(ctx)
 	for _, artifact := range artifacts {
 		group.Go(func() error {
 			start := time.Now()
 			err := artifact.build(groupCtx)
-			recordTiming(phase+"/"+artifactsTimingStep+"/"+artifact.timingLabel(), start)
+			recordTiming(join("/", artifactsLabel, artifact.timingLabel()), start)
 			return err
 		})
 	}
@@ -210,7 +215,7 @@ type OSMExport struct {
 
 func New(
 	// +defaultPath="./"
-	// +ignore=["data", "target", "**/node_modules", ".worktrees", ".git", "*.osm.pbf", "*.mbtiles"]
+	// +ignore=["data", "target", "**/node_modules", ".worktrees", ".git", "*.osm.pbf", "*.mbtiles", "**/gtfs-secrets.json"]
 	repoDir *dagger.Directory) *Headway {
 	return &Headway{RepoDir: repoDir}
 }
@@ -225,16 +230,36 @@ func (h *Headway) WithArea(
 	// Local OSM PBF file to mount, if missing will download from bbike based on area name
 	// +defaultPath=""
 	localPbf *dagger.File,
+
+	// +optional
+	// +ignore=["**/.env", "**/gtfs-secrets.json"]
+	transitDir *dagger.Directory,
+
+	// +optional
+	gtfsSecrets *dagger.Secret,
+
+	// +optional
+	maxConcurrentTransitZones int,
 ) *Headway {
 	h.IsPlanetBuild = countries == "ALL"
 	h.Countries = countries
 	h.Area = area
+	h.TransitConfigDir = transitDir
+	h.GTFSSecrets = gtfsSecrets
+	h.MaxConcurrentTransitZones = maxConcurrentTransitZones
 	if localPbf == nil {
 		h.OSMExport = h.DownloadPBF(area)
 	} else {
 		h.OSMExport = h.LocalPBF(localPbf)
 	}
 
+	return h
+}
+
+// Makes Build export only transit artifacts. Requires WithArea to have a
+// transit directory.
+func (h *Headway) TransitOnly() *Headway {
+	h.BuildTransitOnly = true
 	return h
 }
 
@@ -265,6 +290,41 @@ func getEnvWithDefault(envVariable, defaultValue string) string {
 //
 // +cache="never"
 func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
+	if h.BuildTransitOnly && h.TransitConfigDir == nil {
+		return nil, fmt.Errorf("transit-only requires --transit-dir")
+	}
+
+	var mapOutput, transitOutput *dagger.Directory
+	group, groupCtx := errgroup.WithContext(ctx)
+	if !h.BuildTransitOnly {
+		group.Go(func() error {
+			var err error
+			mapOutput, err = h.buildAllExceptTransit(groupCtx)
+			return err
+		})
+	}
+	if h.TransitConfigDir != nil {
+		group.Go(func() error {
+			var err error
+			transitOutput, err = h.BuildTransit(groupCtx, h.TransitConfigDir, h.GTFSSecrets, h.MaxConcurrentTransitZones)
+			return err
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	output := dag.Directory()
+	if mapOutput != nil {
+		output = mapOutput
+	}
+	if transitOutput != nil {
+		output = output.WithDirectory("transit", transitOutput)
+	}
+	return output, nil
+}
+
+func (h *Headway) buildAllExceptTransit(ctx context.Context) (*dagger.Directory, error) {
 
 	if h.Area == "" {
 		return nil, fmt.Errorf("Area is required")
@@ -278,30 +338,30 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
-	recordTiming("build/pmtiles-prepare", start)
+	recordTiming("pmtiles-prepare", start)
 
 	start = time.Now()
 	terrain, err := h.TileserverTerrain(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
 	}
-	recordTiming("build/terrain-prepare", start)
+	recordTiming("terrain-prepare", start)
 
 	start = time.Now()
 	valhalla := h.ValhallaTiles(ctx)
-	recordTiming("build/valhalla-prepare", start)
+	recordTiming("valhalla-prepare", start)
 
 	start = time.Now()
 	pelias := h.Pelias(ctx)
-	recordTiming("build/pelias-config", start)
+	recordTiming("pelias-config", start)
 
 	start = time.Now()
 	elasticSearch := pelias.ElasticsearchData(ctx)
-	recordTiming("build/elasticsearch-prepare", start)
+	recordTiming("elasticsearch-prepare", start)
 
 	start = time.Now()
 	placeholder := pelias.PreparePlaceholder(ctx)
-	recordTiming("build/placeholder-prepare", start)
+	recordTiming("placeholder-prepare", start)
 
 	artifacts := []*Artifact{
 		FileArtifact(h.Area, "osm.pbf", h.OSMExport.File),
@@ -313,7 +373,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 		FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")),
 	}
 
-	if err := buildAll(ctx, "build", artifacts); err != nil {
+	if err := buildAll(ctx, "", artifacts); err != nil {
 		return nil, err
 	}
 
@@ -325,7 +385,7 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 			return nil, err
 		}
 	}
-	recordTiming("build/content-hash", hashStart)
+	recordTiming("content-hash", hashStart)
 
 	// Not content addressed: the deploy scripts read this back by name.
 	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
@@ -421,15 +481,11 @@ func martinBinary() *dagger.File {
 	// To build from source (e.g. for debugging a fork), set this to true
 	const buildFromSource = true
 	if buildFromSource {
-		// WithEnvVariable("CACHE_BUSTER", time.Now().String()).
-		return rustContainer("git").
-			WithExec([]string{"git", "clone", "--branch", "mkirk/tilejson-encoding-2026-07-30", "--depth=1", "https://github.com/michaelkirk/martin.git", "/martin"}).
-			WithWorkdir("/martin").
-			WithExec([]string{"cargo", "build", "--release", "--locked", "--no-default-features", "--features", martinFeatures}).
-			File("target/release/martin")
+		source := dag.Git("https://github.com/michaelkirk/martin.git").Branch("mkirk/tilejson-encoding-2026-07-30").Tree()
+		return rustBinaries(source, "martin", "--no-default-features", "--features", martinFeatures).File("martin")
 	} else {
 		const martinVersion = "1.10.1"
-		return rustContainer().
+		return rustBuildContainer().
 			WithExec([]string{"cargo", "install", "--locked", "--version", martinVersion, "--no-default-features", "--features", martinFeatures, "martin"}).
 			File("/usr/local/cargo/bin/martin")
 	}
@@ -470,10 +526,13 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 
 	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
 
-	container = container.
-		WithMountedFile("/tmp/planetile-fixture-sources.tar", downloadFile(fixturesUrl)).
+	sources := downloadContainer().
 		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"sh", "-c", "tar -x --directory /data/sources -f /tmp/planetile-fixture-sources.tar"}).
+		WithExec([]string{"bash", "-o", "pipefail", "-c", `wget -nv -U headway/1.0 -O - "$0" | tar -x --directory /data/sources`, fixturesUrl}).
+		Directory("/data/sources")
+
+	container = container.
+		WithMountedDirectory("/data/sources", sources).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
 	entrypoint, err := container.Entrypoint(ctx)
@@ -528,7 +587,8 @@ func valhallaBaseContainer() *dagger.Container {
 func valhallaBuildContainer() *dagger.Container {
 	return valhallaBaseContainer().
 		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite > valhalla.json"}).
-		WithExec([]string{"sh", "-c", "valhalla_build_timezones > /tiles/timezones.sqlite"})
+		// valhalla_build_timezones leaves its mktemp scratch copy of the output behind.
+		WithExec([]string{"sh", "-c", "export TMPDIR=$(mktemp -d) && valhalla_build_timezones > /tiles/timezones.sqlite && rm -r $TMPDIR"})
 }
 
 // Builds Valhalla routing tiles
@@ -643,11 +703,7 @@ func (h *Headway) LocalPBF(
 // ===
 
 func (h *Headway) TravelmuxServer(ctx context.Context) *dagger.File {
-	return rustContainer().
-		WithMountedDirectory("/repo", h.RepoDir).
-		WithWorkdir("/repo").
-		WithExec([]string{"cargo", "build", "--release", "--package", "travelmux"}).
-		File("/repo/target/release/travelmux-server")
+	return h.rustWorkspaceBinaries("services/travelmux").File("travelmux-server")
 }
 
 func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container {
@@ -673,11 +729,7 @@ func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container 
 }
 
 func (h *Headway) TransitZonerServer(ctx context.Context) *dagger.File {
-	return rustContainer().
-		WithMountedDirectory("/repo", h.RepoDir).
-		WithWorkdir("/repo").
-		WithExec([]string{"cargo", "build", "--release", "--package", "transit-zoner"}).
-		File("/repo/target/release/transit-zoner")
+	return h.rustWorkspaceBinaries("services/gtfs/transit-zoner", "services/gtfs/gtfout").File("transit-zoner")
 }
 
 func (h *Headway) TransitZonerServeContainer(ctx context.Context,
@@ -768,12 +820,90 @@ func slimContainer(packages ...string) *dagger.Container {
 	return WithAptPackages(container, packages...)
 }
 
-func rustContainer(packages ...string) *dagger.Container {
-	container := dag.Container().From("rust:bookworm")
-	if len(packages) == 0 {
-		return container
+// Must match the workspace members in Cargo.toml.
+var rustWorkspaceMembers = []string{
+	"services/gtfs/transit-zoner",
+	"services/gtfs/gtfout",
+	"services/travelmux",
+}
+
+// rustWorkspace is the cargo workspace with sources for only the given workspace members.
+func (h *Headway) rustWorkspace(workspaceMembers ...string) *dagger.Directory {
+	workspace := dag.Directory().
+		WithFile("Cargo.toml", h.RepoDir.File("Cargo.toml")).
+		WithFile("Cargo.lock", h.RepoDir.File("Cargo.lock"))
+	for _, workspaceMember := range rustWorkspaceMembers {
+		if slices.Contains(workspaceMembers, workspaceMember) {
+			workspace = workspace.WithDirectory(workspaceMember, h.RepoDir.Directory(workspaceMember))
+		} else {
+			// cargo loads every workspace member, so the rest need a manifest and a target.
+			workspace = workspace.
+				WithFile(workspaceMember+"/Cargo.toml", h.RepoDir.File(workspaceMember+"/Cargo.toml")).
+				WithNewFile(workspaceMember+"/src/lib.rs", "")
+		}
 	}
-	return WithAptPackages(container, packages...)
+	return workspace
+}
+
+const cargoTargetDir = "/cargo-target"
+
+const (
+	cargoRegistryVolume = "cargo-registry"
+	cargoTargetVolume   = "cargo-target"
+)
+
+func rustCachesContainer() *dagger.Container {
+	container := slimContainer().
+		// The volumes' contents aren't part of the cache key, so always rerun.
+		WithEnvVariable("CACHE_BUSTER", time.Now().String())
+	for _, volume := range []string{cargoRegistryVolume, cargoTargetVolume} {
+		container = container.WithMountedCache("/caches/"+volume, dag.CacheVolume(volume))
+	}
+	return container
+}
+
+// Copies the Rust build caches out of the engine, to carry them between CI runs.
+//
+// +cache="never"
+func (h *Headway) ExportRustCaches() *dagger.Directory {
+	return rustCachesContainer().
+		// Extracted crate sources are regenerated from the downloaded .crate files.
+		WithExec([]string{"sh", "-c", "mkdir /export && tar -C /caches --exclude=./" + cargoRegistryVolume + "/src -cf - . | tar -C /export -xpf -"}).
+		Directory("/export")
+}
+
+// Seeds the Rust build caches from a directory made by ExportRustCaches.
+//
+// +cache="never"
+func (h *Headway) ImportRustCaches(ctx context.Context, caches *dagger.Directory) error {
+	_, err := rustCachesContainer().
+		WithMountedDirectory("/import", caches).
+		WithExec([]string{"cp", "-a", "/import/.", "/caches/"}).
+		Sync(ctx)
+	return err
+}
+
+// rustBuildContainer shares cargo's downloads and build output between all Rust builds, so rebuilds are incremental.
+func rustBuildContainer() *dagger.Container {
+	return dag.Container().From("rust:bookworm").
+		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume(cargoRegistryVolume)).
+		WithMountedCache(cargoTargetDir, dag.CacheVolume(cargoTargetVolume)).
+		WithEnvVariable("CARGO_TARGET_DIR", cargoTargetDir)
+}
+
+// rustBinaries builds the crate at cratePath within workDir, returning the directory holding its binaries.
+func rustBinaries(workDir *dagger.Directory, cratePath string, cargoArgs ...string) *dagger.Directory {
+	const installRoot = "/usr/local/installed"
+	return rustBuildContainer().
+		WithMountedDirectory("/src", workDir).
+		WithWorkdir("/src").
+		WithExec(append([]string{"cargo", "install", "--locked", "--path", cratePath, "--root", installRoot}, cargoArgs...)).
+		Directory(installRoot + "/bin")
+}
+
+// rustWorkspaceBinaries builds a member of our cargo workspace.
+func (h *Headway) rustWorkspaceBinaries(workspaceMember string, pathDependencies ...string) *dagger.Directory {
+	return rustBinaries(h.rustWorkspace(append(pathDependencies, workspaceMember)...), workspaceMember)
 }
 
 func slimNodeContainer(packages ...string) *dagger.Container {

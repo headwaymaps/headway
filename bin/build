@@ -7,19 +7,31 @@ function status() {
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
 
-CONFIG_DIR="$1"
+CONFIG_DIR="${1:-}"
 if [ -z "$CONFIG_DIR" ]; then
     cat <<EOS
 $0 must specify build config directory
 e.g.
     $0 builds/planet
-    $0 builds/Seattle
+    $0 builds/Seattle --transit-only
 EOS
     exit 1
 fi
 shift
 
 set -o nounset
+
+TRANSIT_ONLY=0
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --transit-only) TRANSIT_ONLY=1 ;;
+        *)
+            echo "Error: unknown option $1" >&2
+            exit 1
+            ;;
+    esac
+    shift
+done
 
 if [ ! -d "$CONFIG_DIR" ]; then
     cat <<EOS
@@ -36,25 +48,36 @@ status "Building ${HEADWAY_AREA} from ${CONFIG_DIR}"
 trap 'exit_code=$?; bin/revert-fetch-urls; build_timing_report "$CONFIG_DIR"; timing_cleanup; [ $exit_code -ne 0 ] || build_next_steps "$CONFIG_DIR"' EXIT
 bin/update-fetch-urls
 
-if [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
+if [ "$TRANSIT_ONLY" -eq 0 ] && [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
     status "Running ${CONFIG_DIR}/prebuild.sh"
     "${CONFIG_DIR}/prebuild.sh"
 fi
 
 USE_LOCAL_PBF=""
 INPUT_PBF="${HEADWAY_AREA}.osm.pbf"
-if [[ -f "${INPUT_PBF}" ]]; then
+if [ -f "$INPUT_PBF" ]; then
     USE_LOCAL_PBF="--local-pbf ${INPUT_PBF}"
 fi
 
-status "Building artifacts into data/${HEADWAY_AREA}"
-timed_dagger build -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} | build | export data/${HEADWAY_AREA}"
-
 TRANSIT_CONFIG_DIR="$CONFIG_DIR/transit"
+USE_TRANSIT_FLAGS=""
 if [ -d "$TRANSIT_CONFIG_DIR" ]; then
-    # build-transit calls pin for us, once the transit artifacts have landed too.
-    bin/build-transit "$CONFIG_DIR"
-else
-    status "Pinning artifacts"
-    bin/artifacts --pin "$CONFIG_DIR"
+    USE_TRANSIT_FLAGS="--transit-dir=${TRANSIT_CONFIG_DIR}"
+
+    # Feeds that need a credential take it from the gitignored file at the repo
+    # root. Dagger must receive it explicitly because module code is sandboxed.
+    GTFS_SECRETS_FILE="${APP_ROOT}/gtfs-secrets.json"
+    if [ -f "$GTFS_SECRETS_FILE" ]; then
+        USE_TRANSIT_FLAGS="${USE_TRANSIT_FLAGS} --gtfs-secrets file://${GTFS_SECRETS_FILE}"
+    fi
 fi
+
+USE_TRANSIT_ONLY_CMD=""
+if [ "$TRANSIT_ONLY" -eq 1 ]; then
+    USE_TRANSIT_ONLY_CMD="| transit-only"
+fi
+status "Building artifacts into data/${HEADWAY_AREA}"
+timed_dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_TRANSIT_ONLY_CMD} | build | export 'data/${HEADWAY_AREA}'"
+
+status "Pinning artifacts"
+bin/artifacts --pin "$CONFIG_DIR"
