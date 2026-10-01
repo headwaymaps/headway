@@ -38,6 +38,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	gtfsSecrets *dagger.Secret,
 	// +optional
 	maxConcurrentZones int) (*dagger.Directory, error) {
+	defer recordTiming("transit", time.Now())
 
 	if maxConcurrentZones <= 0 {
 		maxConcurrentZones = defaultMaxConcurrentZones

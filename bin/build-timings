@@ -21,9 +21,6 @@ set -e -o nounset
 #     bin/build-timings --record <timing-file> builds/Seattle
 #
 # The timing file is the TSV that bin/_build-timing.sh collected:
-# "<label>\t<milliseconds>". A label with no "/" is a phase's wall time. Within
-# a phase, "~name" is one of dagger's own top-level spans and anything else is
-# a step the module reported.
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
@@ -97,13 +94,13 @@ function children_of() {
 }
 
 function print_steps() {
-    local record="$1" steps when total
+    local record="$1" steps when total root label
     total=$(jq -r '.total_ms' <<< "$record")
     # Anything under 1% of the build is noise at this zoom.
     local floor=0
     [ -n "$SHOW_ALL" ] || floor=$total
-    # "~Headway.<func>" is the dagger span bracketing everything the module
-    # did in that phase, so it is the phase over again, not a step within it.
+    # "~Headway.<func>" brackets the whole module call, duplicating its
+    # reported steps rather than describing one of them.
     steps=$(jq -r '.steps_ms | to_entries
         | map(select(.key | split("/") | last | startswith("~Headway.") | not))
         | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[]
@@ -114,21 +111,30 @@ function print_steps() {
         printf '%s (%d%%)' "$(fmt_duration "$1")" $(((($1 * 100) + (total / 2)) / total))
     }
 
+    function print_timing() {
+        local indent="$1" label="$2" ms="$3"
+        printf '%*s%-36s %s\n' "$indent" '' "$label" "$(fmt_share "$ms")"
+    }
+
     when=$(jq -r '.at' <<< "$record")
     when=${when%:*Z}
-    printf '\n%s %s (%s total)\n' \
-        "$(jq -r '.area' <<< "$record")" "${when/T/ }" "$(fmt_duration "$total")"
+    printf '\n'
+    print_timing 0 "$(jq -r '.area' <<< "$record") ${when/T/ }" "$total"
 
-    while IFS="$TAB" read -r phase ms; do
-        printf '  %-40s %s\n' "$phase" "$(fmt_share "$ms")"
-        while IFS="$TAB" read -r step step_ms; do
-            [ -n "$step" ] || continue
-            printf '    %-38s %s\n' "$step" "$(fmt_share "$step_ms")"
-            while IFS="$TAB" read -r child child_ms; do
-                [ -n "$child" ] || continue
-                printf '      %-36s %s\n' "$child" "$(fmt_share "$child_ms")"
-            done <<< "$(children_of "$steps" "${phase}/${step}")"
-        done <<< "$(children_of "$steps" "$phase")"
+    function print_children() {
+        local prefix="$1" indent="$2" name label ms
+        while IFS="$TAB" read -r name ms; do
+            [ -n "$name" ] || continue
+            label=${name#\~}
+            print_timing "$indent" "$label" "$ms"
+            print_children "${prefix}/${name}" "$((indent + 2))"
+        done <<< "$(children_of "$steps" "$prefix")"
+    }
+
+    while IFS="$TAB" read -r root ms; do
+        label=${root#\~}
+        print_timing 2 "$label" "$ms"
+        print_children "$root" 4
     done <<< "$(grep -v "/" <<< "$steps")"
 }
 
@@ -139,13 +145,12 @@ if [ -n "$RECORD" ]; then
         exit 0
     fi
 
-    # Phases run in sequence, so their wall times add up to the build's.
-    total=$(grep -v "/" "$RECORD" | awk -F"$TAB" '{ total += $2 } END { printf "%d", total }')
+    total=$(awk -F"$TAB" '$1 == "_total" { total = $2 } END { printf "%d", total }' "$RECORD")
     if [ "$total" -eq 0 ]; then
         echo "No build timings were recorded." >&2
         exit 0
     fi
-    steps_json=$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map({(.[0]): (.[1] | tonumber)}) | add' "$RECORD")
+    steps_json=$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map(select(.[0] != "_total")) | map({(.[0]): (.[1] | tonumber)}) | add' "$RECORD")
     record=$(jq -c -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg area "${AREA:-unknown}" \
         --argjson total "$total" --argjson steps "$steps_json" \
         '{at: $at, area: $area, total_ms: $total, steps_ms: $steps}')

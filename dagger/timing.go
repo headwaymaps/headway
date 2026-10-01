@@ -11,8 +11,8 @@ import (
 // keys on this prefix.
 const timingPrefix = "HEADWAY_TIMING"
 
-// The step the concurrent artifact builds are recorded under. Steps of a phase
-// run one after another and so add up to it; what sits below this one does not.
+// The step the concurrent artifact builds are recorded under. Timing labels
+// form a hierarchy; what sits below this one overlaps and does not add up to it.
 const artifactsTimingStep = "building artifacts"
 
 // record how long a step took, in milliseconds, for the build's timing report.

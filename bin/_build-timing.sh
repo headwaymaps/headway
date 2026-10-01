@@ -22,11 +22,8 @@ function timing_cleanup() {
 }
 
 # Run dagger, echoing its output as usual while scraping the HEADWAY_TIMING
-# records the module writes into it. The whole invocation is recorded as one
-# phase, named by $1. Durations are milliseconds throughout.
+# records the module writes into it. Durations are milliseconds throughout.
 function timed_dagger() {
-    local phase="$1"
-    shift
     local start=$SECONDS
     local status=0
 
@@ -40,10 +37,10 @@ function timed_dagger() {
     dagger --progress=plain "$@" 2>&1 | tee "$log" || status=$?
     set +o pipefail
 
-    scrape_timings "$phase" "$log"
+    scrape_timings "$log"
     rm -f "$log"
 
-    printf '%s\t%s\n' "$phase" "$(((SECONDS - start) * 1000))" >> "$TIMING_FILE"
+    printf '_total\t%s\n' "$(((SECONDS - start) * 1000))" >> "$TIMING_FILE"
     return $status
 }
 
@@ -51,7 +48,7 @@ function timed_dagger() {
 # artifact it builds, and dagger's own top-level spans - which are sequential,
 # so together they account for the whole invocation.
 function scrape_timings() {
-    awk -v out="$TIMING_FILE" -v phase="$1" '
+    awk -v out="$TIMING_FILE" '
         # Durations come formatted for people: "0.4s", "3m46s", "1h2m3s".
         function millis(took,   ms, unit, value) {
             ms = 0
@@ -83,10 +80,10 @@ function scrape_timings() {
                 took = substr(span, RSTART)
                 name = substr(span, 1, RSTART - 1)
                 gsub(/[^0-9hms.]/, "", took)
-                printf "%s/~%s\t%d\n", phase, name, millis(took) >> out
+                printf "~%s\t%d\n", name, millis(took) >> out
             }
         }
-    ' "$2"
+    ' "$1"
 }
 
 function build_timing_report() {

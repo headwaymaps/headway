@@ -73,13 +73,11 @@ if [ -d "$TRANSIT_CONFIG_DIR" ]; then
 fi
 
 USE_TRANSIT_ONLY_CMD=""
-LOG_LABEL="build"
 if [ "$TRANSIT_ONLY" -eq 1 ]; then
     USE_TRANSIT_ONLY_CMD="| transit-only"
-    LOG_LABEL="transit"
 fi
 status "Building artifacts into data/${HEADWAY_AREA}"
-timed_dagger "$LOG_LABEL" -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_TRANSIT_ONLY_CMD} | build | export 'data/${HEADWAY_AREA}'"
+timed_dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_TRANSIT_ONLY_CMD} | build | export 'data/${HEADWAY_AREA}'"
 
 status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"
