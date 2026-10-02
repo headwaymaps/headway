@@ -5,7 +5,7 @@ pub mod otp;
 pub mod util;
 pub mod valhalla;
 
-pub use error::{Error, Result};
+pub use error::{Error, Result, ERROR_CODE_HEADER};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Copy)]

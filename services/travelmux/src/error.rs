@@ -1,6 +1,9 @@
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 use std::error::Error as StdError;
 
+/// Response header carrying the error code, so access logs can tell error types apart.
+pub const ERROR_CODE_HEADER: &str = "X-Travelmux-Error-Code";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorType {
     /// Generic error for bad user input

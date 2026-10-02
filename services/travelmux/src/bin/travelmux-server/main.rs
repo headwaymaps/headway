@@ -6,7 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use travelmux::api::{self, AppState};
 use travelmux::otp::OtpCluster;
-use travelmux::Result;
+use travelmux::{Result, ERROR_CODE_HEADER};
 
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -64,6 +64,11 @@ async fn main() -> Result<()> {
         })
         .unwrap_or(8000);
 
+    // actix's default access log format, plus the error code so log readers can tell error types apart.
+    let access_log_format = format!(
+        r#"%a "%r" %s %b "%{{Referer}}i" "%{{User-Agent}}i" %T error_code=%{{{ERROR_CODE_HEADER}}}o"#
+    );
+
     HttpServer::new(move || {
         // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
         let app_state = AppState::new(
@@ -72,7 +77,7 @@ async fn main() -> Result<()> {
             otp_cluster.prepare(),
         );
         App::new()
-            .wrap(Logger::default())
+            .wrap(Logger::new(&access_log_format))
             .app_data(web::Data::new(app_state))
             .service(api::v6::plan::get_plan)
             .service(api::v6::directions::get_directions)

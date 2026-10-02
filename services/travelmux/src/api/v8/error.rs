@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::fmt;
 
 use super::Itinerary;
-use crate::error::ErrorType;
+use crate::error::{ErrorType, ERROR_CODE_HEADER};
 use crate::otp::gtfs_graphql;
 use crate::valhalla::valhalla_api;
 use crate::{DistanceUnit, Error, TravelMode};
@@ -112,6 +112,7 @@ impl actix_web::ResponseError for PlanResponseErr {
     fn error_response(&self) -> HttpResponse<BoxBody> {
         HttpResponseBuilder::new(self.status_code())
             .content_type("application/json")
+            .insert_header((ERROR_CODE_HEADER, self.error.error_code.to_string()))
             .json(self)
     }
 }
@@ -153,5 +154,20 @@ impl PlanResponseOk {
         }
 
         Ok(PlanResponseOk { itineraries })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::ResponseError;
+
+    #[test]
+    fn error_response_has_error_code_header() {
+        let err = PlanResponseErr::from(
+            Error::user("no transit here").error_type(ErrorType::NoCoverageForArea),
+        );
+        let response = err.error_response();
+        assert_eq!(response.headers().get(ERROR_CODE_HEADER).unwrap(), "1701");
     }
 }
