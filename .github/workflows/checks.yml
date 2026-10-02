@@ -115,8 +115,8 @@ jobs:
       - name: Pick Rust cache month
         id: rust-cache
         run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
-      # Shared with build_data, which only reads it. Restarted monthly, since
-      # cargo's build output keeps every old build.
+      # Shared with build_data, which only reads it. Only main writes it, so
+      # PR and merge-queue refs do not create isolated cache entries.
       - name: Restore Rust build caches
         uses: actions/cache/restore@v6
         with:
@@ -131,11 +131,13 @@ jobs:
       - name: Build service images
         run: bin/build-images
       - name: Export Rust build caches
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           rm -rf ~/rust-caches
           dagger call export-rust-caches export --path ~/rust-caches
           du -sh ~/rust-caches/*
       - name: Save Rust build caches
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v6
         with:
           path: ~/rust-caches
