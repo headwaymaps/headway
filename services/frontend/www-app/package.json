@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@fragaria/address-formatter": "^6.3.0",
+    "@maplibre/maplibre-gl-style-spec": "^26.4.4",
     "@quasar/extras": "^1.16.9",
     "lodash": "^4.17.21",
     "maplibre-gl": "^6.1.0",

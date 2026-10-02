@@ -1,6 +1,6 @@
 /* eslint-env node */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
@@ -41,6 +41,14 @@ const LOCAL_STYLE_PATH = resolve(
 //   HEADWAY_LOCAL_STYLE=1 HEADWAY_LOCAL_ASSETS=http://localhost:8095 yarn dev
 const LOCAL_ASSETS_HOST = process.env.HEADWAY_LOCAL_ASSETS;
 
+// The worktree shares dependencies with the main checkout through a node_modules
+// symlink. Vite resolves Quasar's web fonts to that real path, which must be
+// explicitly allowed in addition to this worktree's app directory.
+const VITE_FS_ALLOW = [
+  __dirname,
+  realpathSync(resolve(__dirname, 'node_modules')),
+];
+
 const localStylePlugin: Plugin = {
   name: 'headway-local-style',
   configureServer(server) {
@@ -75,7 +83,7 @@ const localStylePlugin: Plugin = {
     });
 
     server.watcher.add(LOCAL_STYLE_PATH);
-    server.watcher.on('change', (path) => {
+    server.watcher.on('all', (_event, path) => {
       if (path === LOCAL_STYLE_PATH) {
         server.ws.send({ type: 'full-reload' });
       }
@@ -176,6 +184,9 @@ export default defineConfig((/* ctx */) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
     devServer: {
+      fs: {
+        allow: VITE_FS_ALLOW,
+      },
       // Keep port fallback and browser opening on the same loopback interface.
       // Otherwise a service bound to 127.0.0.1 (for example Valhalla) can occupy
       // a port that Vite only probes over IPv6, and the opened localhost URL

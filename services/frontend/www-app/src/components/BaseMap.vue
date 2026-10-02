@@ -55,7 +55,7 @@ export let map: MaplibreMap | null = null;
 const mapContainerId = 'map';
 // Flying further than this is a long, dizzying detour, so we jump instead.
 const MAX_ANIMATED_DISTANCE_IN_TILES = 4;
-const mapStyle =
+export const mapStyle =
   process.env.HEADWAY_LOCAL_STYLE === 'true'
     ? '/local-style/basic-v3.json'
     : '/tileserver/style/basic-v3';

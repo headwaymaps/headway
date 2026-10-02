@@ -100,6 +100,15 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  ...(process.env.DEV
+    ? [
+        {
+          path: '/dev/shields',
+          component: () => import('pages/ShieldQaPage.vue'),
+        },
+      ]
+    : []),
+
   // Always leave this as last one,
   // but you can also remove it
   {
