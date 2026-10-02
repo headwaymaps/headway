@@ -851,12 +851,16 @@ const (
 	cargoTargetVolume   = "cargo-target"
 )
 
+// The cargo volumes' mount. The sharing mode is part of a volume's identity, so
+// every mount of them must agree on it.
+var lockedCache = dagger.ContainerWithMountedCacheOpts{Sharing: dagger.CacheSharingModeLocked}
+
 func rustCachesContainer() *dagger.Container {
 	container := slimContainer().
 		// The volumes' contents aren't part of the cache key, so always rerun.
 		WithEnvVariable("CACHE_BUSTER", time.Now().String())
 	for _, volume := range []string{cargoRegistryVolume, cargoTargetVolume} {
-		container = container.WithMountedCache("/caches/"+volume, dag.CacheVolume(volume))
+		container = container.WithMountedCache("/caches/"+volume, dag.CacheVolume(volume), lockedCache)
 	}
 	return container
 }
@@ -882,11 +886,13 @@ func (h *Headway) ImportRustCaches(ctx context.Context, caches *dagger.Directory
 	return err
 }
 
-// rustBuildContainer shares cargo's downloads and build output between all Rust builds, so rebuilds are incremental.
+// rustBuildContainer shares cargo's downloads and build output between all Rust
+// builds, so rebuilds are incremental. They take turns with them, since cargo
+// builds running at once collide in them.
 func rustBuildContainer() *dagger.Container {
 	return dag.Container().From("rust:bookworm").
-		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume(cargoRegistryVolume)).
-		WithMountedCache(cargoTargetDir, dag.CacheVolume(cargoTargetVolume)).
+		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume(cargoRegistryVolume), lockedCache).
+		WithMountedCache(cargoTargetDir, dag.CacheVolume(cargoTargetVolume), lockedCache).
 		WithEnvVariable("CARGO_TARGET_DIR", cargoTargetDir)
 }
 
