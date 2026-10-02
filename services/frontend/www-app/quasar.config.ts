@@ -75,7 +75,7 @@ const localStylePlugin: Plugin = {
     });
 
     server.watcher.add(LOCAL_STYLE_PATH);
-    server.watcher.on('change', (path) => {
+    server.watcher.on('all', (_event, path) => {
       if (path === LOCAL_STYLE_PATH) {
         server.ws.send({ type: 'full-reload' });
       }

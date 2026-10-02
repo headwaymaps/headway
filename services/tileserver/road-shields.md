@@ -114,9 +114,11 @@ A few are set by eye:
   US:CO     0.45em    0.51em
   US:I      0.05em    0.06em
 
-Offsets of half a pixel or less are left out, except the interstate's. A
-network with a blank but no entry sits at `[0, 0]`; the generic box at
-`[0, 0.1]`.
+MapLibre preserves fractional-pixel text offsets, so there is no renderer
+cutoff below which an offset is a no-op. Keep a small offset only when it
+visibly improves the shield. A network with its own blank but no offset of its
+own sits at `[0, 0.11]`, a pixel below centre at text size 9; the generic box
+at `[0, 0.22]`.
 
 Colours
 -------
@@ -147,6 +149,10 @@ re-snapshot only once the change has been approved.
 
 Finding a shield to check
 -------------------------
+
+The dev-only `/dev/shields` page draws every network at every ref length, using
+the real `road_shield` layer. Run it under `bin/dev-local-assets` to see this
+checkout's style and sprites.
 
 Places where production tiles carry these networks, with real refs:
 
