@@ -2,53 +2,31 @@
 
 set -e -o nounset
 
-# Show what past builds cost, from the history bin/build appends to.
+# Show where traced builds spent their time, from the traces bin/_trace.sh
+# stores in data/traces/<name>/.
 #
-#     bin/build-timings                    # every build, oldest first
-#     bin/build-timings builds/Bogota      # just that build configuration
-#     bin/build-timings --steps            # step breakdowns, newest build first
-#     bin/build-timings --builds 1 --steps # just the latest build
+#     bin/build-timings                  # the latest build
+#     bin/build-timings --builds 3       # the three latest
+#     bin/build-timings builds/Bogota    # the latest build of that configuration
+#     bin/build-timings images           # the latest bin/build-images
+#     bin/build-timings <trace.jsonl.gz> # that trace
 #
-# --builds N keeps the N most recent builds, in either view.
-#
-# By default very short steps are omitted. Show them:
-#
-#     bin/build-timings --all-steps
-#
-# bin/build ends a build with `--record`, which appends that build to the
-# history and prints its breakdown:
-#
-#     bin/build-timings --record <timing-file> builds/Seattle
-#
-# The timing file is the TSV that bin/_build-timing.sh collected:
+# Steps under 1% of their build are left out unless --all-steps.
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
 
 source bin/_duration.sh
 
-HISTORY="data/build-timings.jsonl"
-BAR_WIDTH=24
+TRACES="data/traces"
 TAB=$(printf '\t')
 
-STEPS=""
 SHOW_ALL=""
-RECORD=""
-BUILD_DIR=""
-AREA=""
-BUILDS=0
+TARGET=""
+BUILDS=1
 while [ $# -gt 0 ]; do
     case "$1" in
-        --steps) STEPS=1 ;;
-        --all-steps) STEPS=1 SHOW_ALL=1 ;;
-        --record)
-            RECORD="${2:-}"
-            if [ -z "$RECORD" ]; then
-                echo "Error: --record wants a timing file" >&2
-                exit 1
-            fi
-            shift
-            ;;
+        --all-steps) SHOW_ALL=1 ;;
         --builds)
             BUILDS="${2:-}"
             if ! [[ "$BUILDS" =~ ^[1-9][0-9]*$ ]]; then
@@ -58,158 +36,92 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --help | -h)
-            echo "usage: $0 [--steps | --all-steps] [--builds N] [BUILD_DIR]"
-            echo "       $0 --record TIMING_FILE [BUILD_DIR]"
+            echo "usage: $0 [--all-steps] [--builds N] [BUILD_DIR | NAME | TRACE_FILE]"
             exit 0
             ;;
         *)
-            if [ -n "$BUILD_DIR" ]; then
-                echo "Error: only one build directory may be specified" >&2
+            if [ -n "$TARGET" ]; then
+                echo "Error: only one build may be specified" >&2
                 exit 1
             fi
-            BUILD_DIR="${1%/}"
+            TARGET="${1%/}"
             ;;
     esac
     shift
 done
 
-# Timings are stored against an area's data name, but callers select the build
-# configuration that produced it. Reading its .env keeps this interface aligned
-# with the rest of the build scripts and avoids guessing from the directory name.
-if [ -n "$BUILD_DIR" ]; then
-    source bin/_source-env.sh "$BUILD_DIR"
-    AREA="$HEADWAY_AREA"
-fi
-
 if ! command -v jq > /dev/null; then
-    echo "Error: jq is required to read ${HISTORY}" >&2
+    echo "Error: jq is required to read traces" >&2
     exit 1
 fi
 
-function children_of() {
-    awk -F"$TAB" -v prefix="$2/" 'index($1, prefix) == 1 {
-        rest = substr($1, length(prefix) + 1)
-        if (index(rest, "/") == 0) { sub(/^~/, "", rest); print rest "\t" $2 }
-    }' <<< "$1"
+# Reduce a trace to the steps worth reporting, one per line: depth, name, and
+# milliseconds. Those are the spans we mark as steps, and the top-level spans of
+# each dagger command we trace. Each nests under its nearest reported ancestor.
+function summarize() {
+    gzip -dc "$1" | jq -n -r '
+        def attr($key): any(.attributes[]?; .key == $key);
+        def step: attr("headway.step");
+        def ms: ((.endTimeUnixNano | tonumber) - (.startTimeUnixNano | tonumber)) / 1e6 | floor;
+
+        [inputs.resourceSpans[].scopeSpans[].spans[]] as $all
+        | ($all | map({key: .spanId, value: .}) | from_entries) as $spans
+        | ($all | group_by(.parentSpanId // "") | map({key: (.[0].parentSpanId // ""), value: .}) | from_entries) as $children
+        | def parent: $spans[.parentSpanId // ""];
+          # dagger shows a passthrough span as its children, and hides internal ones.
+          def passthrough: attr("dagger.io/ui.passthrough");
+          def shown_parent: parent // {} | if passthrough then shown_parent else . end;
+          # Under a traced command: dagger, then its top-level spans.
+          def dagger_top_level:
+              (passthrough or attr("dagger.io/ui.internal") | not)
+              and (shown_parent as $cli | ($cli | step | not) and ($cli | parent // {} | attr("process.command")));
+          def reported: step or dagger_top_level;
+          def reported_below: ($children[.spanId] // [])[] | if reported then . else reported_below end;
+          def rows($depth):
+              [$depth, (.name | sub(": /.*"; "")), ms],
+              ([reported_below] | sort_by(.startTimeUnixNano | tonumber)[] | rows($depth + 1));
+
+        $all | map(select((.parentSpanId // "") == "" and step)) | first | rows(0) | @tsv'
 }
 
-function print_steps() {
-    local record="$1" steps when total root label
-    total=$(jq -r '.total_ms' <<< "$record")
+function print_build() {
+    local trace="$1" rows total depth name ms when
+    rows=$(summarize "$trace")
+    total=$(head -1 <<< "$rows" | cut -f3)
     # Anything under 1% of the build is noise at this zoom.
     local floor=0
     [ -n "$SHOW_ALL" ] || floor=$total
-    # "~Headway.<func>" brackets the whole module call, duplicating its
-    # reported steps rather than describing one of them.
-    steps=$(jq -r '.steps_ms | to_entries
-        | map(select(.key | split("/") | last | startswith("~Headway.") | not))
-        | map(select(.value > 0 and .value * 100 >= $floor)) | sort_by(-.value)[]
-        | "\(.key)\t\(.value)"' --argjson floor "$floor" <<< "$record")
 
-    # Every row is shown as its share of the whole build.
-    function fmt_share() {
-        printf '%s (%d%%)' "$(fmt_duration "$1")" $(((($1 * 100) + (total / 2)) / total))
-    }
-
-    function print_timing() {
-        local indent="$1" label="$2" ms="$3"
-        printf '%*s%-36s %s\n' "$indent" '' "$label" "$(fmt_share "$ms")"
-    }
-
-    when=$(jq -r '.at' <<< "$record")
-    when=${when%:*Z}
-    printf '\n'
-    print_timing 0 "$(jq -r '.area' <<< "$record") ${when/T/ }" "$total"
-
-    function print_children() {
-        local prefix="$1" indent="$2" name label ms
-        while IFS="$TAB" read -r name ms; do
-            [ -n "$name" ] || continue
-            label=${name#\~}
-            print_timing "$indent" "$label" "$ms"
-            print_children "${prefix}/${name}" "$((indent + 2))"
-        done <<< "$(children_of "$steps" "$prefix")"
-    }
-
-    while IFS="$TAB" read -r root ms; do
-        label=${root#\~}
-        print_timing 2 "$label" "$ms"
-        print_children "$root" 4
-    done <<< "$(grep -v "/" <<< "$steps")"
+    # Named <UTC time>.jsonl.gz by bin/_trace.sh.
+    when=$(basename "$trace" .jsonl.gz)
+    printf '\n%s\n' "$when"
+    while IFS="$TAB" read -r depth name ms; do
+        [ $((ms * 100)) -ge "$floor" ] || continue
+        printf '%*s%-*s %s (%d%%)\n' $((depth * 2)) '' $((44 - depth * 2)) "$name" \
+            "$(fmt_duration "$ms")" $(((ms * 100 + total / 2) / total))
+    done <<< "$rows"
 }
 
-# Append a finished build to the history, then print it like any other.
-if [ -n "$RECORD" ]; then
-    if [ ! -s "$RECORD" ]; then
-        echo "No build timings were recorded." >&2
-        exit 0
-    fi
-
-    total=$(awk -F"$TAB" '$1 == "_total" { total = $2 } END { printf "%d", total }' "$RECORD")
-    if [ "$total" -eq 0 ]; then
-        echo "No build timings were recorded." >&2
-        exit 0
-    fi
-    steps_json=$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map(select(.[0] != "_total")) | map({(.[0]): (.[1] | tonumber)}) | add' "$RECORD")
-    record=$(jq -c -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg area "${AREA:-unknown}" \
-        --argjson total "$total" --argjson steps "$steps_json" \
-        '{at: $at, area: $area, total_ms: $total, steps_ms: $steps}')
-
-    mkdir -p "$(dirname "$HISTORY")"
-    printf '%s\n' "$record" >> "$HISTORY"
-    print_steps "$record"
-    printf '\n  (appended to %s)\n' "$HISTORY"
-    exit 0
-fi
-
-if [ ! -s "$HISTORY" ]; then
-    echo "No build history yet - ${HISTORY} is written by bin/build." >&2
-    exit 1
-fi
-
-# The builds both views work from: newest first, one JSON record per line.
-function selected_builds() {
-    jq -c -n --arg area "$AREA" --argjson builds "$BUILDS" \
-        '[inputs | select($area == "" or .area == $area)] | reverse
-         | if $builds > 0 then .[:$builds] else . end | .[]' "$HISTORY"
-}
-
-function records() {
-    selected_builds | jq -r -s 'reverse[] | [.at, .area, .total_ms] | @tsv'
-}
-
-if [ -z "$(records)" ]; then
-    echo "No builds recorded${AREA:+ for ${AREA}} in ${HISTORY}." >&2
-    exit 1
-fi
-
-if [ -n "$STEPS" ]; then
-    while IFS= read -r record; do
-        print_steps "$record"
-    done < <(selected_builds)
+if [ -f "$TARGET" ]; then
+    print_build "$TARGET"
     echo
     exit 0
 fi
 
-# Bars and percentages compare a build to the same area's previous build, so
-# each area is listed and scaled on its own.
-printf '\n%-10s %-17s %8s %8s\n' "AREA" "WHEN" "TOTAL" "CHANGE"
-for area in $(records | cut -f2 | sort -u); do
-    rows=$(records | awk -F"$TAB" -v area="$area" '$2 == area')
-    longest=$(awk -F"$TAB" '{ if ($3 > max) max = $3 } END { printf "%d", max }' <<< "$rows")
+# A build configuration's traces are filed under its area.
+if [ -d "$TARGET" ]; then
+    source bin/_source-env.sh "$TARGET"
+    TARGET="$HEADWAY_AREA"
+fi
 
-    previous=""
-    while IFS="$TAB" read -r at _ ms; do
-        change=""
-        if [ -n "$previous" ]; then
-            change=$(printf '%+d%%' $(((ms - previous) * 100 / previous)))
-        fi
-        previous=$ms
-
-        bar=$(printf '%*s' $((ms * BAR_WIDTH / longest)) "" | tr ' ' '#')
-        when=${at%:*Z}
-        printf '%-10s %-17s %8s %8s  %s\n' \
-            "$area" "${when/T/ }" "$(fmt_duration "$ms")" "$change" "$bar"
-    done <<< "$rows"
-done
+# Newest first, across every name unless one was given.
+traces=$(find "$TRACES/${TARGET:-}" -name '*.jsonl.gz' 2> /dev/null \
+    | awk -F/ '{ print $NF "\t" $0 }' | sort -r | cut -f2 | head -n "$BUILDS")
+if [ -z "$traces" ]; then
+    echo "No traces${TARGET:+ for ${TARGET}} in ${TRACES} - they're written by bin/build and bin/build-images." >&2
+    exit 1
+fi
+while IFS= read -r trace; do
+    print_build "$trace"
+done <<< "$traces"
 echo

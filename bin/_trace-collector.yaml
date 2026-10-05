@@ -1,0 +1,18 @@
+# The OpenTelemetry Collector that bin/_trace.sh runs in docker for a traced
+# script: it stores the script's trace as OTLP JSON.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+exporters:
+  file:
+    path: /traces/${env:HEADWAY_TRACE_FILE}
+service:
+  telemetry:
+    metrics:
+      level: none
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [file]

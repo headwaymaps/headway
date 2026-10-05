@@ -85,7 +85,7 @@ function build_image() {
 
   if [ "$PUBLISH" = true ]; then
     echo "Publishing ${container}: ${addresses}"
-    dagger -c "publish-multi --container=\$(${build_function}) --addresses=${addresses}"
+    traced "$container" dagger -c "publish-multi --container=\$(${build_function}) --addresses=${addresses}"
   else
     # Dagger's host-image-loader can only fulfill one ExportImage per session,
     # so export to the first tag and use `docker tag` for the rest. This keeps
@@ -93,7 +93,7 @@ function build_image() {
     IFS=',' read -ra _addr_list <<< "$addresses"
     local primary="${_addr_list[0]}"
     echo "Exporting ${container} to local docker: ${primary}"
-    dagger -c "${build_function} | export-image \"${primary}\""
+    traced "$container" dagger -c "${build_function} | export-image \"${primary}\""
     for extra in "${_addr_list[@]:1}"; do
       echo "Tagging ${extra} -> ${primary}"
       docker tag "$primary" "$extra"
@@ -159,6 +159,12 @@ function build_image_tags() {
     build "valhalla-init"   "valhalla-init-container"                   "valhalla-init"
     build "valhalla"        "valhalla-serve-container"                  "valhalla"
 }
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
+source bin/_trace.sh
+trace_start images
+trap trace_finish EXIT
 
 echo "Mode: $([ "$PUBLISH" = true ] && echo "Publish" || echo "Export")"
 echo "Tags: $TAGS"
