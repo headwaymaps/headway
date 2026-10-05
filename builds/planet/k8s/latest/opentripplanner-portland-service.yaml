@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opentripplanner-portland
+spec:
+  selector:
+    app: opentripplanner-portland
+  ports:
+    - protocol: TCP
+      name: service
+      port: 8000
