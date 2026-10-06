@@ -1,0 +1,13 @@
+name: Install otel-cli
+description: bin/build and bin/build-images trace themselves with otel-cli.
+runs:
+  using: composite
+  steps:
+    # Homebrew comes with the runner, though not on its PATH.
+    - shell: bash
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+      run: |
+        brew=/home/linuxbrew/.linuxbrew/bin/brew
+        "$brew" install otel-cli
+        sudo ln -s "$("$brew" --prefix)/bin/otel-cli" /usr/local/bin/otel-cli

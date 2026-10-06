@@ -4,7 +4,7 @@ Setting up your own Headway instance should be fairly straightforward if you fol
 
 There is a script contributed by Santiago Crespo that will automatically deploy Headway as a systemd service on Debian, but it has not been widely tested yet. See [contrib/DEBIAN_BUILD.md](./contrib/DEBIAN_BUILD.md) for details.
 
-Prerequisites: [Install Dagger.](#install-dagger)
+Prerequisites: [Install Dagger](#install-dagger) and [otel-cli](#install-otel-cli).
 
 [Option 1: Building from a pre-configured city](#building-headway-from-a-supported-bbbike-extract)
 
@@ -19,6 +19,12 @@ Headway processes data and builds its containers for hosting using Dagger. Dagge
 Instructions for installing Dagger can be found here: https://docs.dagger.io/install
 
 Dagger is open source and free to use locally without requiring any accounts or cloud services.
+
+## Install otel-cli
+
+The build scripts trace themselves with OpenTelemetry to report where a build spent its time, using [otel-cli](https://github.com/equinix-labs/otel-cli): `brew install otel-cli`. They run the OpenTelemetry Collector in docker, which needs no installing.
+
+Each build's trace is kept in `data/traces/` as OTLP JSON, which `bin/build-timings` summarizes.
 
 ## Supported Build Methods
 

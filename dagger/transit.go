@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -38,7 +37,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	gtfsSecrets *dagger.Secret,
 	// +optional
 	maxConcurrentZones int) (*dagger.Directory, error) {
-	defer recordTiming("transit", time.Now())
+	ctx, span := startStep(ctx, "transit")
+	defer span.End()
 
 	if maxConcurrentZones <= 0 {
 		maxConcurrentZones = defaultMaxConcurrentZones
@@ -83,7 +83,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		group.Go(func() (err error) {
 			// Picking the feeds and reading the zone's bbox downloads the GTFS,
 			// well before the graph it feeds is built.
-			defer recordTiming("transit/"+entry.name+"-feeds", time.Now())
+			ctx, span := startStep(groupCtx, entry.name+"-feeds")
+			defer span.End()
 
 			defer func() {
 				if r := recover(); r != nil {
@@ -92,15 +93,15 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			}()
 
 			transitFeedsFile := transitConfigDir.File(entry.path)
-			zone := h.TransitZone(groupCtx, entry.name, transitFeedsFile, gtfsDate)
+			zone := h.TransitZone(ctx, entry.name, transitFeedsFile, gtfsDate)
 			if otpBuildConfig != nil {
-				zone = zone.WithOtpBuildConfig(groupCtx, otpBuildConfig)
+				zone = zone.WithOtpBuildConfig(ctx, otpBuildConfig)
 			}
-			zone = zone.WithGtfsDir(groupCtx, zone.BuildGtfsDir(groupCtx, gtfsDate, gtfsSecrets))
+			zone = zone.WithGtfsDir(ctx, zone.BuildGtfsDir(ctx, gtfsDate, gtfsSecrets))
 
-			name := zone.Name(groupCtx)
-			stem := zone.ArtifactStem(groupCtx)
-			bbox, err := zone.BBox(groupCtx)
+			name := zone.Name(ctx)
+			stem := zone.ArtifactStem(ctx)
+			bbox, err := zone.BBox(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get bbox for transit zone %q: %w", name, err)
 			}
@@ -135,9 +136,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			Bbox:   []float64{bbox.Left, bbox.Bottom, bbox.Right, bbox.Top},
 		}
 	}
-	clipStart := time.Now()
-	clippedOSM := h.OSMExport.clipMany(ctx, extracts)
-	recordTiming("transit/osm-clip", clipStart)
+	clipCtx, clipSpan := startStep(ctx, "osm-clip")
+	clippedOSM := h.OSMExport.clipMany(clipCtx, extracts)
+	clipSpan.End()
 
 	group, groupCtx = errgroup.WithContext(ctx)
 	group.SetLimit(maxConcurrentZones)
@@ -150,12 +151,13 @@ func (h *Headway) BuildTransit(ctx context.Context,
 				}
 			}()
 
-			defer recordTiming("transit/"+result.zone.ZoneName(groupCtx)+"-graph-prepare", time.Now())
+			ctx, span := startStep(groupCtx, result.zone.ZoneName(groupCtx)+"-graph-prepare")
+			defer span.End()
 
 			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
 			graphStem := fmt.Sprintf("%s-graph", result.stem)
-			result.graph = FileArtifact(graphStem, "obj", result.zone.otpGraph(groupCtx, osmExport)).Compress()
-			result.elevations = result.zone.Elevations(groupCtx)
+			result.graph = FileArtifact(graphStem, "obj", result.zone.otpGraph(ctx, osmExport)).Compress()
+			result.elevations = result.zone.Elevations(ctx)
 			return nil
 		})
 	}
@@ -170,18 +172,18 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	}
 	artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
 
-	if err := buildAll(ctx, "transit", artifacts); err != nil {
+	if err := buildAll(ctx, artifacts); err != nil {
 		return nil, err
 	}
 
-	hashStart := time.Now()
+	hashCtx, hashSpan := startStep(ctx, "content-hash")
+	defer hashSpan.End()
 	for _, artifact := range artifacts {
-		output, err = artifact.AddTo(ctx, output)
+		output, err = artifact.AddTo(hashCtx, output)
 		if err != nil {
 			return nil, err
 		}
 	}
-	recordTiming("transit/content-hash", hashStart)
 	return output, nil
 }
 

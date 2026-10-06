@@ -120,20 +120,19 @@ func buildDate() string {
 	return time.Now().UTC().Format("2006-01-02")
 }
 
-// build the artifacts concurrently. The group's own wall time is recorded under
-// prefix, and each artifact below it - those overlap, so they explain
-// where the group's time went without adding up to it.
-func buildAll(ctx context.Context, prefix string, artifacts []*Artifact) error {
-	artifactsLabel := join("/", prefix, artifactsTimingStep)
-	defer recordTiming(artifactsLabel, time.Now())
+// build the artifacts concurrently. Each artifact's span sits below the
+// group's - those overlap, so they explain where the group's time went without
+// adding up to it.
+func buildAll(ctx context.Context, artifacts []*Artifact) error {
+	ctx, span := startStep(ctx, "building artifacts")
+	defer span.End()
 
 	group, groupCtx := errgroup.WithContext(ctx)
 	for _, artifact := range artifacts {
 		group.Go(func() error {
-			start := time.Now()
-			err := artifact.build(groupCtx)
-			recordTiming(join("/", artifactsLabel, artifact.timingLabel()), start)
-			return err
+			ctx, span := startStep(groupCtx, artifact.stepName())
+			defer span.End()
+			return artifact.build(ctx)
 		})
 	}
 	return group.Wait()
@@ -333,35 +332,35 @@ func (h *Headway) buildAllExceptTransit(ctx context.Context) (*dagger.Directory,
 	// Each of these does some of its work eagerly - pulling an image, resolving
 	// a commit, generating config - before the artifact it describes is ever
 	// built, so time them apart from the build itself.
-	start := time.Now()
-	pmtiles, err := h.Pmtiles(ctx, "mvt")
+	stepCtx, span := startStep(ctx, "pmtiles-prepare")
+	pmtiles, err := h.Pmtiles(stepCtx, "mvt")
+	span.End()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
 	}
-	recordTiming("pmtiles-prepare", start)
 
-	start = time.Now()
-	terrain, err := h.TileserverTerrain(ctx)
+	stepCtx, span = startStep(ctx, "terrain-prepare")
+	terrain, err := h.TileserverTerrain(stepCtx)
+	span.End()
 	if err != nil {
 		return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
 	}
-	recordTiming("terrain-prepare", start)
 
-	start = time.Now()
-	valhalla := h.ValhallaTiles(ctx)
-	recordTiming("valhalla-prepare", start)
+	stepCtx, span = startStep(ctx, "valhalla-prepare")
+	valhalla := h.ValhallaTiles(stepCtx)
+	span.End()
 
-	start = time.Now()
-	pelias := h.Pelias(ctx)
-	recordTiming("pelias-config", start)
+	stepCtx, span = startStep(ctx, "pelias-config")
+	pelias := h.Pelias(stepCtx)
+	span.End()
 
-	start = time.Now()
-	elasticSearch := pelias.ElasticsearchData(ctx)
-	recordTiming("elasticsearch-prepare", start)
+	stepCtx, span = startStep(ctx, "elasticsearch-prepare")
+	elasticSearch := pelias.ElasticsearchData(stepCtx)
+	span.End()
 
-	start = time.Now()
-	placeholder := pelias.PreparePlaceholder(ctx)
-	recordTiming("placeholder-prepare", start)
+	stepCtx, span = startStep(ctx, "placeholder-prepare")
+	placeholder := pelias.PreparePlaceholder(stepCtx)
+	span.End()
 
 	artifacts := []*Artifact{
 		FileArtifact(h.Area, "osm.pbf", h.OSMExport.File),
@@ -373,19 +372,19 @@ func (h *Headway) buildAllExceptTransit(ctx context.Context) (*dagger.Directory,
 		FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")),
 	}
 
-	if err := buildAll(ctx, "", artifacts); err != nil {
+	if err := buildAll(ctx, artifacts); err != nil {
 		return nil, err
 	}
 
-	hashStart := time.Now()
+	hashCtx, span := startStep(ctx, "content-hash")
+	defer span.End()
 	output := dag.Directory()
 	for _, artifact := range artifacts {
-		output, err = artifact.AddTo(ctx, output)
+		output, err = artifact.AddTo(hashCtx, output)
 		if err != nil {
 			return nil, err
 		}
 	}
-	recordTiming("content-hash", hashStart)
 
 	// Not content addressed: the deploy scripts read this back by name.
 	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
@@ -852,12 +851,16 @@ const (
 	cargoTargetVolume   = "cargo-target"
 )
 
+// The cargo volumes' mount. The sharing mode is part of a volume's identity, so
+// every mount of them must agree on it.
+var lockedCache = dagger.ContainerWithMountedCacheOpts{Sharing: dagger.CacheSharingModeLocked}
+
 func rustCachesContainer() *dagger.Container {
 	container := slimContainer().
 		// The volumes' contents aren't part of the cache key, so always rerun.
 		WithEnvVariable("CACHE_BUSTER", time.Now().String())
 	for _, volume := range []string{cargoRegistryVolume, cargoTargetVolume} {
-		container = container.WithMountedCache("/caches/"+volume, dag.CacheVolume(volume))
+		container = container.WithMountedCache("/caches/"+volume, dag.CacheVolume(volume), lockedCache)
 	}
 	return container
 }
@@ -883,11 +886,13 @@ func (h *Headway) ImportRustCaches(ctx context.Context, caches *dagger.Directory
 	return err
 }
 
-// rustBuildContainer shares cargo's downloads and build output between all Rust builds, so rebuilds are incremental.
+// rustBuildContainer shares cargo's downloads and build output between all Rust
+// builds, so rebuilds are incremental. They take turns with them, since cargo
+// builds running at once collide in them.
 func rustBuildContainer() *dagger.Container {
 	return dag.Container().From("rust:bookworm").
-		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume(cargoRegistryVolume)).
-		WithMountedCache(cargoTargetDir, dag.CacheVolume(cargoTargetVolume)).
+		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume(cargoRegistryVolume), lockedCache).
+		WithMountedCache(cargoTargetDir, dag.CacheVolume(cargoTargetVolume), lockedCache).
 		WithEnvVariable("CARGO_TARGET_DIR", cargoTargetDir)
 }
 
