@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: opentripplanner-los-angeles-maps-earth-planet-v1-260817-0-13-0-2026-10-02-70be3bcb
+  name: opentripplanner-portland-maps-earth-planet-v1-260817-0-13-0-2026-10-02-942b9999
   labels:
     app.kubernetes.io/part-of: headway
 spec:

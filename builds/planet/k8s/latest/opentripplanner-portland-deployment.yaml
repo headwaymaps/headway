@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opentripplanner-sf-bay-area
+  name: opentripplanner-portland
 spec:
   selector:
     matchLabels:
-      app: opentripplanner-sf-bay-area
+      app: opentripplanner-portland
   replicas: 1
   template:
     metadata:
       labels:
-        app: opentripplanner-sf-bay-area
+        app: opentripplanner-portland
       annotations:
         # Roll the pod if the zone file changes
-        headway/zone-checksum: "7d1accc94de6"
+        headway/zone-checksum: "f207be2bdf29"
     spec:
       initContainers:
         - name: init
@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-10-02-3d00a58b.obj.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-portland-graph-2026-10-02-46a5a972.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -72,11 +72,11 @@ spec:
       volumes:
         - name: zone
           configMap:
-            name: otp-sf-bay-area-zone
+            name: otp-portland-zone
         - name: gtfs-secrets
           secret:
-            secretName: otp-sf-bay-area-gtfs-secrets
+            secretName: otp-portland-gtfs-secrets
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-sf-bay-area-maps-earth-planet-v1-260817-0-13-0-2026-10-02-f19bde5f
+            claimName: opentripplanner-portland-maps-earth-planet-v1-260817-0-13-0-2026-10-02-942b9999

@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-09-30-d19563df.obj.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-10-02-c4c66b8d.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -79,4 +79,4 @@ spec:
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260817-0-13-0-2026-09-30-d391d5e6
+            claimName: opentripplanner-puget-sound-maps-earth-planet-v1-260817-0-13-0-2026-10-02-8aee7168

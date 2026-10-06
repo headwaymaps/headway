@@ -1,16 +1,18 @@
 {
   "elasticsearch": "maps-earth-planet-v1.260817-elasticsearch-2026-08-29-96075fd7.tar.zst",
-  "elevation": "transit/maps-earth-planet-v1.260817-elevation-tifs-2026-09-30-c52502e8.tar.zst",
+  "elevation": "transit/maps-earth-planet-v1.260817-elevation-tifs-2026-10-02-a85889a0.tar.zst",
   "gtfs": {
-    "los-angeles": "transit/maps-earth-planet-v1.260817-los-angeles-gtfs-2026-09-30-d22a670e.tar.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.260817-puget-sound-gtfs-2026-09-30-d7159bb9.tar.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.260817-sf-bay-area-gtfs-2026-09-30-01c2b07c.tar.zst"
+    "los-angeles": "transit/maps-earth-planet-v1.260817-los-angeles-gtfs-2026-10-02-4a183d09.tar.zst",
+    "portland": "transit/maps-earth-planet-v1.260817-portland-gtfs-2026-10-02-12508e30.tar.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.260817-puget-sound-gtfs-2026-10-02-3f0f6379.tar.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.260817-sf-bay-area-gtfs-2026-10-02-e6d2d6b4.tar.zst"
   },
   "osm": "maps-earth-planet-v1.260817-2026-08-29-3b5bac88.osm.pbf",
   "otp-graphs": {
-    "los-angeles": "transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-09-30-70c26404.obj.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-09-30-d19563df.obj.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-09-30-45b609db.obj.zst"
+    "los-angeles": "transit/maps-earth-planet-v1.260817-los-angeles-graph-2026-10-02-0413a198.obj.zst",
+    "portland": "transit/maps-earth-planet-v1.260817-portland-graph-2026-10-02-46a5a972.obj.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.260817-puget-sound-graph-2026-10-02-c4c66b8d.obj.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.260817-sf-bay-area-graph-2026-10-02-3d00a58b.obj.zst"
   },
   "placeholder": "maps-earth-planet-v1.260817-placeholder-2026-08-29-a99a13ee.tar.zst",
   "pmtiles": "maps-earth-planet-v1.260817-2026-08-29-d8d2e890.pmtiles",
