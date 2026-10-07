@@ -170,6 +170,27 @@ export interface TravelmuxTrack {
 export interface NonTransitLeg {
   maneuvers: [TravelmuxManeuver];
   substantialStreetNames?: string[];
+  /// Only for legs OTP planned.
+  elevation?: LegElevation;
+}
+
+export interface LegElevation {
+  /// `[meters along the leg, meters above sea level]`
+  profile: [number, number][];
+  totalClimbMeters: number;
+  totalFallMeters: number;
+  steepSections: SteepSection[];
+}
+
+export interface SteepSection {
+  startMeters: number;
+  endMeters: number;
+  /// Rise over run: positive climbs, negative descends.
+  averageGrade: number;
+  maxGrade: number;
+  streetName?: string;
+  /// encoded polyline, 1e-6 scale
+  geometry: string;
 }
 
 export interface TravelmuxManeuver {
@@ -269,6 +290,32 @@ export class TravelmuxClient {
       );
       return Err(error);
     }
+  }
+
+  /// OTP sends the leg's elevation along with it; for anything else we look it up.
+  public static async legElevation(
+    leg: TravelmuxLeg,
+  ): Promise<Result<LegElevation, Error>> {
+    const elevation = leg.nonTransitLeg?.elevation;
+    if (elevation) {
+      return Ok(elevation);
+    }
+    const result = await TravelmuxClient.fetchElevation(leg.geometry);
+    if (!result.ok) {
+      return result;
+    }
+    const {
+      elevation: elevations,
+      totalClimbMeters,
+      totalFallMeters,
+    } = result.value;
+    return Ok({
+      // Only the shape of the profile matters to the chart, not the true distance between samples.
+      profile: elevations.map((elevation, i) => [i, elevation]),
+      totalClimbMeters,
+      totalFallMeters,
+      steepSections: [],
+    });
   }
 
   /// Where the vehicles near each requested pattern's boarding stop are right now.

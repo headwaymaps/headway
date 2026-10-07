@@ -17,13 +17,21 @@
       </q-badge>
     </div>
     <elevation-chart
-      v-if="(isBicycle || isWalking) && elevationData.length > 0"
-      :elevations="elevationData"
-      :total-climb-meters="totalClimbMeters"
-      :total-fall-meters="totalFallMeters"
-      :distance-units="trip.preferredDistanceUnits"
+      v-if="elevation"
+      v-model:scrub-fraction="scrubFraction"
+      :profile="elevation.profile"
+      :steep-sections="elevation.steepSections"
       :width="280"
       :height="60"
+      :interactive="active"
+      @select-steep-section="selectSteepClimb"
+    />
+    <elevation-totals
+      v-if="elevation"
+      class="chart-totals"
+      :climb-meters="elevation.totalClimbMeters"
+      :fall-meters="elevation.totalFallMeters"
+      :distance-units="trip.preferredDistanceUnits"
     />
   </div>
 </template>
@@ -31,61 +39,30 @@
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
 import Trip from 'src/models/Trip';
-import { TravelmuxClient, TravelmuxMode } from 'src/services/TravelmuxClient';
 import ElevationChart from './ElevationChart.vue';
+import ElevationTotals from './ElevationTotals.vue';
+import { useLegElevation } from 'src/composables/useLegElevation';
 
 export default defineComponent({
   name: 'SingleModeListItem',
   components: {
     ElevationChart,
+    ElevationTotals,
   },
   props: {
     trip: {
       type: Object as PropType<Trip>,
       required: true,
     },
-    // SingleModalListItem actually doesn't use this, but MultiModalListItem needs it, so
-    // we have to include it here to avoid an "unexpected property" warning.
-    // This feels gross, but hopefully I can find a better way.
     active: Boolean,
   },
-  data(): {
-    elevationData: number[];
-    totalClimbMeters: number;
-    totalFallMeters: number;
-  } {
-    return {
-      elevationData: [],
-      totalClimbMeters: 0,
-      totalFallMeters: 0,
-    };
+  setup(props) {
+    return useLegElevation(props.trip.legs[0]!);
   },
-  computed: {
-    isBicycle(): boolean {
-      return this.trip.legs[0]?.raw.mode === TravelmuxMode.Bike;
-    },
-    isWalking(): boolean {
-      return this.trip.legs[0]?.raw.mode === TravelmuxMode.Walk;
-    },
-  },
-  mounted() {
-    if (this.isBicycle || this.isWalking) {
-      this.fetchElevationData();
-    }
-  },
-  methods: {
-    async fetchElevationData() {
-      if (!this.trip.legs[0]) return;
-
-      const pathGeometry = this.trip.legs[0].raw.geometry;
-      const result = await TravelmuxClient.fetchElevation(pathGeometry);
-
-      if (result.ok) {
-        this.elevationData = result.value.elevation;
-        this.totalClimbMeters = result.value.totalClimbMeters;
-        this.totalFallMeters = result.value.totalFallMeters;
-      } else {
-        console.error('Failed to fetch elevation data:', result.error);
+  watch: {
+    active(isActive: boolean) {
+      if (!isActive) {
+        this.scrubFraction = null;
       }
     },
   },
@@ -93,6 +70,13 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+.chart-totals {
+  display: flex;
+  // tucked up against the chart, past its padding and margin
+  margin-top: -16px;
+  margin-bottom: 4px;
+}
+
 .route-preferences {
   display: flex;
   gap: 4px;

@@ -37,7 +37,7 @@ import MultiModalSteps from 'src/components/MultiModalSteps.vue';
 import SearchBox from 'src/components/SearchBox.vue';
 import TripLayerId from 'src/models/TripLayerId';
 import VehicleOverlay from 'src/models/VehicleOverlay';
-import Markers from 'src/utils/Markers';
+import Markers, { showSteepClimbBadges } from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery from 'src/models/TransitQuery';
 
@@ -133,6 +133,7 @@ export default defineComponent({
   },
   unmounted: function () {
     this.stopVehicleOverlay();
+    showSteepClimbBadges([]);
   },
   methods: {
     componentForMode(mode: TravelMode): Component {
@@ -246,7 +247,23 @@ export default defineComponent({
         layerIds.push(layerId);
 
         if (!map.hasLayer(layerId)) {
-          map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(true));
+          map.pushTripLayer(
+            layerId,
+            leg.selectedGeometry(),
+            leg.paintStyle(true),
+          );
+        }
+
+        for (const steep of leg.steepSectionLayers()) {
+          const steepLayerId = TripLayerId.legSteep(
+            tripIdx,
+            legIdx,
+            steep.shade,
+          );
+          layerIds.push(steepLayerId);
+          if (!map.hasLayer(steepLayerId)) {
+            map.pushTripLayer(steepLayerId, steep.geometry, steep.paint);
+          }
         }
 
         // Pushed after both lines, so the dots sit on top of them.
@@ -311,6 +328,12 @@ export default defineComponent({
         }
       }
       map.removeLayersExcept(layerIds);
+
+      for (const key of showSteepClimbBadges(trip.legs)) {
+        if (!this.tripMarkers.includes(key)) {
+          this.tripMarkers.push(key);
+        }
+      }
     },
   },
 });

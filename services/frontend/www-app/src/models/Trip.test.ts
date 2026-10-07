@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import Trip from './Trip';
+import { LngLat } from 'maplibre-gl';
+import Trip, { TripLeg } from './Trip';
 import {
   TransitAlert,
   TransitVehicleMode,
@@ -7,7 +8,7 @@ import {
   TravelmuxLeg,
   TravelmuxMode,
 } from 'src/services/TravelmuxClient';
-import { DistanceUnits } from 'src/utils/models';
+import { DistanceUnits, TravelMode } from 'src/utils/models';
 
 function leg(mode: TravelmuxMode, distanceMeters: number): TravelmuxLeg {
   const transit = mode === TravelmuxMode.Transit;
@@ -173,5 +174,93 @@ describe('alertGroups', () => {
     const t = trip([leg(TravelmuxMode.Walk, 100)]);
     expect(t.hasAlerts).toBe(false);
     expect(t.alertGroups).toEqual([]);
+  });
+});
+
+describe('TripLeg.pointAlong', () => {
+  // An L: 1km east along the equator, then a much shorter hop north.
+  const lShaped = new TripLeg(leg(TravelmuxMode.Bike, 0), TravelMode.Bike);
+  lShaped.geometry = {
+    type: 'LineString',
+    coordinates: [
+      [0, 0],
+      [0.009, 0],
+      [0.009, 0.0009],
+    ],
+  };
+
+  test('ends', () => {
+    expect(lShaped.pointAlong(0).toArray()).toEqual([0, 0]);
+    expect(lShaped.pointAlong(1).toArray()).toEqual([0.009, 0.0009]);
+  });
+
+  test('measures by distance, not by vertex', () => {
+    // halfway is well within the long first segment
+    const halfway = lShaped.pointAlong(0.5);
+    expect(halfway.lat).toBe(0);
+    expect(halfway.lng).toBeCloseTo(0.009 * (1.1 / 2), 5);
+  });
+
+  test('fractionNearest undoes pointAlong', () => {
+    for (const fraction of [0, 0.3, 0.95, 1]) {
+      const point = lShaped.pointAlong(fraction);
+      expect(lShaped.fractionNearest(point)).toBeCloseTo(fraction, 5);
+    }
+  });
+
+  test('fractionNearest snaps a point off the line onto it', () => {
+    // just south of the midpoint of the long first segment
+    const offLine = new LngLat(0.0045, -0.0005);
+    expect(lShaped.fractionNearest(offLine)).toBeCloseTo(0.5 / 1.1, 3);
+  });
+});
+
+describe('TripLeg.selectedGeometry', () => {
+  // 1km east along the equator, steep from 400m to 600m
+  function walk(tripMode: TravelMode): TripLeg {
+    const raw = leg(TravelmuxMode.Walk, 1000);
+    raw.nonTransitLeg!.elevation = {
+      profile: [],
+      totalClimbMeters: 20,
+      totalFallMeters: 0,
+      steepSections: [
+        {
+          startMeters: 400,
+          endMeters: 600,
+          averageGrade: 0.1,
+          maxGrade: 0.1,
+          geometry: '',
+        },
+      ],
+    };
+    const walk = new TripLeg(raw, tripMode);
+    walk.geometry = {
+      type: 'LineString',
+      coordinates: [
+        [0, 0],
+        [0.009, 0],
+      ],
+    };
+    return walk;
+  }
+
+  test('a walk of its own is drawn whole, under its steep stretches', () => {
+    const solo = walk(TravelMode.Walk);
+    expect(solo.isDotted).toBe(false);
+    expect(solo.selectedGeometry()).toBe(solo.geometry);
+  });
+
+  test('a walk to transit leaves out its steep stretches', () => {
+    const toTransit = walk(TravelMode.Transit);
+    expect(toTransit.isDotted).toBe(true);
+    const geometry = toTransit.selectedGeometry() as GeoJSON.MultiLineString;
+    const lngs = geometry.coordinates.map((piece) => piece.map(([lng]) => lng));
+    // the leg runs about 1000m east
+    const metersPerDegree = 1000 / 0.009;
+    expect(lngs.length).toBe(2);
+    expect(lngs[0]![0]).toBe(0);
+    expect(lngs[1]![1]).toBe(0.009);
+    expect(lngs[0]![1]! * metersPerDegree).toBeCloseTo(400, -1);
+    expect(lngs[1]![0]! * metersPerDegree).toBeCloseTo(600, -1);
   });
 });

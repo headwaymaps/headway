@@ -19,6 +19,12 @@ import {
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { decodePolyline } from 'src/utils/decodePolyline';
+import {
+  FLAT_GRADE_COLOR,
+  GradeShade,
+  gradeShade,
+  gradeShadeColor,
+} from 'src/utils/grade';
 import { i18n } from 'src/i18n/lang';
 
 /// The emoji standing in for a kind of transit vehicle.
@@ -51,7 +57,9 @@ export default class Trip {
   constructor(raw: TravelmuxItinerary, preferredDistanceUnits: DistanceUnits) {
     this.raw = raw;
     this.preferredDistanceUnits = preferredDistanceUnits;
-    this.legs = raw.legs.map((raw: TravelmuxLeg) => new TripLeg(raw));
+    this.legs = raw.legs.map(
+      (raw: TravelmuxLeg) => new TripLeg(raw, this.mode),
+    );
   }
 
   get durationFormatted(): string {
@@ -211,6 +219,12 @@ export interface TripLegContextLayer {
   paint: LineLayerSpecification['paint'];
 }
 
+export interface TripLegSteepLayer {
+  shade: GradeShade;
+  geometry: GeoJSON.MultiLineString;
+  paint: LineLayerSpecification['paint'];
+}
+
 export interface TripLegStopsLayer {
   geometry: GeoJSON.MultiPoint;
   paint: CircleLayerSpecification['paint'];
@@ -218,6 +232,8 @@ export interface TripLegStopsLayer {
 
 export class TripLeg {
   readonly raw: TravelmuxLeg;
+  /// The mode of the whole trip this leg is part of.
+  readonly tripMode: TravelMode;
   geometry: GeoJSON.LineString;
   /// The whole route this leg rides part of, for transit legs the server has a shape for.
   patternGeometry?: GeoJSON.LineString;
@@ -228,8 +244,9 @@ export class TripLeg {
   /// The stops where the rider boards and alights, drawn onto the route.
   onOffStops?: GeoJSON.MultiPoint;
 
-  constructor(raw: TravelmuxLeg) {
+  constructor(raw: TravelmuxLeg, tripMode: TravelMode) {
     this.raw = raw;
+    this.tripMode = tripMode;
     const points = decodePolyline(this.raw.geometry, 6);
     this.geometry = {
       type: 'LineString',
@@ -270,6 +287,79 @@ export class TripLeg {
   get start(): LngLat {
     const lngLat = this.geometry.coordinates[0]!;
     return new LngLat(lngLat[0]!, lngLat[1]!);
+  }
+
+  /// Each straight piece of the leg, with how far along the leg it starts.
+  private segments(): {
+    from: LngLat;
+    to: LngLat;
+    start: number;
+    length: number;
+  }[] {
+    const points = this.geometry.coordinates.map(
+      ([lng, lat]) => new LngLat(lng!, lat!),
+    );
+    let start = 0;
+    return points.slice(0, -1).map((from, idx) => {
+      const to = points[idx + 1]!;
+      const length = from.distanceTo(to);
+      const segment = { from, to, start, length };
+      start += length;
+      return segment;
+    });
+  }
+
+  private static between(from: LngLat, to: LngLat, t: number): LngLat {
+    return new LngLat(
+      from.lng + t * (to.lng - from.lng),
+      from.lat + t * (to.lat - from.lat),
+    );
+  }
+
+  /// The point `fraction` of the way along the leg, by distance.
+  pointAlong(fraction: number): LngLat {
+    const segments = this.segments();
+    const last = segments[segments.length - 1];
+    if (!last) {
+      return this.start;
+    }
+    const target = fraction * (last.start + last.length);
+    const { from, to, start, length } =
+      segments.find((segment) => target <= segment.start + segment.length) ??
+      last;
+    const t = length === 0 ? 0 : Math.min((target - start) / length, 1);
+    return TripLeg.between(from, to, t);
+  }
+
+  /// How far along the leg, as a fraction, its nearest point to `target` is.
+  fractionNearest(target: LngLat): number {
+    // Flat enough at the scale of a leg to project in degrees, once longitude is squeezed to match.
+    const lngScale = Math.cos((target.lat * Math.PI) / 180);
+    let total = 0;
+    let nearest = { meters: 0, distance: Infinity };
+    for (const { from, to, start, length } of this.segments()) {
+      const dx = (to.lng - from.lng) * lngScale;
+      const dy = to.lat - from.lat;
+      const lengthSquared = dx * dx + dy * dy;
+      const t =
+        lengthSquared === 0
+          ? 0
+          : Math.min(
+              Math.max(
+                ((target.lng - from.lng) * lngScale * dx +
+                  (target.lat - from.lat) * dy) /
+                  lengthSquared,
+                0,
+              ),
+              1,
+            );
+      const distance = TripLeg.between(from, to, t).distanceTo(target);
+      if (distance < nearest.distance) {
+        nearest = { meters: start + t * length, distance };
+      }
+      total = start + length;
+    }
+    return total === 0 ? 0 : nearest.meters / total;
   }
 
   get mode(): TravelMode {
@@ -359,6 +449,80 @@ export class TripLeg {
     return { geometry, paint: LineStyles.context(this.routeColor) };
   }
 
+  /// Steep stretches of a walking or cycling leg, one layer per shade.
+  steepSectionLayers(): TripLegSteepLayer[] {
+    const sections = this.raw.nonTransitLeg?.elevation?.steepSections ?? [];
+    const byShade = new Map<GradeShade, GeoJSON.Position[][]>();
+    for (const section of sections) {
+      const shade = gradeShade(section.averageGrade);
+      const lines = byShade.get(shade) ?? [];
+      lines.push(decodePolyline(section.geometry, 6));
+      byShade.set(shade, lines);
+    }
+    return [...byShade].map(([shade, coordinates]) => ({
+      shade,
+      geometry: { type: 'MultiLineString', coordinates },
+      paint: this.gradedPaint(LineStyles.gradedActive(gradeShadeColor(shade))),
+    }));
+  }
+
+  /// Walking or cycling to and from transit is dotted, so it doesn't read as the ride itself.
+  get isDotted(): boolean {
+    return (
+      this.tripMode === TravelMode.Transit &&
+      (this.mode === TravelMode.Walk || this.mode === TravelMode.Bike)
+    );
+  }
+
+  /// The selected line, leaving room for the steep stretches when dotted, since dots drawn over
+  /// dots don't line up.
+  selectedGeometry(): GeoJSON.LineString | GeoJSON.MultiLineString {
+    if (!this.isDotted) {
+      return this.geometry;
+    }
+    const sections = [
+      ...(this.raw.nonTransitLeg?.elevation?.steepSections ?? []),
+    ].sort((a, b) => a.startMeters - b.startMeters);
+    const pieces: GeoJSON.Position[][] = [];
+    let from = 0;
+    for (const section of sections) {
+      pieces.push(this.slice(from, section.startMeters));
+      from = section.endMeters;
+    }
+    pieces.push(this.slice(from, Infinity));
+    return {
+      type: 'MultiLineString',
+      coordinates: pieces.filter((piece) => piece.length >= 2),
+    };
+  }
+
+  /// The stretch of the leg from `startMeters` to `endMeters` along it.
+  private slice(startMeters: number, endMeters: number): GeoJSON.Position[] {
+    const piece: LngLat[] = [];
+    for (const { from, to, start, length } of this.segments()) {
+      const end = start + length;
+      if (end < startMeters) {
+        continue;
+      }
+      if (start > endMeters) {
+        break;
+      }
+      const at = (meters: number) =>
+        TripLeg.between(from, to, length === 0 ? 0 : (meters - start) / length);
+      if (piece.length === 0) {
+        piece.push(at(Math.max(startMeters, start)));
+      }
+      piece.push(at(Math.min(endMeters, end)));
+    }
+    return piece.map((point) => point.toArray());
+  }
+
+  private gradedPaint(
+    paint: LineLayerSpecification['paint'],
+  ): LineLayerSpecification['paint'] {
+    return this.isDotted ? LineStyles.dotted(paint) : paint;
+  }
+
   /// A dot at each of the route's stops, so the rider can count what's between a vehicle and
   /// their own stop. Absent for a leg the server gave no stops for.
   riddenStopsLayer(): TripLegStopsLayer | undefined {
@@ -394,18 +558,17 @@ export class TripLeg {
   }
 
   paintStyle(active: boolean): LineLayerSpecification['paint'] {
+    if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
+      return this.gradedPaint(
+        active
+          ? LineStyles.gradedActive(FLAT_GRADE_COLOR)
+          : LineStyles.gradedInactive,
+      );
+    }
     if (active) {
-      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
-        return LineStyles.walkingActive;
-      } else {
-        return LineStyles.activeColored(this.routeColor);
-      }
+      return LineStyles.activeColored(this.routeColor);
     } else {
-      if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
-        return LineStyles.walkingInactive;
-      } else {
-        return LineStyles.inactive;
-      }
+      return LineStyles.inactive;
     }
   }
 }
@@ -541,14 +704,21 @@ export const LineStyles = {
     'line-color': '#6FC1EE',
     'line-width': 4,
   },
-  walkingActive: {
-    'line-color': '#1296FF',
-    'line-dasharray': [0, 1.5],
-    'line-width': 6,
+  /// A walking or cycling leg's line, or one of its steep stretches, in `color`.
+  gradedActive(color: string): LineLayerSpecification['paint'] {
+    return {
+      'line-color': color,
+      'line-width': 6,
+    };
   },
-  walkingInactive: {
-    'line-color': '#6FC1EE',
-    'line-dasharray': [0, 1.5],
+  gradedInactive: {
+    'line-color': FLAT_GRADE_COLOR,
+    'line-opacity': 0.5,
     'line-width': 4,
+  },
+  dotted(
+    paint: LineLayerSpecification['paint'],
+  ): LineLayerSpecification['paint'] {
+    return { ...paint, 'line-dasharray': [0, 1.5] };
   },
 };

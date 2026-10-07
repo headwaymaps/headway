@@ -74,7 +74,8 @@ import Trip, {
 import TripLayerId from 'src/models/TripLayerId';
 import VehicleOverlay from 'src/models/VehicleOverlay';
 import Prefs from 'src/utils/Prefs';
-import Markers from 'src/utils/Markers';
+import { GradeShades } from 'src/utils/grade';
+import Markers, { showSteepClimbBadges } from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 import { LngLat } from 'maplibre-gl';
@@ -137,6 +138,7 @@ export default defineComponent({
   },
   unmounted: function () {
     this.stopVehicleOverlay();
+    showSteepClimbBadges([]);
   },
   mounted: async function () {
     if (this.to != '_') {
@@ -331,6 +333,7 @@ export default defineComponent({
       }
       this.$data.trips = trips;
       this.activeTrip = selectedTrip;
+      showSteepClimbBadges(selectedTrip.legs);
 
       for (let tripIdx = 0; tripIdx < trips.length; tripIdx++) {
         const trip = trips[tripIdx]!;
@@ -349,6 +352,13 @@ export default defineComponent({
 
           if (map.hasLayer(TripLayerId.legContext(tripIdx, legIdx))) {
             map.removeLayer(TripLayerId.legContext(tripIdx, legIdx));
+          }
+
+          for (const shade of GradeShades) {
+            const steepLayerId = TripLayerId.legSteep(tripIdx, legIdx, shade);
+            if (map.hasLayer(steepLayerId)) {
+              map.removeLayer(steepLayerId);
+            }
           }
 
           if (map.hasLayer(TripLayerId.legRiddenStops(tripIdx, legIdx))) {
@@ -413,9 +423,19 @@ export default defineComponent({
         if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
           map.pushTripLayer(
             TripLayerId.selectedLeg(selectedIdx, legIdx),
-            leg.geometry,
+            leg.selectedGeometry(),
             leg.paintStyle(true),
           );
+        }
+        for (const steep of leg.steepSectionLayers()) {
+          const steepLayerId = TripLayerId.legSteep(
+            selectedIdx,
+            legIdx,
+            steep.shade,
+          );
+          if (!map.hasLayer(steepLayerId)) {
+            map.pushTripLayer(steepLayerId, steep.geometry, steep.paint);
+          }
         }
         // Pushed after both lines, so the dots sit on top of them.
         const contextStops = leg.contextStopsLayer();

@@ -64,6 +64,13 @@ export default {
   punctuation_route_preference_seperator: ' · ',
   route_preference_quieter: 'Comfier',
   route_preference_faster: 'Faster',
+  steep_section_$length_$street_$steepest:
+    '{length} on {street}, steepest {steepest}',
+  steep_section_$length_$steepest: '{length}, steepest {steepest}',
+  elevation_climbs: 'Climbs:',
+  moderate_grade_$grade: '{grade} moderate grade',
+  steep_grade_$grade: '{grade} steep grade',
+  very_steep_grade_$grade: '{grade} very steep grade',
   shortened_distances: {
     kilometers: 'km',
     miles: 'mi',

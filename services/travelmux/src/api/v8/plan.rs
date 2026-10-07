@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use super::error::{PlanResponseErr, PlanResponseOk};
 use super::TravelModes;
 use crate::api::AppState;
+use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
 use crate::util::format::format_meters;
@@ -508,10 +509,14 @@ pub struct NonTransitLeg {
 
     /// The substantial road names along the route
     pub(crate) substantial_street_names: Vec<String>,
+
+    /// Only OTP gives us an elevation profile for the leg.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) elevation: Option<LegElevation>,
 }
 
 impl NonTransitLeg {
-    fn new(maneuvers: Vec<Maneuver>) -> Self {
+    fn new(maneuvers: Vec<Maneuver>, elevation: Option<LegElevation>) -> Self {
         let mut street_distances = HashMap::new();
         for maneuver in &maneuvers {
             if let Some(street_names) = &maneuver.street_names {
@@ -547,7 +552,92 @@ impl NonTransitLeg {
         Self {
             maneuvers,
             substantial_street_names,
+            elevation,
         }
+    }
+}
+
+/// How hilly a walking or cycling leg is.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LegElevation {
+    /// `[meters along the leg, meters above sea level]`, smoothed the same way the grades are.
+    profile: Vec<[f64; 2]>,
+    total_climb_meters: f64,
+    total_fall_meters: f64,
+    steep_sections: Vec<SteepSectionResponse>,
+}
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SteepSectionResponse {
+    start_meters: f64,
+    end_meters: f64,
+    /// Rise over run: positive climbs, negative descends.
+    average_grade: f64,
+    max_grade: f64,
+    /// The street the section is mostly on.
+    street_name: Option<String>,
+    /// encoded polyline. 1e-6 scale, (lat, lon)
+    #[serde(serialize_with = "serialize_line_string_as_polyline6")]
+    geometry: LineString,
+}
+
+impl LegElevation {
+    fn new(profile: ElevationProfile, leg_geometry: &LineString, maneuvers: &[Maneuver]) -> Self {
+        let (total_climb_meters, total_fall_meters) = profile.climb_and_fall();
+        let mut segmenter = HaversineSegmenter::new(leg_geometry.clone());
+        let mut segmented_to = 0.0;
+        let steep_sections = profile
+            .steep_sections()
+            .into_iter()
+            .map(|section| {
+                segmenter.next_segment(section.start_meters - segmented_to);
+                let geometry = segmenter
+                    .next_segment(section.end_meters - section.start_meters)
+                    .unwrap_or_else(|| LineString::new(vec![]));
+                segmented_to = section.end_meters;
+                SteepSectionResponse {
+                    street_name: Self::street_name(&section, maneuvers),
+                    start_meters: section.start_meters,
+                    end_meters: section.end_meters,
+                    average_grade: section.average_grade,
+                    max_grade: section.max_grade,
+                    geometry,
+                }
+            })
+            .collect();
+        Self {
+            profile: profile
+                .smoothed_points()
+                .map(|(distance, elevation)| [distance, (elevation * 10.0).round() / 10.0])
+                .collect(),
+            total_climb_meters,
+            total_fall_meters,
+            steep_sections,
+        }
+    }
+
+    /// The named street that overlaps `section` the most.
+    fn street_name(section: &SteepSection, maneuvers: &[Maneuver]) -> Option<String> {
+        let mut maneuver_start = 0.0;
+        let mut best: Option<(f64, &String)> = None;
+        for maneuver in maneuvers {
+            let maneuver_end = maneuver_start + maneuver.distance_meters;
+            let overlap =
+                maneuver_end.min(section.end_meters) - maneuver_start.max(section.start_meters);
+            if let Some(name) = maneuver
+                .street_names
+                .as_ref()
+                .and_then(|names| names.first())
+            {
+                if overlap > 0.0 && best.is_none_or(|(best_overlap, _)| overlap > best_overlap) {
+                    best = Some((overlap, name));
+                }
+            }
+            maneuver_start = maneuver_end;
+        }
+        best.map(|(_, name)| name.clone())
     }
 }
 
@@ -819,7 +909,9 @@ impl Leg {
                 });
             }
 
-            ModeLeg::NonTransit(Box::new(NonTransitLeg::new(maneuvers)))
+            let elevation = ElevationProfile::from_otp_steps(steps.iter().flatten())
+                .map(|profile| LegElevation::new(profile, &geometry, &maneuvers));
+            ModeLeg::NonTransit(Box::new(NonTransitLeg::new(maneuvers, elevation)))
         };
 
         Ok(Self {
@@ -864,7 +956,7 @@ impl Leg {
             maneuvers.push(maneuver);
         }
 
-        let leg = NonTransitLeg::new(maneuvers);
+        let leg = NonTransitLeg::new(maneuvers, None);
         Self {
             start_time,
             end_time: start_time + seconds(valhalla.summary.time),
