@@ -4682,18 +4682,6 @@
           "<=",
           ["length", ["coalesce", ["get", "route_1_ref"], ["get", "ref"]]],
           6
-        ],
-        [
-          "!=",
-          [
-            "coalesce",
-            [
-              "get",
-              "subclass"
-            ],
-            ""
-          ],
-          "junction"
         ]
       ],
       "layout": {
@@ -5806,70 +5794,6 @@
           1,
           0
         ]
-      }
-    },
-    {
-      "id": "road_exit_shield",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation_name",
-      "minzoom": 13,
-      "filter": [
-        "all",
-        [
-          "has",
-          "ref_length"
-        ],
-        [
-          "<=",
-          [
-            "get",
-            "ref_length"
-          ],
-          6
-        ],
-        [
-          "==",
-          [
-            "coalesce",
-            [
-              "get",
-              "subclass"
-            ],
-            ""
-          ],
-          "junction"
-        ]
-      ],
-      "layout": {
-        "icon-image": [
-          "concat",
-          "default_",
-          [
-            "to-string",
-            [
-              "get",
-              "ref_length"
-            ]
-          ]
-        ],
-        "icon-rotation-alignment": "viewport",
-        "symbol-placement": "point",
-        "symbol-spacing": 500,
-        "text-field": "{ref}",
-        "text-font": [
-          "Overpass Bold"
-        ],
-        "text-offset": [
-          0,
-          0.1
-        ],
-        "text-rotation-alignment": "viewport",
-        "text-size": 8.5,
-        "icon-size": 0.68
-      },
-      "paint": {
-        "text-color": "#000000"
       }
     },
     {
