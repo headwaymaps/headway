@@ -14,9 +14,10 @@ fi
 
 mkdir "$TIF_DIR"
 
-find "$HGT_DIR" -type f | while read -r file; do
-    gunzip "$file"
-    BASENAME=$(basename "$file")
-    TIF_NAME="${BASENAME%.*.*}.tif"
-    gdal_translate "${file%.*}" "${TIF_DIR}/${TIF_NAME}"
+# Read each tile straight out of its gzip, and write it compressed: with a predictor, elevation
+# compresses about 4x, and travelmux and OTP both read it.
+find "$HGT_DIR" -type f -name '*.hgt.gz' | while read -r file; do
+    TIF_NAME="$(basename "$file" .hgt.gz).tif"
+    gdal_translate -co COMPRESS=DEFLATE -co PREDICTOR=2 -co TILED=YES \
+        "/vsigzip/${file}" "${TIF_DIR}/${TIF_NAME}"
 done

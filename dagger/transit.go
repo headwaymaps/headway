@@ -345,6 +345,22 @@ func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {
 	return elevations(ctx, bbox, t.Headway)
 }
 
+// The zone's elevation tiles as a single GeoTIFF.
+//
+// OTP runs one elevation pass per DEM file, and each pass ends by filling the streets it found no
+// elevation for from known values within 2 km, including OSM `ele` tags on street nodes. Given
+// several tiles, a pass for a tile that doesn't cover a street can fill it from a nearby `ele` tag,
+// and the pass for the tile that does cover it then skips it as already set.
+func (t *TransitZone) MergedElevation(ctx context.Context) *dagger.File {
+	return slimContainer("gdal-bin").
+		WithMountedDirectory("/elevation-tifs", t.Elevations(ctx)).
+		WithExec([]string{"sh", "-c", "gdalbuildvrt /elevation.vrt /elevation-tifs/*.tif"}).
+		// PREDICTOR=2 stores each sample as a difference from its neighbor, which compresses
+		// smooth terrain about 30% smaller than DEFLATE alone.
+		WithExec([]string{"gdal_translate", "-co", "COMPRESS=DEFLATE", "-co", "PREDICTOR=2", "-co", "TILED=YES", "-co", "BIGTIFF=IF_SAFER", "/elevation.vrt", "/elevation.tif"}).
+		File("/elevation.tif")
+}
+
 func otpBaseContainer(ctx context.Context) *dagger.Container {
 	return dag.Container().
 		From("opentripplanner/opentripplanner:2.10.0")
@@ -384,7 +400,7 @@ func (t *TransitZone) otpGraph(ctx context.Context, osmExport *OSMExport) *dagge
 	container := otpBaseContainer(ctx).
 		WithWorkdir("/var/opentripplanner").
 		WithDirectory("/var/opentripplanner", t.GTFSDir).
-		WithDirectory("/var/opentripplanner", t.Elevations(ctx)).
+		WithFile("/var/opentripplanner/elevation.tif", t.MergedElevation(ctx)).
 		WithMountedFile("/var/opentripplanner/data.osm.pbf", osmExport.File)
 
 	if t.OTPBuildConfig != nil {

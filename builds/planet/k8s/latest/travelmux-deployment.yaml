@@ -21,7 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: TRAVELMUX_ELEVATION_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-elevation-tifs-2026-10-02-a85889a0.tar.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.260817/transit/maps-earth-planet-v1.260817-elevation-tifs-2026-10-07-c586186a.tar.zst"
           resources:
             limits:
               memory: 512Mi
