@@ -19,6 +19,21 @@ jobs:
           version: "latest"
       - name: Install otel-cli
         uses: ./.github/actions/install-otel-cli
+      - name: Pick Rust cache month
+        id: rust-cache
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      # Read-only: checks.yml saves this cache from main.
+      - name: Restore Rust build caches
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/rust-caches
+          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: dagger-rust-${{ steps.rust-cache.outputs.month }}-
+      - name: Import Rust build caches
+        run: |
+          if [ -d ~/rust-caches ]; then
+            dagger call import-rust-caches --caches ~/rust-caches
+          fi
       - name: Docker login
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u headwaymaps --password-stdin
       - name: Push latest images
