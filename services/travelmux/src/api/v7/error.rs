@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::fmt;
 
 use super::Itinerary;
-use crate::error::ErrorType;
+use crate::error::{ErrorType, ERROR_CODE_HEADER};
 use crate::otp::gtfs_graphql;
 use crate::valhalla::valhalla_api;
 use crate::{DistanceUnit, Error, TravelMode};
@@ -115,6 +115,7 @@ impl actix_web::ResponseError for PlanResponseErr {
     fn error_response(&self) -> HttpResponse<BoxBody> {
         HttpResponseBuilder::new(self.status_code())
             .content_type("application/json")
+            .insert_header((ERROR_CODE_HEADER, self.error.error_code.to_string()))
             .json(self)
     }
 }

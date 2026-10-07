@@ -5,7 +5,7 @@ use actix_web::HttpResponseBuilder;
 use serde::Serialize;
 
 use super::{Itinerary, Plan};
-use crate::error::ErrorType;
+use crate::error::{ErrorType, ERROR_CODE_HEADER};
 use actix_web::body::BoxBody;
 use actix_web::HttpResponse;
 use std::fmt;
@@ -147,6 +147,7 @@ impl actix_web::ResponseError for PlanResponseErr {
     fn error_response(&self) -> HttpResponse<BoxBody> {
         HttpResponseBuilder::new(self.status_code())
             .content_type("application/json")
+            .insert_header((ERROR_CODE_HEADER, self.error.error_code.to_string()))
             .json(self)
     }
 }
