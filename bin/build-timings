@@ -79,7 +79,7 @@ function summarize() {
           def reported_below: ($children[.spanId] // [])[] | if reported then . else reported_below end;
           def rows($depth):
               [$depth, (.name | sub(": /.*"; "")), ms],
-              ([reported_below] | sort_by(.startTimeUnixNano | tonumber)[] | rows($depth + 1));
+              ([reported_below] | sort_by(-ms)[] | rows($depth + 1));
 
         $all | map(select((.parentSpanId // "") == "" and step)) | first | rows(0) | @tsv'
 }
