@@ -79,7 +79,7 @@ function summarize() {
           def reported_below: ($children[.spanId] // [])[] | if reported then . else reported_below end;
           def rows($depth):
               [$depth, (.name | sub(": /.*"; "")), ms],
-              ([reported_below] | sort_by(.startTimeUnixNano | tonumber)[] | rows($depth + 1));
+              ([reported_below] | sort_by(-ms)[] | rows($depth + 1));
 
         $all | map(select((.parentSpanId // "") == "" and step)) | first | rows(0) | @tsv'
 }
@@ -95,9 +95,17 @@ function print_build() {
     # Named <UTC time>.jsonl.gz by bin/_trace.sh.
     when=$(basename "$trace" .jsonl.gz)
     printf '\n%s\n' "$when"
+    # The time column is indented like the names, so a step's parent sits
+    # directly above-left of it.
+    local indent width
     while IFS="$TAB" read -r depth name ms; do
         [ $((ms * 100)) -ge "$floor" ] || continue
-        printf '%*s%-*s %s (%d%%)\n' $((depth * 2)) '' $((44 - depth * 2)) "$name" \
+        indent=$((depth * 2))
+        width=$((44 - indent))
+        if [ "${#name}" -gt "$width" ]; then
+            name="${name:0:width-3}..."
+        fi
+        printf '%*s%-*s %*s%s (%d%%)\n' "$indent" '' "$width" "$name" "$indent" '' \
             "$(fmt_duration "$ms")" $(((ms * 100 + total / 2) / total))
     done <<< "$rows"
 }
