@@ -56,7 +56,7 @@ pub(crate) fn bearing_at_start(line_string: &LineString) -> Option<u16> {
 
 pub(crate) fn bearing_at_end(line_string: &LineString) -> Option<u16> {
     let last = Point(*line_string.0.last()?);
-    let second_to_last = Point(*line_string.0.get(line_string.0.len() - 2)?);
+    let second_to_last = Point(*line_string.0.get(line_string.0.len().checked_sub(2)?)?);
 
     let distance = Haversine.distance(second_to_last, last);
     // Without this check, we can get some surprising bearings with OTP trips.

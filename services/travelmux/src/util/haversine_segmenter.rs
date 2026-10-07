@@ -30,22 +30,17 @@ impl HaversineSegmenter {
             let end = self.geometry.0[self.next_index + 1];
             let segment_length = Haversine.distance(Point::from(start), Point::from(end));
             if segment_length > distance_remaining {
-                let intermediate = Haversine.point_at_distance_between(
+                let intermediate = Coord::from(Haversine.point_at_distance_between(
                     Point(start),
                     Point(end),
                     distance_remaining,
-                );
-                output.push(Coord::from(intermediate));
-                if self.geometry.0[self.next_index] == Coord::from(intermediate) {
-                    debug_assert!(
-                        false,
-                        "intermediate point is the same as the start point - inifinite loop?"
-                    );
-                    // skip a point rather than risk infinite loop
-                    self.next_index += 1;
+                ));
+                // Ending on `start` itself, the segment is already complete.
+                if intermediate != start {
+                    output.push(intermediate);
+                    // overwrite the last point with the intermediate value
+                    self.geometry.0[self.next_index] = intermediate;
                 }
-                // overwrite the last point with the intermediate value
-                self.geometry.0[self.next_index] = Coord::from(intermediate);
                 break;
             }
 
@@ -100,6 +95,24 @@ mod test {
 
         let next = segmenter.next_segment(4.0);
         assert!(next.is_none());
+    }
+
+    #[test]
+    fn segment_ending_on_a_vertex() {
+        let a = coord!(x: 0.0, y: 0.0);
+        let b = coord!(x: 0.0, y: 0.001);
+        let c = coord!(x: 0.0, y: 0.002);
+        let mut segmenter = HaversineSegmenter::new(LineString::new(vec![a, b, c]));
+
+        let a_to_b = Haversine.length(&LineString::new(vec![a, b]));
+        assert_eq!(
+            segmenter.next_segment(a_to_b).unwrap(),
+            LineString::new(vec![a, b])
+        );
+        assert_eq!(
+            segmenter.next_segment(a_to_b).unwrap(),
+            LineString::new(vec![b, c])
+        );
     }
 
     #[test]
