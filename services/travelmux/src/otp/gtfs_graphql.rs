@@ -630,6 +630,17 @@ pub struct Step {
     pub bogus_name: Option<bool>,
     pub stay_on: Option<bool>,
     pub exit: Option<String>,
+    /// Distances are from the start of this step.
+    pub elevation_profile: Option<Vec<Option<ElevationProfileComponent>>>,
+}
+
+#[derive(cynic::QueryFragment, Debug)]
+#[cynic(graphql_type = "elevationProfileComponent")]
+pub struct ElevationProfileComponent {
+    /// meters
+    pub distance: Option<f64>,
+    /// meters
+    pub elevation: Option<f64>,
 }
 
 #[derive(cynic::QueryFragment, Debug)]
@@ -1286,7 +1297,8 @@ mod tests {
               "steps": [ {
                 "distance": 10.0, "relativeDirection": "DEPART", "absoluteDirection": "SOUTH",
                 "streetName": "East Marginal Way South", "lat": 47.5758, "lon": -122.3392,
-                "area": false, "bogusName": false, "stayOn": false, "exit": null
+                "area": false, "bogusName": false, "stayOn": false, "exit": null,
+                "elevationProfile": []
               } ],
               "alerts": []
             },

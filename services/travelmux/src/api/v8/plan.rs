@@ -1,7 +1,7 @@
 use actix_web::web::{Data, Query};
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
-use geo::algorithm::BoundingRect;
+use geo::algorithm::{BoundingRect, Haversine, Length};
 use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
 use polyline::errors::PolylineError;
@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use super::error::{PlanResponseErr, PlanResponseOk};
 use super::TravelModes;
 use crate::api::AppState;
+use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
 use crate::util::format::format_meters;
@@ -508,10 +509,14 @@ pub struct NonTransitLeg {
 
     /// The substantial road names along the route
     pub(crate) substantial_street_names: Vec<String>,
+
+    /// Only OTP gives us an elevation profile for the leg.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) elevation: Option<LegElevation>,
 }
 
 impl NonTransitLeg {
-    fn new(maneuvers: Vec<Maneuver>) -> Self {
+    fn new(maneuvers: Vec<Maneuver>, elevation: Option<LegElevation>) -> Self {
         let mut street_distances = HashMap::new();
         for maneuver in &maneuvers {
             if let Some(street_names) = &maneuver.street_names {
@@ -547,7 +552,144 @@ impl NonTransitLeg {
         Self {
             maneuvers,
             substantial_street_names,
+            elevation,
         }
+    }
+}
+
+/// How hilly a walking or cycling leg is, in meters along the leg's geometry.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LegElevation {
+    /// `[meters along the leg, meters above sea level]`, smoothed the same way the grades are.
+    profile: Vec<[f64; 2]>,
+    total_climb_meters: f64,
+    total_fall_meters: f64,
+    steep_sections: Vec<SteepSectionResponse>,
+}
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SteepSectionResponse {
+    start_meters: f64,
+    end_meters: f64,
+    /// Rise over run: positive climbs, negative descends.
+    average_grade: f64,
+    max_grade: f64,
+    /// The street the section is mostly on.
+    street_name: Option<String>,
+    /// encoded polyline. 1e-6 scale, (lat, lon), at least two points
+    #[serde(serialize_with = "serialize_line_string_as_polyline6")]
+    geometry: LineString,
+    /// One of the leg's steepest few climbs, worth labeling.
+    annotated: bool,
+}
+
+impl LegElevation {
+    const MAX_ANNOTATED_CLIMBS: usize = 3;
+    /// Keeps labels from crowding each other.
+    const MIN_ANNOTATED_CLIMB_SPACING_METERS: f64 = 100.0;
+
+    fn new(profile: ElevationProfile, leg_geometry: &LineString, maneuvers: &[Maneuver]) -> Self {
+        let (total_climb_meters, total_fall_meters) = profile.climb_and_fall();
+        // The profile is measured along OTP's steps, which can disagree with the geometry's length.
+        let otp_meters: f64 = maneuvers
+            .iter()
+            .map(|maneuver| maneuver.distance_meters)
+            .sum();
+        let to_geometry_meters = Haversine.length(leg_geometry) / otp_meters;
+        let mut segmenter = HaversineSegmenter::new(leg_geometry.clone());
+        let mut segmented_to = 0.0;
+        let mut steep_sections: Vec<SteepSectionResponse> = profile
+            .steep_sections()
+            .into_iter()
+            .filter_map(|section| {
+                let start_meters = section.start_meters * to_geometry_meters;
+                let end_meters = section.end_meters * to_geometry_meters;
+                segmenter.next_segment(start_meters - segmented_to);
+                segmented_to = end_meters;
+                let geometry = segmenter
+                    .next_segment(end_meters - start_meters)
+                    .filter(|geometry| geometry.0.len() >= 2)?;
+                Some(SteepSectionResponse {
+                    street_name: Self::street_name(&section, maneuvers),
+                    start_meters,
+                    end_meters,
+                    average_grade: section.average_grade,
+                    max_grade: section.max_grade,
+                    geometry,
+                    annotated: false,
+                })
+            })
+            .collect();
+        Self::annotate_steepest_climbs(&mut steep_sections);
+        Self {
+            profile: profile
+                .smoothed_points()
+                .map(|(distance, elevation)| {
+                    [
+                        distance * to_geometry_meters,
+                        (elevation * 10.0).round() / 10.0,
+                    ]
+                })
+                .collect(),
+            total_climb_meters,
+            total_fall_meters,
+            steep_sections,
+        }
+    }
+
+    /// Marks the steepest few climbs that are spread out enough for their labels not to crowd.
+    fn annotate_steepest_climbs(sections: &mut [SteepSectionResponse]) {
+        let mut steepest_first: Vec<usize> = (0..sections.len())
+            .filter(|&idx| sections[idx].average_grade > 0.0)
+            .collect();
+        steepest_first.sort_by(|&a, &b| {
+            sections[b]
+                .average_grade
+                .total_cmp(&sections[a].average_grade)
+        });
+        let mut annotated: Vec<usize> = vec![];
+        for idx in steepest_first {
+            if annotated.len() == Self::MAX_ANNOTATED_CLIMBS {
+                break;
+            }
+            let section = &sections[idx];
+            let is_spaced_out = annotated.iter().all(|&other| {
+                let other = &sections[other];
+                (section.start_meters - other.end_meters)
+                    .max(other.start_meters - section.end_meters)
+                    >= Self::MIN_ANNOTATED_CLIMB_SPACING_METERS
+            });
+            if is_spaced_out {
+                annotated.push(idx);
+            }
+        }
+        for idx in annotated {
+            sections[idx].annotated = true;
+        }
+    }
+
+    /// The named street that overlaps `section` the most.
+    fn street_name(section: &SteepSection, maneuvers: &[Maneuver]) -> Option<String> {
+        let mut maneuver_start = 0.0;
+        let mut best: Option<(f64, &String)> = None;
+        for maneuver in maneuvers {
+            let maneuver_end = maneuver_start + maneuver.distance_meters;
+            let overlap =
+                maneuver_end.min(section.end_meters) - maneuver_start.max(section.start_meters);
+            if let Some(name) = maneuver
+                .street_names
+                .as_ref()
+                .and_then(|names| names.first())
+            {
+                if overlap > 0.0 && best.is_none_or(|(best_overlap, _)| overlap > best_overlap) {
+                    best = Some((overlap, name));
+                }
+            }
+            maneuver_start = maneuver_end;
+        }
+        best.map(|(_, name)| name.clone())
     }
 }
 
@@ -819,7 +961,9 @@ impl Leg {
                 });
             }
 
-            ModeLeg::NonTransit(Box::new(NonTransitLeg::new(maneuvers)))
+            let elevation = ElevationProfile::from_otp_steps(steps.iter().flatten())
+                .map(|profile| LegElevation::new(profile, &geometry, &maneuvers));
+            ModeLeg::NonTransit(Box::new(NonTransitLeg::new(maneuvers, elevation)))
         };
 
         Ok(Self {
@@ -864,7 +1008,7 @@ impl Leg {
             maneuvers.push(maneuver);
         }
 
-        let leg = NonTransitLeg::new(maneuvers);
+        let leg = NonTransitLeg::new(maneuvers, None);
         Self {
             start_time,
             end_time: start_time + seconds(valhalla.summary.time),
@@ -1198,6 +1342,122 @@ mod tests {
             vec![BikeRoutePreference::Quieter, BikeRoutePreference::Faster],
             routes.itineraries[0].route_preferences
         );
+    }
+
+    #[test]
+    fn elevation_is_measured_along_the_leg_geometry() {
+        // ~500m due north, where OTP's step says 550m: flat, a 10% climb from 200m to 400m, flat.
+        let geometry = wkt!(LINESTRING(0.0 0.0, 0.0 0.0045));
+        let geometry_meters = Haversine.length(&geometry);
+        let otp_meters = 550.0;
+        let step = gtfs_graphql::Step {
+            distance: Some(otp_meters),
+            relative_direction: None,
+            absolute_direction: None,
+            street_name: None,
+            lat: None,
+            lon: None,
+            area: None,
+            bogus_name: None,
+            stay_on: None,
+            exit: None,
+            elevation_profile: Some(
+                [(0.0, 0.0), (200.0, 0.0), (400.0, 20.0), (otp_meters, 20.0)]
+                    .into_iter()
+                    .map(|(distance, elevation)| {
+                        Some(gtfs_graphql::ElevationProfileComponent {
+                            distance: Some(distance),
+                            elevation: Some(elevation),
+                        })
+                    })
+                    .collect(),
+            ),
+        };
+        let maneuver = Maneuver {
+            instruction: None,
+            geometry: geometry.clone(),
+            distance_meters: otp_meters,
+            street_names: None,
+            duration_seconds: 0.0,
+            r#type: ManeuverType::Start,
+            verbal_post_transition_instruction: None,
+            start_point: geometry.points().next().unwrap(),
+            bearing_before: 0,
+            bearing_after: 0,
+        };
+        let profile = ElevationProfile::from_otp_steps([&step]).unwrap();
+        let elevation = LegElevation::new(profile, &geometry, &[maneuver]);
+
+        let [profile_end, _] = elevation.profile.last().unwrap();
+        assert_relative_eq!(*profile_end, geometry_meters, epsilon = 1e-9);
+
+        let to_geometry_meters = geometry_meters / otp_meters;
+        assert_eq!(elevation.steep_sections.len(), 1);
+        let climb = &elevation.steep_sections[0];
+        assert_relative_eq!(
+            climb.start_meters,
+            200.0 * to_geometry_meters,
+            epsilon = 10.0
+        );
+        assert_relative_eq!(climb.end_meters, 400.0 * to_geometry_meters, epsilon = 10.0);
+        assert_relative_eq!(
+            Haversine.length(&climb.geometry),
+            climb.end_meters - climb.start_meters,
+            epsilon = 1e-6
+        );
+        // The grade is still rise over OTP's run.
+        assert_relative_eq!(climb.average_grade, 0.1, epsilon = 0.005);
+    }
+
+    fn steep_section(start_meters: f64, end_meters: f64, grade: f64) -> SteepSectionResponse {
+        SteepSectionResponse {
+            start_meters,
+            end_meters,
+            average_grade: grade,
+            max_grade: grade,
+            street_name: None,
+            geometry: wkt!(LINESTRING(0.0 0.0, 0.0 0.001)),
+            annotated: false,
+        }
+    }
+
+    fn annotated_grades(mut sections: Vec<SteepSectionResponse>) -> Vec<f64> {
+        LegElevation::annotate_steepest_climbs(&mut sections);
+        sections
+            .iter()
+            .filter(|section| section.annotated)
+            .map(|section| section.average_grade)
+            .collect()
+    }
+
+    #[test]
+    fn only_the_steepest_three_climbs_are_annotated() {
+        let sections = vec![
+            steep_section(0.0, 50.0, 0.06),
+            steep_section(200.0, 250.0, 0.12),
+            steep_section(400.0, 450.0, 0.08),
+            steep_section(600.0, 650.0, 0.1),
+        ];
+        assert_eq!(annotated_grades(sections), vec![0.12, 0.08, 0.1]);
+    }
+
+    #[test]
+    fn a_climb_crowding_a_steeper_one_is_not_annotated() {
+        let sections = vec![
+            steep_section(0.0, 50.0, 0.12),
+            steep_section(120.0, 170.0, 0.1),
+            steep_section(400.0, 450.0, 0.06),
+        ];
+        assert_eq!(annotated_grades(sections), vec![0.12, 0.06]);
+    }
+
+    #[test]
+    fn descents_are_not_annotated() {
+        let sections = vec![
+            steep_section(0.0, 50.0, -0.15),
+            steep_section(400.0, 450.0, 0.06),
+        ];
+        assert_eq!(annotated_grades(sections), vec![0.06]);
     }
 
     #[test]

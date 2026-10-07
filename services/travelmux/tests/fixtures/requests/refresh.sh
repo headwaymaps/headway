@@ -63,7 +63,7 @@ function fetch_opentripplanner {
             legGeometry { points length }
             route { shortName longName color }
             agency { name }
-            steps { distance relativeDirection absoluteDirection streetName lat lon area bogusName stayOn exit }
+            steps { distance relativeDirection absoluteDirection streetName lat lon area bogusName stayOn exit elevationProfile { distance elevation } }
             alerts { alertHeaderText alertDescriptionText alertUrl activityPeriods { start end } }
           }
         } }
