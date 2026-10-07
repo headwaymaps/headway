@@ -82,9 +82,7 @@ function positionCamera() {
 }
 
 function adjustment(row: string): string {
-  return row === 'exit (road_exit_shield)'
-    ? ''
-    : (shieldQa?.adjustments(row) ?? '');
+  return shieldQa?.adjustments(row) ?? '';
 }
 
 function onResize() {

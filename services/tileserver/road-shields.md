@@ -2,7 +2,7 @@ Road shields
 ============
 
 Route shields in services/tileserver/assets/styles/basic-v3.json are drawn by the
-`road_shield` layer. Exit numbers are a separate layer, `road_exit_shield`.
+`road_shield` layer.
 
 Where the artwork comes from
 ----------------------------

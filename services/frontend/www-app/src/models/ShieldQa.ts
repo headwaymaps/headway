@@ -25,7 +25,6 @@ export const COLUMN_WIDTH = 64;
 export const ROW_HEIGHT = 36;
 
 const UNKNOWN_NETWORK = 'XX:none';
-const EXIT_ROW = 'exit (road_exit_shield)';
 export const SHIELD_QA_SOURCE = 'shield-qa';
 const WORLD_SIZE = 512 * 2 ** SHIELD_QA_ZOOM;
 const LONGEST_REF = '123456';
@@ -43,30 +42,22 @@ type ShieldMetrics = {
   iconSize: string;
 };
 
-/** A table of every road shield, drawn by the style's own shield layers. */
+/** A table of every road shield, drawn by the style's own road_shield layer. */
 export default class ShieldQa {
   constructor(
     private base: StyleSpecification,
     private roadShield: SymbolLayerSpecification,
-    private exitShield: SymbolLayerSpecification,
   ) {}
 
   private expressions = new Map<SizingProperty, StylePropertyExpression>();
   private commonMetrics: ShieldMetrics | undefined;
 
   static fromStyle(style: StyleSpecification): ShieldQa {
-    const symbolLayer = (id: string): SymbolLayerSpecification => {
-      const layer = style.layers.find((l) => l.id === id);
-      if (layer?.type !== 'symbol') {
-        throw new Error(`style has no symbol layer "${id}"`);
-      }
-      return layer;
-    };
-    return new ShieldQa(
-      style,
-      symbolLayer('road_shield'),
-      symbolLayer('road_exit_shield'),
-    );
+    const roadShield = style.layers.find((l) => l.id === 'road_shield');
+    if (roadShield?.type !== 'symbol') {
+      throw new Error('style has no symbol layer "road_shield"');
+    }
+    return new ShieldQa(style, roadShield);
   }
 
   /** Every route_1_network the road_shield layer draws a blank for. */
@@ -178,29 +169,25 @@ export default class ShieldQa {
 
   rows(filter: string): string[] {
     const needle = filter.trim().toLowerCase();
-    return [...this.networks(), UNKNOWN_NETWORK, EXIT_ROW].filter((row) =>
+    return [...this.networks(), UNKNOWN_NETWORK].filter((row) =>
       row.toLowerCase().includes(needle),
     );
   }
 
   style(rows: string[]): StyleSpecification {
     const background = this.base.layers.filter((l) => l.type === 'background');
-    const shieldLayer = (
-      layer: SymbolLayerSpecification,
-    ): SymbolLayerSpecification => {
-      return {
-        id: layer.id,
-        type: 'symbol',
-        source: SHIELD_QA_SOURCE,
-        filter: layer.filter,
-        paint: layer.paint,
-        layout: {
-          ...layer.layout,
-          'symbol-placement': 'point',
-          'icon-allow-overlap': true,
-          'text-allow-overlap': true,
-        },
-      };
+    const roadShield: SymbolLayerSpecification = {
+      id: this.roadShield.id,
+      type: 'symbol',
+      source: SHIELD_QA_SOURCE,
+      filter: this.roadShield.filter,
+      paint: this.roadShield.paint,
+      layout: {
+        ...this.roadShield.layout,
+        'symbol-placement': 'point',
+        'icon-allow-overlap': true,
+        'text-allow-overlap': true,
+      },
     };
     return {
       version: 8,
@@ -209,11 +196,7 @@ export default class ShieldQa {
       sources: {
         [SHIELD_QA_SOURCE]: { type: 'geojson', data: this.features(rows) },
       },
-      layers: [
-        ...background,
-        shieldLayer(this.roadShield),
-        shieldLayer(this.exitShield),
-      ],
+      layers: [...background, roadShield],
     };
   }
 
@@ -223,11 +206,7 @@ export default class ShieldQa {
       const y = (rowIdx + 0.5) * ROW_HEIGHT;
       SHIELD_QA_REFS.forEach((ref, colIdx) => {
         const x = LABEL_WIDTH + (colIdx + 0.5) * COLUMN_WIDTH;
-        const properties =
-          row === EXIT_ROW
-            ? { subclass: 'junction', ref, ref_length: ref.length }
-            : this.shieldProperties(row, ref);
-        features.push(pointAt(x, y, properties));
+        features.push(pointAt(x, y, this.shieldProperties(row, ref)));
       });
     });
     return { type: 'FeatureCollection', features };
