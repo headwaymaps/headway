@@ -1,6 +1,10 @@
-// Headway v3 transport layers. Draw order is owned by style.exp.
+// Headway v3 transportation layers. Draw order is owned by style.exp.
 
 sources = import "../sources.exp"
+
+lineJoin = { "layout": { "line-join": "round" } }
+lineRound = { "layout": { "line-cap": "round", "line-join": "round" } }
+lineCap = { "layout": { "line-cap": "round" } }
 
 [
 {
@@ -90,6 +94,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "tunnel_service_track_casing",
   "type": "line",
   "minzoom": 13,
@@ -107,9 +112,6 @@ sources = import "../sources.exp"
     "track"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -152,6 +154,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_link_casing",
   "type": "line",
   "minzoom": 13,
@@ -168,10 +171,6 @@ sources = import "../sources.exp"
     "tunnel"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -214,6 +213,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_street_casing",
   "type": "line",
   "filter": [
@@ -230,10 +230,6 @@ sources = import "../sources.exp"
     "street_limited"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -273,6 +269,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_secondary_tertiary_casing",
   "type": "line",
   "minzoom": 13,
@@ -290,10 +287,6 @@ sources = import "../sources.exp"
     "tertiary"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -340,6 +333,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_primary_casing",
   "type": "line",
   "filter": [
@@ -355,10 +349,6 @@ sources = import "../sources.exp"
     "primary"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -390,6 +380,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_trunk_casing",
   "type": "line",
   "filter": [
@@ -405,10 +396,6 @@ sources = import "../sources.exp"
     "trunk"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -440,6 +427,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "tunnel_motorway_link_casing",
   "type": "line",
   "minzoom": 13,
@@ -461,9 +449,6 @@ sources = import "../sources.exp"
     "tunnel"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -506,6 +491,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "tunnel_motorway_casing",
   "type": "line",
   "filter": [
@@ -526,9 +512,6 @@ sources = import "../sources.exp"
     "tunnel"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -576,6 +559,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_service_track",
   "type": "line",
   "minzoom": 13,
@@ -593,10 +577,6 @@ sources = import "../sources.exp"
     "track"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -635,6 +615,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_link",
   "type": "line",
   "minzoom": 12,
@@ -651,10 +632,6 @@ sources = import "../sources.exp"
     "tunnel"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -693,6 +670,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_minor",
   "type": "line",
   "minzoom": 12,
@@ -709,10 +687,6 @@ sources = import "../sources.exp"
     "minor"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -796,6 +770,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_secondary_tertiary",
   "type": "line",
   "minzoom": 12,
@@ -813,10 +788,6 @@ sources = import "../sources.exp"
     "tertiary"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -859,6 +830,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_primary",
   "type": "line",
   "filter": [
@@ -874,10 +846,6 @@ sources = import "../sources.exp"
     "primary"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -913,6 +881,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_trunk",
   "type": "line",
   "filter": [
@@ -928,10 +897,6 @@ sources = import "../sources.exp"
     "trunk"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -971,6 +936,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_motorway_link",
   "type": "line",
   "minzoom": 8,
@@ -992,10 +958,6 @@ sources = import "../sources.exp"
     "tunnel"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1030,6 +992,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "tunnel_motorway",
   "type": "line",
   "filter": [
@@ -1050,10 +1013,6 @@ sources = import "../sources.exp"
     "tunnel"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1093,6 +1052,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineCap,
   "id": "tunnel_major_rail",
   "type": "line",
   "filter": [
@@ -1127,9 +1087,6 @@ sources = import "../sources.exp"
       ]
     ]
   }
-},
-  "layout": {
-  "line-cap": "round"
 }
 },
 {
@@ -1176,6 +1133,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineCap,
   "id": "tunnel_transit_rail",
   "type": "line",
   "filter": [
@@ -1210,9 +1168,6 @@ sources = import "../sources.exp"
       ]
     ]
   }
-},
-  "layout": {
-  "line-cap": "round"
 }
 },
 {
@@ -1272,6 +1227,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_service_track_casing",
   "type": "line",
   "minzoom": 13,
@@ -1290,10 +1246,6 @@ sources = import "../sources.exp"
     "track"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1332,6 +1284,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_link_casing",
   "type": "line",
   "minzoom": 13,
@@ -1358,10 +1311,6 @@ sources = import "../sources.exp"
     1
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1404,6 +1353,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_minor_casing",
   "type": "line",
   "minzoom": 13,
@@ -1431,10 +1381,6 @@ sources = import "../sources.exp"
     1
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1473,6 +1419,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_secondary_tertiary_casing",
   "type": "line",
   "minzoom": 13,
@@ -1496,10 +1443,6 @@ sources = import "../sources.exp"
     1
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1546,6 +1489,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_primary_casing",
   "type": "line",
   "filter": [
@@ -1562,10 +1506,6 @@ sources = import "../sources.exp"
     "primary"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1597,6 +1537,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_trunk_casing",
   "type": "line",
   "filter": [
@@ -1613,10 +1554,6 @@ sources = import "../sources.exp"
     "trunk"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1648,6 +1585,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_motorway_link_casing",
   "type": "line",
   "minzoom": 13,
@@ -1670,10 +1608,6 @@ sources = import "../sources.exp"
     1
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1712,6 +1646,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_motorway_casing",
   "type": "line",
   "minzoom": 10,
@@ -1734,10 +1669,6 @@ sources = import "../sources.exp"
     1
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1780,6 +1711,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_service_track",
   "type": "line",
   "minzoom": 13,
@@ -1798,10 +1730,6 @@ sources = import "../sources.exp"
     "track"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1840,6 +1768,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_link",
   "type": "line",
   "minzoom": 12,
@@ -1866,10 +1795,6 @@ sources = import "../sources.exp"
     "motorway"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1908,6 +1833,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_minor",
   "type": "line",
   "minzoom": 12,
@@ -1930,10 +1856,6 @@ sources = import "../sources.exp"
     "minor"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -1972,6 +1894,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "road_path_pedestrian",
   "type": "line",
   "minzoom": 13,
@@ -1995,9 +1918,6 @@ sources = import "../sources.exp"
     "pedestrian"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": "hsl(0, 0%, 96%)",
   "line-dasharray": [
@@ -2021,6 +1941,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_secondary_tertiary",
   "type": "line",
   "minzoom": 12,
@@ -2039,10 +1960,6 @@ sources = import "../sources.exp"
     "tertiary"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2085,6 +2002,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_primary",
   "type": "line",
   "filter": [
@@ -2101,10 +2019,6 @@ sources = import "../sources.exp"
     "primary"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2140,6 +2054,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_trunk",
   "type": "line",
   "filter": [
@@ -2156,10 +2071,6 @@ sources = import "../sources.exp"
     "trunk"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2199,6 +2110,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_motorway_link",
   "type": "line",
   "minzoom": 8,
@@ -2221,10 +2133,6 @@ sources = import "../sources.exp"
     1
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2259,6 +2167,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineRound,
   "id": "road_motorway",
   "type": "line",
   "minzoom": 5,
@@ -2281,10 +2190,6 @@ sources = import "../sources.exp"
     1
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2323,6 +2228,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineCap,
   "id": "road_major_rail",
   "type": "line",
   "filter": [
@@ -2358,9 +2264,6 @@ sources = import "../sources.exp"
       ]
     ]
   }
-},
-  "layout": {
-  "line-cap": "round"
 }
 },
 {
@@ -2408,6 +2311,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineCap,
   "id": "road_transit_rail",
   "type": "line",
   "filter": [
@@ -2443,9 +2347,6 @@ sources = import "../sources.exp"
       ]
     ]
   }
-},
-  "layout": {
-  "line-cap": "round"
 }
 },
 {
@@ -2493,6 +2394,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_service_track_casing",
   "type": "line",
   "minzoom": 13,
@@ -2510,9 +2412,6 @@ sources = import "../sources.exp"
     "track"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2551,6 +2450,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_link_casing",
   "type": "line",
   "minzoom": 13,
@@ -2567,9 +2467,6 @@ sources = import "../sources.exp"
     "bridge"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2612,6 +2509,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_street_casing",
   "type": "line",
   "filter": [
@@ -2628,9 +2526,6 @@ sources = import "../sources.exp"
     "street_limited"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2726,6 +2621,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_secondary_tertiary_casing",
   "type": "line",
   "minzoom": 13,
@@ -2743,9 +2639,6 @@ sources = import "../sources.exp"
     "tertiary"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2792,6 +2685,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_primary_casing",
   "type": "line",
   "filter": [
@@ -2807,9 +2701,6 @@ sources = import "../sources.exp"
     "primary"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2841,6 +2732,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_trunk_casing",
   "type": "line",
   "filter": [
@@ -2856,9 +2748,6 @@ sources = import "../sources.exp"
     "trunk"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2890,6 +2779,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_motorway_link_casing",
   "type": "line",
   "minzoom": 13,
@@ -2911,9 +2801,6 @@ sources = import "../sources.exp"
     "bridge"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -2952,6 +2839,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_motorway_casing",
   "type": "line",
   "filter": [
@@ -2972,9 +2860,6 @@ sources = import "../sources.exp"
     "bridge"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3018,6 +2903,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_service_track",
   "type": "line",
   "minzoom": 13,
@@ -3035,9 +2921,6 @@ sources = import "../sources.exp"
     "track"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3076,6 +2959,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_link",
   "type": "line",
   "minzoom": 12,
@@ -3092,9 +2976,6 @@ sources = import "../sources.exp"
     "bridge"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3133,6 +3014,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_street",
   "type": "line",
   "minzoom": 12,
@@ -3149,9 +3031,6 @@ sources = import "../sources.exp"
     "minor"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3235,6 +3114,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_secondary_tertiary",
   "type": "line",
   "minzoom": 12,
@@ -3252,9 +3132,6 @@ sources = import "../sources.exp"
     "tertiary"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3297,6 +3174,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_primary",
   "type": "line",
   "filter": [
@@ -3312,9 +3190,6 @@ sources = import "../sources.exp"
     "primary"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3350,6 +3225,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_trunk",
   "type": "line",
   "filter": [
@@ -3365,9 +3241,6 @@ sources = import "../sources.exp"
     "trunk"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3407,6 +3280,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_motorway_link",
   "type": "line",
   "filter": [
@@ -3427,9 +3301,6 @@ sources = import "../sources.exp"
     "bridge"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3465,6 +3336,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.transportation,
+  ...lineJoin,
   "id": "bridge_motorway",
   "type": "line",
   "filter": [
@@ -3485,9 +3357,6 @@ sources = import "../sources.exp"
     "bridge"
   ]
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": {
     "stops": [
@@ -3720,6 +3589,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.boundary,
+  ...lineJoin,
   "id": "boundary_3",
   "type": "line",
   "minzoom": 3,
@@ -3729,9 +3599,6 @@ sources = import "../sources.exp"
   3,
   4
 ],
-  "layout": {
-  "line-join": "round"
-},
   "paint": {
   "line-color": "#747980",
   "line-dasharray": [
@@ -3758,6 +3625,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.boundary,
+  ...lineRound,
   "id": "boundary_2_z0-4",
   "type": "line",
   "maxzoom": 5,
@@ -3773,10 +3641,6 @@ sources = import "../sources.exp"
     "claimed_by"
   ]
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": "hsl(248, 1%, 41%)",
   "line-opacity": {
@@ -3811,6 +3675,7 @@ sources = import "../sources.exp"
 },
 {
   ...sources.boundary,
+  ...lineRound,
   "id": "boundary_2_z5-",
   "type": "line",
   "minzoom": 5,
@@ -3819,10 +3684,6 @@ sources = import "../sources.exp"
   "admin_level",
   2
 ],
-  "layout": {
-  "line-cap": "round",
-  "line-join": "round"
-},
   "paint": {
   "line-color": "hsl(248, 1%, 41%)",
   "line-opacity": {
