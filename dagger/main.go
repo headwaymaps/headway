@@ -214,7 +214,8 @@ type OSMExport struct {
 
 func New(
 	// +defaultPath="./"
-	// +ignore=["data", "target", "**/node_modules", ".worktrees", ".git", "*.osm.pbf", "*.mbtiles", "**/gtfs-secrets.json"]
+	// Ignore all, allow-listing only what we know we need.
+	// +ignore=["*", "!services", "!Cargo.toml", "!Cargo.lock", "**/node_modules", "**/target", "**/gtfs-secrets.json"]
 	repoDir *dagger.Directory) *Headway {
 	return &Headway{RepoDir: repoDir}
 }
