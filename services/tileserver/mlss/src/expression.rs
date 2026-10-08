@@ -52,6 +52,28 @@ impl Operator {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Expression(Json);
 
+/// Builds a typed MapLibre expression using concise prefix notation.
+///
+/// For example, `expr![Match, [Get, "class"], "park", "#0a0", "transparent"]`.
+#[macro_export]
+macro_rules! expr {
+    ($operator:ident $(, $operand:tt)* $(,)?) => {
+        $crate::Expression::op(
+            $crate::Operator::$operator,
+            [$($crate::expr!(@operand $operand)),*],
+        )
+    };
+    (@operand [$operator:ident $(, $operand:tt)*]) => {
+        $crate::expr!($operator $(, $operand)*)
+    };
+    (@operand [$($value:expr),* $(,)?]) => {
+        $crate::Expression::array([$($crate::Expression::literal($value)),*])
+    };
+    (@operand $value:expr) => {
+        $crate::Expression::literal($value)
+    };
+}
+
 impl Expression {
     /// Builds an expression from a typed MapLibre operator and its operands.
     pub fn op(operator: Operator, operands: impl IntoIterator<Item = Expression>) -> Self {
@@ -66,8 +88,10 @@ impl Expression {
     }
 
     /// A literal array, useful for `match` labels and `literal` operands.
-    pub fn array<V: Into<Json>>(values: impl IntoIterator<Item = V>) -> Self {
-        Self(Json::Array(values.into_iter().map(Into::into).collect()))
+    pub fn array(values: impl IntoIterator<Item = Expression>) -> Self {
+        Self(Json::Array(
+            values.into_iter().map(|value| value.0).collect(),
+        ))
     }
 
     pub(crate) fn into_json(self) -> Json {
@@ -126,6 +150,14 @@ mod tests {
                 ],
             )
             .to_json(),
+            json!(["match", ["get", "class"], "park", "#0a0", "transparent"])
+        );
+    }
+
+    #[test]
+    fn macro_reads_like_an_expression() {
+        assert_eq!(
+            crate::expr![Match, [Get, "class"], "park", "#0a0", "transparent"].to_json(),
             json!(["match", ["get", "class"], "park", "#0a0", "transparent"])
         );
     }
