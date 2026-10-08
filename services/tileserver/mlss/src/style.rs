@@ -1,7 +1,9 @@
 //! The style document itself.
 
-use crate::layer::AnyLayer;
-use crate::source::{Source, SourceRef};
+use crate::layer::{AnyLayer, Background, Fill, Kind, Layer, Line, Raster, Symbol};
+use crate::openmaptiles::OpenMapTiles;
+use crate::source::{background, Source, SourceLayer, SourceRef};
+use crate::{Cap, Filter, Join, Property};
 use serde_json::{json, Map, Value as Json};
 
 /// Zooms and widths are all f64 here, but `"minzoom": 8.0` is noise in a style file.
@@ -36,6 +38,207 @@ pub struct Style {
     metadata: Map<String, Json>,
     sources: Vec<(String, Source)>,
     layers: Vec<AnyLayer>,
+}
+
+/// A rendering layer being configured directly on a style.
+///
+/// It is appended when the builder reaches the end of its statement, which
+/// makes style-layer order the order in which `Style::{fill,line,symbol}` are
+/// called.
+pub struct AttachedLayer<'a, K: Kind> {
+    style: &'a mut Style,
+    layer: Option<Layer<K>>,
+}
+
+impl<K: Kind> AttachedLayer<'_, K> {
+    fn map(mut self, change: impl FnOnce(Layer<K>) -> Layer<K>) -> Self {
+        self.layer = Some(change(
+            self.layer.take().expect("attached layer is present"),
+        ));
+        self
+    }
+
+    pub fn minzoom(self, zoom: f64) -> Self {
+        self.map(|layer| layer.minzoom(zoom))
+    }
+
+    pub fn maxzoom(self, zoom: f64) -> Self {
+        self.map(|layer| layer.maxzoom(zoom))
+    }
+
+    pub fn filter(self, filter: Filter) -> Self {
+        self.map(|layer| layer.filter(filter))
+    }
+
+    pub fn layout(self, name: &str, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.layout(name, value))
+    }
+
+    pub fn paint(self, name: &str, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.paint(name, value))
+    }
+}
+
+impl AttachedLayer<'_, Fill> {
+    pub fn color(self, color: impl Into<Property>) -> Self {
+        self.map(|layer| layer.color(color))
+    }
+
+    pub fn opacity(self, opacity: impl Into<Property>) -> Self {
+        self.map(|layer| layer.opacity(opacity))
+    }
+
+    pub fn outline_color(self, color: impl Into<Property>) -> Self {
+        self.map(|layer| layer.outline_color(color))
+    }
+
+    pub fn antialias(self, antialias: bool) -> Self {
+        self.map(|layer| layer.antialias(antialias))
+    }
+
+    pub fn pattern(self, pattern: impl Into<Property>) -> Self {
+        self.map(|layer| layer.pattern(pattern))
+    }
+}
+
+impl AttachedLayer<'_, Line> {
+    pub fn color(self, color: impl Into<Property>) -> Self {
+        self.map(|layer| layer.color(color))
+    }
+
+    pub fn width(self, width: impl Into<Property>) -> Self {
+        self.map(|layer| layer.width(width))
+    }
+
+    pub fn opacity(self, opacity: impl Into<Property>) -> Self {
+        self.map(|layer| layer.opacity(opacity))
+    }
+
+    pub fn dasharray(self, dashes: impl Into<Property>) -> Self {
+        self.map(|layer| layer.dasharray(dashes))
+    }
+
+    pub fn gap_width(self, width: impl Into<Property>) -> Self {
+        self.map(|layer| layer.gap_width(width))
+    }
+
+    pub fn cap(self, cap: Cap) -> Self {
+        self.map(|layer| layer.cap(cap))
+    }
+
+    pub fn join(self, join: Join) -> Self {
+        self.map(|layer| layer.join(join))
+    }
+
+    pub fn rounded(self) -> Self {
+        self.map(Layer::rounded)
+    }
+}
+
+impl AttachedLayer<'_, Symbol> {
+    pub fn text_field(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_field(value))
+    }
+
+    pub fn text_color(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_color(value))
+    }
+
+    pub fn text_font<'a>(self, fonts: impl IntoIterator<Item = &'a str>) -> Self {
+        self.map(|layer| layer.text_font(fonts))
+    }
+
+    pub fn text_size(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_size(value))
+    }
+
+    pub fn text_max_width(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_max_width(value))
+    }
+
+    pub fn text_offset(self, value: [f64; 2]) -> Self {
+        self.map(|layer| layer.text_offset(value))
+    }
+
+    pub fn text_anchor(self, value: &str) -> Self {
+        self.map(|layer| layer.text_anchor(value))
+    }
+
+    pub fn text_justify(self, value: &str) -> Self {
+        self.map(|layer| layer.text_justify(value))
+    }
+
+    pub fn text_transform(self, value: &str) -> Self {
+        self.map(|layer| layer.text_transform(value))
+    }
+
+    pub fn text_letter_spacing(self, value: f64) -> Self {
+        self.map(|layer| layer.text_letter_spacing(value))
+    }
+
+    pub fn text_rotation_alignment(self, value: &str) -> Self {
+        self.map(|layer| layer.text_rotation_alignment(value))
+    }
+
+    pub fn text_halo(self, color: impl Into<Property>, width: f64) -> Self {
+        self.map(|layer| layer.text_halo(color, width))
+    }
+
+    pub fn text_halo_blur(self, blur: f64) -> Self {
+        self.map(|layer| layer.text_halo_blur(blur))
+    }
+
+    pub fn icon_image(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.icon_image(value))
+    }
+
+    pub fn icon_size(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.icon_size(value))
+    }
+
+    pub fn icon_rotate(self, value: f64) -> Self {
+        self.map(|layer| layer.icon_rotate(value))
+    }
+
+    pub fn icon_rotation_alignment(self, value: &str) -> Self {
+        self.map(|layer| layer.icon_rotation_alignment(value))
+    }
+
+    pub fn icon_allow_overlap(self, value: bool) -> Self {
+        self.map(|layer| layer.icon_allow_overlap(value))
+    }
+
+    pub fn icon_optional(self, value: bool) -> Self {
+        self.map(|layer| layer.icon_optional(value))
+    }
+
+    pub fn placement(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.placement(value))
+    }
+
+    pub fn spacing(self, value: f64) -> Self {
+        self.map(|layer| layer.spacing(value))
+    }
+}
+
+impl AttachedLayer<'_, Raster> {
+    pub fn opacity(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.opacity(value))
+    }
+}
+
+impl AttachedLayer<'_, Background> {
+    pub fn color(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.color(value))
+    }
+}
+
+impl<K: Kind> Drop for AttachedLayer<'_, K> {
+    fn drop(&mut self) {
+        if let Some(layer) = self.layer.take() {
+            self.style.push(layer);
+        }
+    }
 }
 
 impl Style {
@@ -91,6 +294,77 @@ impl Style {
     pub fn source(&mut self, name: &str, source: Source) -> SourceRef {
         self.sources.push((name.to_owned(), source));
         SourceRef::new(name)
+    }
+
+    /// Adds a vector-tile source and returns a handle for its source layers.
+    pub fn vector_source(&mut self, name: &str, url: impl Into<String>) -> SourceRef {
+        self.source(name, Source::vector(url))
+    }
+
+    /// Adds a raster-tile source and returns a handle for drawing it.
+    pub fn raster_source(&mut self, name: &str, url: impl Into<String>) -> SourceRef {
+        self.source(name, Source::raster(url))
+    }
+
+    /// Adds Headway's OpenMapTiles source and returns its schema-aware handle.
+    pub fn open_map_tiles_source(&mut self, url: impl Into<String>) -> OpenMapTiles {
+        OpenMapTiles::new(self.source("openmaptiles", Source::vector(url).encoding("mlt")))
+    }
+
+    /// Appends a fill layer sourcing features from `source`.
+    pub fn fill<'a>(
+        &'a mut self,
+        source: &SourceLayer,
+        id: impl Into<String>,
+    ) -> AttachedLayer<'a, Fill> {
+        AttachedLayer {
+            style: self,
+            layer: Some(source.fill(id)),
+        }
+    }
+
+    /// Appends a background layer at this exact point in the style.
+    pub fn background<'a>(&'a mut self, id: impl Into<String>) -> AttachedLayer<'a, Background> {
+        AttachedLayer {
+            style: self,
+            layer: Some(background(id)),
+        }
+    }
+
+    /// Appends a raster layer sourcing tiles directly from `source`.
+    pub fn raster<'a>(
+        &'a mut self,
+        source: &SourceRef,
+        id: impl Into<String>,
+    ) -> AttachedLayer<'a, Raster> {
+        AttachedLayer {
+            style: self,
+            layer: Some(source.raster(id)),
+        }
+    }
+
+    /// Appends a line layer sourcing features from `source`.
+    pub fn line<'a>(
+        &'a mut self,
+        source: &SourceLayer,
+        id: impl Into<String>,
+    ) -> AttachedLayer<'a, Line> {
+        AttachedLayer {
+            style: self,
+            layer: Some(source.line(id)),
+        }
+    }
+
+    /// Appends a symbol layer sourcing features from `source`.
+    pub fn symbol<'a>(
+        &'a mut self,
+        source: &SourceLayer,
+        id: impl Into<String>,
+    ) -> AttachedLayer<'a, Symbol> {
+        AttachedLayer {
+            style: self,
+            layer: Some(source.symbol(id)),
+        }
     }
 
     pub fn push(&mut self, layer: impl Into<AnyLayer>) -> &mut Self {
