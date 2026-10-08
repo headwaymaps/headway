@@ -105,6 +105,44 @@ impl Filter {
         Filter::all(all)
     }
 
+    pub fn and_eq(self, field: &str, value: impl Into<Json>) -> Filter {
+        self.and(Filter::eq(field, value))
+    }
+    pub fn and_ne(self, field: &str, value: impl Into<Json>) -> Filter {
+        self.and(Filter::ne(field, value))
+    }
+    pub fn and_gt(self, field: &str, value: impl Into<Json>) -> Filter {
+        self.and(Filter::gt(field, value))
+    }
+    pub fn and_gte(self, field: &str, value: impl Into<Json>) -> Filter {
+        self.and(Filter::gte(field, value))
+    }
+    pub fn and_lt(self, field: &str, value: impl Into<Json>) -> Filter {
+        self.and(Filter::lt(field, value))
+    }
+    pub fn and_lte(self, field: &str, value: impl Into<Json>) -> Filter {
+        self.and(Filter::lte(field, value))
+    }
+    pub fn and_has(self, field: &str) -> Filter {
+        self.and(Filter::has(field))
+    }
+    pub fn and_not_has(self, field: &str) -> Filter {
+        self.and(Filter::not_has(field))
+    }
+    pub fn and_in<V: Into<Json>>(self, field: &str, values: impl IntoIterator<Item = V>) -> Filter {
+        self.and(Filter::is_in(field, values))
+    }
+    pub fn and_not_in<V: Into<Json>>(
+        self,
+        field: &str,
+        values: impl IntoIterator<Item = V>,
+    ) -> Filter {
+        self.and(Filter::not_in(field, values))
+    }
+    pub fn and_geometry(self, geometry: Geometry) -> Filter {
+        self.and(Filter::geometry(geometry))
+    }
+
     pub fn raw(json: Json) -> Filter {
         Filter(json)
     }

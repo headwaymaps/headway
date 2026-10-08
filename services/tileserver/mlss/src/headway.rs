@@ -166,12 +166,12 @@ fn style_from_builders() -> Style {
             .opacity(0.7);
         s.line("aeroway_runway")
             .minzoom(11.0)
-            .filter(Filter::geometry(Geometry::LineString).and(Filter::eq("class", "runway")))
+            .filter(Filter::geometry(Geometry::LineString).and_eq("class", "runway"))
             .color("#f0ede9")
             .width(zoom!(base 1.2; 11 => 3.0, 20 => 16.0));
         s.line("aeroway_taxiway")
             .minzoom(11.0)
-            .filter(Filter::geometry(Geometry::LineString).and(Filter::eq("class", "taxiway")))
+            .filter(Filter::geometry(Geometry::LineString).and_eq("class", "taxiway"))
             .color("#f0ede9")
             .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
     });
@@ -179,10 +179,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["service", "track"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["service", "track"]))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -200,10 +197,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_link_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("ramp", 1.0),
-            Filter::eq("brunnel", "tunnel"),
-        ]))
+        .filter(Filter::eq("ramp", 1.0).and_eq("brunnel", "tunnel"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -222,10 +216,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_street_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["street", "street_limited"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["street", "street_limited"]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -243,10 +234,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_secondary_tertiary_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["secondary", "tertiary"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["secondary", "tertiary"]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -266,10 +254,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::eq("class", "primary"),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "primary"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -280,10 +265,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::eq("class", "trunk"),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "trunk"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -294,11 +276,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_motorway_link_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::eq("ramp", 1.0),
-            Filter::eq("brunnel", "tunnel"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_eq("ramp", 1.0)
+                .and_eq("brunnel", "tunnel"),
+        )
         .join(Join::Round)
         .paint(
             "line-color",
@@ -316,11 +298,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_motorway_casing")
         .minzoom(10.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::ne("ramp", 1.0),
-            Filter::eq("brunnel", "tunnel"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_ne("ramp", 1.0)
+                .and_eq("brunnel", "tunnel"),
+        )
         .join(Join::Round)
         .paint(
             "line-color",
@@ -338,10 +320,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_service_track")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["service", "track"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["service", "track"]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -359,10 +338,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_link")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::eq("ramp", 1.0),
-            Filter::eq("brunnel", "tunnel"),
-        ]))
+        .filter(Filter::eq("ramp", 1.0).and_eq("brunnel", "tunnel"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -380,10 +356,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_minor")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["minor"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["minor"]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -401,21 +374,18 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_path_pedestrian")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::geometry(Geometry::LineString),
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["path", "pedestrian"]),
-        ]))
+        .filter(
+            Filter::geometry(Geometry::LineString)
+                .and_eq("brunnel", "tunnel")
+                .and_in("class", ["path", "pedestrian"]),
+        )
         .color("hsl(0, 0%, 98%)")
         .dasharray(vec![1.0, 0.75])
         .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
     style
         .line(&transportation, "tunnel_secondary_tertiary")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["secondary", "tertiary"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["secondary", "tertiary"]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -434,10 +404,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_primary")
         .minzoom(8.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::eq("class", "primary"),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "primary"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -451,10 +418,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_trunk")
         .minzoom(6.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::eq("class", "trunk"),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "trunk"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -468,11 +432,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_motorway_link")
         .minzoom(8.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::eq("ramp", 1.0),
-            Filter::eq("brunnel", "tunnel"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_eq("ramp", 1.0)
+                .and_eq("brunnel", "tunnel"),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -486,11 +450,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_motorway")
         .minzoom(5.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::ne("ramp", 1.0),
-            Filter::eq("brunnel", "tunnel"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_ne("ramp", 1.0)
+                .and_eq("brunnel", "tunnel"),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -503,10 +467,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "tunnel_major_rail")
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["rail"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["rail"]))
         .cap(Cap::Round)
         .color("hsl(0, 0%, 86.6667%)")
         .paint(
@@ -515,10 +476,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "tunnel_major_rail_hatching")
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::eq("class", "rail"),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "rail"))
         .color("hsl(0, 0%, 86.6667%)")
         .dasharray(vec![0.2, 8.0])
         .paint(
@@ -527,10 +485,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "tunnel_transit_rail")
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::is_in("class", ["transit"]),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["transit"]))
         .cap(Cap::Round)
         .color("hsl(0, 0%, 86.6667%)")
         .paint(
@@ -539,10 +494,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "tunnel_transit_rail_hatching")
-        .filter(Filter::all([
-            Filter::eq("brunnel", "tunnel"),
-            Filter::eq("class", "transit"),
-        ]))
+        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "transit"))
         .color("hsl(0, 0%, 86.6667%)")
         .dasharray(vec![0.2, 8.0])
         .paint(
@@ -556,10 +508,9 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::is_in("class", ["service", "track"]),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"]).and_in("class", ["service", "track"]),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -577,14 +528,14 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_link_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::not_in(
-                "class",
-                ["pedestrian", "path", "track", "service", "motorway"],
-            ),
-            Filter::eq("ramp", 1.0),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_not_in(
+                    "class",
+                    ["pedestrian", "path", "track", "service", "motorway"],
+                )
+                .and_eq("ramp", 1.0),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -603,12 +554,12 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_minor_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::geometry(Geometry::LineString),
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::is_in("class", ["minor"]),
-            Filter::ne("ramp", 1.0),
-        ]))
+        .filter(
+            Filter::geometry(Geometry::LineString)
+                .and_not_in("brunnel", ["bridge", "tunnel"])
+                .and_in("class", ["minor"])
+                .and_ne("ramp", 1.0),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -626,11 +577,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_secondary_tertiary_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::is_in("class", ["secondary", "tertiary"]),
-            Filter::ne("ramp", 1.0),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_in("class", ["secondary", "tertiary"])
+                .and_ne("ramp", 1.0),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -650,10 +601,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "primary"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "primary"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -664,10 +612,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "trunk"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "trunk"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -678,11 +623,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_motorway_link_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "motorway"),
-            Filter::eq("ramp", 1.0),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_eq("class", "motorway")
+                .and_eq("ramp", 1.0),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -700,11 +645,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_motorway_casing")
         .minzoom(10.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "motorway"),
-            Filter::ne("ramp", 1.0),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_eq("class", "motorway")
+                .and_ne("ramp", 1.0),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -722,10 +667,9 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_service_track")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::is_in("class", ["service", "track"]),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"]).and_in("class", ["service", "track"]),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -743,14 +687,14 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_link")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("ramp", 1.0),
-            Filter::not_in(
-                "class",
-                ["pedestrian", "path", "track", "service", "motorway"],
-            ),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_eq("ramp", 1.0)
+                .and_not_in(
+                    "class",
+                    ["pedestrian", "path", "track", "service", "motorway"],
+                ),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -768,11 +712,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_minor")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::geometry(Geometry::LineString),
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::is_in("class", ["minor"]),
-        ]))
+        .filter(
+            Filter::geometry(Geometry::LineString)
+                .and_not_in("brunnel", ["bridge", "tunnel"])
+                .and_in("class", ["minor"]),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -790,11 +734,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_path_pedestrian")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::geometry(Geometry::LineString),
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::is_in("class", ["path", "pedestrian"]),
-        ]))
+        .filter(
+            Filter::geometry(Geometry::LineString)
+                .and_not_in("brunnel", ["bridge", "tunnel"])
+                .and_in("class", ["path", "pedestrian"]),
+        )
         .join(Join::Round)
         .color("hsl(0, 0%, 96%)")
         .dasharray(vec![1.0, 0.7])
@@ -802,10 +746,10 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_secondary_tertiary")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::is_in("class", ["secondary", "tertiary"]),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_in("class", ["secondary", "tertiary"]),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -824,10 +768,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_primary")
         .minzoom(8.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "primary"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "primary"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -841,10 +782,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_trunk")
         .minzoom(6.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "trunk"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "trunk"))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -858,11 +796,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_motorway_link")
         .minzoom(8.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "motorway"),
-            Filter::eq("ramp", 1.0),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_eq("class", "motorway")
+                .and_eq("ramp", 1.0),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -876,11 +814,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_motorway")
         .minzoom(5.0)
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "motorway"),
-            Filter::ne("ramp", 1.0),
-        ]))
+        .filter(
+            Filter::not_in("brunnel", ["bridge", "tunnel"])
+                .and_eq("class", "motorway")
+                .and_ne("ramp", 1.0),
+        )
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
@@ -893,10 +831,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "road_major_rail")
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "rail"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "rail"))
         .cap(Cap::Round)
         .color("#bbb")
         .paint(
@@ -905,10 +840,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "road_major_rail_hatching")
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "rail"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "rail"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
@@ -917,10 +849,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "road_transit_rail")
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "transit"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "transit"))
         .cap(Cap::Round)
         .color("#bbb")
         .paint(
@@ -929,10 +858,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "road_transit_rail_hatching")
-        .filter(Filter::all([
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("class", "transit"),
-        ]))
+        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "transit"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
@@ -942,10 +868,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["service", "track"]),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["service", "track"]))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -962,10 +885,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_link_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("class", "link"),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(Filter::eq("class", "link").and_eq("brunnel", "bridge"))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -983,10 +903,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_street_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["street", "street_limited"]),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["street", "street_limited"]))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1003,11 +920,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_path_pedestrian_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::geometry(Geometry::LineString),
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["path", "pedestrian"]),
-        ]))
+        .filter(
+            Filter::geometry(Geometry::LineString)
+                .and_eq("brunnel", "bridge")
+                .and_in("class", ["path", "pedestrian"]),
+        )
         .paint(
             "line-color",
             stops([(14.0, "hsl(0, 0%, 88%)"), (20.0, "hsl(0, 0%, 64%)")]),
@@ -1017,10 +934,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_secondary_tertiary_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["secondary", "tertiary"]),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["secondary", "tertiary"]))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1039,10 +953,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::eq("class", "primary"),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "primary"))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1052,10 +963,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::eq("class", "trunk"),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "trunk"))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1065,11 +973,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_motorway_link_casing")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::eq("ramp", 1.0),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_eq("ramp", 1.0)
+                .and_eq("brunnel", "bridge"),
+        )
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1086,11 +994,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_motorway_casing")
         .minzoom(10.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::ne("ramp", 1.0),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_ne("ramp", 1.0)
+                .and_eq("brunnel", "bridge"),
+        )
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1107,10 +1015,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_service_track")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["service", "track"]),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["service", "track"]))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1127,10 +1032,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_link")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::eq("class", "link"),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(Filter::eq("class", "link").and_eq("brunnel", "bridge"))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1147,10 +1049,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_street")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["minor"]),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["minor"]))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1167,21 +1066,18 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_path_pedestrian")
         .minzoom(13.0)
-        .filter(Filter::all([
-            Filter::geometry(Geometry::LineString),
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["path", "pedestrian"]),
-        ]))
+        .filter(
+            Filter::geometry(Geometry::LineString)
+                .and_eq("brunnel", "bridge")
+                .and_in("class", ["path", "pedestrian"]),
+        )
         .color("hsl(0, 0%, 96%)")
         .dasharray(vec![1.0, 0.3])
         .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
     style
         .line(&transportation, "bridge_secondary_tertiary")
         .minzoom(12.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::is_in("class", ["secondary", "tertiary"]),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["secondary", "tertiary"]))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1199,10 +1095,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_primary")
         .minzoom(8.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::eq("class", "primary"),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "primary"))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1215,10 +1108,7 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_trunk")
         .minzoom(6.0)
-        .filter(Filter::all([
-            Filter::eq("brunnel", "bridge"),
-            Filter::eq("class", "trunk"),
-        ]))
+        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "trunk"))
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1231,11 +1121,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_motorway_link")
         .minzoom(8.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::eq("ramp", 1.0),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_eq("ramp", 1.0)
+                .and_eq("brunnel", "bridge"),
+        )
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1248,11 +1138,11 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "bridge_motorway")
         .minzoom(5.0)
-        .filter(Filter::all([
-            Filter::eq("class", "motorway"),
-            Filter::ne("ramp", 1.0),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(
+            Filter::eq("class", "motorway")
+                .and_ne("ramp", 1.0)
+                .and_eq("brunnel", "bridge"),
+        )
         .join(Join::Round)
         .paint(
             "line-color",
@@ -1264,10 +1154,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "bridge_major_rail")
-        .filter(Filter::all([
-            Filter::eq("class", "rail"),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(Filter::eq("class", "rail").and_eq("brunnel", "bridge"))
         .color("#bbb")
         .paint(
             "line-width",
@@ -1275,10 +1162,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "bridge_major_rail_hatching")
-        .filter(Filter::all([
-            Filter::eq("class", "rail"),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(Filter::eq("class", "rail").and_eq("brunnel", "bridge"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
@@ -1287,10 +1171,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "bridge_transit_rail")
-        .filter(Filter::all([
-            Filter::eq("class", "transit"),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(Filter::eq("class", "transit").and_eq("brunnel", "bridge"))
         .color("#bbb")
         .paint(
             "line-width",
@@ -1298,10 +1179,7 @@ fn style_from_builders() -> Style {
         );
     style
         .line(&transportation, "bridge_transit_rail_hatching")
-        .filter(Filter::all([
-            Filter::eq("class", "transit"),
-            Filter::eq("brunnel", "bridge"),
-        ]))
+        .filter(Filter::eq("class", "transit").and_eq("brunnel", "bridge"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
@@ -1331,7 +1209,7 @@ fn style_from_builders() -> Style {
             .opacity(zoom!(0 => 0.4, 4 => 1.0))
             .width(zoom!(3 => 1.0, 5 => 1.2, 12 => 3.0))
             .maxzoom(5.0)
-            .filter(Filter::eq("admin_level", 2).and(Filter::not_has("claimed_by")));
+            .filter(Filter::eq("admin_level", 2).and_not_has("claimed_by"));
         s.line("boundary_2_z5-")
             .rounded()
             .color("hsl(248, 1%, 41%)")
@@ -1355,7 +1233,7 @@ fn style_from_builders() -> Style {
             .icon_rotate(180.0);
         s.line("route_ferry")
             .minzoom(12.0)
-            .filter(Filter::geometry(Geometry::LineString).and(Filter::is_in("class", ["ferry"])))
+            .filter(Filter::geometry(Geometry::LineString).and_in("class", ["ferry"]))
             .rounded()
             .color("#99d")
             .width(2.0)
@@ -1396,16 +1274,8 @@ fn style_from_builders() -> Style {
 
     for (id, zoom, rank) in [
         ("poi_z16", 16.0, Filter::gte("rank", 20)),
-        (
-            "poi_z15",
-            15.0,
-            Filter::gte("rank", 7).and(Filter::lt("rank", 20)),
-        ),
-        (
-            "poi_z14",
-            14.0,
-            Filter::gte("rank", 1).and(Filter::lt("rank", 7)),
-        ),
+        ("poi_z15", 15.0, Filter::gte("rank", 7).and_lt("rank", 20)),
+        ("poi_z14", 14.0, Filter::gte("rank", 1).and_lt("rank", 7)),
     ] {
         poi_label(&mut style, &poi, id)
             .minzoom(zoom)
@@ -2418,7 +2288,7 @@ fn style_from_builders() -> Style {
     ] {
         style
             .symbol(&place, id)
-            .filter(rank.and(Filter::eq("class", "country")))
+            .filter(rank.and_eq("class", "country"))
             .text_field("{name_en}")
             .text_font([ITALIC])
             .text_max_width(6.25)
