@@ -24,6 +24,16 @@ impl Geometry {
 }
 
 impl Filter {
+    /// Matches a feature's OpenMapTiles `class`.
+    pub fn class(value: impl Into<Json>) -> Filter {
+        Filter::eq("class", value)
+    }
+
+    /// Matches a feature whose OpenMapTiles `class` is one of `values`.
+    pub fn class_in<V: Into<Json>>(values: impl IntoIterator<Item = V>) -> Filter {
+        Filter::is_in("class", values)
+    }
+
     pub fn eq(field: &str, value: impl Into<Json>) -> Filter {
         Filter(json!(["==", field, value.into()]))
     }
@@ -149,5 +159,42 @@ impl Filter {
 
     pub fn to_json(&self) -> Json {
         self.0.clone()
+    }
+}
+
+/// Class-specific filter clauses for fluent style definitions.
+pub trait ClassFilter {
+    /// Conjoins a matching OpenMapTiles `class` clause.
+    fn class(self, value: impl Into<Json>) -> Filter;
+
+    /// Conjoins a matching OpenMapTiles `class` membership clause.
+    fn class_in<V: Into<Json>>(self, values: impl IntoIterator<Item = V>) -> Filter;
+}
+
+impl ClassFilter for Filter {
+    fn class(self, value: impl Into<Json>) -> Filter {
+        self.and(Filter::class(value))
+    }
+
+    fn class_in<V: Into<Json>>(self, values: impl IntoIterator<Item = V>) -> Filter {
+        self.and(Filter::class_in(values))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn class_clauses_are_available_as_constructors_and_chains() {
+        assert_eq!(
+            Filter::class_in(["park", "cemetery"]).to_json(),
+            json!(["in", "class", "park", "cemetery"])
+        );
+        assert_eq!(
+            Filter::geometry(Geometry::Polygon).class("park").to_json(),
+            json!(["all", ["==", "$type", "Polygon"], ["==", "class", "park"]])
+        );
     }
 }

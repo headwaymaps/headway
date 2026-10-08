@@ -21,6 +21,16 @@ macro_rules! zoom {
     };
 }
 
+/// A zoom function, written as `stops![12 => 0.5, 20 => 10.0]`.
+///
+/// Call [`Stops::base`] when the interpolation needs a non-linear base.
+#[macro_export]
+macro_rules! stops {
+    ($($zoom:expr => $value:expr),* $(,)?) => {
+        $crate::stops([$(($zoom as f64, $value)),*])
+    };
+}
+
 /// Interpolates `value` across zoom levels.
 pub fn stops<V: Into<Json>>(pairs: impl IntoIterator<Item = (f64, V)>) -> Stops {
     Stops {
@@ -128,3 +138,16 @@ constant_from!(
     [f64; 2],
     [f64; 4]
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stops_macro_reads_like_a_zoom_table() {
+        assert_eq!(
+            crate::stops![10.0 => 0.5, 13.0 => 2.0].base(1.2).to_json(),
+            stops([(10.0, 0.5), (13.0, 2.0)]).base(1.2).to_json()
+        );
+    }
+}

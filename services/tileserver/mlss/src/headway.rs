@@ -1,7 +1,7 @@
 //! The Headway default style, built with the builders in this crate.
 
 use crate::filter::Geometry;
-use crate::layer::{Cap, Join, Symbol};
+use crate::layer::Symbol;
 use crate::style::AttachedLayer;
 use crate::*;
 use serde_json::json;
@@ -11,6 +11,21 @@ pub(super) const HALO: &str = "rgba(255,255,255,0.8)";
 pub(super) const REGULAR: &str = "Roboto Regular";
 pub(super) const ITALIC: &str = "Roboto Condensed Italic";
 pub(super) const MEDIUM: &str = "Roboto Medium";
+
+/// Road features below grade.
+fn tunnel() -> Filter {
+    Filter::eq("brunnel", "tunnel")
+}
+
+/// Road features carried over another feature.
+fn bridge() -> Filter {
+    Filter::eq("brunnel", "bridge")
+}
+
+/// Road features at grade.
+fn surface() -> Filter {
+    Filter::not_in("brunnel", ["bridge", "tunnel"])
+}
 
 /// The shared icon and typography for point-of-interest labels.
 pub(super) fn poi_label<'a>(
@@ -98,7 +113,7 @@ fn style_from_builders() -> Style {
     style
         .fill(&landuse, "landuse_residential")
         .maxzoom(17.0)
-        .filter(Filter::eq("class", "residential"))
+        .filter(Filter::class("residential"))
         .opacity(zoom!(16 => 1.0, 17 => 0.0))
         .color(zoom!(9 => "hsla(0, 3%, 85%, 0.84)", 12 => "hsla(35, 57%, 88%, 0.49)"));
 
@@ -106,7 +121,7 @@ fn style_from_builders() -> Style {
     let mut landcover_fill = |class: &str, css: &str, opacity: f64| {
         style
             .fill(&landcover, format!("landcover_{class}"))
-            .filter(Filter::eq("class", class))
+            .filter(Filter::class(class))
             .antialias(false)
             .color(css)
             .opacity(opacity);
@@ -118,26 +133,26 @@ fn style_from_builders() -> Style {
     landcover_fill("ice", "rgba(224, 236, 236, 1)", 0.8);
     style.add_layers(landuse, |s| {
         s.fill("landuse_cemetery")
-            .filter(Filter::eq("class", "cemetery"))
+            .filter(Filter::class("cemetery"))
             .color("hsl(75, 37%, 81%)");
         s.fill("landuse_hospital")
-            .filter(Filter::eq("class", "hospital"))
+            .filter(Filter::class("hospital"))
             .color("#fde");
         s.fill("landuse_school")
-            .filter(Filter::eq("class", "school"))
+            .filter(Filter::class("school"))
             .color("rgb(236,238,204)");
     });
 
     style
         .line(&waterway, "waterway_tunnel")
-        .filter(Filter::eq("brunnel", "tunnel"))
+        .filter(tunnel())
         .color(WATER)
         .dasharray(vec![3.0, 3.0])
         .gap_width(zoom!(12 => 0.0, 20 => 6.0))
         .width(zoom!(base 1.4; 8 => 1.0, 20 => 2.0));
     style
         .fill(&landcover, "landcover_sand")
-        .filter(Filter::eq("class", "sand"))
+        .filter(Filter::class("sand"))
         .color("rgba(247, 239, 195, 1)");
     style
         .fill(&openmaptiles.water(), "water")
@@ -147,14 +162,14 @@ fn style_from_builders() -> Style {
     let above_ground = Filter::ne("brunnel", "tunnel");
     style
         .line(&waterway, "waterway_river")
-        .filter(Filter::eq("class", "river").and(above_ground.clone()))
-        .cap(Cap::Round)
+        .filter(Filter::class("river").and(above_ground.clone()))
+        .cap_round()
         .color(WATER)
         .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
     style
         .line(&waterway, "waterway_other")
         .filter(Filter::ne("class", "river").and(above_ground))
-        .cap(Cap::Round)
+        .cap_round()
         .color(WATER)
         .width(zoom!(base 1.3; 13 => 0.5, 20 => 6.0));
 
@@ -166,12 +181,12 @@ fn style_from_builders() -> Style {
             .opacity(0.7);
         s.line("aeroway_runway")
             .minzoom(11.0)
-            .filter(Filter::geometry(Geometry::LineString).and_eq("class", "runway"))
+            .filter(Filter::geometry(Geometry::LineString).class("runway"))
             .color("#f0ede9")
             .width(zoom!(base 1.2; 11 => 3.0, 20 => 16.0));
         s.line("aeroway_taxiway")
             .minzoom(11.0)
-            .filter(Filter::geometry(Geometry::LineString).and_eq("class", "taxiway"))
+            .filter(Filter::geometry(Geometry::LineString).class("taxiway"))
             .color("#f0ede9")
             .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
     });
@@ -179,327 +194,311 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["service", "track"]))
-        .join(Join::Round)
+        .filter(tunnel().class_in(["service", "track"]))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (15.0, "hsl(0, 0%, 94%)"),
-                (18.0, "hsl(0, 0%, 87%)"),
-                (20.0, "hsl(0, 0%, 82%)"),
-            ]),
+            stops![
+                15.0 => "hsl(0, 0%, 94%)",
+                18.0 => "hsl(0, 0%, 87%)",
+                20.0 => "hsl(0, 0%, 82%)",
+            ],
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            stops([(13.0, 0.76), (16.0, 4.0), (20.0, 11.0)]).base(1.2),
+            stops![13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_link_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("ramp", 1.0).and_eq("brunnel", "tunnel"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().and_eq("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 93%)"),
-                (12.0, "hsl(0, 0%, 93%)"),
-                (15.0, "hsl(0, 0%, 89%)"),
-                (20.0, "hsl(0, 0%, 82%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 93%)",
+                12.0 => "hsl(0, 0%, 93%)",
+                15.0 => "hsl(0, 0%, 89%)",
+                20.0 => "hsl(0, 0%, 82%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 23.5)]).base(1.2),
+            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5].base(1.2),
         );
     style
         .line(&transportation, "tunnel_street_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["street", "street_limited"]))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class_in(["street", "street_limited"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (13.0, "hsl(0, 0%, 93%)"),
-                (16.0, "hsl(0, 0%, 87.5%)"),
-                (20.0, "hsl(0, 0%, 82%)"),
-            ]),
+            stops![
+                13.0 => "hsl(0, 0%, 93%)",
+                16.0 => "hsl(0, 0%, 87.5%)",
+                20.0 => "hsl(0, 0%, 82%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 20.0)]).base(1.2),
+            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_secondary_tertiary_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["secondary", "tertiary"]))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class_in(["secondary", "tertiary"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 91%)"),
-                (11.0, "hsl(0, 0%, 91%)"),
-                (12.0, "hsl(0, 0%, 91%)"),
-                (13.0, "hsl(0, 0%, 89%)"),
-                (20.0, "hsl(0, 0%, 82%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 91%)",
+                11.0 => "hsl(0, 0%, 91%)",
+                12.0 => "hsl(0, 0%, 91%)",
+                13.0 => "hsl(0, 0%, 89%)",
+                20.0 => "hsl(0, 0%, 82%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.76), (13.0, 3.6), (20.0, 30.0)]).base(1.2),
+            stops![12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "primary"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class("primary"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(13.0, "hsl(0, 0%, 83.5%)"), (20.0, "hsl(0, 0%, 76%)")]),
+            stops![13.0 => "hsl(0, 0%, 83.5%)", 20.0 => "hsl(0, 0%, 76%)"],
         )
-        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
     style
         .line(&transportation, "tunnel_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "trunk"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class("trunk"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(13.0, "hsl(0, 0%, 81%)"), (20.0, "hsl(0, 0%, 74.5%)")]),
+            stops![13.0 => "hsl(0, 0%, 81%)", 20.0 => "hsl(0, 0%, 74.5%)"],
         )
-        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
     style
         .line(&transportation, "tunnel_motorway_link_casing")
         .minzoom(13.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_eq("ramp", 1.0)
-                .and_eq("brunnel", "tunnel"),
-        )
-        .join(Join::Round)
+        .filter(tunnel().class("motorway").and_eq("ramp", 1.0))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (12.0, "hsl(0, 0%, 82%)"),
-                (15.0, "hsl(0, 0%, 77%)"),
-                (20.0, "hsl(0, 0%, 70%)"),
-            ]),
+            stops![
+                12.0 => "hsl(0, 0%, 82%)",
+                15.0 => "hsl(0, 0%, 77%)",
+                20.0 => "hsl(0, 0%, 70%)",
+            ],
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            stops([(8.0, 1.74), (13.0, 5.9), (20.0, 35.0)]).base(1.2),
+            stops![8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_motorway_casing")
         .minzoom(10.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_ne("ramp", 1.0)
-                .and_eq("brunnel", "tunnel"),
-        )
-        .join(Join::Round)
+        .filter(tunnel().class("motorway").and_ne("ramp", 1.0))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (7.0, "hsl(0, 0%, 80%)"),
-                (13.0, "hsl(0, 0%, 75%)"),
-                (20.0, "hsl(0, 0%, 70%)"),
-            ]),
+            stops![
+                7.0 => "hsl(0, 0%, 80%)",
+                13.0 => "hsl(0, 0%, 75%)",
+                20.0 => "hsl(0, 0%, 70%)",
+            ],
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            stops([(5.0, 1.4), (7.0, 1.75), (13.0, 5.9), (20.0, 40.0)]).base(1.2),
+            stops![5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_service_track")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["service", "track"]))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class_in(["service", "track"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 97%)"),
-                (13.0, "hsl(0, 0%, 92%)"),
-                (20.0, "hsl(0, 0%, 87%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 97%)",
+                13.0 => "hsl(0, 0%, 92%)",
+                20.0 => "hsl(0, 0%, 87%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(13.0, 0.0), (16.0, 2.0), (20.0, 7.5)]).base(1.2),
+            stops![13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5].base(1.2),
         );
     style
         .line(&transportation, "tunnel_link")
         .minzoom(12.0)
-        .filter(Filter::eq("ramp", 1.0).and_eq("brunnel", "tunnel"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().and_eq("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 94%)"),
-                (12.0, "hsl(0, 0%, 94%)"),
-                (20.0, "hsl(0, 0%, 87%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 94%)",
+                12.0 => "hsl(0, 0%, 94%)",
+                20.0 => "hsl(0, 0%, 87%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 20.0)]).base(1.2),
+            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_minor")
         .minzoom(12.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["minor"]))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class_in(["minor"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 93%)"),
-                (13.0, "hsl(0, 0%, 93%)"),
-                (20.0, "hsl(0, 0%, 87%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 93%)",
+                13.0 => "hsl(0, 0%, 93%)",
+                20.0 => "hsl(0, 0%, 87%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)]).base(1.2),
+            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_path_pedestrian")
         .minzoom(13.0)
         .filter(
-            Filter::geometry(Geometry::LineString)
-                .and_eq("brunnel", "tunnel")
-                .and_in("class", ["path", "pedestrian"]),
+            tunnel()
+                .and_geometry(Geometry::LineString)
+                .class_in(["path", "pedestrian"]),
         )
         .color("hsl(0, 0%, 98%)")
         .dasharray(vec![1.0, 0.75])
-        .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 0.75, 20.0 => 10.0].base(1.2));
     style
         .line(&transportation, "tunnel_secondary_tertiary")
         .minzoom(12.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["secondary", "tertiary"]))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class_in(["secondary", "tertiary"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 95%)"),
-                (11.0, "hsl(0, 0%, 95%)"),
-                (12.0, "hsl(0, 0%, 95%)"),
-                (20.0, "hsl(0, 0%, 87%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 95%)",
+                11.0 => "hsl(0, 0%, 95%)",
+                12.0 => "hsl(0, 0%, 95%)",
+                20.0 => "hsl(0, 0%, 87%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (13.0, 2.5), (20.0, 26.0)]).base(1.2),
+            stops![12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_primary")
         .minzoom(8.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "primary"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class("primary"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 64%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 64%)"],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_trunk")
         .minzoom(6.0)
-        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "trunk"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class("trunk"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 61%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 61%)"],
         )
         .paint(
             "line-width",
-            stops([(6.0, 1.0), (10.0, 2.85), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_motorway_link")
         .minzoom(8.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_eq("ramp", 1.0)
-                .and_eq("brunnel", "tunnel"),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class("motorway").and_eq("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 84%)"), (20.0, "hsl(0, 0%, 76%)")]),
+            stops![10.0 => "hsl(0, 0%, 84%)", 20.0 => "hsl(0, 0%, 76%)"],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_motorway")
         .minzoom(5.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_ne("ramp", 1.0)
-                .and_eq("brunnel", "tunnel"),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(tunnel().class("motorway").and_ne("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 84%)"), (20.0, "hsl(0, 0%, 76%)")]),
+            stops![10.0 => "hsl(0, 0%, 84%)", 20.0 => "hsl(0, 0%, 76%)"],
         )
         .paint(
             "line-width",
-            stops([(5.0, 1.0), (7.0, 1.0), (13.0, 4.5), (20.0, 36.0)]).base(1.2),
+            stops![5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0].base(1.2),
         );
     style
         .line(&transportation, "tunnel_major_rail")
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["rail"]))
-        .cap(Cap::Round)
+        .filter(tunnel().class_in(["rail"]))
+        .cap_round()
         .color("hsl(0, 0%, 86.6667%)")
         .paint(
             "line-width",
-            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
+            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
         );
     style
         .line(&transportation, "tunnel_major_rail_hatching")
-        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "rail"))
+        .filter(tunnel().class("rail"))
         .color("hsl(0, 0%, 86.6667%)")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
+            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
         );
     style
         .line(&transportation, "tunnel_transit_rail")
-        .filter(Filter::eq("brunnel", "tunnel").and_in("class", ["transit"]))
-        .cap(Cap::Round)
+        .filter(tunnel().class_in(["transit"]))
+        .cap_round()
         .color("hsl(0, 0%, 86.6667%)")
         .paint(
             "line-width",
-            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
+            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
         );
     style
         .line(&transportation, "tunnel_transit_rail_hatching")
-        .filter(Filter::eq("brunnel", "tunnel").and_eq("class", "transit"))
+        .filter(tunnel().class("transit"))
         .color("hsl(0, 0%, 86.6667%)")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
+            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
         );
     style
         .fill(&transportation, "road_area_pattern")
@@ -508,48 +507,46 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "road_service_track_casing")
         .minzoom(13.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"]).and_in("class", ["service", "track"]),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class_in(["service", "track"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (15.0, "hsl(0, 0%, 88%)"),
-                (18.0, "hsl(0, 0%, 74%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                15.0 => "hsl(0, 0%, 88%)",
+                18.0 => "hsl(0, 0%, 74%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(13.0, 0.76), (16.0, 4.0), (20.0, 11.0)]).base(1.2),
+            stops![13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0].base(1.2),
         );
     style
         .line(&transportation, "road_link_casing")
         .minzoom(13.0)
         .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
+            surface()
                 .and_not_in(
                     "class",
                     ["pedestrian", "path", "track", "service", "motorway"],
                 )
                 .and_eq("ramp", 1.0),
         )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 86%)"),
-                (12.0, "hsl(0, 0%, 86%)"),
-                (15.0, "hsl(0, 0%, 78%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 86%)",
+                12.0 => "hsl(0, 0%, 86%)",
+                15.0 => "hsl(0, 0%, 78%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 23.5)]).base(1.2),
+            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5].base(1.2),
         );
     style
         .line(&transportation, "road_minor_casing")
@@ -557,157 +554,143 @@ fn style_from_builders() -> Style {
         .filter(
             Filter::geometry(Geometry::LineString)
                 .and_not_in("brunnel", ["bridge", "tunnel"])
-                .and_in("class", ["minor"])
+                .class_in(["minor"])
                 .and_ne("ramp", 1.0),
         )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (13.0, "hsl(0, 0%, 86%)"),
-                (16.0, "hsl(0, 0%, 75%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                13.0 => "hsl(0, 0%, 86%)",
+                16.0 => "hsl(0, 0%, 75%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 20.0)]).base(1.2),
+            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0].base(1.2),
         );
     style
         .line(&transportation, "road_secondary_tertiary_casing")
         .minzoom(13.0)
         .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
-                .and_in("class", ["secondary", "tertiary"])
+            surface()
+                .class_in(["secondary", "tertiary"])
                 .and_ne("ramp", 1.0),
         )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 82%)"),
-                (11.0, "hsl(0, 0%, 82%)"),
-                (12.0, "hsl(0, 0%, 82%)"),
-                (13.0, "hsl(0, 0%, 78%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 82%)",
+                11.0 => "hsl(0, 0%, 82%)",
+                12.0 => "hsl(0, 0%, 82%)",
+                13.0 => "hsl(0, 0%, 78%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.76), (13.0, 3.6), (20.0, 30.0)]).base(1.2),
+            stops![12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0].base(1.2),
         );
     style
         .line(&transportation, "road_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "primary"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("primary"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(13.0, "hsl(0, 0%, 67%)"), (20.0, "hsl(0, 0%, 52%)")]),
+            stops![13.0 => "hsl(0, 0%, 67%)", 20.0 => "hsl(0, 0%, 52%)"],
         )
-        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
     style
         .line(&transportation, "road_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "trunk"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("trunk"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(13.0, "hsl(0, 0%, 62%)"), (20.0, "hsl(0, 0%, 49%)")]),
+            stops![13.0 => "hsl(0, 0%, 62%)", 20.0 => "hsl(0, 0%, 49%)"],
         )
-        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
     style
         .line(&transportation, "road_motorway_link_casing")
         .minzoom(13.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
-                .and_eq("class", "motorway")
-                .and_eq("ramp", 1.0),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("motorway").and_eq("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (12.0, "hsl(0, 0%, 64%)"),
-                (15.0, "hsl(0, 0%, 54%)"),
-                (20.0, "hsl(0, 0%, 40%)"),
-            ]),
+            stops![
+                12.0 => "hsl(0, 0%, 64%)",
+                15.0 => "hsl(0, 0%, 54%)",
+                20.0 => "hsl(0, 0%, 40%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.74), (13.0, 5.9), (20.0, 35.0)]).base(1.2),
+            stops![8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0].base(1.2),
         );
     style
         .line(&transportation, "road_motorway_casing")
         .minzoom(10.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
-                .and_eq("class", "motorway")
-                .and_ne("ramp", 1.0),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("motorway").and_ne("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (7.0, "hsl(0, 0%, 60%)"),
-                (13.0, "hsl(0, 0%, 50%)"),
-                (20.0, "hsl(0, 0%, 40%)"),
-            ]),
+            stops![
+                7.0 => "hsl(0, 0%, 60%)",
+                13.0 => "hsl(0, 0%, 50%)",
+                20.0 => "hsl(0, 0%, 40%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(5.0, 1.4), (7.0, 1.75), (13.0, 5.9), (20.0, 40.0)]).base(1.2),
+            stops![5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0].base(1.2),
         );
     style
         .line(&transportation, "road_service_track")
         .minzoom(13.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"]).and_in("class", ["service", "track"]),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class_in(["service", "track"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 94%)"),
-                (13.0, "hsl(0, 0%, 84%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 94%)",
+                13.0 => "hsl(0, 0%, 84%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(13.0, 0.0), (16.0, 2.0), (20.0, 7.5)]).base(1.2),
+            stops![13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5].base(1.2),
         );
     style
         .line(&transportation, "road_link")
         .minzoom(12.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
-                .and_eq("ramp", 1.0)
-                .and_not_in(
-                    "class",
-                    ["pedestrian", "path", "track", "service", "motorway"],
-                ),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().and_eq("ramp", 1.0).and_not_in(
+            "class",
+            ["pedestrian", "path", "track", "service", "motorway"],
+        ))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 88%)"),
-                (12.0, "hsl(0, 0%, 88%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 88%)",
+                12.0 => "hsl(0, 0%, 88%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 20.0)]).base(1.2),
+            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0].base(1.2),
         );
     style
         .line(&transportation, "road_minor")
@@ -715,21 +698,21 @@ fn style_from_builders() -> Style {
         .filter(
             Filter::geometry(Geometry::LineString)
                 .and_not_in("brunnel", ["bridge", "tunnel"])
-                .and_in("class", ["minor"]),
+                .class_in(["minor"]),
         )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 86%)"),
-                (13.0, "hsl(0, 0%, 86%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 86%)",
+                13.0 => "hsl(0, 0%, 86%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)]).base(1.2),
+            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0].base(1.2),
         );
     style
         .line(&transportation, "road_path_pedestrian")
@@ -737,454 +720,427 @@ fn style_from_builders() -> Style {
         .filter(
             Filter::geometry(Geometry::LineString)
                 .and_not_in("brunnel", ["bridge", "tunnel"])
-                .and_in("class", ["path", "pedestrian"]),
+                .class_in(["path", "pedestrian"]),
         )
-        .join(Join::Round)
+        .join_round()
         .color("hsl(0, 0%, 96%)")
         .dasharray(vec![1.0, 0.7])
-        .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 0.75, 20.0 => 10.0].base(1.2));
     style
         .line(&transportation, "road_secondary_tertiary")
         .minzoom(12.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
-                .and_in("class", ["secondary", "tertiary"]),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class_in(["secondary", "tertiary"]))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 90%)"),
-                (11.0, "hsl(0, 0%, 90%)"),
-                (12.0, "hsl(0, 0%, 90%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 90%)",
+                11.0 => "hsl(0, 0%, 90%)",
+                12.0 => "hsl(0, 0%, 90%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (13.0, 2.5), (20.0, 26.0)]).base(1.2),
+            stops![12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0].base(1.2),
         );
     style
         .line(&transportation, "road_primary")
         .minzoom(8.0)
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "primary"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("primary"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 64%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 64%)"],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "road_trunk")
         .minzoom(6.0)
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "trunk"))
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("trunk"))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 61%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 61%)"],
         )
         .paint(
             "line-width",
-            stops([(6.0, 1.0), (10.0, 2.85), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "road_motorway_link")
         .minzoom(8.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
-                .and_eq("class", "motorway")
-                .and_eq("ramp", 1.0),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("motorway").and_eq("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "road_motorway")
         .minzoom(5.0)
-        .filter(
-            Filter::not_in("brunnel", ["bridge", "tunnel"])
-                .and_eq("class", "motorway")
-                .and_ne("ramp", 1.0),
-        )
-        .cap(Cap::Round)
-        .join(Join::Round)
+        .filter(surface().class("motorway").and_ne("ramp", 1.0))
+        .cap_round()
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
         )
         .paint(
             "line-width",
-            stops([(5.0, 1.0), (7.0, 1.0), (13.0, 4.5), (20.0, 36.0)]).base(1.2),
+            stops![5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0].base(1.2),
         );
     style
         .line(&transportation, "road_major_rail")
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "rail"))
-        .cap(Cap::Round)
+        .filter(surface().class("rail"))
+        .cap_round()
         .color("#bbb")
         .paint(
             "line-width",
-            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
+            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
         );
     style
         .line(&transportation, "road_major_rail_hatching")
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "rail"))
+        .filter(surface().class("rail"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
+            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
         );
     style
         .line(&transportation, "road_transit_rail")
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "transit"))
-        .cap(Cap::Round)
+        .filter(surface().class("transit"))
+        .cap_round()
         .color("#bbb")
         .paint(
             "line-width",
-            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
+            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
         );
     style
         .line(&transportation, "road_transit_rail_hatching")
-        .filter(Filter::not_in("brunnel", ["bridge", "tunnel"]).and_eq("class", "transit"))
+        .filter(surface().class("transit"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
+            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
         );
     style
         .line(&transportation, "bridge_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["service", "track"]))
-        .join(Join::Round)
+        .filter(bridge().class_in(["service", "track"]))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (15.0, "hsl(0, 0%, 88%)"),
-                (18.0, "hsl(0, 0%, 74%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                15.0 => "hsl(0, 0%, 88%)",
+                18.0 => "hsl(0, 0%, 74%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(13.0, 0.76), (16.0, 4.0), (20.0, 11.0)]).base(1.2),
+            stops![13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_link_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("class", "link").and_eq("brunnel", "bridge"))
-        .join(Join::Round)
+        .filter(bridge().class("link"))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 86%)"),
-                (12.0, "hsl(0, 0%, 86%)"),
-                (15.0, "hsl(0, 0%, 78%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 86%)",
+                12.0 => "hsl(0, 0%, 86%)",
+                15.0 => "hsl(0, 0%, 78%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 23.5)]).base(1.2),
+            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5].base(1.2),
         );
     style
         .line(&transportation, "bridge_street_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["street", "street_limited"]))
-        .join(Join::Round)
+        .filter(bridge().class_in(["street", "street_limited"]))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (13.0, "hsl(0, 0%, 86%)"),
-                (16.0, "hsl(0, 0%, 75%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                13.0 => "hsl(0, 0%, 86%)",
+                16.0 => "hsl(0, 0%, 75%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 20.0)]).base(1.2),
+            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_path_pedestrian_casing")
         .minzoom(13.0)
         .filter(
-            Filter::geometry(Geometry::LineString)
-                .and_eq("brunnel", "bridge")
-                .and_in("class", ["path", "pedestrian"]),
+            bridge()
+                .and_geometry(Geometry::LineString)
+                .class_in(["path", "pedestrian"]),
         )
         .paint(
             "line-color",
-            stops([(14.0, "hsl(0, 0%, 88%)"), (20.0, "hsl(0, 0%, 64%)")]),
+            stops![14.0 => "hsl(0, 0%, 88%)", 20.0 => "hsl(0, 0%, 64%)"],
         )
         .dasharray(vec![1.0, 0.0])
-        .paint("line-width", stops([(14.0, 1.125), (20.0, 18.0)]).base(1.2));
+        .paint("line-width", stops![14.0 => 1.125, 20.0 => 18.0].base(1.2));
     style
         .line(&transportation, "bridge_secondary_tertiary_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["secondary", "tertiary"]))
-        .join(Join::Round)
+        .filter(bridge().class_in(["secondary", "tertiary"]))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 82%)"),
-                (11.0, "hsl(0, 0%, 82%)"),
-                (12.0, "hsl(0, 0%, 82%)"),
-                (13.0, "hsl(0, 0%, 78%)"),
-                (20.0, "hsl(0, 0%, 64%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 82%)",
+                11.0 => "hsl(0, 0%, 82%)",
+                12.0 => "hsl(0, 0%, 82%)",
+                13.0 => "hsl(0, 0%, 78%)",
+                20.0 => "hsl(0, 0%, 64%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.76), (13.0, 3.6), (20.0, 30.0)]).base(1.2),
+            stops![12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "primary"))
-        .join(Join::Round)
+        .filter(bridge().class("primary"))
+        .join_round()
         .paint(
             "line-color",
-            stops([(13.0, "hsl(0, 0%, 67%)"), (20.0, "hsl(0, 0%, 52%)")]),
+            stops![13.0 => "hsl(0, 0%, 67%)", 20.0 => "hsl(0, 0%, 52%)"],
         )
-        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
     style
         .line(&transportation, "bridge_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "trunk"))
-        .join(Join::Round)
+        .filter(bridge().class("trunk"))
+        .join_round()
         .paint(
             "line-color",
-            stops([(13.0, "hsl(0, 0%, 62%)"), (20.0, "hsl(0, 0%, 49%)")]),
+            stops![13.0 => "hsl(0, 0%, 62%)", 20.0 => "hsl(0, 0%, 49%)"],
         )
-        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
     style
         .line(&transportation, "bridge_motorway_link_casing")
         .minzoom(13.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_eq("ramp", 1.0)
-                .and_eq("brunnel", "bridge"),
-        )
-        .join(Join::Round)
+        .filter(bridge().class("motorway").and_eq("ramp", 1.0))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (12.0, "hsl(0, 0%, 64%)"),
-                (15.0, "hsl(0, 0%, 54%)"),
-                (20.0, "hsl(0, 0%, 40%)"),
-            ]),
+            stops![
+                12.0 => "hsl(0, 0%, 64%)",
+                15.0 => "hsl(0, 0%, 54%)",
+                20.0 => "hsl(0, 0%, 40%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.74), (13.0, 5.9), (20.0, 35.0)]).base(1.2),
+            stops![8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_motorway_casing")
         .minzoom(10.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_ne("ramp", 1.0)
-                .and_eq("brunnel", "bridge"),
-        )
-        .join(Join::Round)
+        .filter(bridge().class("motorway").and_ne("ramp", 1.0))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (7.0, "hsl(0, 0%, 60%)"),
-                (13.0, "hsl(0, 0%, 50%)"),
-                (20.0, "hsl(0, 0%, 40%)"),
-            ]),
+            stops![
+                7.0 => "hsl(0, 0%, 60%)",
+                13.0 => "hsl(0, 0%, 50%)",
+                20.0 => "hsl(0, 0%, 40%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(5.0, 1.4), (7.0, 1.75), (13.0, 5.9), (20.0, 40.0)]).base(1.2),
+            stops![5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_service_track")
         .minzoom(13.0)
-        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["service", "track"]))
-        .join(Join::Round)
+        .filter(bridge().class_in(["service", "track"]))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 94%)"),
-                (13.0, "hsl(0, 0%, 84%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 94%)",
+                13.0 => "hsl(0, 0%, 84%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(13.0, 0.0), (16.0, 2.0), (20.0, 7.5)]).base(1.2),
+            stops![13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5].base(1.2),
         );
     style
         .line(&transportation, "bridge_link")
         .minzoom(12.0)
-        .filter(Filter::eq("class", "link").and_eq("brunnel", "bridge"))
-        .join(Join::Round)
+        .filter(bridge().class("link"))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 88%)"),
-                (12.0, "hsl(0, 0%, 88%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 88%)",
+                12.0 => "hsl(0, 0%, 88%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 20.0)]).base(1.2),
+            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_street")
         .minzoom(12.0)
-        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["minor"]))
-        .join(Join::Round)
+        .filter(bridge().class_in(["minor"]))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 86%)"),
-                (13.0, "hsl(0, 0%, 86%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 86%)",
+                13.0 => "hsl(0, 0%, 86%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)]).base(1.2),
+            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_path_pedestrian")
         .minzoom(13.0)
         .filter(
-            Filter::geometry(Geometry::LineString)
-                .and_eq("brunnel", "bridge")
-                .and_in("class", ["path", "pedestrian"]),
+            bridge()
+                .and_geometry(Geometry::LineString)
+                .class_in(["path", "pedestrian"]),
         )
         .color("hsl(0, 0%, 96%)")
         .dasharray(vec![1.0, 0.3])
-        .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
+        .paint("line-width", stops![13.0 => 0.75, 20.0 => 10.0].base(1.2));
     style
         .line(&transportation, "bridge_secondary_tertiary")
         .minzoom(12.0)
-        .filter(Filter::eq("brunnel", "bridge").and_in("class", ["secondary", "tertiary"]))
-        .join(Join::Round)
+        .filter(bridge().class_in(["secondary", "tertiary"]))
+        .join_round()
         .paint(
             "line-color",
-            stops([
-                (10.0, "hsl(0, 0%, 90%)"),
-                (11.0, "hsl(0, 0%, 90%)"),
-                (12.0, "hsl(0, 0%, 90%)"),
-                (20.0, "hsl(0, 0%, 74%)"),
-            ]),
+            stops![
+                10.0 => "hsl(0, 0%, 90%)",
+                11.0 => "hsl(0, 0%, 90%)",
+                12.0 => "hsl(0, 0%, 90%)",
+                20.0 => "hsl(0, 0%, 74%)",
+            ],
         )
         .paint(
             "line-width",
-            stops([(12.0, 1.0), (13.0, 2.5), (20.0, 26.0)]).base(1.2),
+            stops![12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_primary")
         .minzoom(8.0)
-        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "primary"))
-        .join(Join::Round)
+        .filter(bridge().class("primary"))
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 64%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 64%)"],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_trunk")
         .minzoom(6.0)
-        .filter(Filter::eq("brunnel", "bridge").and_eq("class", "trunk"))
-        .join(Join::Round)
+        .filter(bridge().class("trunk"))
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 61%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 61%)"],
         )
         .paint(
             "line-width",
-            stops([(6.0, 1.0), (10.0, 2.85), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_motorway_link")
         .minzoom(8.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_eq("ramp", 1.0)
-                .and_eq("brunnel", "bridge"),
-        )
-        .join(Join::Round)
+        .filter(bridge().class("motorway").and_eq("ramp", 1.0))
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
         )
         .paint(
             "line-width",
-            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
+            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_motorway")
         .minzoom(5.0)
-        .filter(
-            Filter::eq("class", "motorway")
-                .and_ne("ramp", 1.0)
-                .and_eq("brunnel", "bridge"),
-        )
-        .join(Join::Round)
+        .filter(bridge().class("motorway").and_ne("ramp", 1.0))
+        .join_round()
         .paint(
             "line-color",
-            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
+            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
         )
         .paint(
             "line-width",
-            stops([(5.0, 1.0), (7.0, 1.0), (13.0, 4.5), (20.0, 36.0)]).base(1.2),
+            stops![5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0].base(1.2),
         );
     style
         .line(&transportation, "bridge_major_rail")
-        .filter(Filter::eq("class", "rail").and_eq("brunnel", "bridge"))
+        .filter(bridge().class("rail"))
         .color("#bbb")
         .paint(
             "line-width",
-            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
+            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
         );
     style
         .line(&transportation, "bridge_major_rail_hatching")
-        .filter(Filter::eq("class", "rail").and_eq("brunnel", "bridge"))
+        .filter(bridge().class("rail"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
+            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
         );
     style
         .line(&transportation, "bridge_transit_rail")
-        .filter(Filter::eq("class", "transit").and_eq("brunnel", "bridge"))
+        .filter(bridge().class("transit"))
         .color("#bbb")
         .paint(
             "line-width",
-            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
+            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
         );
     style
         .line(&transportation, "bridge_transit_rail_hatching")
-        .filter(Filter::eq("class", "transit").and_eq("brunnel", "bridge"))
+        .filter(bridge().class("transit"))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
+            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
         );
 
     style
@@ -1198,7 +1154,7 @@ fn style_from_builders() -> Style {
         s.line("boundary_3")
             .minzoom(3.0)
             .filter(Filter::is_in("admin_level", [3, 4]))
-            .join(Join::Round)
+            .join_round()
             .color("#747980")
             .dasharray(vec![1.5, 1.5])
             .width(zoom!(3 => 0.6, 6 => 1.0, 10 => 2.0));
@@ -1233,7 +1189,7 @@ fn style_from_builders() -> Style {
             .icon_rotate(180.0);
         s.line("route_ferry")
             .minzoom(12.0)
-            .filter(Filter::geometry(Geometry::LineString).and_in("class", ["ferry"]))
+            .filter(Filter::geometry(Geometry::LineString).class_in(["ferry"]))
             .rounded()
             .color("#99d")
             .width(2.0)
@@ -1298,7 +1254,7 @@ fn style_from_builders() -> Style {
         .layout("text-field", json!("{name}"))
         .layout("text-font", json!(["Roboto Regular"]))
         .layout("text-offset", json!([0, 0.15]))
-        .layout("text-size", stops([(13.0, 12.0), (14.0, 13.0)]))
+        .layout("text-size", stops![13.0 => 12.0, 14.0 => 13.0])
         .paint("text-color", json!("#765"))
         .paint("text-halo-blur", json!(0.5))
         .paint("text-halo-color", json!("#ffffff"))
@@ -1650,7 +1606,7 @@ fn style_from_builders() -> Style {
             ]),
         )
         .layout("icon-rotation-alignment", json!("viewport"))
-        .layout("symbol-placement", stops([(10.0, "point"), (11.0, "line")]))
+        .layout("symbol-placement", stops![10.0 => "point", 11.0 => "line"])
         .layout("symbol-spacing", json!(500))
         .layout(
             "text-field",
@@ -2222,7 +2178,7 @@ fn style_from_builders() -> Style {
         .text_color("#633");
     style
         .symbol(&place, "place_village")
-        .filter(Filter::eq("class", "village"))
+        .filter(Filter::class("village"))
         .text_field("{name_en}")
         .text_halo(HALO, 1.2)
         .text_font([REGULAR])
@@ -2233,7 +2189,7 @@ fn style_from_builders() -> Style {
     let town_size = zoom!(base 1.2; 7 => 12.0, 11 => 16.0);
     style
         .symbol(&place, "place_town")
-        .filter(Filter::eq("class", "town"))
+        .filter(Filter::class("town"))
         .text_field("{name_en}")
         .text_halo(HALO, 1.2)
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
@@ -2245,7 +2201,7 @@ fn style_from_builders() -> Style {
     let city_size = zoom!(base 1.2; 7 => 14.0, 11 => 24.0);
     style
         .symbol(&place, "place_city")
-        .filter(Filter::eq("class", "city"))
+        .filter(Filter::class("city"))
         .text_field("{name_en}")
         .text_halo(HALO, 1.2)
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
@@ -2260,7 +2216,7 @@ fn style_from_builders() -> Style {
 
     style
         .symbol(&place, "state")
-        .filter(Filter::eq("class", "state"))
+        .filter(Filter::class("state"))
         .text_field("{name_en}")
         .text_halo(HALO, 1.2)
         .maxzoom(6.0)
@@ -2288,7 +2244,7 @@ fn style_from_builders() -> Style {
     ] {
         style
             .symbol(&place, id)
-            .filter(rank.and_eq("class", "country"))
+            .filter(rank.class("country"))
             .text_field("{name_en}")
             .text_font([ITALIC])
             .text_max_width(6.25)
@@ -2299,7 +2255,7 @@ fn style_from_builders() -> Style {
     }
     style
         .symbol(&place, "continent")
-        .filter(Filter::eq("class", "continent"))
+        .filter(Filter::class("continent"))
         .text_field("{name_en}")
         .text_halo(HALO, 1.2)
         .maxzoom(1.0)

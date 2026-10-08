@@ -239,6 +239,11 @@ impl Layer<Line> {
         )
     }
 
+    /// Uses round line caps.
+    pub fn cap_round(self) -> Self {
+        self.cap(Cap::Round)
+    }
+
     pub fn join(self, join: Join) -> Self {
         self.layout(
             "line-join",
@@ -250,9 +255,14 @@ impl Layer<Line> {
         )
     }
 
+    /// Uses round line joins.
+    pub fn join_round(self) -> Self {
+        self.join(Join::Round)
+    }
+
     /// Rounds both the caps and the joins, which is what most road layers want.
     pub fn rounded(self) -> Self {
-        self.cap(Cap::Round).join(Join::Round)
+        self.cap_round().join_round()
     }
 
     /// The wider line that sits underneath this one, `pad` wider on each side.

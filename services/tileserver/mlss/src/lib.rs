@@ -29,7 +29,7 @@ pub mod street;
 pub mod style;
 
 pub use color::Color;
-pub use filter::{Filter, Geometry};
+pub use filter::{ClassFilter, Filter, Geometry};
 pub use layer::{AnyLayer, Cap, Join, Layer};
 pub use openmaptiles::OpenMapTiles;
 pub use property::{stops, Property, Stops};

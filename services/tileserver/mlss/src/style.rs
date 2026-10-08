@@ -141,8 +141,16 @@ impl AttachedLayer<'_, Line> {
         self.map(|layer| layer.cap(cap))
     }
 
+    pub fn cap_round(self) -> Self {
+        self.map(Layer::cap_round)
+    }
+
     pub fn join(self, join: Join) -> Self {
         self.map(|layer| layer.join(join))
+    }
+
+    pub fn join_round(self) -> Self {
+        self.map(Layer::join_round)
     }
 
     pub fn rounded(self) -> Self {
