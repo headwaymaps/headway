@@ -179,978 +179,1134 @@ fn style_from_builders() -> Style {
     style
         .line(&transportation, "tunnel_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["in", "class", "service", "track"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["service", "track"]),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[15,"hsl(0, 0%, 94%)"],[18,"hsl(0, 0%, 87%)"],[20,"hsl(0, 0%, 82%)"]]}),
+            stops([
+                (15.0, "hsl(0, 0%, 94%)"),
+                (18.0, "hsl(0, 0%, 87%)"),
+                (20.0, "hsl(0, 0%, 82%)"),
+            ]),
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[13,0.76],[16,4],[20,11]]}),
+            stops([(13.0, 0.76), (16.0, 4.0), (20.0, 11.0)]).base(1.2),
         );
-    style.line(&transportation, "tunnel_link_casing")
-            .minzoom(13.0)
-            .filter(Filter::raw(json!(["all",["==","ramp",1],["==","brunnel","tunnel"]])))
-            .cap(Cap::Round)
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 93%)"],[12,"hsl(0, 0%, 93%)"],[15,"hsl(0, 0%, 89%)"],[20,"hsl(0, 0%, 82%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,23.5]]}))
-            ;
-    style.line(&transportation, "tunnel_street_casing")
-            .minzoom(13.0)
-            .filter(Filter::raw(json!(["all",["==","brunnel","tunnel"],["in","class","street","street_limited"]])))
-            .cap(Cap::Round)
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[13,"hsl(0, 0%, 93%)"],[16,"hsl(0, 0%, 87.5%)"],[20,"hsl(0, 0%, 82%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,20]]}))
-            ;
-    style.line(&transportation, "tunnel_secondary_tertiary_casing")
-            .minzoom(13.0)
-            .filter(Filter::raw(json!(["all",["==","brunnel","tunnel"],["in","class","secondary","tertiary"]])))
-            .cap(Cap::Round)
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 91%)"],[11,"hsl(0, 0%, 91%)"],[12,"hsl(0, 0%, 91%)"],[13,"hsl(0, 0%, 89%)"],[20,"hsl(0, 0%, 82%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,1.76],[13,3.6],[20,30]]}))
-            ;
+    style
+        .line(&transportation, "tunnel_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::all([
+            Filter::eq("ramp", 1.0),
+            Filter::eq("brunnel", "tunnel"),
+        ]))
+        .cap(Cap::Round)
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([
+                (10.0, "hsl(0, 0%, 93%)"),
+                (12.0, "hsl(0, 0%, 93%)"),
+                (15.0, "hsl(0, 0%, 89%)"),
+                (20.0, "hsl(0, 0%, 82%)"),
+            ]),
+        )
+        .paint(
+            "line-width",
+            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 23.5)]).base(1.2),
+        );
+    style
+        .line(&transportation, "tunnel_street_casing")
+        .minzoom(13.0)
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["street", "street_limited"]),
+        ]))
+        .cap(Cap::Round)
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([
+                (13.0, "hsl(0, 0%, 93%)"),
+                (16.0, "hsl(0, 0%, 87.5%)"),
+                (20.0, "hsl(0, 0%, 82%)"),
+            ]),
+        )
+        .paint(
+            "line-width",
+            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 20.0)]).base(1.2),
+        );
+    style
+        .line(&transportation, "tunnel_secondary_tertiary_casing")
+        .minzoom(13.0)
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["secondary", "tertiary"]),
+        ]))
+        .cap(Cap::Round)
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([
+                (10.0, "hsl(0, 0%, 91%)"),
+                (11.0, "hsl(0, 0%, 91%)"),
+                (12.0, "hsl(0, 0%, 91%)"),
+                (13.0, "hsl(0, 0%, 89%)"),
+                (20.0, "hsl(0, 0%, 82%)"),
+            ]),
+        )
+        .paint(
+            "line-width",
+            stops([(12.0, 1.76), (13.0, 3.6), (20.0, 30.0)]).base(1.2),
+        );
     style
         .line(&transportation, "tunnel_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["==", "class", "primary"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::eq("class", "primary"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 83.5%)"],[20,"hsl(0, 0%, 76%)"]]}),
+            stops([(13.0, "hsl(0, 0%, 83.5%)"), (20.0, "hsl(0, 0%, 76%)")]),
         )
-        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
     style
         .line(&transportation, "tunnel_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["==", "class", "trunk"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::eq("class", "trunk"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 81%)"],[20,"hsl(0, 0%, 74.5%)"]]}),
+            stops([(13.0, "hsl(0, 0%, 81%)"), (20.0, "hsl(0, 0%, 74.5%)")]),
         )
-        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
     style
         .line(&transportation, "tunnel_motorway_link_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["==", "ramp", 1],
-            ["==", "brunnel", "tunnel"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::eq("ramp", 1.0),
+            Filter::eq("brunnel", "tunnel"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[12,"hsl(0, 0%, 82%)"],[15,"hsl(0, 0%, 77%)"],[20,"hsl(0, 0%, 70%)"]]}),
+            stops([
+                (12.0, "hsl(0, 0%, 82%)"),
+                (15.0, "hsl(0, 0%, 77%)"),
+                (20.0, "hsl(0, 0%, 70%)"),
+            ]),
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1.74],[13,5.9],[20,35]]}),
+            stops([(8.0, 1.74), (13.0, 5.9), (20.0, 35.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_motorway_casing")
         .minzoom(10.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["!=", "ramp", 1],
-            ["==", "brunnel", "tunnel"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::ne("ramp", 1.0),
+            Filter::eq("brunnel", "tunnel"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[7,"hsl(0, 0%, 80%)"],[13,"hsl(0, 0%, 75%)"],[20,"hsl(0, 0%, 70%)"]]}),
+            stops([
+                (7.0, "hsl(0, 0%, 80%)"),
+                (13.0, "hsl(0, 0%, 75%)"),
+                (20.0, "hsl(0, 0%, 70%)"),
+            ]),
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[5,1.4],[7,1.75],[13,5.9],[20,40]]}),
+            stops([(5.0, 1.4), (7.0, 1.75), (13.0, 5.9), (20.0, 40.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_service_track")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["in", "class", "service", "track"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["service", "track"]),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 97%)"],[13,"hsl(0, 0%, 92%)"],[20,"hsl(0, 0%, 87%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 97%)"),
+                (13.0, "hsl(0, 0%, 92%)"),
+                (20.0, "hsl(0, 0%, 87%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[13,0],[16,2],[20,7.5]]}),
+            stops([(13.0, 0.0), (16.0, 2.0), (20.0, 7.5)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_link")
         .minzoom(12.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "ramp", 1],
-            ["==", "brunnel", "tunnel"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("ramp", 1.0),
+            Filter::eq("brunnel", "tunnel"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 94%)"],[12,"hsl(0, 0%, 94%)"],[20,"hsl(0, 0%, 87%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 94%)"),
+                (12.0, "hsl(0, 0%, 94%)"),
+                (20.0, "hsl(0, 0%, 87%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,20]]}),
+            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 20.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_minor")
         .minzoom(12.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["in", "class", "minor"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["minor"]),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 93%)"],[13,"hsl(0, 0%, 93%)"],[20,"hsl(0, 0%, 87%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 93%)"),
+                (13.0, "hsl(0, 0%, 93%)"),
+                (20.0, "hsl(0, 0%, 87%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,18]]}),
+            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_path_pedestrian")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "$type", "LineString"],
-            ["==", "brunnel", "tunnel"],
-            ["in", "class", "path", "pedestrian"]
-        ])))
+        .filter(Filter::all([
+            Filter::geometry(Geometry::LineString),
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["path", "pedestrian"]),
+        ]))
         .color("hsl(0, 0%, 98%)")
         .dasharray(vec![1.0, 0.75])
-        .paint(
-            "line-width",
-            json!({"base":1.2,"stops":[[13,0.75],[20,10]]}),
-        );
-    style.line(&transportation, "tunnel_secondary_tertiary")
-            .minzoom(12.0)
-            .filter(Filter::raw(json!(["all",["==","brunnel","tunnel"],["in","class","secondary","tertiary"]])))
-            .cap(Cap::Round)
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 95%)"],[11,"hsl(0, 0%, 95%)"],[12,"hsl(0, 0%, 95%)"],[20,"hsl(0, 0%, 87%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,1],[13,2.5],[20,26]]}))
-            ;
+        .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
     style
-        .line(&transportation, "tunnel_primary")
-        .minzoom(8.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["==", "class", "primary"]
-        ])))
+        .line(&transportation, "tunnel_secondary_tertiary")
+        .minzoom(12.0)
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["secondary", "tertiary"]),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 95%)"),
+                (11.0, "hsl(0, 0%, 95%)"),
+                (12.0, "hsl(0, 0%, 95%)"),
+                (20.0, "hsl(0, 0%, 87%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+            stops([(12.0, 1.0), (13.0, 2.5), (20.0, 26.0)]).base(1.2),
+        );
+    style
+        .line(&transportation, "tunnel_primary")
+        .minzoom(8.0)
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::eq("class", "primary"),
+        ]))
+        .cap(Cap::Round)
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 64%)")]),
+        )
+        .paint(
+            "line-width",
+            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_trunk")
         .minzoom(6.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["==", "class", "trunk"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::eq("class", "trunk"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 61%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 61%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[6,1],[10,2.85],[13,4.5],[20,32]]}),
+            stops([(6.0, 1.0), (10.0, 2.85), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_motorway_link")
         .minzoom(8.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["==", "ramp", 1],
-            ["==", "brunnel", "tunnel"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::eq("ramp", 1.0),
+            Filter::eq("brunnel", "tunnel"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 76%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 84%)"), (20.0, "hsl(0, 0%, 76%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_motorway")
         .minzoom(5.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["!=", "ramp", 1],
-            ["==", "brunnel", "tunnel"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::ne("ramp", 1.0),
+            Filter::eq("brunnel", "tunnel"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 76%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 84%)"), (20.0, "hsl(0, 0%, 76%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[5,1],[7,1],[13,4.5],[20,36]]}),
+            stops([(5.0, 1.0), (7.0, 1.0), (13.0, 4.5), (20.0, 36.0)]).base(1.2),
         );
     style
         .line(&transportation, "tunnel_major_rail")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["in", "class", "rail"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["rail"]),
+        ]))
         .cap(Cap::Round)
         .color("hsl(0, 0%, 86.6667%)")
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
         );
     style
         .line(&transportation, "tunnel_major_rail_hatching")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["==", "class", "rail"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::eq("class", "rail"),
+        ]))
         .color("hsl(0, 0%, 86.6667%)")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
         );
     style
         .line(&transportation, "tunnel_transit_rail")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["in", "class", "transit"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::is_in("class", ["transit"]),
+        ]))
         .cap(Cap::Round)
         .color("hsl(0, 0%, 86.6667%)")
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
         );
     style
         .line(&transportation, "tunnel_transit_rail_hatching")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "tunnel"],
-            ["==", "class", "transit"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "tunnel"),
+            Filter::eq("class", "transit"),
+        ]))
         .color("hsl(0, 0%, 86.6667%)")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
         );
     style
         .fill(&transportation, "road_area_pattern")
-        .filter(Filter::raw(json!(["==", "$type", "Polygon"])))
+        .filter(Filter::geometry(Geometry::Polygon))
         .paint("fill-pattern", json!("pedestrian_polygon"));
     style
         .line(&transportation, "road_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["in", "class", "service", "track"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::is_in("class", ["service", "track"]),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[15,"hsl(0, 0%, 88%)"],[18,"hsl(0, 0%, 74%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([
+                (15.0, "hsl(0, 0%, 88%)"),
+                (18.0, "hsl(0, 0%, 74%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[13,0.76],[16,4],[20,11]]}),
+            stops([(13.0, 0.76), (16.0, 4.0), (20.0, 11.0)]).base(1.2),
         );
-    style.line(&transportation, "road_link_casing")
-            .minzoom(13.0)
-            .filter(Filter::raw(json!(["all",["!in","brunnel","bridge","tunnel"],["!in","class","pedestrian","path","track","service","motorway"],["==","ramp",1]])))
-            .cap(Cap::Round)
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 86%)"],[12,"hsl(0, 0%, 86%)"],[15,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,23.5]]}))
-            ;
+    style
+        .line(&transportation, "road_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::not_in(
+                "class",
+                ["pedestrian", "path", "track", "service", "motorway"],
+            ),
+            Filter::eq("ramp", 1.0),
+        ]))
+        .cap(Cap::Round)
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([
+                (10.0, "hsl(0, 0%, 86%)"),
+                (12.0, "hsl(0, 0%, 86%)"),
+                (15.0, "hsl(0, 0%, 78%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
+        )
+        .paint(
+            "line-width",
+            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 23.5)]).base(1.2),
+        );
     style
         .line(&transportation, "road_minor_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "$type", "LineString"],
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["in", "class", "minor"],
-            ["!=", "ramp", 1]
-        ])))
+        .filter(Filter::all([
+            Filter::geometry(Geometry::LineString),
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::is_in("class", ["minor"]),
+            Filter::ne("ramp", 1.0),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 86%)"],[16,"hsl(0, 0%, 75%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([
+                (13.0, "hsl(0, 0%, 86%)"),
+                (16.0, "hsl(0, 0%, 75%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,20]]}),
+            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 20.0)]).base(1.2),
         );
-    style.line(&transportation, "road_secondary_tertiary_casing")
-            .minzoom(13.0)
-            .filter(Filter::raw(json!(["all",["!in","brunnel","bridge","tunnel"],["in","class","secondary","tertiary"],["!=","ramp",1]])))
-            .cap(Cap::Round)
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 82%)"],[11,"hsl(0, 0%, 82%)"],[12,"hsl(0, 0%, 82%)"],[13,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,1.76],[13,3.6],[20,30]]}))
-            ;
+    style
+        .line(&transportation, "road_secondary_tertiary_casing")
+        .minzoom(13.0)
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::is_in("class", ["secondary", "tertiary"]),
+            Filter::ne("ramp", 1.0),
+        ]))
+        .cap(Cap::Round)
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([
+                (10.0, "hsl(0, 0%, 82%)"),
+                (11.0, "hsl(0, 0%, 82%)"),
+                (12.0, "hsl(0, 0%, 82%)"),
+                (13.0, "hsl(0, 0%, 78%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
+        )
+        .paint(
+            "line-width",
+            stops([(12.0, 1.76), (13.0, 3.6), (20.0, 30.0)]).base(1.2),
+        );
     style
         .line(&transportation, "road_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "primary"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "primary"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 67%)"],[20,"hsl(0, 0%, 52%)"]]}),
+            stops([(13.0, "hsl(0, 0%, 67%)"), (20.0, "hsl(0, 0%, 52%)")]),
         )
-        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
     style
         .line(&transportation, "road_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "trunk"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "trunk"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 62%)"],[20,"hsl(0, 0%, 49%)"]]}),
+            stops([(13.0, "hsl(0, 0%, 62%)"), (20.0, "hsl(0, 0%, 49%)")]),
         )
-        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
     style
         .line(&transportation, "road_motorway_link_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "motorway"],
-            ["==", "ramp", 1]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "motorway"),
+            Filter::eq("ramp", 1.0),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[12,"hsl(0, 0%, 64%)"],[15,"hsl(0, 0%, 54%)"],[20,"hsl(0, 0%, 40%)"]]}),
+            stops([
+                (12.0, "hsl(0, 0%, 64%)"),
+                (15.0, "hsl(0, 0%, 54%)"),
+                (20.0, "hsl(0, 0%, 40%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1.74],[13,5.9],[20,35]]}),
+            stops([(8.0, 1.74), (13.0, 5.9), (20.0, 35.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_motorway_casing")
         .minzoom(10.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "motorway"],
-            ["!=", "ramp", 1]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "motorway"),
+            Filter::ne("ramp", 1.0),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[7,"hsl(0, 0%, 60%)"],[13,"hsl(0, 0%, 50%)"],[20,"hsl(0, 0%, 40%)"]]}),
+            stops([
+                (7.0, "hsl(0, 0%, 60%)"),
+                (13.0, "hsl(0, 0%, 50%)"),
+                (20.0, "hsl(0, 0%, 40%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[5,1.4],[7,1.75],[13,5.9],[20,40]]}),
+            stops([(5.0, 1.4), (7.0, 1.75), (13.0, 5.9), (20.0, 40.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_service_track")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["in", "class", "service", "track"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::is_in("class", ["service", "track"]),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 94%)"],[13,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 74%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 94%)"),
+                (13.0, "hsl(0, 0%, 84%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[13,0],[16,2],[20,7.5]]}),
+            stops([(13.0, 0.0), (16.0, 2.0), (20.0, 7.5)]).base(1.2),
         );
     style
         .line(&transportation, "road_link")
         .minzoom(12.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "ramp", 1],
-            [
-                "!in",
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("ramp", 1.0),
+            Filter::not_in(
                 "class",
-                "pedestrian",
-                "path",
-                "track",
-                "service",
-                "motorway"
-            ]
-        ])))
+                ["pedestrian", "path", "track", "service", "motorway"],
+            ),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 88%)"],[12,"hsl(0, 0%, 88%)"],[20,"hsl(0, 0%, 74%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 88%)"),
+                (12.0, "hsl(0, 0%, 88%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,20]]}),
+            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 20.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_minor")
         .minzoom(12.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "$type", "LineString"],
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["in", "class", "minor"]
-        ])))
+        .filter(Filter::all([
+            Filter::geometry(Geometry::LineString),
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::is_in("class", ["minor"]),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 86%)"],[13,"hsl(0, 0%, 86%)"],[20,"hsl(0, 0%, 74%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 86%)"),
+                (13.0, "hsl(0, 0%, 86%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,18]]}),
+            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_path_pedestrian")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "$type", "LineString"],
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["in", "class", "path", "pedestrian"]
-        ])))
+        .filter(Filter::all([
+            Filter::geometry(Geometry::LineString),
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::is_in("class", ["path", "pedestrian"]),
+        ]))
         .join(Join::Round)
         .color("hsl(0, 0%, 96%)")
         .dasharray(vec![1.0, 0.7])
-        .paint(
-            "line-width",
-            json!({"base":1.2,"stops":[[13,0.75],[20,10]]}),
-        );
-    style.line(&transportation, "road_secondary_tertiary")
-            .minzoom(12.0)
-            .filter(Filter::raw(json!(["all",["!in","brunnel","bridge","tunnel"],["in","class","secondary","tertiary"]])))
-            .cap(Cap::Round)
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 90%)"],[11,"hsl(0, 0%, 90%)"],[12,"hsl(0, 0%, 90%)"],[20,"hsl(0, 0%, 74%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,1],[13,2.5],[20,26]]}))
-            ;
+        .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
     style
-        .line(&transportation, "road_primary")
-        .minzoom(8.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "primary"]
-        ])))
+        .line(&transportation, "road_secondary_tertiary")
+        .minzoom(12.0)
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::is_in("class", ["secondary", "tertiary"]),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 90%)"),
+                (11.0, "hsl(0, 0%, 90%)"),
+                (12.0, "hsl(0, 0%, 90%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+            stops([(12.0, 1.0), (13.0, 2.5), (20.0, 26.0)]).base(1.2),
+        );
+    style
+        .line(&transportation, "road_primary")
+        .minzoom(8.0)
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "primary"),
+        ]))
+        .cap(Cap::Round)
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 64%)")]),
+        )
+        .paint(
+            "line-width",
+            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_trunk")
         .minzoom(6.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "trunk"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "trunk"),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 61%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 61%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[6,1],[10,2.85],[13,4.5],[20,32]]}),
+            stops([(6.0, 1.0), (10.0, 2.85), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_motorway_link")
         .minzoom(8.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "motorway"],
-            ["==", "ramp", 1]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "motorway"),
+            Filter::eq("ramp", 1.0),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_motorway")
         .minzoom(5.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "motorway"],
-            ["!=", "ramp", 1]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "motorway"),
+            Filter::ne("ramp", 1.0),
+        ]))
         .cap(Cap::Round)
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[5,1],[7,1],[13,4.5],[20,36]]}),
+            stops([(5.0, 1.0), (7.0, 1.0), (13.0, 4.5), (20.0, 36.0)]).base(1.2),
         );
     style
         .line(&transportation, "road_major_rail")
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "rail"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "rail"),
+        ]))
         .cap(Cap::Round)
         .color("#bbb")
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
         );
     style
         .line(&transportation, "road_major_rail_hatching")
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "rail"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "rail"),
+        ]))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
         );
     style
         .line(&transportation, "road_transit_rail")
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "transit"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "transit"),
+        ]))
         .cap(Cap::Round)
         .color("#bbb")
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
         );
     style
         .line(&transportation, "road_transit_rail_hatching")
-        .filter(Filter::raw(json!([
-            "all",
-            ["!in", "brunnel", "bridge", "tunnel"],
-            ["==", "class", "transit"]
-        ])))
+        .filter(Filter::all([
+            Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Filter::eq("class", "transit"),
+        ]))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
         );
     style
         .line(&transportation, "bridge_service_track_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["in", "class", "service", "track"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["service", "track"]),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[15,"hsl(0, 0%, 88%)"],[18,"hsl(0, 0%, 74%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([
+                (15.0, "hsl(0, 0%, 88%)"),
+                (18.0, "hsl(0, 0%, 74%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[13,0.76],[16,4],[20,11]]}),
+            stops([(13.0, 0.76), (16.0, 4.0), (20.0, 11.0)]).base(1.2),
         );
-    style.line(&transportation, "bridge_link_casing")
-            .minzoom(13.0)
-            .filter(Filter::raw(json!(["all",["==","class","link"],["==","brunnel","bridge"]])))
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 86%)"],[12,"hsl(0, 0%, 86%)"],[15,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,23.5]]}))
-            ;
+    style
+        .line(&transportation, "bridge_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::all([
+            Filter::eq("class", "link"),
+            Filter::eq("brunnel", "bridge"),
+        ]))
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([
+                (10.0, "hsl(0, 0%, 86%)"),
+                (12.0, "hsl(0, 0%, 86%)"),
+                (15.0, "hsl(0, 0%, 78%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
+        )
+        .paint(
+            "line-width",
+            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 23.5)]).base(1.2),
+        );
     style
         .line(&transportation, "bridge_street_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["in", "class", "street", "street_limited"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["street", "street_limited"]),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 86%)"],[16,"hsl(0, 0%, 75%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([
+                (13.0, "hsl(0, 0%, 86%)"),
+                (16.0, "hsl(0, 0%, 75%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,20]]}),
+            stops([(12.0, 2.12), (14.0, 4.0), (20.0, 20.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_path_pedestrian_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "$type", "LineString"],
-            ["==", "brunnel", "bridge"],
-            ["in", "class", "path", "pedestrian"]
-        ])))
+        .filter(Filter::all([
+            Filter::geometry(Geometry::LineString),
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["path", "pedestrian"]),
+        ]))
         .paint(
             "line-color",
-            json!({"stops":[[14,"hsl(0, 0%, 88%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([(14.0, "hsl(0, 0%, 88%)"), (20.0, "hsl(0, 0%, 64%)")]),
         )
         .dasharray(vec![1.0, 0.0])
+        .paint("line-width", stops([(14.0, 1.125), (20.0, 18.0)]).base(1.2));
+    style
+        .line(&transportation, "bridge_secondary_tertiary_casing")
+        .minzoom(13.0)
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["secondary", "tertiary"]),
+        ]))
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([
+                (10.0, "hsl(0, 0%, 82%)"),
+                (11.0, "hsl(0, 0%, 82%)"),
+                (12.0, "hsl(0, 0%, 82%)"),
+                (13.0, "hsl(0, 0%, 78%)"),
+                (20.0, "hsl(0, 0%, 64%)"),
+            ]),
+        )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[14,1.125],[20,18]]}),
+            stops([(12.0, 1.76), (13.0, 3.6), (20.0, 30.0)]).base(1.2),
         );
-    style.line(&transportation, "bridge_secondary_tertiary_casing")
-            .minzoom(13.0)
-            .filter(Filter::raw(json!(["all",["==","brunnel","bridge"],["in","class","secondary","tertiary"]])))
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 82%)"],[11,"hsl(0, 0%, 82%)"],[12,"hsl(0, 0%, 82%)"],[13,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,1.76],[13,3.6],[20,30]]}))
-            ;
     style
         .line(&transportation, "bridge_primary_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["==", "class", "primary"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::eq("class", "primary"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 67%)"],[20,"hsl(0, 0%, 52%)"]]}),
+            stops([(13.0, "hsl(0, 0%, 67%)"), (20.0, "hsl(0, 0%, 52%)")]),
         )
-        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
     style
         .line(&transportation, "bridge_trunk_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["==", "class", "trunk"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::eq("class", "trunk"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[13,"hsl(0, 0%, 62%)"],[20,"hsl(0, 0%, 49%)"]]}),
+            stops([(13.0, "hsl(0, 0%, 62%)"), (20.0, "hsl(0, 0%, 49%)")]),
         )
-        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+        .paint("line-width", stops([(13.0, 5.9), (20.0, 36.0)]).base(1.2));
     style
         .line(&transportation, "bridge_motorway_link_casing")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["==", "ramp", 1],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::eq("ramp", 1.0),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[12,"hsl(0, 0%, 64%)"],[15,"hsl(0, 0%, 54%)"],[20,"hsl(0, 0%, 40%)"]]}),
+            stops([
+                (12.0, "hsl(0, 0%, 64%)"),
+                (15.0, "hsl(0, 0%, 54%)"),
+                (20.0, "hsl(0, 0%, 40%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1.74],[13,5.9],[20,35]]}),
+            stops([(8.0, 1.74), (13.0, 5.9), (20.0, 35.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_motorway_casing")
         .minzoom(10.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["!=", "ramp", 1],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::ne("ramp", 1.0),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[7,"hsl(0, 0%, 60%)"],[13,"hsl(0, 0%, 50%)"],[20,"hsl(0, 0%, 40%)"]]}),
+            stops([
+                (7.0, "hsl(0, 0%, 60%)"),
+                (13.0, "hsl(0, 0%, 50%)"),
+                (20.0, "hsl(0, 0%, 40%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[5,1.4],[7,1.75],[13,5.9],[20,40]]}),
+            stops([(5.0, 1.4), (7.0, 1.75), (13.0, 5.9), (20.0, 40.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_service_track")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["in", "class", "service", "track"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["service", "track"]),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 94%)"],[13,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 74%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 94%)"),
+                (13.0, "hsl(0, 0%, 84%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[13,0],[16,2],[20,7.5]]}),
+            stops([(13.0, 0.0), (16.0, 2.0), (20.0, 7.5)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_link")
         .minzoom(12.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "link"],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "link"),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 88%)"],[12,"hsl(0, 0%, 88%)"],[20,"hsl(0, 0%, 74%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 88%)"),
+                (12.0, "hsl(0, 0%, 88%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,20]]}),
+            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 20.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_street")
         .minzoom(12.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["in", "class", "minor"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["minor"]),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 86%)"],[13,"hsl(0, 0%, 86%)"],[20,"hsl(0, 0%, 74%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 86%)"),
+                (13.0, "hsl(0, 0%, 86%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,18]]}),
+            stops([(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_path_pedestrian")
         .minzoom(13.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "$type", "LineString"],
-            ["==", "brunnel", "bridge"],
-            ["in", "class", "path", "pedestrian"]
-        ])))
+        .filter(Filter::all([
+            Filter::geometry(Geometry::LineString),
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["path", "pedestrian"]),
+        ]))
         .color("hsl(0, 0%, 96%)")
         .dasharray(vec![1.0, 0.3])
-        .paint(
-            "line-width",
-            json!({"base":1.2,"stops":[[13,0.75],[20,10]]}),
-        );
-    style.line(&transportation, "bridge_secondary_tertiary")
-            .minzoom(12.0)
-            .filter(Filter::raw(json!(["all",["==","brunnel","bridge"],["in","class","secondary","tertiary"]])))
-            .join(Join::Round)
-            .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 90%)"],[11,"hsl(0, 0%, 90%)"],[12,"hsl(0, 0%, 90%)"],[20,"hsl(0, 0%, 74%)"]]}))
-            .paint("line-width", json!({"base":1.2,"stops":[[12,1],[13,2.5],[20,26]]}))
-            ;
+        .paint("line-width", stops([(13.0, 0.75), (20.0, 10.0)]).base(1.2));
     style
-        .line(&transportation, "bridge_primary")
-        .minzoom(8.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["==", "class", "primary"]
-        ])))
+        .line(&transportation, "bridge_secondary_tertiary")
+        .minzoom(12.0)
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::is_in("class", ["secondary", "tertiary"]),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 64%)"]]}),
+            stops([
+                (10.0, "hsl(0, 0%, 90%)"),
+                (11.0, "hsl(0, 0%, 90%)"),
+                (12.0, "hsl(0, 0%, 90%)"),
+                (20.0, "hsl(0, 0%, 74%)"),
+            ]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+            stops([(12.0, 1.0), (13.0, 2.5), (20.0, 26.0)]).base(1.2),
+        );
+    style
+        .line(&transportation, "bridge_primary")
+        .minzoom(8.0)
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::eq("class", "primary"),
+        ]))
+        .join(Join::Round)
+        .paint(
+            "line-color",
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 64%)")]),
+        )
+        .paint(
+            "line-width",
+            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_trunk")
         .minzoom(6.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "brunnel", "bridge"],
-            ["==", "class", "trunk"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("brunnel", "bridge"),
+            Filter::eq("class", "trunk"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 61%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 61%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[6,1],[10,2.85],[13,4.5],[20,32]]}),
+            stops([(6.0, 1.0), (10.0, 2.85), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_motorway_link")
         .minzoom(8.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["==", "ramp", 1],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::eq("ramp", 1.0),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+            stops([(8.0, 1.0), (13.0, 4.5), (20.0, 32.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_motorway")
         .minzoom(5.0)
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "motorway"],
-            ["!=", "ramp", 1],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "motorway"),
+            Filter::ne("ramp", 1.0),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .join(Join::Round)
         .paint(
             "line-color",
-            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+            stops([(10.0, "hsl(0, 0%, 68%)"), (20.0, "hsl(0, 0%, 52%)")]),
         )
         .paint(
             "line-width",
-            json!({"base":1.2,"stops":[[5,1],[7,1],[13,4.5],[20,36]]}),
+            stops([(5.0, 1.0), (7.0, 1.0), (13.0, 4.5), (20.0, 36.0)]).base(1.2),
         );
     style
         .line(&transportation, "bridge_major_rail")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "rail"],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "rail"),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .color("#bbb")
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
         );
     style
         .line(&transportation, "bridge_major_rail_hatching")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "rail"],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "rail"),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
         );
     style
         .line(&transportation, "bridge_transit_rail")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "transit"],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "transit"),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .color("#bbb")
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+            stops([(14.0, 0.4), (15.0, 0.75), (20.0, 2.0)]).base(1.4),
         );
     style
         .line(&transportation, "bridge_transit_rail_hatching")
-        .filter(Filter::raw(json!([
-            "all",
-            ["==", "class", "transit"],
-            ["==", "brunnel", "bridge"]
-        ])))
+        .filter(Filter::all([
+            Filter::eq("class", "transit"),
+            Filter::eq("brunnel", "bridge"),
+        ]))
         .color("#bbb")
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+            stops([(14.5, 0.0), (15.0, 3.0), (20.0, 8.0)]).base(1.4),
         );
 
     style
@@ -1272,7 +1428,7 @@ fn style_from_builders() -> Style {
         .layout("text-field", json!("{name}"))
         .layout("text-font", json!(["Roboto Regular"]))
         .layout("text-offset", json!([0, 0.15]))
-        .layout("text-size", json!({"stops":[[13,12],[14,13]]}))
+        .layout("text-size", stops([(13.0, 12.0), (14.0, 13.0)]))
         .paint("text-color", json!("#765"))
         .paint("text-halo-blur", json!(0.5))
         .paint("text-halo-color", json!("#ffffff"))
@@ -1624,10 +1780,7 @@ fn style_from_builders() -> Style {
             ]),
         )
         .layout("icon-rotation-alignment", json!("viewport"))
-        .layout(
-            "symbol-placement",
-            json!({"stops":[[10,"point"],[11,"line"]]}),
-        )
+        .layout("symbol-placement", stops([(10.0, "point"), (11.0, "line")]))
         .layout("symbol-spacing", json!(500))
         .layout(
             "text-field",
