@@ -3,7 +3,11 @@ set -euo pipefail
 
 # Count every Headway-specific declaration, including private helpers. Generic
 # MLSS primitives live elsewhere and are intentionally excluded.
-find services/tileserver/mlss/src/headway.rs services/tileserver/mlss/src/headway \
-  -type f -name '*.rs' -print0 \
-  | sort -z \
-  | xargs -0 wc -l
+files=(services/tileserver/mlss/src/headway.rs)
+if [ -d services/tileserver/mlss/src/headway ]; then
+  while IFS= read -r -d '' file; do
+    files+=("$file")
+  done < <(find services/tileserver/mlss/src/headway -type f -name '*.rs' -print0)
+fi
+
+printf '%s\0' "${files[@]}" | sort -z | xargs -0 wc -l
