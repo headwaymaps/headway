@@ -76,6 +76,12 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	}
 	results := make([]zoneResult, len(zoneFiles))
 
+	// Built explicitly to single out its build time, which would otherwise be
+	// attributed to each of the concurrent zone builds blocked until it completes.
+	if err := h.buildGtfout(ctx); err != nil {
+		return nil, err
+	}
+
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.SetLimit(maxConcurrentZones)
 
@@ -259,8 +265,7 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 	return t
 }
 
-// buildDate invalidates the download cache each UTC day.
-// +cache="24h"
+// BuildGtfsDir downloads the zone's feeds, reusing the day's download, and prepares them for OTP.
 func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 	// +optional
 	gtfsSecrets *dagger.Secret) *dagger.Directory {
@@ -271,7 +276,9 @@ func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 		WithMountedFile("/usr/local/bin/assume-bikes-allowed", gtfout.File("assume-bikes-allowed")).
 		WithMountedFile("/usr/local/bin/download-feeds", gtfout.File("download-feeds"))
 
-	container = container.WithMountedFile(zoneFilePath, t.TransitFeeds)
+	container = container.WithMountedFile(zoneFilePath, t.TransitFeeds).
+		// Keys the cached download to the day, so the first build each day fetches anew.
+		WithEnvVariable("GTFS_DOWNLOAD_DATE", buildDate)
 
 	downloadArgs := []string{"download-feeds", "--zone", zoneFilePath, "--output", "/downloaded"}
 
@@ -335,6 +342,16 @@ func (h *Headway) DownloadGtfsIndexAtCommit(ctx context.Context, commit string) 
 
 func (h *Headway) Gtfout(ctx context.Context) *dagger.Directory {
 	return h.rustWorkspaceBinaries("services/gtfs/gtfout")
+}
+
+// Explicitly built to single out from the concurrent OTP zone building
+func (h *Headway) buildGtfout(ctx context.Context) error {
+	ctx, span := startStep(ctx, "gtfout")
+	defer span.End()
+	if _, err := h.Gtfout(ctx).Sync(ctx); err != nil {
+		return fmt.Errorf("failed to build gtfout: %w", err)
+	}
+	return nil
 }
 
 func (t *TransitZone) Elevations(ctx context.Context) *dagger.Directory {
