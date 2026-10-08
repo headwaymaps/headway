@@ -1,6 +1,43 @@
-// Headway v3 labels layers. Draw order is owned by style.exp.
+// Headway v3 labels. Draw order is owned by style.exp.
 
 sources = import "../sources.exp"
+
+waterName = {
+  "type": "symbol",
+  "layout": {
+    "text-field": "{name}",
+    "text-font": [
+      "Roboto Regular"
+    ],
+    "text-max-width": 5,
+    "text-size": 12
+  },
+  "paint": {
+    "text-color": "#5d60be",
+    "text-halo-color": "rgba(255,255,255,0.7)",
+    "text-halo-width": 1
+  }
+}
+
+poiLabel = {
+  ...sources.poi,
+  "type": "symbol",
+  "layout": {
+    "icon-image": "{class}_11",
+    "text-font": [
+      "Roboto Condensed Italic"
+    ],
+    "text-max-width": 9,
+    "text-size": 12
+  },
+  "paint": {
+    "text-halo-blur": 0.5,
+    "text-halo-color": "#ffffff",
+    "text-halo-width": 1
+  }
+}
+
+placeLabel = { ...sources.place, "type": "symbol" }
 
 [
 {
@@ -48,79 +85,45 @@ sources = import "../sources.exp"
 },
 {
   ...sources.waterway,
+  ...waterName,
   "id": "water_name_line",
-  "type": "symbol",
   "filter": [
   "==",
   "$type",
   "LineString"
 ],
   "layout": {
-  "text-field": "{name}",
-  "text-font": [
-    "Roboto Regular"
-  ],
-  "text-max-width": 5,
-  "text-size": 12,
-  "symbol-placement": "line"
-},
-  "paint": {
-  "text-color": "#5d60be",
-  "text-halo-color": "rgba(255,255,255,0.7)",
-  "text-halo-width": 1
-}
+    ...waterName.layout,
+    "symbol-placement": "line"
+  }
 },
 {
   ...sources.water_name,
+  ...waterName,
   "id": "water_name_lake_line",
-  "type": "symbol",
   "filter": [
   "==",
   "$type",
   "LineString"
 ],
   "layout": {
-  "text-field": "{name}",
-  "text-font": [
-    "Roboto Regular"
-  ],
-  "text-max-width": 5,
-  "text-size": 12,
-  "symbol-placement": "line"
-},
-  "paint": {
-  "text-color": "#5d60be",
-  "text-halo-color": "rgba(255,255,255,0.7)",
-  "text-halo-width": 1
-}
+    ...waterName.layout,
+    "symbol-placement": "line"
+  }
 },
 {
   ...sources.water_name,
+  ...waterName,
   "id": "water_name_point",
-  "type": "symbol",
   "filter": [
   "==",
   "$type",
   "Point"
-],
-  "layout": {
-  "text-field": "{name}",
-  "text-font": [
-    "Roboto Regular"
-  ],
-  "text-max-width": 5,
-  "text-size": 12
-},
-  "paint": {
-  "text-color": "#5d60be",
-  "text-halo-color": "rgba(255,255,255,0.7)",
-  "text-halo-width": 1
-}
+]
 },
 {
-  ...sources.poi,
+  ...poiLabel,
   "id": "poi_z16",
-  "type": "symbol",
   "minzoom": 16,
   "filter": [
   "all",
@@ -136,30 +139,22 @@ sources = import "../sources.exp"
   ]
 ],
   "layout": {
-  "icon-image": "{class}_11",
-  "text-anchor": "top",
-  "text-field": "{name}",
-  "text-font": [
-    "Roboto Condensed Italic"
-  ],
-  "text-max-width": 9,
-  "text-offset": [
-    0,
-    0.6
-  ],
-  "text-size": 12
-},
+    ...poiLabel.layout,
+    "text-anchor": "top",
+    "text-field": "{name}",
+    "text-offset": [
+  0,
+  0.6
+]
+  },
   "paint": {
-  "text-color": "#666",
-  "text-halo-blur": 0.5,
-  "text-halo-color": "#ffffff",
-  "text-halo-width": 1
-}
+    ...poiLabel.paint,
+    "text-color": "#666"
+  }
 },
 {
-  ...sources.poi,
+  ...poiLabel,
   "id": "poi_z15",
-  "type": "symbol",
   "minzoom": 15,
   "filter": [
   "all",
@@ -180,30 +175,22 @@ sources = import "../sources.exp"
   ]
 ],
   "layout": {
-  "icon-image": "{class}_11",
-  "text-anchor": "top",
-  "text-field": "{name}",
-  "text-font": [
-    "Roboto Condensed Italic"
-  ],
-  "text-max-width": 9,
-  "text-offset": [
-    0,
-    0.6
-  ],
-  "text-size": 12
-},
+    ...poiLabel.layout,
+    "text-anchor": "top",
+    "text-field": "{name}",
+    "text-offset": [
+  0,
+  0.6
+]
+  },
   "paint": {
-  "text-color": "#666",
-  "text-halo-blur": 0.5,
-  "text-halo-color": "#ffffff",
-  "text-halo-width": 1
-}
+    ...poiLabel.paint,
+    "text-color": "#666"
+  }
 },
 {
-  ...sources.poi,
+  ...poiLabel,
   "id": "poi_z14",
-  "type": "symbol",
   "minzoom": 14,
   "filter": [
   "all",
@@ -224,30 +211,22 @@ sources = import "../sources.exp"
   ]
 ],
   "layout": {
-  "icon-image": "{class}_11",
-  "text-anchor": "top",
-  "text-field": "{name}",
-  "text-font": [
-    "Roboto Condensed Italic"
-  ],
-  "text-max-width": 9,
-  "text-offset": [
-    0,
-    0.6
-  ],
-  "text-size": 12
-},
+    ...poiLabel.layout,
+    "text-anchor": "top",
+    "text-field": "{name}",
+    "text-offset": [
+  0,
+  0.6
+]
+  },
   "paint": {
-  "text-color": "#666",
-  "text-halo-blur": 0.5,
-  "text-halo-color": "#ffffff",
-  "text-halo-width": 1
-}
+    ...poiLabel.paint,
+    "text-color": "#666"
+  }
 },
 {
-  ...sources.poi,
+  ...poiLabel,
   "id": "poi_transit",
-  "type": "symbol",
   "filter": [
   "in",
   "class",
@@ -256,25 +235,18 @@ sources = import "../sources.exp"
   "airport"
 ],
   "layout": {
-  "icon-image": "{class}_11",
-  "text-anchor": "left",
-  "text-field": "{name_en}",
-  "text-font": [
-    "Roboto Condensed Italic"
-  ],
-  "text-max-width": 9,
-  "text-offset": [
-    0.9,
-    0
-  ],
-  "text-size": 12
-},
+    ...poiLabel.layout,
+    "text-anchor": "left",
+    "text-field": "{name_en}",
+    "text-offset": [
+  0.9,
+  0
+]
+  },
   "paint": {
-  "text-color": "#4898ff",
-  "text-halo-blur": 0.5,
-  "text-halo-color": "#ffffff",
-  "text-halo-width": 1
-}
+    ...poiLabel.paint,
+    "text-color": "#4898ff"
+  }
 },
 {
   ...sources.transportation_name,
@@ -1579,9 +1551,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "place_other",
-  "type": "symbol",
   "filter": [
   "in",
   "class",
@@ -1621,9 +1592,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "place_village",
-  "type": "symbol",
   "filter": [
   "==",
   "class",
@@ -1656,9 +1626,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "place_town",
-  "type": "symbol",
   "filter": [
   "==",
   "class",
@@ -1704,9 +1673,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "place_city",
-  "type": "symbol",
   "minzoom": 5,
   "filter": [
   "==",
@@ -1755,9 +1723,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "state",
-  "type": "symbol",
   "maxzoom": 6,
   "filter": [
   "==",
@@ -1790,9 +1757,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "country_3",
-  "type": "symbol",
   "filter": [
   "all",
   [
@@ -1833,9 +1799,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "country_2",
-  "type": "symbol",
   "filter": [
   "all",
   [
@@ -1876,9 +1841,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "country_1",
-  "type": "symbol",
   "filter": [
   "all",
   [
@@ -1919,9 +1883,8 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.place,
+  ...placeLabel,
   "id": "continent",
-  "type": "symbol",
   "maxzoom": 1,
   "filter": [
   "==",
