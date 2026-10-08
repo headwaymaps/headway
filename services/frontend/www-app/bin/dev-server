@@ -1,3 +1,14 @@
 #!/bin/sh
+#
+# Usage: bin/dev-server [--no-nav] [quasar dev args...]
+#
+# Opens the browser to a transit trip unless --no-nav is given, in which case it
+# opens the site root.
 
-yarn quasar dev
+if [ "${1:-}" = "--no-nav" ]; then
+    shift
+else
+    export HEADWAY_DEV_OPEN_PATH="/directions/transit/openstreetmap%3Avenue%3Anode%2F2485251324/openstreetmap%3Avenue%3Arelation%2F537269"
+fi
+
+exec yarn quasar dev "$@"

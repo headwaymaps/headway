@@ -41,6 +41,10 @@ const LOCAL_STYLE_PATH = resolve(
 //   HEADWAY_LOCAL_STYLE=1 HEADWAY_LOCAL_ASSETS=http://localhost:8095 yarn dev
 const LOCAL_ASSETS_HOST = process.env.HEADWAY_LOCAL_ASSETS;
 
+// The page the browser opens to once the dev server is up, rather than the site root.
+//   HEADWAY_DEV_OPEN_PATH=/directions/transit/... yarn dev
+const DEV_OPEN_PATH = process.env.HEADWAY_DEV_OPEN_PATH;
+
 // The worktree shares dependencies with the main checkout through a node_modules
 // symlink. Vite resolves Quasar's web fonts to that real path, which must be
 // explicitly allowed in addition to this worktree's app directory.
@@ -162,7 +166,12 @@ export default defineConfig((/* ctx */) => {
       // polyfillModulePreload: true,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      // Quasar can only open the site root, but Vite opens a path at whatever port it settles on.
+      extendViteConf(viteConf) {
+        if (DEV_OPEN_PATH) {
+          viteConf.server = { ...viteConf.server, open: DEV_OPEN_PATH };
+        }
+      },
       // viteVuePluginOptions: {},
 
       vitePlugins: [
@@ -193,7 +202,7 @@ export default defineConfig((/* ctx */) => {
       // reaches that other service instead of this dev server.
       host: '127.0.0.1',
       // https: true
-      open: true, // opens browser window automatically
+      open: !DEV_OPEN_PATH, // opens browser window automatically
       proxy: {
         ...(LOCAL_ASSETS_HOST && {
           '/local-assets': {

@@ -388,7 +388,7 @@ export class TripLeg {
   }
 
   /// The route's own color, or the active line's where the feed doesn't name one.
-  private get routeColor(): string {
+  get routeColor(): string {
     const routeColor = this.raw.transitLeg?.route?.color;
     return routeColor ? `#${routeColor}` : LineStyles.active['line-color'];
   }
@@ -398,12 +398,7 @@ export class TripLeg {
       if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
         return LineStyles.walkingActive;
       } else {
-        const routeColor = this.raw.transitLeg?.route?.color;
-        if (routeColor) {
-          return LineStyles.activeColored(`#${routeColor}`);
-        } else {
-          return LineStyles.active;
-        }
+        return LineStyles.activeColored(this.routeColor);
       }
     } else {
       if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {

@@ -25,7 +25,7 @@
         <div
           v-if="!step.isDestination"
           :class="step.timelineClasses"
-          style="text-align: center"
+          :style="{ textAlign: 'center', borderLeftColor: step.timelineColor }"
         >
           {{ step.timeline }}
         </div>
@@ -108,6 +108,7 @@ type Step = {
   leftColumn: string;
   timeline: string;
   timelineClasses: string[];
+  timelineColor?: string;
   description: string;
   isMovement: boolean;
   isDestination: boolean;
@@ -132,7 +133,7 @@ function buildSteps(trip: Trip): Step[] {
     }
   }
 
-  const originStep = {
+  const originStep: Step = {
     leftColumn: formatTime(firstLeg.startTime),
     timeline: '',
     timelineClasses: ['timeline-node', 'timeline-origin'],
@@ -156,6 +157,7 @@ function buildSteps(trip: Trip): Step[] {
       leftColumn: prevLeg.shortName,
       timeline: '',
       timelineClasses: ['timeline-edge', `timeline-edge-${prevLeg.mode}`],
+      timelineColor: prevLeg.transitLeg ? prevLeg.routeColor : undefined,
       description: formatDuration(prevLeg.durationSeconds),
       position: prevLeg.sourceLngLat,
       isMovement: true,
@@ -211,7 +213,7 @@ function buildSteps(trip: Trip): Step[] {
 }
 
 .timeline-edge:not(.timeline-edge-walk):not(.timeline-edge-bicycle) {
-  border-left: solid $transitColor 6px;
+  border-left: solid 6px;
 }
 
 .timeline-node {
