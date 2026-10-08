@@ -37,4 +37,4 @@ pub use openmaptiles::OpenMapTiles;
 pub use property::{stops, Property, Stops};
 pub use source::{background, Source, SourceLayer, SourceRef};
 pub use street::Streets;
-pub use style::{Style, SymbolFactory};
+pub use style::{Style, SymbolLayerFactory};

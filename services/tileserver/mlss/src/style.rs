@@ -46,12 +46,12 @@ pub struct AttachedLayer<'a, K: Kind> {
 }
 
 /// A reusable set of symbol properties that appends configured layers to a style.
-pub struct SymbolFactory<'a> {
+pub struct SymbolLayerFactory<'a> {
     style: &'a mut Style,
     template: Layer<Symbol>,
 }
 
-impl SymbolFactory<'_> {
+impl SymbolLayerFactory<'_> {
     fn map(mut self, change: impl FnOnce(Layer<Symbol>) -> Layer<Symbol>) -> Self {
         self.template = change(self.template);
         self
@@ -91,6 +91,14 @@ impl SymbolFactory<'_> {
 
     pub fn text_halo(self, color: impl Into<Property>, width: f64) -> Self {
         self.map(|layer| layer.text_halo(color, width))
+    }
+
+    pub fn text_halo_blur(self, blur: f64) -> Self {
+        self.map(|layer| layer.text_halo_blur(blur))
+    }
+
+    pub fn icon_image(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.icon_image(value))
     }
 }
 
@@ -327,8 +335,8 @@ impl Style {
     }
 
     /// Starts a reusable symbol-layer template that appends to this style.
-    pub fn factory(&mut self) -> SymbolFactory<'_> {
-        SymbolFactory {
+    pub fn symbol_factory(&mut self) -> SymbolLayerFactory<'_> {
+        SymbolLayerFactory {
             style: self,
             template: Layer::new("", None, None),
         }

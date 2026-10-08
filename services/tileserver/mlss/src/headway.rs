@@ -1,8 +1,6 @@
 //! The Headway default style, built with the builders in this crate.
 
 use crate::filter::Geometry;
-use crate::layer::Symbol;
-use crate::style::AttachedLayer;
 use crate::*;
 
 const WATER: &str = "rgb(141,220,248)";
@@ -24,22 +22,6 @@ fn bridge() -> Filter {
 /// Road features at grade.
 fn surface() -> Filter {
     Filter::not_in("brunnel", ["bridge", "tunnel"])
-}
-
-/// The shared icon and typography for point-of-interest labels.
-pub(super) fn poi_label<'a>(
-    style: &'a mut Style,
-    poi: &SourceLayer,
-    id: &str,
-) -> AttachedLayer<'a, Symbol> {
-    style
-        .symbol(poi, id)
-        .icon_image("{class}_11")
-        .text_font([ITALIC])
-        .text_max_width(9.0)
-        .text_size(12.0)
-        .text_halo("#ffffff", 1.0)
-        .text_halo_blur(0.5)
 }
 
 /// The Headway default style.
@@ -1199,7 +1181,7 @@ fn style_from_builders() -> Style {
     {
         // The shared typography for waterway and water-body labels.
         let mut water_label = style
-            .factory()
+            .symbol_factory()
             .text_field("{name}")
             .text_font([REGULAR])
             .text_max_width(5.0)
@@ -1220,25 +1202,37 @@ fn style_from_builders() -> Style {
             .filter(Filter::geometry(Geometry::Point));
     }
 
-    for (id, zoom, rank) in [
-        ("poi_z16", 16.0, Filter::gte("rank", 20)),
-        ("poi_z15", 15.0, Filter::gte("rank", 7).and_lt("rank", 20)),
-        ("poi_z14", 14.0, Filter::gte("rank", 1).and_lt("rank", 7)),
-    ] {
-        poi_label(&mut style, &poi, id)
-            .minzoom(zoom)
-            .filter(Filter::geometry(Geometry::Point).and(rank))
-            .text_field("{name}")
-            .text_anchor("top")
-            .text_offset([0.0, 0.6])
-            .text_color("#666");
+    {
+        let mut poi_label = style
+            .symbol_factory()
+            .icon_image("{class}_11")
+            .text_font([ITALIC])
+            .text_max_width(9.0)
+            .text_size(12.0)
+            .text_halo("#ffffff", 1.0)
+            .text_halo_blur(0.5);
+        for (id, zoom, rank) in [
+            ("poi_z16", 16.0, Filter::gte("rank", 20)),
+            ("poi_z15", 15.0, Filter::gte("rank", 7).and_lt("rank", 20)),
+            ("poi_z14", 14.0, Filter::gte("rank", 1).and_lt("rank", 7)),
+        ] {
+            poi_label
+                .symbol(&poi, id)
+                .minzoom(zoom)
+                .filter(Filter::geometry(Geometry::Point).and(rank))
+                .text_field("{name}")
+                .text_anchor("top")
+                .text_offset([0.0, 0.6])
+                .text_color("#666");
+        }
+        poi_label
+            .symbol(&poi, "poi_transit")
+            .filter(Filter::is_in("class", ["bus", "rail", "airport"]))
+            .text_field("{name_en}")
+            .text_anchor("left")
+            .text_offset([0.9, 0.0])
+            .text_color("#4898ff");
     }
-    poi_label(&mut style, &poi, "poi_transit")
-        .filter(Filter::is_in("class", ["bus", "rail", "airport"]))
-        .text_field("{name_en}")
-        .text_anchor("left")
-        .text_offset([0.9, 0.0])
-        .text_color("#4898ff");
 
     style
         .symbol(&transportation_name, "road_label")
