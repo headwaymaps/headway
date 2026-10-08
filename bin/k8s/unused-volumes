@@ -79,18 +79,44 @@ for pvc in "${orphaned[@]}"; do
     "${KUBECTL[@]}" delete pvc "$pvc"
 done
 
-# Deleting a claim only frees disk if the PV's reclaim policy says so: under
-# `Retain` the PV stays `Released`, still holding the data. PVs are cluster
-# scoped, so look only at ones bound to this namespace's claims.
-released=$(kubectl get pv -o json \
-    | jq -r --arg ns "$NAMESPACE" '.items[]
-        | select(.status.phase == "Released" and .spec.claimRef.namespace == $ns)
-        | .metadata.name')
+# The provisioner deletes a `Delete`-policy PV asynchronously, so it's briefly
+# `Released` after its claim goes away. Give it time before calling it stuck.
+function released_pvs() {
+    "${KUBECTL[@]}" get pv -o json \
+        | jq -r --arg ns "$NAMESPACE" --arg policy "$1" '.items[]
+            | select(.status.phase == "Released"
+                and .spec.claimRef.namespace == $ns
+                and .spec.persistentVolumeReclaimPolicy == $policy)
+            | "pv/" + .metadata.name'
+}
 
-if [ -n "$released" ]; then
+reclaiming=$(released_pvs Delete)
+if [ -n "$reclaiming" ]; then
     echo ""
-    echo "WARNING: these PersistentVolumes are Released but still exist, so their"
-    echo "disk is not reclaimed (reclaim policy is probably Retain):"
-    sed 's/^/  /' <<< "$released"
-    echo "Delete them with: kubectl delete pv <name>"
+    echo "Waiting for the provisioner to reclaim released volumes..."
+    # shellcheck disable=SC2086
+    "${KUBECTL[@]}" wait --for=delete --timeout=120s $reclaiming > /dev/null || true
+fi
+
+stuck=$(released_pvs Delete)
+retained=$(released_pvs Retain)
+
+if [ -n "$stuck" ]; then
+    echo ""
+    echo "WARNING: these PersistentVolumes have reclaim policy Delete but the"
+    echo "provisioner hasn't removed them; check its logs:"
+    sed 's/^/  /' <<< "$stuck"
+fi
+
+if [ -n "$retained" ]; then
+    echo ""
+    echo "WARNING: these PersistentVolumes have reclaim policy Retain, so their disk"
+    echo "is not reclaimed:"
+    sed 's/^/  /' <<< "$retained"
+    echo "Delete them with: kubectl delete <name>"
+fi
+
+if [ -z "$stuck" ] && [ -z "$retained" ]; then
+    echo ""
+    echo "✅ All unused PVCs successfully deleted."
 fi
