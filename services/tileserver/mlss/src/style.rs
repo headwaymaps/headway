@@ -26,11 +26,6 @@ fn whole_numbers_as_integers(value: &Json) -> Json {
 
 #[derive(Debug)]
 pub struct Style {
-    /// A parsed style document kept intact when MLSS is used as a compatibility
-    /// wrapper around a canonical style.  This is useful for styles containing
-    /// large, externally maintained expressions (such as route shields) that
-    /// do not yet have a dedicated typed builder.
-    raw: Option<Json>,
     id: Option<String>,
     name: String,
     sprite: Option<String>,
@@ -264,7 +259,6 @@ impl<K: Kind> Drop for AttachedLayer<'_, K> {
 impl Style {
     pub fn new(name: impl Into<String>) -> Self {
         Style {
-            raw: None,
             id: None,
             name: name.into(),
             sprite: None,
@@ -273,21 +267,6 @@ impl Style {
             sources: Vec::new(),
             layers: Vec::new(),
         }
-    }
-
-    /// Loads an existing MapLibre style document without changing its meaning
-    /// or serialization shape.
-    pub fn from_json(input: &str) -> serde_json::Result<Self> {
-        Ok(Style {
-            raw: Some(serde_json::from_str(input)?),
-            id: None,
-            name: String::new(),
-            sprite: None,
-            glyphs: None,
-            metadata: Map::new(),
-            sources: Vec::new(),
-            layers: Vec::new(),
-        })
     }
 
     pub fn id(mut self, id: impl Into<String>) -> Self {
@@ -410,9 +389,6 @@ impl Style {
     }
 
     pub fn to_json(&self) -> Json {
-        if let Some(raw) = &self.raw {
-            return raw.clone();
-        }
         let mut map = Map::new();
         map.insert("version".into(), json!(8));
         map.insert("name".into(), json!(self.name));
@@ -447,14 +423,6 @@ impl Style {
 
     /// Panics if two layers share an id, which maplibre rejects at load time.
     pub fn validate(&self) {
-        if let Some(raw) = &self.raw {
-            let mut seen = std::collections::HashSet::new();
-            for layer in raw["layers"].as_array().expect("a style has layers") {
-                let id = layer["id"].as_str().expect("a layer has an id");
-                assert!(seen.insert(id), "duplicate layer id: {id}");
-            }
-            return;
-        }
         let mut seen = std::collections::HashSet::new();
         for layer in &self.layers {
             assert!(

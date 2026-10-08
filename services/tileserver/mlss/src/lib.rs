@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 //! Builders for generating MapLibre style documents.
 //!
 //! ```

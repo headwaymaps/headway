@@ -1,0 +1,30 @@
+// Shared source definitions and layer handles.
+
+{
+  "definitions": {
+    "openmaptiles": {
+      "type": "vector",
+      "url": "/areamap-mlt",
+      "encoding": "mlt"
+    },
+    "landcover": {
+      "maxzoom": 8,
+      "type": "vector",
+      "url": "/landcover"
+    },
+    "terrain": {
+      "maxzoom": 6,
+      "type": "raster",
+      "url": "/terrain"
+    }
+  },
+  "openmaptiles": {
+    "source": "openmaptiles"
+  },
+  "landcover": {
+    "source": "landcover"
+  },
+  "terrain": {
+    "source": "terrain"
+  }
+}

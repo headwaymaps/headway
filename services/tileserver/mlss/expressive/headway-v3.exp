@@ -1,0 +1,27 @@
+// Headway v3, expressed as composable Expressive modules.
+
+sources = import "./sources.exp"
+base = import "./layers/base.exp"
+land = import "./layers/land.exp"
+transport = import "./layers/transport.exp"
+labels = import "./layers/labels.exp"
+
+{
+  "version": 8,
+  "name": "Headway Default",
+  "metadata": {
+  "maputnik:license": "https://github.com/maputnik/osm-liberty/blob/gh-pages/LICENSE.md",
+  "maputnik:renderer": "mbgljs",
+  "openmaptiles:version": "3.x"
+},
+  "sprite": "/sprite/sprites",
+  "glyphs": "/font/{fontstack}/{range}",
+  "id": "osm-liberty",
+  "sources": sources.definitions,
+  "layers": [
+    ...base,
+    ...land,
+    ...transport,
+    ...labels
+  ]
+}

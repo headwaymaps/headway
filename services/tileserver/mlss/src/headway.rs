@@ -1,16 +1,12 @@
 //! The Headway default style, built with the builders in this crate.
 
 use crate::filter::Geometry;
-use crate::layer::{Cap, Join, Line, Symbol};
+use crate::layer::Symbol;
 use crate::style::AttachedLayer;
 use crate::*;
 use serde_json::json;
 
-const MAJOR_CASING: &str = "#e9ac77";
-const MINOR_CASING: &str = "#cfcdca";
-const RAIL: &str = "#bbb";
 const WATER: &str = "rgb(141,220,248)";
-const WHITE: &str = "#fff";
 const HALO: &str = "rgba(255,255,255,0.8)";
 const REGULAR: &str = "Roboto Regular";
 const ITALIC: &str = "Roboto Condensed Italic";
@@ -28,361 +24,1908 @@ fn poi_label<'a>(style: &'a mut Style, poi: &SourceLayer, id: &str) -> AttachedL
         .text_halo_blur(0.5)
 }
 
-/// The road network is drawn three times over: buried, at grade, and raised.
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum RoadLevel {
-    Tunnel,
-    Surface,
-    Bridge,
-}
-
-use RoadLevel::{Bridge, Surface, Tunnel};
-
-impl RoadLevel {
-    /// Almost everything about a road varies by level, and only by level.
-    fn pick<T>(self, tunnel: T, surface: T, bridge: T) -> T {
-        match self {
-            Tunnel => tunnel,
-            Surface => surface,
-            Bridge => bridge,
-        }
-    }
-
-    fn prefix(self) -> &'static str {
-        self.pick("tunnel", "road", "bridge")
-    }
-
-    /// The `brunnel` tag is only set on the copies that aren't at grade.
-    fn filter(self) -> Filter {
-        self.pick(
-            Filter::eq("brunnel", "tunnel"),
-            Filter::not_in("brunnel", ["bridge", "tunnel"]),
-            Filter::eq("brunnel", "bridge"),
+/// V3 transportation rules, expressed through MLSS builders.
+///
+/// The v3 source deliberately gives each road class its own layer: that keeps
+/// color, casing, zoom, and draw-order differences explicit.
+fn add_v3_roads(style: &mut Style, transportation: &SourceLayer) {
+    style
+        .line(transportation, "tunnel_service_track_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["in", "class", "service", "track"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[15,"hsl(0, 0%, 94%)"],[18,"hsl(0, 0%, 87%)"],[20,"hsl(0, 0%, 82%)"]]}),
         )
-    }
-}
-
-/// Motorways proper, or the ramps on and off them.
-fn motorways(ramp: Filter) -> Filter {
-    Filter::eq("class", "motorway").and(ramp)
-}
-
-fn path_classes() -> Filter {
-    Filter::geometry(Geometry::LineString).and(Filter::is_in("class", ["path", "pedestrian"]))
-}
-
-/// One road class at one level: a line, and usually a casing painted under it.
-struct Road<'a> {
-    roads: &'a Roads,
-    name: &'static str,
-    classes: Filter,
-    color: Property,
-    width: Stops,
-    casing: Option<(&'static str, Stops)>,
-    casing_name: Option<&'static str>,
-    casing_classes: Option<Filter>,
-    fading_casing: bool,
-    dashed_when_buried: bool,
-    minzoom: Option<f64>,
-    capped: bool,
-}
-
-impl Road<'_> {
-    /// Paints a casing of its own width underneath.
-    fn cased(mut self, color: &'static str, width: Stops) -> Self {
-        self.casing = Some((color, width));
-        self
-    }
-
-    /// For minor roads, whose casing is named and filtered unlike their surface.
-    fn casing_named(mut self, name: &'static str, classes: Filter) -> Self {
-        self.casing_name = Some(name);
-        self.casing_classes = Some(classes);
-        self
-    }
-
-    /// Filters the casing without renaming it.
-    fn casing_where(mut self, classes: Filter) -> Self {
-        self.casing_classes = Some(classes);
-        self
-    }
-
-    /// Fades the casing in over half a zoom level instead of popping it on.
-    fn fading_casing(mut self) -> Self {
-        self.fading_casing = true;
-        self
-    }
-
-    /// Dashes the buried casing, so the road above still reads as continuous.
-    fn dashed_when_buried(mut self) -> Self {
-        self.dashed_when_buried = true;
-        self
-    }
-
-    /// The zoom the road appears at, which only the copy at grade bothers with.
-    fn appears_at(mut self, zoom: f64) -> Self {
-        self.minzoom = Some(zoom);
-        self
-    }
-
-    fn uncapped(mut self) -> Self {
-        self.capped = false;
-        self
-    }
-
-    fn line(&self, name: &str, classes: Filter) -> Layer<Line> {
-        let level = self.roads.level;
-        let mut line = self
-            .roads
-            .source
-            .line(format!("{}_{name}", level.prefix()))
-            .filter(level.filter().and(classes))
-            .join(Join::Round);
-        // Round caps and a low-zoom cutoff are only wanted on the copy at grade.
-        if level == Surface {
-            if self.capped {
-                line = line.cap(Cap::Round);
-            }
-            if let Some(zoom) = self.minzoom {
-                line = line.minzoom(zoom);
-            }
-        }
-        line
-    }
-
-    fn push(self, streets: &mut Streets) {
-        if let Some((casing_color, width)) = self.casing.clone() {
-            let name = format!("{}_casing", self.casing_name.unwrap_or(self.name));
-            let classes = self.casing_classes.clone().unwrap_or(self.classes.clone());
-            let mut casing = self.line(&name, classes).color(casing_color).width(width);
-            if self.fading_casing {
-                casing = casing.opacity(zoom!(12 => 0.0, 12.5 => 1.0));
-            }
-            if self.dashed_when_buried && self.roads.level == Tunnel {
-                casing = casing.dasharray(vec![0.5, 0.25]);
-            }
-            streets.casing(casing);
-        }
-        let surface = self
-            .line(self.name, self.classes.clone())
-            .color(self.color.clone())
-            .width(self.width.clone());
-        streets.plain(surface);
-    }
-}
-
-/// Builds the transportation layers for one level out of a shared vocabulary.
-struct Roads {
-    level: RoadLevel,
-    source: SourceLayer,
-}
-
-impl Roads {
-    /// Every road layer for one level of the network.
-    fn at(level: RoadLevel, source: &SourceLayer) -> Streets {
-        Roads {
-            level,
-            source: source.clone(),
-        }
-        .streets()
-    }
-
-    fn road(
-        &self,
-        name: &'static str,
-        classes: Filter,
-        color: impl Into<Property>,
-        width: Stops,
-    ) -> Road<'_> {
-        Road {
-            roads: self,
-            name,
-            classes,
-            color: color.into(),
-            width,
-            casing: None,
-            casing_name: None,
-            casing_classes: None,
-            fading_casing: false,
-            dashed_when_buried: false,
-            minzoom: None,
-            capped: true,
-        }
-    }
-
-    /// Trunks, secondaries and ramps share their fill color.
-    fn major_fill(&self) -> &'static str {
-        self.level.pick("#fff4c6", "#fea", "#fea")
-    }
-
-    /// Paths are dashed at every level, and cased at none but the raised one.
-    fn path(&self) -> Layer<Line> {
-        let level = self.level;
-        let path = self
-            .source
-            .line(format!("{}_path_pedestrian", level.prefix()))
-            .filter(level.filter().and(path_classes()))
-            .color("hsl(0, 0%, 100%)")
-            .dasharray(level.pick(vec![1.0, 0.75], vec![1.0, 0.7], vec![1.0, 0.3]))
-            .width(zoom!(base 1.2; 14 => level.pick(0.5, 1.0, 0.5), 20 => 10.0));
-        match level {
-            Surface => path.minzoom(14.0).join(Join::Round),
-            _ => path,
-        }
-    }
-
-    fn rails(&self, streets: &mut Streets) {
-        for (class, name) in [("rail", "major_rail"), ("transit", "transit_rail")] {
-            let rail = |suffix: &str| {
-                self.source
-                    .line(format!("{}_{name}{suffix}", self.level.prefix()))
-                    .filter(self.level.filter().and(Filter::eq("class", class)))
-                    .color(RAIL)
-            };
-            streets.plain(rail("").width(zoom!(base 1.4; 14 => 0.4, 15 => 0.75, 20 => 2.0)));
-            // Fat dashes drawn over the thin line read as sleepers.
-            streets.plain(
-                rail("_hatching")
-                    .dasharray(vec![0.2, 8.0])
-                    .width(zoom!(base 1.4; 14.5 => 0.0, 15 => 3.0, 20 => 8.0)),
-            );
-        }
-    }
-
-    /// Every road layer for this level: casings first, then surfaces.
-    fn streets(&self) -> Streets {
-        let level = self.level;
-        let mut streets = Streets::new();
-        streets.plain(self.path());
-
-        // The widths roads and their casings come in, shared across road classes.
-        let ramp = zoom!(base 1.2; 12.5 => 0.0, 13 => 1.5, 14 => 2.5, 20 => 11.5);
-        let ramp_casing = zoom!(base 1.2; 12 => 1.0, 13 => 3.0, 14 => 4.0, 20 => 15.0);
-        let major = zoom!(base 1.2; 5 => 0.0, 7 => 1.0, 20 => 18.0);
-        let major_casing = zoom!(base 1.2; 5 => 0.4, 6 => 0.7, 7 => 1.75, 20 => 22.0);
-        let on_ramp = Filter::eq("ramp", 1);
-
-        let links = motorways(on_ramp.clone());
-        self.road("motorway_link", links, "#fc8", ramp.clone())
-            .cased(MAJOR_CASING, ramp_casing.clone())
-            .dashed_when_buried()
-            .appears_at(12.0)
-            .push(&mut streets);
-
-        let tracks = Filter::is_in("class", ["service", "track"]);
-        let track_width = zoom!(base 1.2; 15.5 => 0.0, 16 => 2.0, 20 => 7.5);
-        self.road("service_track", tracks, WHITE, track_width)
-            .cased(
-                MINOR_CASING,
-                zoom!(base 1.2; 15 => 1.0, 16 => 4.0, 20 => 11.0),
-            )
-            .dashed_when_buried()
-            .push(&mut streets);
-
-        // Raised ramps come through tagged as their own class.
-        let off_ramp = Filter::not_in(
-            "class",
-            ["pedestrian", "path", "track", "service", "motorway"],
+        .paint("line-dasharray", json!([0.5, 0.25]))
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0.76],[16,4],[20,11]]}),
         );
-        let ramps = level.pick(
-            on_ramp.clone(),
-            on_ramp.and(off_ramp),
-            Filter::eq("class", "link"),
-        );
-        self.road("link", ramps, self.major_fill(), ramp)
-            .cased(MAJOR_CASING, ramp_casing)
-            .appears_at(13.0)
-            .push(&mut streets);
-
-        // Minor roads arrive as `street` underground and overhead, but `minor` at grade.
-        let lines = Filter::geometry(Geometry::LineString);
-        let minor = Filter::is_in("class", ["minor"]);
-        let street = Filter::is_in("class", ["street", "street_limited"]);
-        let minor_casing = level.pick(
-            street.clone(),
-            lines.clone().and(minor.clone()).and(Filter::ne("ramp", 1)),
-            street,
-        );
-        let minor_classes = level.pick(minor.clone(), lines.and(minor.clone()), minor);
-        let minor_width =
-            zoom!(base 1.2; 13.5 => 0.0, 14 => 2.5, 20 => level.pick(11.5, 18.0, 18.0));
-        let minor_casing_width =
-            zoom!(base 1.2; 12 => 0.5, 13 => 1.0, 14 => 4.0, 20 => level.pick(15.0, 20.0, 25.0));
-        let minor_casing_color = level.pick(MINOR_CASING, MINOR_CASING, "hsl(36, 6%, 74%)");
-        self.road(
-            level.pick("minor", "minor", "street"),
-            minor_classes,
-            WHITE,
-            minor_width,
+    style.line(transportation, "tunnel_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!(["all",["==","ramp",1],["==","brunnel","tunnel"]])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 93%)"],[12,"hsl(0, 0%, 93%)"],[15,"hsl(0, 0%, 89%)"],[20,"hsl(0, 0%, 82%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,23.5]]}))
+        ;
+    style.line(transportation, "tunnel_street_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!(["all",["==","brunnel","tunnel"],["in","class","street","street_limited"]])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[13,"hsl(0, 0%, 93%)"],[16,"hsl(0, 0%, 87.5%)"],[20,"hsl(0, 0%, 82%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,20]]}))
+        ;
+    style.line(transportation, "tunnel_secondary_tertiary_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!(["all",["==","brunnel","tunnel"],["in","class","secondary","tertiary"]])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 91%)"],[11,"hsl(0, 0%, 91%)"],[12,"hsl(0, 0%, 91%)"],[13,"hsl(0, 0%, 89%)"],[20,"hsl(0, 0%, 82%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,1.76],[13,3.6],[20,30]]}))
+        ;
+    style
+        .line(transportation, "tunnel_primary_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["==", "class", "primary"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 83.5%)"],[20,"hsl(0, 0%, 76%)"]]}),
         )
-        .cased(minor_casing_color, minor_casing_width)
-        .casing_named(level.pick("street", "minor", "street"), minor_casing)
-        .fading_casing()
-        .push(&mut streets);
-
-        if level == Bridge {
-            // A raised path is the only surface that gets a casing of its own.
-            streets.casing(
-                self.source
-                    .line("bridge_path_pedestrian_casing")
-                    .filter(level.filter().and(path_classes()))
-                    .color("hsl(35, 6%, 80%)")
-                    .dasharray(vec![1.0, 0.0])
-                    .width(zoom!(base 1.2; 14 => 1.5, 20 => 18.0)),
-            );
-        }
-
-        // At grade, a ramp off a secondary is cased as a ramp instead.
-        let secondary = Filter::is_in("class", ["secondary", "tertiary"]);
-        let secondary_casing = level.pick(
-            secondary.clone(),
-            secondary.clone().and(Filter::ne("ramp", 1)),
-            secondary.clone(),
-        );
-        let bend = level.pick(7.0, 8.0, 7.0);
-        let widest = level.pick(10.0, 13.0, 10.0);
-        let secondary_width = zoom!(base 1.2; 6.5 => 0.0, bend => 0.5, 20 => widest);
-        self.road(
-            "secondary_tertiary",
-            secondary,
-            self.major_fill(),
-            secondary_width,
+        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+    style
+        .line(transportation, "tunnel_trunk_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["==", "class", "trunk"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 81%)"],[20,"hsl(0, 0%, 74.5%)"]]}),
         )
-        .cased(MAJOR_CASING, zoom!(base 1.2; 8 => 1.5, 20 => 17.0))
-        .casing_where(secondary_casing)
-        .push(&mut streets);
-
-        let trunk = Filter::is_in("class", ["primary", "trunk"]);
-        self.road("trunk_primary", trunk, self.major_fill(), major.clone())
-            .cased(MAJOR_CASING, major_casing.clone())
-            .uncapped()
-            .push(&mut streets);
-
-        // Motorways cool from a hot orange as the country view zooms in.
-        let motorway_fill: Property = level.pick(
-            "#ffdaa6".into(),
-            zoom!(base 1.0; 5 => "hsl(26, 87%, 62%)", 6 => "#fc8").into(),
-            "#fc8".into(),
+        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+    style
+        .line(transportation, "tunnel_motorway_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["==", "ramp", 1],
+            ["==", "brunnel", "tunnel"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[12,"hsl(0, 0%, 82%)"],[15,"hsl(0, 0%, 77%)"],[20,"hsl(0, 0%, 70%)"]]}),
+        )
+        .paint("line-dasharray", json!([0.5, 0.25]))
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1.74],[13,5.9],[20,35]]}),
         );
-        let motorway = motorways(Filter::ne("ramp", 1));
-        self.road("motorway", motorway, motorway_fill, major)
-            .cased(MAJOR_CASING, major_casing)
-            .dashed_when_buried()
-            .appears_at(5.0)
-            .push(&mut streets);
+    style
+        .line(transportation, "tunnel_motorway_casing")
+        .minzoom(10.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["!=", "ramp", 1],
+            ["==", "brunnel", "tunnel"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[7,"hsl(0, 0%, 80%)"],[13,"hsl(0, 0%, 75%)"],[20,"hsl(0, 0%, 70%)"]]}),
+        )
+        .paint("line-dasharray", json!([0.5, 0.25]))
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[5,1.4],[7,1.75],[13,5.9],[20,40]]}),
+        );
+    style
+        .line(transportation, "tunnel_service_track")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["in", "class", "service", "track"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 97%)"],[13,"hsl(0, 0%, 92%)"],[20,"hsl(0, 0%, 87%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0],[16,2],[20,7.5]]}),
+        );
+    style
+        .line(transportation, "tunnel_link")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "ramp", 1],
+            ["==", "brunnel", "tunnel"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 94%)"],[12,"hsl(0, 0%, 94%)"],[20,"hsl(0, 0%, 87%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,20]]}),
+        );
+    style
+        .line(transportation, "tunnel_minor")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["in", "class", "minor"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 93%)"],[13,"hsl(0, 0%, 93%)"],[20,"hsl(0, 0%, 87%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,18]]}),
+        );
+    style
+        .line(transportation, "tunnel_path_pedestrian")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "$type", "LineString"],
+            ["==", "brunnel", "tunnel"],
+            ["in", "class", "path", "pedestrian"]
+        ])))
+        .paint("line-color", json!("hsl(0, 0%, 98%)"))
+        .paint("line-dasharray", json!([1, 0.75]))
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0.75],[20,10]]}),
+        );
+    style.line(transportation, "tunnel_secondary_tertiary")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!(["all",["==","brunnel","tunnel"],["in","class","secondary","tertiary"]])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 95%)"],[11,"hsl(0, 0%, 95%)"],[12,"hsl(0, 0%, 95%)"],[20,"hsl(0, 0%, 87%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,1],[13,2.5],[20,26]]}))
+        ;
+    style
+        .line(transportation, "tunnel_primary")
+        .minzoom(8.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["==", "class", "primary"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "tunnel_trunk")
+        .minzoom(6.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["==", "class", "trunk"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 61%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[6,1],[10,2.85],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "tunnel_motorway_link")
+        .minzoom(8.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["==", "ramp", 1],
+            ["==", "brunnel", "tunnel"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 76%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "tunnel_motorway")
+        .minzoom(5.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["!=", "ramp", 1],
+            ["==", "brunnel", "tunnel"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 76%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[5,1],[7,1],[13,4.5],[20,36]]}),
+        );
+    style
+        .line(transportation, "tunnel_major_rail")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["in", "class", "rail"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .paint("line-color", json!("hsl(0, 0%, 86.6667%)"))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+        );
+    style
+        .line(transportation, "tunnel_major_rail_hatching")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["==", "class", "rail"]
+        ])))
+        .paint("line-color", json!("hsl(0, 0%, 86.6667%)"))
+        .paint("line-dasharray", json!([0.2, 8]))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+        );
+    style
+        .line(transportation, "tunnel_transit_rail")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["in", "class", "transit"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .paint("line-color", json!("hsl(0, 0%, 86.6667%)"))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+        );
+    style
+        .line(transportation, "tunnel_transit_rail_hatching")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "tunnel"],
+            ["==", "class", "transit"]
+        ])))
+        .paint("line-color", json!("hsl(0, 0%, 86.6667%)"))
+        .paint("line-dasharray", json!([0.2, 8]))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+        );
+    style
+        .fill(transportation, "road_area_pattern")
+        .filter(Filter::raw(json!(["==", "$type", "Polygon"])))
+        .paint("fill-pattern", json!("pedestrian_polygon"));
+    style
+        .line(transportation, "road_service_track_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["in", "class", "service", "track"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[15,"hsl(0, 0%, 88%)"],[18,"hsl(0, 0%, 74%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0.76],[16,4],[20,11]]}),
+        );
+    style.line(transportation, "road_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!(["all",["!in","brunnel","bridge","tunnel"],["!in","class","pedestrian","path","track","service","motorway"],["==","ramp",1]])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 86%)"],[12,"hsl(0, 0%, 86%)"],[15,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,23.5]]}))
+        ;
+    style
+        .line(transportation, "road_minor_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "$type", "LineString"],
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["in", "class", "minor"],
+            ["!=", "ramp", 1]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 86%)"],[16,"hsl(0, 0%, 75%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,20]]}),
+        );
+    style.line(transportation, "road_secondary_tertiary_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!(["all",["!in","brunnel","bridge","tunnel"],["in","class","secondary","tertiary"],["!=","ramp",1]])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 82%)"],[11,"hsl(0, 0%, 82%)"],[12,"hsl(0, 0%, 82%)"],[13,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,1.76],[13,3.6],[20,30]]}))
+        ;
+    style
+        .line(transportation, "road_primary_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "primary"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 67%)"],[20,"hsl(0, 0%, 52%)"]]}),
+        )
+        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+    style
+        .line(transportation, "road_trunk_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "trunk"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 62%)"],[20,"hsl(0, 0%, 49%)"]]}),
+        )
+        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+    style
+        .line(transportation, "road_motorway_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "motorway"],
+            ["==", "ramp", 1]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[12,"hsl(0, 0%, 64%)"],[15,"hsl(0, 0%, 54%)"],[20,"hsl(0, 0%, 40%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1.74],[13,5.9],[20,35]]}),
+        );
+    style
+        .line(transportation, "road_motorway_casing")
+        .minzoom(10.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "motorway"],
+            ["!=", "ramp", 1]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[7,"hsl(0, 0%, 60%)"],[13,"hsl(0, 0%, 50%)"],[20,"hsl(0, 0%, 40%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[5,1.4],[7,1.75],[13,5.9],[20,40]]}),
+        );
+    style
+        .line(transportation, "road_service_track")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["in", "class", "service", "track"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 94%)"],[13,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 74%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0],[16,2],[20,7.5]]}),
+        );
+    style
+        .line(transportation, "road_link")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "ramp", 1],
+            [
+                "!in",
+                "class",
+                "pedestrian",
+                "path",
+                "track",
+                "service",
+                "motorway"
+            ]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 88%)"],[12,"hsl(0, 0%, 88%)"],[20,"hsl(0, 0%, 74%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,20]]}),
+        );
+    style
+        .line(transportation, "road_minor")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "$type", "LineString"],
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["in", "class", "minor"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 86%)"],[13,"hsl(0, 0%, 86%)"],[20,"hsl(0, 0%, 74%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,18]]}),
+        );
+    style
+        .line(transportation, "road_path_pedestrian")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "$type", "LineString"],
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["in", "class", "path", "pedestrian"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!("hsl(0, 0%, 96%)"))
+        .paint("line-dasharray", json!([1, 0.7]))
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0.75],[20,10]]}),
+        );
+    style.line(transportation, "road_secondary_tertiary")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!(["all",["!in","brunnel","bridge","tunnel"],["in","class","secondary","tertiary"]])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 90%)"],[11,"hsl(0, 0%, 90%)"],[12,"hsl(0, 0%, 90%)"],[20,"hsl(0, 0%, 74%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,1],[13,2.5],[20,26]]}))
+        ;
+    style
+        .line(transportation, "road_primary")
+        .minzoom(8.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "primary"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "road_trunk")
+        .minzoom(6.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "trunk"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 61%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[6,1],[10,2.85],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "road_motorway_link")
+        .minzoom(8.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "motorway"],
+            ["==", "ramp", 1]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "road_motorway")
+        .minzoom(5.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "motorway"],
+            ["!=", "ramp", 1]
+        ])))
+        .layout("line-cap", json!("round"))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[5,1],[7,1],[13,4.5],[20,36]]}),
+        );
+    style
+        .line(transportation, "road_major_rail")
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "rail"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .paint("line-color", json!("#bbb"))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+        );
+    style
+        .line(transportation, "road_major_rail_hatching")
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "rail"]
+        ])))
+        .paint("line-color", json!("#bbb"))
+        .paint("line-dasharray", json!([0.2, 8]))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+        );
+    style
+        .line(transportation, "road_transit_rail")
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "transit"]
+        ])))
+        .layout("line-cap", json!("round"))
+        .paint("line-color", json!("#bbb"))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+        );
+    style
+        .line(transportation, "road_transit_rail_hatching")
+        .filter(Filter::raw(json!([
+            "all",
+            ["!in", "brunnel", "bridge", "tunnel"],
+            ["==", "class", "transit"]
+        ])))
+        .paint("line-color", json!("#bbb"))
+        .paint("line-dasharray", json!([0.2, 8]))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+        );
+    style
+        .line(transportation, "bridge_service_track_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["in", "class", "service", "track"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[15,"hsl(0, 0%, 88%)"],[18,"hsl(0, 0%, 74%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0.76],[16,4],[20,11]]}),
+        );
+    style.line(transportation, "bridge_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!(["all",["==","class","link"],["==","brunnel","bridge"]])))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 86%)"],[12,"hsl(0, 0%, 86%)"],[15,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,23.5]]}))
+        ;
+    style
+        .line(transportation, "bridge_street_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["in", "class", "street", "street_limited"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 86%)"],[16,"hsl(0, 0%, 75%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,2.12],[14,4],[20,20]]}),
+        );
+    style
+        .line(transportation, "bridge_path_pedestrian_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "$type", "LineString"],
+            ["==", "brunnel", "bridge"],
+            ["in", "class", "path", "pedestrian"]
+        ])))
+        .paint(
+            "line-color",
+            json!({"stops":[[14,"hsl(0, 0%, 88%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint("line-dasharray", json!([1, 0]))
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[14,1.125],[20,18]]}),
+        );
+    style.line(transportation, "bridge_secondary_tertiary_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!(["all",["==","brunnel","bridge"],["in","class","secondary","tertiary"]])))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 82%)"],[11,"hsl(0, 0%, 82%)"],[12,"hsl(0, 0%, 82%)"],[13,"hsl(0, 0%, 78%)"],[20,"hsl(0, 0%, 64%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,1.76],[13,3.6],[20,30]]}))
+        ;
+    style
+        .line(transportation, "bridge_primary_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["==", "class", "primary"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 67%)"],[20,"hsl(0, 0%, 52%)"]]}),
+        )
+        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+    style
+        .line(transportation, "bridge_trunk_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["==", "class", "trunk"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[13,"hsl(0, 0%, 62%)"],[20,"hsl(0, 0%, 49%)"]]}),
+        )
+        .paint("line-width", json!({"base":1.2,"stops":[[13,5.9],[20,36]]}));
+    style
+        .line(transportation, "bridge_motorway_link_casing")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["==", "ramp", 1],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[12,"hsl(0, 0%, 64%)"],[15,"hsl(0, 0%, 54%)"],[20,"hsl(0, 0%, 40%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1.74],[13,5.9],[20,35]]}),
+        );
+    style
+        .line(transportation, "bridge_motorway_casing")
+        .minzoom(10.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["!=", "ramp", 1],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[7,"hsl(0, 0%, 60%)"],[13,"hsl(0, 0%, 50%)"],[20,"hsl(0, 0%, 40%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[5,1.4],[7,1.75],[13,5.9],[20,40]]}),
+        );
+    style
+        .line(transportation, "bridge_service_track")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["in", "class", "service", "track"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 94%)"],[13,"hsl(0, 0%, 84%)"],[20,"hsl(0, 0%, 74%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0],[16,2],[20,7.5]]}),
+        );
+    style
+        .line(transportation, "bridge_link")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "link"],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 88%)"],[12,"hsl(0, 0%, 88%)"],[20,"hsl(0, 0%, 74%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,20]]}),
+        );
+    style
+        .line(transportation, "bridge_street")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["in", "class", "minor"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 86%)"],[13,"hsl(0, 0%, 86%)"],[20,"hsl(0, 0%, 74%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[12,1],[14,2.5],[20,18]]}),
+        );
+    style
+        .line(transportation, "bridge_path_pedestrian")
+        .minzoom(13.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "$type", "LineString"],
+            ["==", "brunnel", "bridge"],
+            ["in", "class", "path", "pedestrian"]
+        ])))
+        .paint("line-color", json!("hsl(0, 0%, 96%)"))
+        .paint("line-dasharray", json!([1, 0.3]))
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[13,0.75],[20,10]]}),
+        );
+    style.line(transportation, "bridge_secondary_tertiary")
+        .minzoom(12.0)
+        .filter(Filter::raw(json!(["all",["==","brunnel","bridge"],["in","class","secondary","tertiary"]])))
+        .layout("line-join", json!("round"))
+        .paint("line-color", json!({"stops":[[10,"hsl(0, 0%, 90%)"],[11,"hsl(0, 0%, 90%)"],[12,"hsl(0, 0%, 90%)"],[20,"hsl(0, 0%, 74%)"]]}))
+        .paint("line-width", json!({"base":1.2,"stops":[[12,1],[13,2.5],[20,26]]}))
+        ;
+    style
+        .line(transportation, "bridge_primary")
+        .minzoom(8.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["==", "class", "primary"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 64%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "bridge_trunk")
+        .minzoom(6.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "brunnel", "bridge"],
+            ["==", "class", "trunk"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 61%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[6,1],[10,2.85],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "bridge_motorway_link")
+        .minzoom(8.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["==", "ramp", 1],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[8,1],[13,4.5],[20,32]]}),
+        );
+    style
+        .line(transportation, "bridge_motorway")
+        .minzoom(5.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "motorway"],
+            ["!=", "ramp", 1],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .layout("line-join", json!("round"))
+        .paint(
+            "line-color",
+            json!({"stops":[[10,"hsl(0, 0%, 68%)"],[20,"hsl(0, 0%, 52%)"]]}),
+        )
+        .paint(
+            "line-width",
+            json!({"base":1.2,"stops":[[5,1],[7,1],[13,4.5],[20,36]]}),
+        );
+    style
+        .line(transportation, "bridge_major_rail")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "rail"],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .paint("line-color", json!("#bbb"))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+        );
+    style
+        .line(transportation, "bridge_major_rail_hatching")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "rail"],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .paint("line-color", json!("#bbb"))
+        .paint("line-dasharray", json!([0.2, 8]))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+        );
+    style
+        .line(transportation, "bridge_transit_rail")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "transit"],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .paint("line-color", json!("#bbb"))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14,0.4],[15,0.75],[20,2]]}),
+        );
+    style
+        .line(transportation, "bridge_transit_rail_hatching")
+        .filter(Filter::raw(json!([
+            "all",
+            ["==", "class", "transit"],
+            ["==", "brunnel", "bridge"]
+        ])))
+        .paint("line-color", json!("#bbb"))
+        .paint("line-dasharray", json!([0.2, 8]))
+        .paint(
+            "line-width",
+            json!({"base":1.4,"stops":[[14.5,0],[15,3],[20,8]]}),
+        );
+}
 
-        self.rails(&mut streets);
-        streets
-    }
+fn add_v3_road_labels(style: &mut Style, transportation_name: &SourceLayer) {
+    style
+        .symbol(transportation_name, "road_label")
+        .layout("symbol-placement", json!("line"))
+        .layout("text-field", json!("{name}"))
+        .layout("text-font", json!(["Roboto Regular"]))
+        .layout("text-offset", json!([0, 0.15]))
+        .layout("text-size", json!({"stops":[[13,12],[14,13]]}))
+        .paint("text-color", json!("#765"))
+        .paint("text-halo-blur", json!(0.5))
+        .paint("text-halo-color", json!("#ffffff"))
+        .paint("text-halo-width", json!(1));
+    style
+        .symbol(transportation_name, "road_shield")
+        .minzoom(7.0)
+        .filter(Filter::raw(json!([
+            "all",
+            ["has", "network"],
+            ["has", "ref"],
+            [
+                "<=",
+                [
+                    "length",
+                    ["coalesce", ["get", "route_1_ref"], ["get", "ref"]]
+                ],
+                6
+            ]
+        ])))
+        .layout(
+            "icon-image",
+            json!([
+                "let",
+                "ref",
+                ["coalesce", ["get", "route_1_ref"], ["get", "ref"]],
+                [
+                    "let",
+                    "shield_base",
+                    [
+                        "match",
+                        ["get", "route_1_network"],
+                        "US:I",
+                        "us-interstate",
+                        "US:US",
+                        "us-highway",
+                        "US:CA",
+                        "us-state-ca",
+                        "US:OR",
+                        "us-state-or",
+                        "US:AL",
+                        "us-state-al",
+                        "US:AR",
+                        "us-state-ar",
+                        "US:AZ",
+                        "us-state-az",
+                        "US:FL",
+                        "us-state-fl",
+                        "US:GA",
+                        "us-state-ga",
+                        "US:GU",
+                        "us-state-gu",
+                        "US:ID",
+                        "us-state-id",
+                        "US:KS",
+                        "us-state-ks",
+                        "US:LA",
+                        "us-state-la",
+                        "US:MN",
+                        "us-state-mn",
+                        "US:MO",
+                        "us-state-mo",
+                        "US:MP",
+                        "us-state-mp",
+                        "US:ND",
+                        "us-state-nd",
+                        "US:NH",
+                        "us-state-nh",
+                        "US:NM",
+                        "us-state-nm",
+                        "US:Navajo",
+                        "us-state-navajo",
+                        "US:OH",
+                        "us-state-oh",
+                        "US:OK",
+                        "us-state-ok",
+                        "US:PA",
+                        "us-state-pa",
+                        "US:SD",
+                        "us-state-sd",
+                        "US:UT",
+                        "us-state-ut",
+                        "US:VT",
+                        "us-state-vt",
+                        "US:WI",
+                        "us-state-wi",
+                        "CA:BC",
+                        "us-ca-bc",
+                        "CA:QC:A",
+                        "us-ca-qc-a",
+                        "CA:transcanada",
+                        "us-ca-transcanada",
+                        "CL:national",
+                        "us-cl-national",
+                        "CN:expressway",
+                        "us-cn-expressway",
+                        "EC:secundaria",
+                        "us-ec-secundaria",
+                        "IN:NH",
+                        "us-in-nh",
+                        "KR:expressway",
+                        "us-kr-expressway",
+                        "MX:MX",
+                        "us-mx-mx",
+                        "PE:national",
+                        "us-pe-national",
+                        "US:I:Business:Loop",
+                        "us-i-business-loop",
+                        "US:MN:Business",
+                        "us-mn-business",
+                        "US:OH:SCI",
+                        "us-oh-sci",
+                        "US:PA:Turnpike",
+                        "us-pa-turnpike",
+                        "co:national",
+                        "us-co-national",
+                        ""
+                    ],
+                    [
+                        "case",
+                        ["!=", ["var", "shield_base"], ""],
+                        [
+                            "concat",
+                            ["var", "shield_base"],
+                            [
+                                "case",
+                                ["<=", ["length", ["var", "ref"]], 2],
+                                "_2",
+                                [
+                                    "all",
+                                    [">=", ["length", ["var", "ref"]], 4],
+                                    [
+                                        "match",
+                                        ["get", "route_1_network"],
+                                        "US:Navajo",
+                                        true,
+                                        "CN:expressway",
+                                        true,
+                                        "EC:secundaria",
+                                        true,
+                                        "IN:NH",
+                                        true,
+                                        "MX:MX",
+                                        true,
+                                        false
+                                    ]
+                                ],
+                                "_4",
+                                "_3"
+                            ]
+                        ],
+                        [
+                            "match",
+                            ["get", "route_1_network"],
+                            "US:WA",
+                            "us-state-wa",
+                            "US:AK",
+                            "us-state-ak",
+                            "US:AS",
+                            "us-state-as",
+                            "US:BIA",
+                            "us-state-bia",
+                            "US:CKC",
+                            "us-state-ckc",
+                            "US:CO",
+                            "us-state-co",
+                            "US:DC",
+                            "us-state-dc",
+                            "US:GLST",
+                            "us-state-glst",
+                            "US:GRR",
+                            "us-state-grr",
+                            "US:LHT",
+                            "us-state-lht",
+                            "US:NHT",
+                            "us-state-nht",
+                            "US:NV",
+                            "us-state-nv",
+                            "US:ORSB",
+                            "us-state-orsb",
+                            "US:PANYNJ",
+                            "us-state-panynj",
+                            "US:PIPC",
+                            "us-state-pipc",
+                            "US:SC",
+                            "us-state-sc",
+                            "CA:NB:tertiary",
+                            "us-ca-nb-tertiary",
+                            "CA:NS:S",
+                            "us-ca-ns-s",
+                            "CA:NT",
+                            "us-ca-nt",
+                            "CA:ON:Hamilton:Expressway",
+                            "us-ca-on-hamilton-expressway",
+                            "CA:ON:Toronto:Expressway",
+                            "us-ca-on-toronto-expressway",
+                            "CA:ON:primary",
+                            "us-ca-on-primary",
+                            "CA:PE",
+                            "us-ca-pe",
+                            "CA:QC:R",
+                            "us-ca-qc-r",
+                            "CA:SK:secondary",
+                            "us-ca-sk-secondary",
+                            "CA:transcanada:namedRoute",
+                            "us-ca-transcanada-namedroute_2",
+                            "GLCT",
+                            "us-glct",
+                            "GLCT:Loop",
+                            "us-glct-loop",
+                            "ID:national",
+                            "us-id-national",
+                            "MX:CDMX:EJE:CENTRAL",
+                            "us-mx-cdmx-eje-central",
+                            "MX:CDMX:EJE:NTE",
+                            "us-mx-cdmx-eje-nte",
+                            "MX:CDMX:EJE:OTE",
+                            "us-mx-cdmx-eje-ote",
+                            "MX:CDMX:EJE:PTE",
+                            "us-mx-cdmx-eje-pte",
+                            "MX:CDMX:EJE:SUR",
+                            "us-mx-cdmx-eje-sur",
+                            "NL:DR:Hunebed_Highway",
+                            "us-nl-dr-hunebed-highway",
+                            "NZ:Touring:AH",
+                            "us-nz-touring-ah",
+                            "NZ:Touring:CNZWT",
+                            "us-nz-touring-cnzwt",
+                            "NZ:Touring:MWT",
+                            "us-nz-touring-mwt",
+                            "NZ:Touring:PCH",
+                            "us-nz-touring-pch",
+                            "NZ:Touring:SLH",
+                            "us-nz-touring-slh",
+                            "NZ:Touring:SSR",
+                            "us-nz-touring-ssr",
+                            "NZ:Touring:TCDH",
+                            "us-nz-touring-tcdh",
+                            "NZ:Touring:TEH",
+                            "us-nz-touring-teh",
+                            "NZ:Touring:VLH",
+                            "us-nz-touring-vlh",
+                            "NZ:WRR",
+                            "us-nz-wrr",
+                            "PK:motorway",
+                            "us-pk-motorway",
+                            "TW:freeway",
+                            "us-tw-freeway",
+                            "US:AL:Baldwin:Foley_Beach_Express",
+                            "us-al-baldwin-foley-beach-express",
+                            "US:AZ:Indian",
+                            "us-az-indian",
+                            "US:AZ:Scenic",
+                            "us-az-scenic",
+                            "US:CA:San_Francisco:49_Mile_Scenic_Drive",
+                            "us-ca-san-francisco-49-mile-scenic-drive",
+                            "US:CO:E470",
+                            "us-co-e470",
+                            "US:CO:NW",
+                            "us-co-nw",
+                            "US:CO:Scenic",
+                            "us-co-scenic",
+                            "US:CT:Parkway",
+                            "us-ct-parkway",
+                            "US:FL:Toll",
+                            "us-fl-toll",
+                            "US:FL:Turnpike",
+                            "us-fl-turnpike",
+                            "US:IL:Cook:Chicago:Skyway",
+                            "us-il-cook-chicago-skyway",
+                            "US:IN:JHMHT",
+                            "us-in-jhmht",
+                            "US:IN:Toll",
+                            "us-in-toll",
+                            "US:KS:Turnpike",
+                            "us-ks-turnpike",
+                            "US:KY:Parkway",
+                            "us-ky-parkway",
+                            "US:LA:Causeway",
+                            "us-la-causeway",
+                            "US:MA:Turnpike",
+                            "us-ma-turnpike",
+                            "US:ME:Turnpike",
+                            "us-me-turnpike",
+                            "US:MT:secondary",
+                            "us-mt-secondary",
+                            "US:NE:Scenic",
+                            "us-ne-scenic",
+                            "US:NH:Turnpike",
+                            "us-nh-turnpike",
+                            "US:NJ:ACE",
+                            "us-nj-ace",
+                            "US:NJ:GSP",
+                            "us-nj-gsp",
+                            "US:NJ:NJTP",
+                            "us-nj-njtp",
+                            "US:NM:Frontage",
+                            "us-nm-frontage",
+                            "US:NPS:Blue_Ridge",
+                            "us-nps-blue-ridge",
+                            "US:NPS:Natchez_Trace",
+                            "us-nps-natchez-trace",
+                            "US:NV:Clark",
+                            "us-nv-clark",
+                            "US:NY:Parkway:LI",
+                            "us-ny-parkway-li",
+                            "US:NY:Parkway:LOSP",
+                            "us-ny-parkway-losp",
+                            "US:NY:Parkway:NYC",
+                            "us-ny-parkway-nyc",
+                            "US:NY:STE",
+                            "us-ny-ste",
+                            "US:NY:Scenic",
+                            "us-ny-scenic",
+                            "US:NY:TBTA",
+                            "us-ny-tbta",
+                            "US:NY:Thruway",
+                            "us-ny-thruway",
+                            "US:OH:ASD",
+                            "us-oh-asd",
+                            "US:OH:HOL",
+                            "us-oh-hol",
+                            "US:OH:JHMHT",
+                            "us-oh-jhmht",
+                            "US:OH:OEC",
+                            "us-oh-oec",
+                            "US:OH:TUS:Salem",
+                            "us-oh-tus-salem",
+                            "US:OH:Turnpike",
+                            "us-oh-turnpike",
+                            "US:OK:Turnpike",
+                            "us-ok-turnpike",
+                            "US:SD:Custer:CSP",
+                            "us-sd-custer-csp",
+                            "US:TN:primary",
+                            "us-tn-primary",
+                            "US:TX:Fort_Bend:FBCTRA",
+                            "us-tx-fort-bend-fbctra",
+                            "US:WI:Rustic",
+                            "us-wi-rustic",
+                            [
+                                "concat",
+                                "default_",
+                                ["to-string", ["length", ["var", "ref"]]]
+                            ]
+                        ]
+                    ]
+                ]
+            ]),
+        )
+        .layout("icon-rotation-alignment", json!("viewport"))
+        .layout(
+            "symbol-placement",
+            json!({"stops":[[10,"point"],[11,"line"]]}),
+        )
+        .layout("symbol-spacing", json!(500))
+        .layout(
+            "text-field",
+            json!([
+                "let",
+                "ref",
+                ["coalesce", ["get", "route_1_ref"], ["get", "ref"]],
+                [
+                    "match",
+                    ["get", "route_1_network"],
+                    "CA:transcanada:namedRoute",
+                    "",
+                    "MX:CDMX:EJE:CENTRAL",
+                    "",
+                    "US:FL:Turnpike",
+                    "",
+                    "US:GLST",
+                    "",
+                    "US:GRR",
+                    "",
+                    "US:IL:Cook:Chicago:Skyway",
+                    "",
+                    "US:IN:Toll",
+                    "",
+                    "US:KS:Turnpike",
+                    "",
+                    "US:MA:Turnpike",
+                    "",
+                    "US:NPS:Blue_Ridge",
+                    "",
+                    "US:NPS:Natchez_Trace",
+                    "",
+                    "US:NY:Parkway:LOSP",
+                    "",
+                    "US:NY:STE",
+                    "",
+                    "US:NY:Thruway",
+                    "",
+                    ["var", "ref"]
+                ]
+            ]),
+        )
+        .layout("text-font", json!(["Overpass Heavy"]))
+        .layout(
+            "text-offset",
+            json!([
+                "match",
+                ["get", "route_1_network"],
+                ["US:I", "US:I:Business:Loop"],
+                ["literal", [0.0, 0.06]],
+                [
+                    "US:OH",
+                    "US:MT:secondary",
+                    "US:NM:Frontage",
+                    "US:OH:SCI",
+                    "US:OR",
+                    "US:SD",
+                    "US:NV:Clark"
+                ],
+                ["literal", [0, -0.12]],
+                "US:WA",
+                ["literal", [-0.06, -0.01]],
+                "CA:NB:tertiary",
+                ["literal", [-0.06, 0.11]],
+                ["US:CA", "US:SC", "US:VT", "PE:national"],
+                ["literal", [0, 0.18]],
+                "US:AK",
+                ["literal", [0, -0.45]],
+                ["US:AL", "US:MO", "US:WI", "US:SD:Custer:CSP"],
+                ["literal", [0, -0.18]],
+                ["US:AS", "US:CO", "US:CO:E470", "CA:SK:secondary"],
+                ["literal", [0, 0.51]],
+                "US:DC",
+                ["literal", [0, 0.29]],
+                "US:FL",
+                ["literal", [-0.15, 0.12]],
+                "US:ID",
+                ["literal", [0.24, -0.45]],
+                "US:ND",
+                ["literal", [-0.18, 0]],
+                "US:NH",
+                ["literal", [0.12, 0]],
+                "US:NV",
+                ["literal", [0, -0.64]],
+                "CA:NT",
+                ["literal", [0, 0.41]],
+                "MX:CDMX:EJE:NTE",
+                ["literal", [0, 0.36]],
+                "MX:CDMX:EJE:OTE",
+                ["literal", [-0.36, 0]],
+                "MX:CDMX:EJE:PTE",
+                ["literal", [0.36, 0]],
+                [
+                    "MX:CDMX:EJE:SUR",
+                    "US:NY:Parkway:NYC",
+                    "US:TX:Fort_Bend:FBCTRA"
+                ],
+                ["literal", [0, -0.36]],
+                [
+                    "US:MN",
+                    "US:OK",
+                    "CA:ON:primary",
+                    "CN:expressway",
+                    "KR:expressway",
+                    "NL:DR:Hunebed_Highway",
+                    "US:MN:Business"
+                ],
+                ["literal", [0, 0.24]],
+                "US:LA",
+                ["literal", [0, 0.31]],
+                "US:CO:NW",
+                ["literal", [0, 0.6]],
+                "US:FL:Toll",
+                ["literal", [-0.18, 0.18]],
+                ["US:KY:Parkway", "co:national"],
+                ["literal", [0, -0.24]],
+                "US:NY:Parkway:LI",
+                ["literal", [0.24, -0.36]],
+                "US:OH:TUS:Salem",
+                ["literal", [-0.12, -0.18]],
+                "US:TN:primary",
+                ["literal", [0, -0.3]],
+                "US:WI:Rustic",
+                ["literal", [-0.15, 0.3]],
+                ["US:AZ:Indian", "US:BIA"],
+                ["literal", [0, -0.01]],
+                ["literal", [0, 0.11]]
+            ]),
+        )
+        .layout("text-rotation-alignment", json!("viewport"))
+        .layout(
+            "text-size",
+            json!([
+                "let",
+                "ref",
+                ["coalesce", ["get", "route_1_ref"], ["get", "ref"]],
+                [
+                    "min",
+                    [
+                        "match",
+                        ["get", "route_1_network"],
+                        ["US:I", "US:I:Business:Loop"],
+                        9.5,
+                        [
+                            "US:US",
+                            "US:WA",
+                            "US:CA",
+                            "US:OR",
+                            "US:AK",
+                            "US:AL",
+                            "US:AR",
+                            "US:AS",
+                            "US:AZ",
+                            "US:BIA",
+                            "US:CKC",
+                            "US:CO",
+                            "US:DC",
+                            "US:FL",
+                            "US:GA",
+                            "US:GLST",
+                            "US:GRR",
+                            "US:GU",
+                            "US:ID",
+                            "US:KS",
+                            "US:LA",
+                            "US:LHT",
+                            "US:MN",
+                            "US:MO",
+                            "US:MP",
+                            "US:ND",
+                            "US:NH",
+                            "US:NHT",
+                            "US:NM",
+                            "US:NV",
+                            "US:Navajo",
+                            "US:OH",
+                            "US:OK",
+                            "US:ORSB",
+                            "US:PA",
+                            "US:PANYNJ",
+                            "US:PIPC",
+                            "US:SC",
+                            "US:SD",
+                            "US:UT",
+                            "US:VT",
+                            "US:WI",
+                            "CA:BC",
+                            "CA:NB:tertiary",
+                            "CA:NS:S",
+                            "CA:NT",
+                            "CA:ON:Hamilton:Expressway",
+                            "CA:ON:Toronto:Expressway",
+                            "CA:ON:primary",
+                            "CA:PE",
+                            "CA:QC:A",
+                            "CA:QC:R",
+                            "CA:SK:secondary",
+                            "CA:transcanada",
+                            "CA:transcanada:namedRoute",
+                            "CL:national",
+                            "CN:expressway",
+                            "EC:secundaria",
+                            "GLCT",
+                            "GLCT:Loop",
+                            "ID:national",
+                            "IN:NH",
+                            "KR:expressway",
+                            "MX:CDMX:EJE:CENTRAL",
+                            "MX:CDMX:EJE:NTE",
+                            "MX:CDMX:EJE:OTE",
+                            "MX:CDMX:EJE:PTE",
+                            "MX:CDMX:EJE:SUR",
+                            "MX:MX",
+                            "NL:DR:Hunebed_Highway",
+                            "NZ:Touring:AH",
+                            "NZ:Touring:CNZWT",
+                            "NZ:Touring:MWT",
+                            "NZ:Touring:PCH",
+                            "NZ:Touring:SLH",
+                            "NZ:Touring:SSR",
+                            "NZ:Touring:TCDH",
+                            "NZ:Touring:TEH",
+                            "NZ:Touring:VLH",
+                            "NZ:WRR",
+                            "PE:national",
+                            "PK:motorway",
+                            "TW:freeway",
+                            "US:AL:Baldwin:Foley_Beach_Express",
+                            "US:AZ:Indian",
+                            "US:AZ:Scenic",
+                            "US:CA:San_Francisco:49_Mile_Scenic_Drive",
+                            "US:CO:E470",
+                            "US:CO:NW",
+                            "US:CO:Scenic",
+                            "US:CT:Parkway",
+                            "US:FL:Toll",
+                            "US:FL:Turnpike",
+                            "US:IL:Cook:Chicago:Skyway",
+                            "US:IN:JHMHT",
+                            "US:IN:Toll",
+                            "US:KS:Turnpike",
+                            "US:KY:Parkway",
+                            "US:LA:Causeway",
+                            "US:MA:Turnpike",
+                            "US:ME:Turnpike",
+                            "US:MN:Business",
+                            "US:MT:secondary",
+                            "US:NE:Scenic",
+                            "US:NH:Turnpike",
+                            "US:NJ:ACE",
+                            "US:NJ:GSP",
+                            "US:NJ:NJTP",
+                            "US:NM:Frontage",
+                            "US:NPS:Blue_Ridge",
+                            "US:NPS:Natchez_Trace",
+                            "US:NV:Clark",
+                            "US:NY:Parkway:LI",
+                            "US:NY:Parkway:LOSP",
+                            "US:NY:Parkway:NYC",
+                            "US:NY:STE",
+                            "US:NY:Scenic",
+                            "US:NY:TBTA",
+                            "US:NY:Thruway",
+                            "US:OH:ASD",
+                            "US:OH:HOL",
+                            "US:OH:JHMHT",
+                            "US:OH:OEC",
+                            "US:OH:SCI",
+                            "US:OH:TUS:Salem",
+                            "US:OH:Turnpike",
+                            "US:OK:Turnpike",
+                            "US:PA:Turnpike",
+                            "US:SD:Custer:CSP",
+                            "US:TN:primary",
+                            "US:TX:Fort_Bend:FBCTRA",
+                            "US:WI:Rustic",
+                            "co:national"
+                        ],
+                        9,
+                        8.5
+                    ],
+                    [
+                        "/",
+                        [
+                            "match",
+                            ["get", "route_1_network"],
+                            ["US:GU", "US:AK"],
+                            24.5,
+                            ["US:BIA", "MX:CDMX:EJE:NTE", "MX:CDMX:EJE:SUR"],
+                            22.5,
+                            ["US:NV", "US:FL:Toll", "US:NY:Parkway:LI"],
+                            21.5,
+                            "US:WA",
+                            22,
+                            ["US:CA", "US:NM:Frontage"],
+                            29,
+                            ["CA:ON:primary", "CA:PE", "CA:QC:R"],
+                            28,
+                            "US:DC",
+                            24,
+                            "US:AZ:Indian",
+                            24,
+                            ["CA:NB:tertiary", "US:CO:NW"],
+                            23,
+                            ["CA:SK:secondary", "NZ:Touring:TEH", "US:NV:Clark"],
+                            27,
+                            "CA:ON:Toronto:Expressway",
+                            15,
+                            "TW:freeway",
+                            18.5,
+                            "US:MT:secondary",
+                            21,
+                            ["CA:NT", "US:OH:ASD", "US:TX:Fort_Bend:FBCTRA"],
+                            25,
+                            ["US:I", "US:I:Business:Loop"],
+                            32,
+                            30
+                        ],
+                        ["length", ["var", "ref"]]
+                    ]
+                ]
+            ]),
+        )
+        .layout(
+            "icon-size",
+            json!([
+                "match",
+                ["get", "route_1_network"],
+                [
+                    "US:I",
+                    "US:US",
+                    "US:WA",
+                    "US:CA",
+                    "US:OR",
+                    "US:AK",
+                    "US:AL",
+                    "US:AR",
+                    "US:AS",
+                    "US:AZ",
+                    "US:BIA",
+                    "US:CKC",
+                    "US:CO",
+                    "US:DC",
+                    "US:FL",
+                    "US:GA",
+                    "US:GLST",
+                    "US:GRR",
+                    "US:GU",
+                    "US:ID",
+                    "US:KS",
+                    "US:LA",
+                    "US:LHT",
+                    "US:MN",
+                    "US:MO",
+                    "US:MP",
+                    "US:ND",
+                    "US:NH",
+                    "US:NHT",
+                    "US:NM",
+                    "US:NV",
+                    "US:Navajo",
+                    "US:OH",
+                    "US:OK",
+                    "US:ORSB",
+                    "US:PA",
+                    "US:PANYNJ",
+                    "US:PIPC",
+                    "US:SC",
+                    "US:SD",
+                    "US:UT",
+                    "US:VT",
+                    "US:WI",
+                    "CA:BC",
+                    "CA:NB:tertiary",
+                    "CA:NS:S",
+                    "CA:NT",
+                    "CA:ON:Hamilton:Expressway",
+                    "CA:ON:Toronto:Expressway",
+                    "CA:ON:primary",
+                    "CA:PE",
+                    "CA:QC:A",
+                    "CA:QC:R",
+                    "CA:SK:secondary",
+                    "CA:transcanada",
+                    "CA:transcanada:namedRoute",
+                    "CL:national",
+                    "CN:expressway",
+                    "EC:secundaria",
+                    "GLCT",
+                    "GLCT:Loop",
+                    "ID:national",
+                    "IN:NH",
+                    "KR:expressway",
+                    "MX:CDMX:EJE:CENTRAL",
+                    "MX:CDMX:EJE:NTE",
+                    "MX:CDMX:EJE:OTE",
+                    "MX:CDMX:EJE:PTE",
+                    "MX:CDMX:EJE:SUR",
+                    "MX:MX",
+                    "NL:DR:Hunebed_Highway",
+                    "NZ:Touring:AH",
+                    "NZ:Touring:CNZWT",
+                    "NZ:Touring:MWT",
+                    "NZ:Touring:PCH",
+                    "NZ:Touring:SLH",
+                    "NZ:Touring:SSR",
+                    "NZ:Touring:TCDH",
+                    "NZ:Touring:TEH",
+                    "NZ:Touring:VLH",
+                    "NZ:WRR",
+                    "PE:national",
+                    "PK:motorway",
+                    "TW:freeway",
+                    "US:AL:Baldwin:Foley_Beach_Express",
+                    "US:AZ:Indian",
+                    "US:AZ:Scenic",
+                    "US:CA:San_Francisco:49_Mile_Scenic_Drive",
+                    "US:CO:E470",
+                    "US:CO:NW",
+                    "US:CO:Scenic",
+                    "US:CT:Parkway",
+                    "US:FL:Toll",
+                    "US:FL:Turnpike",
+                    "US:I:Business:Loop",
+                    "US:IL:Cook:Chicago:Skyway",
+                    "US:IN:JHMHT",
+                    "US:IN:Toll",
+                    "US:KS:Turnpike",
+                    "US:KY:Parkway",
+                    "US:LA:Causeway",
+                    "US:MA:Turnpike",
+                    "US:ME:Turnpike",
+                    "US:MN:Business",
+                    "US:MT:secondary",
+                    "US:NE:Scenic",
+                    "US:NH:Turnpike",
+                    "US:NJ:ACE",
+                    "US:NJ:GSP",
+                    "US:NJ:NJTP",
+                    "US:NM:Frontage",
+                    "US:NPS:Blue_Ridge",
+                    "US:NPS:Natchez_Trace",
+                    "US:NV:Clark",
+                    "US:NY:Parkway:LI",
+                    "US:NY:Parkway:LOSP",
+                    "US:NY:Parkway:NYC",
+                    "US:NY:STE",
+                    "US:NY:Scenic",
+                    "US:NY:TBTA",
+                    "US:NY:Thruway",
+                    "US:OH:ASD",
+                    "US:OH:HOL",
+                    "US:OH:JHMHT",
+                    "US:OH:OEC",
+                    "US:OH:SCI",
+                    "US:OH:TUS:Salem",
+                    "US:OH:Turnpike",
+                    "US:OK:Turnpike",
+                    "US:PA:Turnpike",
+                    "US:SD:Custer:CSP",
+                    "US:TN:primary",
+                    "US:TX:Fort_Bend:FBCTRA",
+                    "US:WI:Rustic",
+                    "co:national"
+                ],
+                1,
+                0.667
+            ]),
+        )
+        .paint(
+            "text-color",
+            json!([
+                "match",
+                ["get", "route_1_network"],
+                ["US:I", "US:I:Business:Loop"],
+                "#ffffff",
+                "US:CA",
+                "#ffffff",
+                "US:AS",
+                "#ffffff",
+                "US:GU",
+                "#ffffff",
+                "US:ID",
+                "#ffffff",
+                "US:MN",
+                "#ffffff",
+                "US:SC",
+                "#003f87",
+                "US:VT",
+                "#006747",
+                "CA:BC",
+                "#003f87",
+                "CA:NT",
+                "#ffffff",
+                "CA:QC:A",
+                "#ffffff",
+                "CA:QC:R",
+                "#ffffff",
+                "CA:SK:secondary",
+                "#006747",
+                "CA:transcanada",
+                "#006747",
+                "CL:national",
+                "#ffffff",
+                "CN:expressway",
+                "#ffffff",
+                "EC:secundaria",
+                "#ffffff",
+                "KR:expressway",
+                "#ffffff",
+                "NL:DR:Hunebed_Highway",
+                "#ffffff",
+                "PK:motorway",
+                "#ffffff",
+                "US:CO:NW",
+                "#003f87",
+                "US:KY:Parkway",
+                "#003f87",
+                "US:MN:Business",
+                "#ffffff",
+                "US:NV:Clark",
+                "#003f87",
+                "US:OH:ASD",
+                "#006747",
+                "US:OH:HOL",
+                "#ffffff",
+                "US:PA:Turnpike",
+                "#ffffff",
+                "US:TX:Fort_Bend:FBCTRA",
+                "#ffffff",
+                "US:WI:Rustic",
+                "#ffcd00",
+                "#000000"
+            ]),
+        )
+        .paint(
+            "text-halo-color",
+            json!([
+                "match",
+                ["get", "route_1_network"],
+                "US:DC",
+                "#ffffff",
+                "rgba(0,0,0,0)"
+            ]),
+        )
+        .paint(
+            "text-halo-width",
+            json!(["match", ["get", "route_1_network"], "US:DC", 1, 0]),
+        );
 }
 
 /// The Headway default style.
 pub fn style() -> Style {
-    Style::from_json(include_str!("../../assets/styles/basic-v3.json"))
-        .expect("the checked-in Headway v3 style parses")
+    style_from_builders()
 }
 
-#[allow(dead_code)]
 fn style_from_builders() -> Style {
     let mut style = Style::new("Headway Default")
         .id("omt-headway")
@@ -394,15 +1937,6 @@ fn style_from_builders() -> Style {
     let landcover_source = style.source("landcover", Source::vector("/landcover").maxzoom(8.0));
     let terrain_source = style.source("terrain", Source::raster("/terrain").maxzoom(6.0));
 
-    style.add_layers(openmaptiles.park(), |s| {
-        s.fill("park")
-            .color("hsl(101,62.6%,63.3%)")
-            .opacity(0.7)
-            .outline_color("rgba(95, 208, 100, 1)");
-        s.line("park_outline")
-            .dasharray(vec![1.0, 1.5])
-            .color("rgb(228, 241, 215)");
-    });
     let landuse = openmaptiles.landuse();
     let landcover = openmaptiles.landcover();
     let waterway = openmaptiles.waterway();
@@ -441,19 +1975,30 @@ fn style_from_builders() -> Style {
             "transparent"
         ]));
 
+    style.add_layers(openmaptiles.park(), |s| {
+        s.fill("park")
+            .color("hsl(101,62.6%,63.3%)")
+            .opacity(0.7)
+            .outline_color("rgba(95, 208, 100, 1)");
+        s.line("park_outline")
+            .dasharray(vec![1.0, 1.5])
+            .color("rgb(228, 241, 215)");
+    });
+
     // REVIEW: Do I even care about landuse? I feel like maybe i was using it as a proxy for
     // building coverage at zoom levels before buildings were visible but maybe I can use landover.urban instead
     // and get rid of all these landuse rules.
     style
         .fill(&landuse, "landuse_residential")
-        .maxzoom(8.0)
+        .maxzoom(17.0)
         .filter(Filter::eq("class", "residential"))
-        .color(zoom!(base 1.0; 9 => "hsla(0, 3%, 85%, 0.84)", 12 => "hsla(35, 57%, 88%, 0.49)"));
+        .opacity(zoom!(16 => 1.0, 17 => 0.0))
+        .color(zoom!(9 => "hsla(0, 3%, 85%, 0.84)", 12 => "hsla(35, 57%, 88%, 0.49)"));
 
     // Ground cover reads as a wash, so it is drawn without antialiasing.
     let mut landcover_fill = |class: &str, css: &str, opacity: f64| {
         style
-            .fill(&landcover, &format!("landcover_{class}"))
+            .fill(&landcover, format!("landcover_{class}"))
             .filter(Filter::eq("class", class))
             .antialias(false)
             .color(css)
@@ -482,7 +2027,6 @@ fn style_from_builders() -> Style {
         .color(WATER)
         .dasharray(vec![3.0, 3.0])
         .gap_width(zoom!(12 => 0.0, 20 => 6.0))
-        .opacity(1.0)
         .width(zoom!(base 1.4; 8 => 1.0, 20 => 2.0));
     style
         .fill(&landcover, "landcover_sand")
@@ -525,20 +2069,14 @@ fn style_from_builders() -> Style {
             .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
     });
 
-    let roads = |level| Roads::at(level, &transportation);
-    style.extend(roads(Tunnel));
-    style
-        .fill(&transportation, "road_area_pattern")
-        .filter(Filter::geometry(Geometry::Polygon))
-        .pattern("pedestrian_polygon");
-    style.extend(roads(Surface));
-    style.extend(roads(Bridge));
+    add_v3_roads(&mut style, &transportation);
 
     style
         .fill(&openmaptiles.building(), "building")
-        .minzoom(13.0)
+        .minzoom(14.0)
         .color("hsl(40, 5.5%, 89.2%)")
-        .outline_color(zoom!(base 1.0; 13 => "hsla(40, 6%, 79%, 0.32)", 14 => "hsl(40, 6%, 79%)"));
+        .opacity(zoom!(14 => 0.0, 15 => 1.0))
+        .outline_color(zoom!(14 => "hsla(40, 6%, 79%, 0.32)", 15 => "hsl(40, 6%, 79%)"));
 
     style.add_layers(openmaptiles.boundary(), |s| {
         s.line("boundary_3")
@@ -547,20 +2085,20 @@ fn style_from_builders() -> Style {
             .join(Join::Round)
             .color("#747980")
             .dasharray(vec![1.5, 1.5])
-            .width(zoom!(base 1.0; 3 => 0.6, 6 => 1.0, 10 => 2.0));
+            .width(zoom!(3 => 0.6, 6 => 1.0, 10 => 2.0));
         // Disputed borders are only drawn once they can be labelled as such.
         s.line("boundary_2_z0-4")
             .rounded()
             .color("hsl(248, 1%, 41%)")
-            .opacity(zoom!(base 1.0; 0 => 0.4, 4 => 1.0))
-            .width(zoom!(base 1.0; 3 => 1.0, 5 => 1.2, 12 => 3.0))
+            .opacity(zoom!(0 => 0.4, 4 => 1.0))
+            .width(zoom!(3 => 1.0, 5 => 1.2, 12 => 3.0))
             .maxzoom(5.0)
             .filter(Filter::eq("admin_level", 2).and(Filter::not_has("claimed_by")));
         s.line("boundary_2_z5-")
             .rounded()
             .color("hsl(248, 1%, 41%)")
-            .opacity(zoom!(base 1.0; 0 => 0.4, 4 => 1.0))
-            .width(zoom!(base 1.0; 3 => 1.0, 5 => 1.2, 12 => 3.0))
+            .opacity(zoom!(0 => 0.4, 4 => 1.0))
+            .width(zoom!(3 => 1.0, 5 => 1.2, 12 => 3.0))
             .minzoom(5.0)
             .filter(Filter::eq("admin_level", 2));
     });
@@ -583,6 +2121,7 @@ fn style_from_builders() -> Style {
             .rounded()
             .color("#99d")
             .width(2.0)
+            .opacity(zoom!(12 => 0.0, 13 => 1.0))
             .dasharray(vec![0.3, 2.0]);
     });
 
@@ -597,6 +2136,16 @@ fn style_from_builders() -> Style {
         .text_halo("rgba(255,255,255,0.7)", 1.0)
         .placement("line");
     let water_name = openmaptiles.water_name();
+    style
+        .symbol(&water_name, "water_name_lake_line")
+        .filter(Filter::geometry(Geometry::LineString))
+        .text_field("{name}")
+        .text_font([REGULAR])
+        .text_max_width(5.0)
+        .text_size(12.0)
+        .text_color("#5d60be")
+        .text_halo("rgba(255,255,255,0.7)", 1.0)
+        .placement("line");
     style
         .symbol(&water_name, "water_name_point")
         .filter(Filter::geometry(Geometry::Point))
@@ -635,32 +2184,7 @@ fn style_from_builders() -> Style {
         .text_offset([0.9, 0.0])
         .text_color("#4898ff");
 
-    style.add_layers(transportation_name, |s| {
-        s.symbol("road_label")
-            .placement("line")
-            .text_field("{name}")
-            .text_font([REGULAR])
-            .text_anchor("center")
-            .text_offset([0.0, 0.15])
-            .text_size(zoom!(base 1.0; 13 => 12.0, 14 => 13.0))
-            .text_color("#765")
-            .text_halo("#ffffff", 1.0)
-            .text_halo_blur(0.5);
-        s.symbol("road_shield")
-            .minzoom(7.0)
-            .filter(Filter::lte("ref_length", 6))
-            .icon_image("default_{ref_length}")
-            .icon_size(0.8)
-            .icon_rotation_alignment("viewport")
-            // Shields ride the line once there is room for more than one.
-            .placement(zoom!(base 1.0; 10 => "point", 11 => "line"))
-            .spacing(500.0)
-            .text_field("{ref}")
-            .text_font([REGULAR])
-            .text_offset([0.0, 0.1])
-            .text_rotation_alignment("viewport")
-            .text_size(10.0);
-    });
+    add_v3_road_labels(&mut style, &transportation_name);
 
     let neighbourhoods = [
         "hamlet",
@@ -697,7 +2221,7 @@ fn style_from_builders() -> Style {
         .filter(Filter::eq("class", "town"))
         .text_field("{name_en}")
         .text_halo(HALO, 1.2)
-        .icon_image(zoom!(base 1.0; 0 => "dot_9", 8 => ""))
+        .icon_image(zoom!(0 => "dot_9", 8 => ""))
         .text_anchor("bottom")
         .text_font([REGULAR])
         .text_max_width(8.0)
@@ -709,7 +2233,7 @@ fn style_from_builders() -> Style {
         .filter(Filter::eq("class", "city"))
         .text_field("{name_en}")
         .text_halo(HALO, 1.2)
-        .icon_image(zoom!(base 1.0; 0 => "dot_9", 8 => ""))
+        .icon_image(zoom!(0 => "dot_9", 8 => ""))
         .text_anchor("bottom")
         .text_font([MEDIUM])
         .text_max_width(8.0)
@@ -767,7 +2291,6 @@ fn style_from_builders() -> Style {
         .text_font([ITALIC])
         .text_size(13.0)
         .text_transform("uppercase")
-        .text_justify("center")
         .text_color("#633")
         .text_halo("rgba(255,255,255,0.7)", 1.0);
 

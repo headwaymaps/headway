@@ -68,20 +68,18 @@ fn reproduces_the_hand_written_style() {
             .expect("basic-v3.json parses");
     let mut generated = mlss::headway::style().to_json();
 
-    let expected_ids: Vec<&str> = expected["layers"]
+    let expected_ids: Vec<String> = expected["layers"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|layer| layer["id"].as_str().unwrap())
+        .map(|layer| layer["id"].as_str().unwrap().to_owned())
         .collect();
-    let generated_ids: Vec<&str> = generated["layers"]
+    let generated_ids: Vec<String> = generated["layers"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|layer| layer["id"].as_str().unwrap())
+        .map(|layer| layer["id"].as_str().unwrap().to_owned())
         .collect();
-    assert_eq!(generated_ids, expected_ids, "layer order");
-
     // `id` and `metadata` name the style rather than describing how it draws.
     for key in ["id", "metadata"] {
         generated.as_object_mut().unwrap().remove(key);
@@ -89,6 +87,11 @@ fn reproduces_the_hand_written_style() {
     }
 
     let mut found = Vec::new();
+    if generated_ids != expected_ids {
+        found.push(format!(
+            "style.layers order\n     generated: {generated_ids:?}\n      expected: {expected_ids:?}"
+        ));
+    }
     differences(
         "style",
         &normalize(&generated),

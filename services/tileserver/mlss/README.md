@@ -12,7 +12,7 @@ cargo run -p mlss --bin headway-style > ../assets/styles/basic-v3.json
 ```
 
 `src/headway.rs` is the Headway default style, and
-`tests/basic_v3.rs` asserts it reproduces the hand-written
+`tests/basic_v3.rs` asserts the builder-generated document reproduces the hand-written
 `assets/styles/basic-v3.json` layer for layer. The comparison ignores two
 things maplibre doesn't care about: integers written as floats, and the order
 of clauses inside an `all` filter.
@@ -26,7 +26,8 @@ of clauses inside an `all` filter.
   are there for anything not yet wrapped.
 - `zoom!(base 1.2; 12 => 0.5, 20 => 10.0)` is a zoom function, written as the table
   it is. Any property takes either a constant or one of these.
-- `.push_to(&mut style)` ends a layer's builder chain.
+- `style.fill(source, "id")`, `style.line(source, "id")`, and
+  `style.symbol(source, "id")` attach a layer at the end of the builder chain.
 - `Color` does arithmetic — `.darken(0.1)`, `.mix(&other, 0.5)`, `.alpha(0.8)` — and
   renders back in the notation it was written in until you change it.
 - `Filter` builds the legacy filter syntax the openmaptiles styles use.
@@ -64,3 +65,14 @@ self.road("motorway_link", links, "#fc8", ramp)
     .appears_at(12.0)
     .push(&mut streets);
 ```
+
+## Expressive comparison
+
+`../expressive` is a pinned checkout of
+[OpenFreeMap Bright in Expressive](https://github.com/falseinput/openfreemap-expressive),
+a different authoring language for MapLibre styles. It keeps parameters,
+derived tokens, and layer modules in separate files. Run `bin/test-expressive-style`
+from the repository root to compile both the upstream 119-layer example and
+`expressive/headway-v3.exp`. The latter is a complete Headway v3 Expressive
+implementation, split into ordered layer modules and checked for exact output
+parity.
