@@ -394,16 +394,15 @@ fn style_from_builders() -> Style {
     let landcover_source = style.source("landcover", Source::vector("/landcover").maxzoom(8.0));
     let terrain_source = style.source("terrain", Source::raster("/terrain").maxzoom(6.0));
 
-    let park = openmaptiles.park();
-    style
-        .fill(&park, "park")
-        .color("hsl(101,62.6%,63.3%)")
-        .opacity(0.7)
-        .outline_color("rgba(95, 208, 100, 1)");
-    style
-        .line(&park, "park_outline")
-        .dasharray(vec![1.0, 1.5])
-        .color("rgb(228, 241, 215)");
+    style.add_layers(openmaptiles.park(), |s| {
+        s.fill("park")
+            .color("hsl(101,62.6%,63.3%)")
+            .opacity(0.7)
+            .outline_color("rgba(95, 208, 100, 1)");
+        s.line("park_outline")
+            .dasharray(vec![1.0, 1.5])
+            .color("rgb(228, 241, 215)");
+    });
     let landuse = openmaptiles.landuse();
     let landcover = openmaptiles.landcover();
     let waterway = openmaptiles.waterway();
@@ -442,6 +441,9 @@ fn style_from_builders() -> Style {
             "transparent"
         ]));
 
+    // REVIEW: Do I even care about landuse? I feel like maybe i was using it as a proxy for
+    // building coverage at zoom levels before buildings were visible but maybe I can use landover.urban instead
+    // and get rid of all these landuse rules.
     style
         .fill(&landuse, "landuse_residential")
         .maxzoom(8.0)
@@ -449,27 +451,30 @@ fn style_from_builders() -> Style {
         .color(zoom!(base 1.0; 9 => "hsla(0, 3%, 85%, 0.84)", 12 => "hsla(35, 57%, 88%, 0.49)"));
 
     // Ground cover reads as a wash, so it is drawn without antialiasing.
-    let mut ground = |id: &str, class: &str, css: &str, opacity: f64| {
+    let mut landcover_fill = |class: &str, css: &str, opacity: f64| {
         style
-            .fill(&landcover, id)
+            .fill(&landcover, &format!("landcover_{class}"))
             .filter(Filter::eq("class", class))
             .antialias(false)
             .color(css)
             .opacity(opacity);
     };
-    ground("landcover_wood", "wood", "hsl(101,62.6%,43.3%)", 0.3);
-    ground("landcover_grass", "grass", "hsl(101,62.6%,63.3%)", 0.5);
-    ground("landcover_ice", "ice", "rgba(224, 236, 236, 1)", 0.8);
-
-    let mut landuse_fill = |id: &str, class: &str, css: &str| {
-        style
-            .fill(&landuse, id)
-            .filter(Filter::eq("class", class))
-            .color(css);
-    };
-    landuse_fill("landuse_cemetery", "cemetery", "hsl(75, 37%, 81%)");
-    landuse_fill("landuse_hospital", "hospital", "#fde");
-    landuse_fill("landuse_school", "school", "rgb(236,238,204)");
+    // TODO: Replace the opacity with an adjustment to hsl.
+    landcover_fill("wood", "hsl(101,62.6%,43.3%)", 0.3);
+    landcover_fill("grass", "hsl(101,62.6%,63.3%)", 0.5);
+    // TODO: Convert ice to hsl
+    landcover_fill("ice", "rgba(224, 236, 236, 1)", 0.8);
+    style.add_layers(landuse, |s| {
+        s.fill("landuse_cemetery")
+            .filter(Filter::eq("class", "cemetery"))
+            .color("hsl(75, 37%, 81%)");
+        s.fill("landuse_hospital")
+            .filter(Filter::eq("class", "hospital"))
+            .color("#fde");
+        s.fill("landuse_school")
+            .filter(Filter::eq("class", "school"))
+            .color("rgb(236,238,204)");
+    });
 
     style
         .line(&waterway, "waterway_tunnel")
@@ -502,25 +507,23 @@ fn style_from_builders() -> Style {
         .color(WATER)
         .width(zoom!(base 1.3; 13 => 0.5, 20 => 6.0));
 
-    let aeroway = openmaptiles.aeroway();
-    style
-        .fill(&aeroway, "aeroway_fill")
-        .minzoom(11.0)
-        .filter(Filter::geometry(Geometry::Polygon))
-        .color("rgba(229, 228, 224, 1)")
-        .opacity(0.7);
-    style
-        .line(&aeroway, "aeroway_runway")
-        .minzoom(11.0)
-        .filter(Filter::geometry(Geometry::LineString).and(Filter::eq("class", "runway")))
-        .color("#f0ede9")
-        .width(zoom!(base 1.2; 11 => 3.0, 20 => 16.0));
-    style
-        .line(&aeroway, "aeroway_taxiway")
-        .minzoom(11.0)
-        .filter(Filter::geometry(Geometry::LineString).and(Filter::eq("class", "taxiway")))
-        .color("#f0ede9")
-        .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
+    style.add_layers(openmaptiles.aeroway(), |s| {
+        s.fill("aeroway_fill")
+            .minzoom(11.0)
+            .filter(Filter::geometry(Geometry::Polygon))
+            .color("rgba(229, 228, 224, 1)")
+            .opacity(0.7);
+        s.line("aeroway_runway")
+            .minzoom(11.0)
+            .filter(Filter::geometry(Geometry::LineString).and(Filter::eq("class", "runway")))
+            .color("#f0ede9")
+            .width(zoom!(base 1.2; 11 => 3.0, 20 => 16.0));
+        s.line("aeroway_taxiway")
+            .minzoom(11.0)
+            .filter(Filter::geometry(Geometry::LineString).and(Filter::eq("class", "taxiway")))
+            .color("#f0ede9")
+            .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
+    });
 
     let roads = |level| Roads::at(level, &transportation);
     style.extend(roads(Tunnel));
@@ -537,55 +540,51 @@ fn style_from_builders() -> Style {
         .color("hsl(40, 5.5%, 89.2%)")
         .outline_color(zoom!(base 1.0; 13 => "hsla(40, 6%, 79%, 0.32)", 14 => "hsl(40, 6%, 79%)"));
 
-    let boundary = openmaptiles.boundary();
-    style
-        .line(&boundary, "boundary_3")
-        .minzoom(3.0)
-        .filter(Filter::is_in("admin_level", [3, 4]))
-        .join(Join::Round)
-        .color("#747980")
-        .dasharray(vec![1.5, 1.5])
-        .width(zoom!(base 1.0; 3 => 0.6, 6 => 1.0, 10 => 2.0));
-    // Disputed borders are only drawn once they can be labelled as such.
-    style
-        .line(&boundary, "boundary_2_z0-4")
-        .rounded()
-        .color("hsl(248, 1%, 41%)")
-        .opacity(zoom!(base 1.0; 0 => 0.4, 4 => 1.0))
-        .width(zoom!(base 1.0; 3 => 1.0, 5 => 1.2, 12 => 3.0))
-        .maxzoom(5.0)
-        .filter(Filter::eq("admin_level", 2).and(Filter::not_has("claimed_by")));
-    style
-        .line(&boundary, "boundary_2_z5-")
-        .rounded()
-        .color("hsl(248, 1%, 41%)")
-        .opacity(zoom!(base 1.0; 0 => 0.4, 4 => 1.0))
-        .width(zoom!(base 1.0; 3 => 1.0, 5 => 1.2, 12 => 3.0))
-        .minzoom(5.0)
-        .filter(Filter::eq("admin_level", 2));
+    style.add_layers(openmaptiles.boundary(), |s| {
+        s.line("boundary_3")
+            .minzoom(3.0)
+            .filter(Filter::is_in("admin_level", [3, 4]))
+            .join(Join::Round)
+            .color("#747980")
+            .dasharray(vec![1.5, 1.5])
+            .width(zoom!(base 1.0; 3 => 0.6, 6 => 1.0, 10 => 2.0));
+        // Disputed borders are only drawn once they can be labelled as such.
+        s.line("boundary_2_z0-4")
+            .rounded()
+            .color("hsl(248, 1%, 41%)")
+            .opacity(zoom!(base 1.0; 0 => 0.4, 4 => 1.0))
+            .width(zoom!(base 1.0; 3 => 1.0, 5 => 1.2, 12 => 3.0))
+            .maxzoom(5.0)
+            .filter(Filter::eq("admin_level", 2).and(Filter::not_has("claimed_by")));
+        s.line("boundary_2_z5-")
+            .rounded()
+            .color("hsl(248, 1%, 41%)")
+            .opacity(zoom!(base 1.0; 0 => 0.4, 4 => 1.0))
+            .width(zoom!(base 1.0; 3 => 1.0, 5 => 1.2, 12 => 3.0))
+            .minzoom(5.0)
+            .filter(Filter::eq("admin_level", 2));
+    });
 
-    style
-        .symbol(&transportation, "road_one_way_arrow")
-        .minzoom(15.0)
-        .filter(Filter::eq("oneway", 1))
-        .icon_image("arrow")
-        .placement("line");
-    style
-        .symbol(&transportation, "road_one_way_arrow_opposite")
-        .minzoom(15.0)
-        .filter(Filter::eq("oneway", -1))
-        .icon_image("arrow")
-        .placement("line")
-        .icon_rotate(180.0);
-
-    style
-        .line(&transportation, "route_ferry")
-        .minzoom(12.0)
-        .filter(Filter::geometry(Geometry::LineString).and(Filter::is_in("class", ["ferry"])))
-        .rounded()
-        .color("#99d")
-        .width(2.0)
-        .dasharray(vec![0.3, 2.0]);
+    style.add_layers(transportation.clone(), |s| {
+        s.symbol("road_one_way_arrow")
+            .minzoom(15.0)
+            .filter(Filter::eq("oneway", 1))
+            .icon_image("arrow")
+            .placement("line");
+        s.symbol("road_one_way_arrow_opposite")
+            .minzoom(15.0)
+            .filter(Filter::eq("oneway", -1))
+            .icon_image("arrow")
+            .placement("line")
+            .icon_rotate(180.0);
+        s.line("route_ferry")
+            .minzoom(12.0)
+            .filter(Filter::geometry(Geometry::LineString).and(Filter::is_in("class", ["ferry"])))
+            .rounded()
+            .color("#99d")
+            .width(2.0)
+            .dasharray(vec![0.3, 2.0]);
+    });
 
     style
         .symbol(&waterway, "water_name_line")
@@ -636,32 +635,32 @@ fn style_from_builders() -> Style {
         .text_offset([0.9, 0.0])
         .text_color("#4898ff");
 
-    style
-        .symbol(&transportation_name, "road_label")
-        .placement("line")
-        .text_field("{name}")
-        .text_font([REGULAR])
-        .text_anchor("center")
-        .text_offset([0.0, 0.15])
-        .text_size(zoom!(base 1.0; 13 => 12.0, 14 => 13.0))
-        .text_color("#765")
-        .text_halo("#ffffff", 1.0)
-        .text_halo_blur(0.5);
-    style
-        .symbol(&transportation_name, "road_shield")
-        .minzoom(7.0)
-        .filter(Filter::lte("ref_length", 6))
-        .icon_image("default_{ref_length}")
-        .icon_size(0.8)
-        .icon_rotation_alignment("viewport")
-        // Shields ride the line once there is room for more than one.
-        .placement(zoom!(base 1.0; 10 => "point", 11 => "line"))
-        .spacing(500.0)
-        .text_field("{ref}")
-        .text_font([REGULAR])
-        .text_offset([0.0, 0.1])
-        .text_rotation_alignment("viewport")
-        .text_size(10.0);
+    style.add_layers(transportation_name, |s| {
+        s.symbol("road_label")
+            .placement("line")
+            .text_field("{name}")
+            .text_font([REGULAR])
+            .text_anchor("center")
+            .text_offset([0.0, 0.15])
+            .text_size(zoom!(base 1.0; 13 => 12.0, 14 => 13.0))
+            .text_color("#765")
+            .text_halo("#ffffff", 1.0)
+            .text_halo_blur(0.5);
+        s.symbol("road_shield")
+            .minzoom(7.0)
+            .filter(Filter::lte("ref_length", 6))
+            .icon_image("default_{ref_length}")
+            .icon_size(0.8)
+            .icon_rotation_alignment("viewport")
+            // Shields ride the line once there is room for more than one.
+            .placement(zoom!(base 1.0; 10 => "point", 11 => "line"))
+            .spacing(500.0)
+            .text_field("{ref}")
+            .text_font([REGULAR])
+            .text_offset([0.0, 0.1])
+            .text_rotation_alignment("viewport")
+            .text_size(10.0);
+    });
 
     let neighbourhoods = [
         "hamlet",

@@ -50,6 +50,26 @@ pub struct AttachedLayer<'a, K: Kind> {
     layer: Option<Layer<K>>,
 }
 
+/// A source layer while it is adding rendering layers to a style.
+pub struct LayerAdder<'a> {
+    style: &'a mut Style,
+    source: SourceLayer,
+}
+
+impl LayerAdder<'_> {
+    pub fn fill(&mut self, id: impl Into<String>) -> AttachedLayer<'_, Fill> {
+        self.style.fill(&self.source, id)
+    }
+
+    pub fn line(&mut self, id: impl Into<String>) -> AttachedLayer<'_, Line> {
+        self.style.line(&self.source, id)
+    }
+
+    pub fn symbol(&mut self, id: impl Into<String>) -> AttachedLayer<'_, Symbol> {
+        self.style.symbol(&self.source, id)
+    }
+}
+
 impl<K: Kind> AttachedLayer<'_, K> {
     fn map(mut self, change: impl FnOnce(Layer<K>) -> Layer<K>) -> Self {
         self.layer = Some(change(
@@ -365,6 +385,14 @@ impl Style {
             style: self,
             layer: Some(source.symbol(id)),
         }
+    }
+
+    /// Adds rendering layers sourced from `source` in closure declaration order.
+    pub fn add_layers(&mut self, source: SourceLayer, build: impl FnOnce(&mut LayerAdder<'_>)) {
+        build(&mut LayerAdder {
+            style: self,
+            source,
+        });
     }
 
     pub fn push(&mut self, layer: impl Into<AnyLayer>) -> &mut Self {
