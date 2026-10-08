@@ -1,0 +1,132 @@
+//! Typed MapLibre expression trees.
+
+use serde_json::{json, Value as Json};
+
+/// An operation in a MapLibre expression.
+#[derive(Clone, Copy, Debug)]
+pub enum Operator {
+    All,
+    Case,
+    Coalesce,
+    Concat,
+    Divide,
+    Get,
+    Has,
+    GreaterEqual,
+    Length,
+    Let,
+    LessEqual,
+    Literal,
+    Match,
+    Min,
+    NotEqual,
+    ToString,
+    Var,
+}
+
+impl Operator {
+    fn name(self) -> &'static str {
+        match self {
+            Operator::All => "all",
+            Operator::Case => "case",
+            Operator::Coalesce => "coalesce",
+            Operator::Concat => "concat",
+            Operator::Divide => "/",
+            Operator::Get => "get",
+            Operator::Has => "has",
+            Operator::GreaterEqual => ">=",
+            Operator::Length => "length",
+            Operator::Let => "let",
+            Operator::LessEqual => "<=",
+            Operator::Literal => "literal",
+            Operator::Match => "match",
+            Operator::Min => "min",
+            Operator::NotEqual => "!=",
+            Operator::ToString => "to-string",
+            Operator::Var => "var",
+        }
+    }
+}
+
+/// A typed MapLibre expression that can be used for a style property or filter.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Expression(Json);
+
+impl Expression {
+    /// Builds an expression from a typed MapLibre operator and its operands.
+    pub fn op(operator: Operator, operands: impl IntoIterator<Item = Expression>) -> Self {
+        let mut expression = vec![json!(operator.name())];
+        expression.extend(operands.into_iter().map(|operand| operand.0));
+        Self(Json::Array(expression))
+    }
+
+    /// A literal JSON value used as an expression operand.
+    pub fn literal(value: impl Into<Json>) -> Self {
+        Self(value.into())
+    }
+
+    /// A literal array, useful for `match` labels and `literal` operands.
+    pub fn array<V: Into<Json>>(values: impl IntoIterator<Item = V>) -> Self {
+        Self(Json::Array(values.into_iter().map(Into::into).collect()))
+    }
+
+    pub(crate) fn into_json(self) -> Json {
+        self.0
+    }
+
+    pub fn to_json(&self) -> Json {
+        self.0.clone()
+    }
+}
+
+impl From<&str> for Expression {
+    fn from(value: &str) -> Self {
+        Self::literal(value)
+    }
+}
+
+impl From<String> for Expression {
+    fn from(value: String) -> Self {
+        Self::literal(value)
+    }
+}
+
+impl From<f64> for Expression {
+    fn from(value: f64) -> Self {
+        Self::literal(value)
+    }
+}
+
+impl From<i32> for Expression {
+    fn from(value: i32) -> Self {
+        Self::literal(value)
+    }
+}
+
+impl From<bool> for Expression {
+    fn from(value: bool) -> Self {
+        Self::literal(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn uses_typed_operators() {
+        assert_eq!(
+            Expression::op(
+                Operator::Match,
+                [
+                    Expression::op(Operator::Get, ["class".into()]),
+                    "park".into(),
+                    "#0a0".into(),
+                    "transparent".into(),
+                ],
+            )
+            .to_json(),
+            json!(["match", ["get", "class"], "park", "#0a0", "transparent"])
+        );
+    }
+}

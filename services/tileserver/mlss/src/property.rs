@@ -1,6 +1,7 @@
 //! Values a paint or layout property can take: constants, zoom functions, expressions.
 
 use crate::color::Color;
+use crate::expression::Expression;
 use serde_json::{json, Value as Json};
 
 /// A zoom function: `{"base": .., "stops": [[zoom, value], ..]}`.
@@ -106,6 +107,12 @@ impl From<Stops> for Property {
 impl From<Color> for Property {
     fn from(color: Color) -> Property {
         Property::Constant(color.into())
+    }
+}
+
+impl From<Expression> for Property {
+    fn from(expression: Expression) -> Property {
+        Property::Constant(expression.into_json())
     }
 }
 

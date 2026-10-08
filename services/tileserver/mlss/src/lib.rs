@@ -19,6 +19,7 @@
 //! ```
 
 pub mod color;
+pub mod expression;
 pub mod filter;
 pub mod headway;
 pub mod layer;
@@ -29,6 +30,7 @@ pub mod street;
 pub mod style;
 
 pub use color::Color;
+pub use expression::{Expression, Operator};
 pub use filter::{ClassFilter, Filter, Geometry};
 pub use layer::{AnyLayer, Cap, Join, Layer};
 pub use openmaptiles::OpenMapTiles;

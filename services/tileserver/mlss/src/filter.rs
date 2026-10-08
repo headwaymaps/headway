@@ -1,5 +1,6 @@
 //! Legacy-syntax filters, which is what the openmaptiles styles use.
 
+use crate::expression::Expression;
 use serde_json::{json, Value as Json};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -165,6 +166,11 @@ impl Filter {
 
     pub fn raw(json: Json) -> Filter {
         Filter(json)
+    }
+
+    /// Uses a typed MapLibre expression as a filter clause.
+    pub fn expression(expression: Expression) -> Filter {
+        Filter(expression.into_json())
     }
 
     pub fn to_json(&self) -> Json {
