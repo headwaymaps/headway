@@ -34,6 +34,16 @@ impl Filter {
         Filter::is_in("class", values)
     }
 
+    /// Excludes a feature with this OpenMapTiles `class`.
+    pub fn class_not(value: impl Into<Json>) -> Filter {
+        Filter::ne("class", value)
+    }
+
+    /// Excludes features whose OpenMapTiles `class` is one of `values`.
+    pub fn class_not_in<V: Into<Json>>(values: impl IntoIterator<Item = V>) -> Filter {
+        Filter::not_in("class", values)
+    }
+
     pub fn eq(field: &str, value: impl Into<Json>) -> Filter {
         Filter(json!(["==", field, value.into()]))
     }
@@ -169,6 +179,12 @@ pub trait ClassFilter {
 
     /// Conjoins a matching OpenMapTiles `class` membership clause.
     fn class_in<V: Into<Json>>(self, values: impl IntoIterator<Item = V>) -> Filter;
+
+    /// Conjoins an excluding OpenMapTiles `class` clause.
+    fn class_not(self, value: impl Into<Json>) -> Filter;
+
+    /// Conjoins an excluding OpenMapTiles `class` membership clause.
+    fn class_not_in<V: Into<Json>>(self, values: impl IntoIterator<Item = V>) -> Filter;
 }
 
 impl ClassFilter for Filter {
@@ -178,6 +194,14 @@ impl ClassFilter for Filter {
 
     fn class_in<V: Into<Json>>(self, values: impl IntoIterator<Item = V>) -> Filter {
         self.and(Filter::class_in(values))
+    }
+
+    fn class_not(self, value: impl Into<Json>) -> Filter {
+        self.and(Filter::class_not(value))
+    }
+
+    fn class_not_in<V: Into<Json>>(self, values: impl IntoIterator<Item = V>) -> Filter {
+        self.and(Filter::class_not_in(values))
     }
 }
 
@@ -195,6 +219,16 @@ mod tests {
         assert_eq!(
             Filter::geometry(Geometry::Polygon).class("park").to_json(),
             json!(["all", ["==", "$type", "Polygon"], ["==", "class", "park"]])
+        );
+        assert_eq!(
+            Filter::geometry(Geometry::Polygon)
+                .class_not_in(["park", "cemetery"])
+                .to_json(),
+            json!([
+                "all",
+                ["==", "$type", "Polygon"],
+                ["!in", "class", "park", "cemetery"]
+            ])
         );
     }
 }

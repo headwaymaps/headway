@@ -168,7 +168,7 @@ fn style_from_builders() -> Style {
         .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
     style
         .line(&waterway, "waterway_other")
-        .filter(Filter::ne("class", "river").and(above_ground))
+        .filter(Filter::class_not("river").and(above_ground))
         .cap_round()
         .color(WATER)
         .width(zoom!(base 1.3; 13 => 0.5, 20 => 6.0));
