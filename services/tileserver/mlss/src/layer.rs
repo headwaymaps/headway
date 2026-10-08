@@ -125,6 +125,13 @@ impl<K: Kind> Layer<K> {
         self
     }
 
+    /// Applies layout and paint settings from a reusable layer template.
+    pub(crate) fn with_template(mut self, template: &Self) -> Self {
+        self.body.layout.extend(template.body.layout.clone());
+        self.body.paint.extend(template.body.paint.clone());
+        self
+    }
+
     fn get_paint(&self, name: &str) -> Option<&Property> {
         self.body.paint.get(name)
     }

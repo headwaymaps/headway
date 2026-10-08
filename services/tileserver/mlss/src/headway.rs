@@ -42,22 +42,6 @@ pub(super) fn poi_label<'a>(
         .text_halo_blur(0.5)
 }
 
-/// The shared typography for waterway and water-body labels.
-fn water_label<'a>(
-    style: &'a mut Style,
-    water: &SourceLayer,
-    id: &str,
-) -> AttachedLayer<'a, Symbol> {
-    style
-        .symbol(water, id)
-        .text_field("{name}")
-        .text_font([REGULAR])
-        .text_max_width(5.0)
-        .text_size(12.0)
-        .text_color("#5d60be")
-        .text_halo("rgba(255,255,255,0.7)", 1.0)
-}
-
 /// The Headway default style.
 pub fn style() -> Style {
     style_from_builders()
@@ -1212,15 +1196,29 @@ fn style_from_builders() -> Style {
             .dasharray(vec![0.3, 2.0]);
     });
 
-    water_label(&mut style, &waterway, "water_name_line")
-        .filter(Filter::geometry(Geometry::LineString))
-        .placement("line");
-    let water_name = openmaptiles.water_name();
-    water_label(&mut style, &water_name, "water_name_lake_line")
-        .filter(Filter::geometry(Geometry::LineString))
-        .placement("line");
-    water_label(&mut style, &water_name, "water_name_point")
-        .filter(Filter::geometry(Geometry::Point));
+    {
+        // The shared typography for waterway and water-body labels.
+        let mut water_label = style
+            .factory()
+            .text_field("{name}")
+            .text_font([REGULAR])
+            .text_max_width(5.0)
+            .text_size(12.0)
+            .text_color("#5d60be")
+            .text_halo("rgba(255,255,255,0.7)", 1.0);
+        water_label
+            .symbol(&waterway, "water_name_line")
+            .filter(Filter::geometry(Geometry::LineString))
+            .placement("line");
+        let water_name = openmaptiles.water_name();
+        water_label
+            .symbol(&water_name, "water_name_lake_line")
+            .filter(Filter::geometry(Geometry::LineString))
+            .placement("line");
+        water_label
+            .symbol(&water_name, "water_name_point")
+            .filter(Filter::geometry(Geometry::Point));
+    }
 
     for (id, zoom, rank) in [
         ("poi_z16", 16.0, Filter::gte("rank", 20)),

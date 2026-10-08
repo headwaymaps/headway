@@ -45,6 +45,55 @@ pub struct AttachedLayer<'a, K: Kind> {
     layer: Option<Layer<K>>,
 }
 
+/// A reusable set of symbol properties that appends configured layers to a style.
+pub struct SymbolFactory<'a> {
+    style: &'a mut Style,
+    template: Layer<Symbol>,
+}
+
+impl SymbolFactory<'_> {
+    fn map(mut self, change: impl FnOnce(Layer<Symbol>) -> Layer<Symbol>) -> Self {
+        self.template = change(self.template);
+        self
+    }
+
+    /// Starts a configured symbol layer from this template.
+    pub fn symbol(
+        &mut self,
+        source: &SourceLayer,
+        id: impl Into<String>,
+    ) -> AttachedLayer<'_, Symbol> {
+        AttachedLayer {
+            style: &mut *self.style,
+            layer: Some(source.symbol(id).with_template(&self.template)),
+        }
+    }
+
+    pub fn text_field(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_field(value))
+    }
+
+    pub fn text_font<'a>(self, fonts: impl IntoIterator<Item = &'a str>) -> Self {
+        self.map(|layer| layer.text_font(fonts))
+    }
+
+    pub fn text_size(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_size(value))
+    }
+
+    pub fn text_max_width(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_max_width(value))
+    }
+
+    pub fn text_color(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.text_color(value))
+    }
+
+    pub fn text_halo(self, color: impl Into<Property>, width: f64) -> Self {
+        self.map(|layer| layer.text_halo(color, width))
+    }
+}
+
 /// A source layer while it is adding rendering layers to a style.
 pub struct LayerAdder<'a> {
     style: &'a mut Style,
@@ -274,6 +323,14 @@ impl Style {
             metadata: Map::new(),
             sources: Vec::new(),
             layers: Vec::new(),
+        }
+    }
+
+    /// Starts a reusable symbol-layer template that appends to this style.
+    pub fn factory(&mut self) -> SymbolFactory<'_> {
+        SymbolFactory {
+            style: self,
+            template: Layer::new("", None, None),
         }
     }
 
