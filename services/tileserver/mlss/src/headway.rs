@@ -702,7 +702,6 @@ fn style_from_builders() -> Style {
         .text_anchor("bottom")
         .text_font([REGULAR])
         .text_max_width(8.0)
-        .text_offset([0.0, 0.0])
         .text_size(town_size)
         .text_color("#333");
     let city_size = zoom!(base 1.2; 7 => 14.0, 11 => 24.0);
@@ -715,7 +714,6 @@ fn style_from_builders() -> Style {
         .text_anchor("bottom")
         .text_font([MEDIUM])
         .text_max_width(8.0)
-        .text_offset([0.0, 0.0])
         .text_size(city_size)
         .text_color("#333")
         .minzoom(5.0)
@@ -757,7 +755,6 @@ fn style_from_builders() -> Style {
             .text_font([ITALIC])
             .text_max_width(6.25)
             .text_size(size)
-            .text_transform("none")
             .text_color("#334")
             .text_halo_blur(1.0)
             .text_halo(HALO, 1.0);
