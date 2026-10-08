@@ -17,6 +17,10 @@ cargo run -p mlss --bin headway-style > ../assets/styles/basic-v3.json
 things maplibre doesn't care about: integers written as floats, and the order
 of clauses inside an `all` filter.
 
+`bin/count-headway-style` counts the root declaration plus every private
+Headway helper module under `src/headway/`; it cannot be improved merely by
+moving Headway-specific code out of `headway.rs`.
+
 ## The pieces
 
 - `Style` holds sources and layers. `style.source(..)` hands back a `SourceRef`,

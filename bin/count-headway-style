@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Count every Headway-specific declaration, including private helpers. Generic
+# MLSS primitives live elsewhere and are intentionally excluded.
+find services/tileserver/mlss/src/headway.rs services/tileserver/mlss/src/headway \
+  -type f -name '*.rs' -print0 \
+  | sort -z \
+  | xargs -0 wc -l
