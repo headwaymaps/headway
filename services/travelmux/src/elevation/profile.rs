@@ -38,18 +38,25 @@ impl ElevationProfile {
         let mut points: Vec<(f64, f64)> = vec![];
         let mut step_start = 0.0;
         for step in steps {
+            let step_distance = step.distance.unwrap_or(0.0);
             for component in step.elevation_profile.iter().flatten().flatten() {
                 let (Some(distance), Some(elevation)) = (component.distance, component.elevation)
                 else {
                     continue;
                 };
+                // Where a trip starts or ends partway along a street, OTP can measure that step's
+                // last points along the whole street, past the end of the step. They'd shadow the
+                // next step's points.
+                if distance > step_distance + 1.0 {
+                    continue;
+                }
                 let distance = step_start + distance;
                 if points.last().is_some_and(|(last, _)| distance <= *last) {
                     continue;
                 }
                 points.push((distance, elevation));
             }
-            step_start += step.distance.unwrap_or(0.0);
+            step_start += step_distance;
         }
         Self::resample(&points)
     }
@@ -199,6 +206,51 @@ mod tests {
     /// A profile through `(distance, elevation)` corners, joined by straight lines.
     fn profile(corners: &[(f64, f64)]) -> ElevationProfile {
         ElevationProfile::resample(corners).unwrap()
+    }
+
+    fn step(distance: f64, profile: &[(f64, f64)]) -> gtfs_graphql::Step {
+        gtfs_graphql::Step {
+            distance: Some(distance),
+            relative_direction: None,
+            absolute_direction: None,
+            street_name: None,
+            lat: None,
+            lon: None,
+            area: None,
+            bogus_name: None,
+            stay_on: None,
+            exit: None,
+            elevation_profile: Some(
+                profile
+                    .iter()
+                    .map(|&(distance, elevation)| {
+                        Some(gtfs_graphql::ElevationProfileComponent {
+                            distance: Some(distance),
+                            elevation: Some(elevation),
+                        })
+                    })
+                    .collect(),
+            ),
+        }
+    }
+
+    #[test]
+    fn ignores_points_past_the_end_of_their_step() {
+        // As OTP sent it for a trip starting partway along 25th Ave, before a steady 6% climb.
+        let steps = [
+            step(
+                115.0,
+                &[(0.0, 87.0), (106.0, 86.1), (212.0, 86.1), (221.0, 86.1)],
+            ),
+            step(100.0, &[(0.0, 86.1), (50.0, 89.1), (100.0, 92.1)]),
+        ];
+        let profile = ElevationProfile::from_otp_steps(&steps).unwrap();
+        let steepest = profile
+            .steep_sections()
+            .iter()
+            .map(|section| section.max_grade)
+            .fold(0.0, f64::max);
+        assert_relative_eq!(steepest, 0.06, epsilon = 0.005);
     }
 
     #[test]
