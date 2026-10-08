@@ -265,8 +265,7 @@ func (t *TransitZone) WithGtfsDir(ctx context.Context, gtfsDir *dagger.Directory
 	return t
 }
 
-// buildDate invalidates the download cache each UTC day.
-// +cache="24h"
+// BuildGtfsDir downloads the zone's feeds, reusing the day's download, and prepares them for OTP.
 func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 	// +optional
 	gtfsSecrets *dagger.Secret) *dagger.Directory {
@@ -277,7 +276,9 @@ func (t *TransitZone) BuildGtfsDir(ctx context.Context, buildDate string,
 		WithMountedFile("/usr/local/bin/assume-bikes-allowed", gtfout.File("assume-bikes-allowed")).
 		WithMountedFile("/usr/local/bin/download-feeds", gtfout.File("download-feeds"))
 
-	container = container.WithMountedFile(zoneFilePath, t.TransitFeeds)
+	container = container.WithMountedFile(zoneFilePath, t.TransitFeeds).
+		// Keys the cached download to the day, so the first build each day fetches anew.
+		WithEnvVariable("GTFS_DOWNLOAD_DATE", buildDate)
 
 	downloadArgs := []string{"download-feeds", "--zone", zoneFilePath, "--output", "/downloaded"}
 
