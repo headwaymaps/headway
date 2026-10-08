@@ -4,10 +4,9 @@ sources = import "../sources.exp"
 
 [
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "route_ferry",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -48,10 +47,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.waterway,
   "id": "water_name_line",
   "type": "symbol",
-  "source-layer": "waterway",
   "filter": [
   "==",
   "$type",
@@ -73,10 +71,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.water_name,
   "id": "water_name_lake_line",
   "type": "symbol",
-  "source-layer": "water_name",
   "filter": [
   "==",
   "$type",
@@ -98,10 +95,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.water_name,
   "id": "water_name_point",
   "type": "symbol",
-  "source-layer": "water_name",
   "filter": [
   "==",
   "$type",
@@ -122,10 +118,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.poi,
   "id": "poi_z16",
   "type": "symbol",
-  "source-layer": "poi",
   "minzoom": 16,
   "filter": [
   "all",
@@ -162,10 +157,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.poi,
   "id": "poi_z15",
   "type": "symbol",
-  "source-layer": "poi",
   "minzoom": 15,
   "filter": [
   "all",
@@ -207,10 +201,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.poi,
   "id": "poi_z14",
   "type": "symbol",
-  "source-layer": "poi",
   "minzoom": 14,
   "filter": [
   "all",
@@ -252,10 +245,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.poi,
   "id": "poi_transit",
   "type": "symbol",
-  "source-layer": "poi",
   "filter": [
   "in",
   "class",
@@ -285,10 +277,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation_name,
   "id": "road_label",
   "type": "symbol",
-  "source-layer": "transportation_name",
   "layout": {
   "symbol-placement": "line",
   "text-field": "{name}",
@@ -320,10 +311,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation_name,
   "id": "road_shield",
   "type": "symbol",
-  "source-layer": "transportation_name",
   "minzoom": 7,
   "filter": [
   "all",
@@ -1589,10 +1579,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "place_other",
   "type": "symbol",
-  "source-layer": "place",
   "filter": [
   "in",
   "class",
@@ -1632,10 +1621,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "place_village",
   "type": "symbol",
-  "source-layer": "place",
   "filter": [
   "==",
   "class",
@@ -1668,10 +1656,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "place_town",
   "type": "symbol",
-  "source-layer": "place",
   "filter": [
   "==",
   "class",
@@ -1717,10 +1704,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "place_city",
   "type": "symbol",
-  "source-layer": "place",
   "minzoom": 5,
   "filter": [
   "==",
@@ -1769,10 +1755,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "state",
   "type": "symbol",
-  "source-layer": "place",
   "maxzoom": 6,
   "filter": [
   "==",
@@ -1805,10 +1790,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "country_3",
   "type": "symbol",
-  "source-layer": "place",
   "filter": [
   "all",
   [
@@ -1849,10 +1833,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "country_2",
   "type": "symbol",
-  "source-layer": "place",
   "filter": [
   "all",
   [
@@ -1893,10 +1876,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "country_1",
   "type": "symbol",
-  "source-layer": "place",
   "filter": [
   "all",
   [
@@ -1937,10 +1919,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.place,
   "id": "continent",
   "type": "symbol",
-  "source-layer": "place",
   "maxzoom": 1,
   "filter": [
   "==",

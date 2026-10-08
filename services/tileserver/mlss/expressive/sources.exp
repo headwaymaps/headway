@@ -24,7 +24,63 @@
   "landcover": {
     "source": "landcover"
   },
+  "landcover_layer": {
+    "source": "landcover",
+    "source-layer": "landcover"
+  },
   "terrain": {
     "source": "terrain"
+  },
+  "aeroway": {
+    "source": "openmaptiles",
+    "source-layer": "aeroway"
+  },
+  "boundary": {
+    "source": "openmaptiles",
+    "source-layer": "boundary"
+  },
+  "building": {
+    "source": "openmaptiles",
+    "source-layer": "building"
+  },
+  "omt_landcover": {
+    "source": "openmaptiles",
+    "source-layer": "landcover"
+  },
+  "landuse": {
+    "source": "openmaptiles",
+    "source-layer": "landuse"
+  },
+  "park": {
+    "source": "openmaptiles",
+    "source-layer": "park"
+  },
+  "place": {
+    "source": "openmaptiles",
+    "source-layer": "place"
+  },
+  "poi": {
+    "source": "openmaptiles",
+    "source-layer": "poi"
+  },
+  "transportation": {
+    "source": "openmaptiles",
+    "source-layer": "transportation"
+  },
+  "transportation_name": {
+    "source": "openmaptiles",
+    "source-layer": "transportation_name"
+  },
+  "water": {
+    "source": "openmaptiles",
+    "source-layer": "water"
+  },
+  "water_name": {
+    "source": "openmaptiles",
+    "source-layer": "water_name"
+  },
+  "waterway": {
+    "source": "openmaptiles",
+    "source-layer": "waterway"
   }
 }

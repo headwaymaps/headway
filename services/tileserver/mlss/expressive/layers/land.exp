@@ -4,10 +4,9 @@ sources = import "../sources.exp"
 
 [
 {
-  ...sources.openmaptiles,
+  ...sources.landuse,
   "id": "landuse_residential",
   "type": "fill",
-  "source-layer": "landuse",
   "maxzoom": 17,
   "filter": [
   "==",
@@ -42,10 +41,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.omt_landcover,
   "id": "landcover_wood",
   "type": "fill",
-  "source-layer": "landcover",
   "filter": [
   "==",
   "class",
@@ -58,10 +56,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.omt_landcover,
   "id": "landcover_grass",
   "type": "fill",
-  "source-layer": "landcover",
   "filter": [
   "==",
   "class",
@@ -74,10 +71,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.omt_landcover,
   "id": "landcover_ice",
   "type": "fill",
-  "source-layer": "landcover",
   "filter": [
   "==",
   "class",
@@ -90,10 +86,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.landuse,
   "id": "landuse_cemetery",
   "type": "fill",
-  "source-layer": "landuse",
   "filter": [
   "==",
   "class",
@@ -104,10 +99,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.landuse,
   "id": "landuse_hospital",
   "type": "fill",
-  "source-layer": "landuse",
   "filter": [
   "==",
   "class",
@@ -118,10 +112,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.landuse,
   "id": "landuse_school",
   "type": "fill",
-  "source-layer": "landuse",
   "filter": [
   "==",
   "class",
@@ -132,10 +125,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.waterway,
   "id": "waterway_tunnel",
   "type": "line",
-  "source-layer": "waterway",
   "filter": [
   "==",
   "brunnel",
@@ -175,10 +167,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.omt_landcover,
   "id": "landcover_sand",
   "type": "fill",
-  "source-layer": "landcover",
   "filter": [
   "==",
   "class",
@@ -189,10 +180,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.water,
   "id": "water",
   "type": "fill",
-  "source-layer": "water",
   "filter": [
   "!=",
   "brunnel",
@@ -203,10 +193,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.waterway,
   "id": "waterway_river",
   "type": "line",
-  "source-layer": "waterway",
   "filter": [
   "all",
   [
@@ -241,10 +230,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.waterway,
   "id": "waterway_other",
   "type": "line",
-  "source-layer": "waterway",
   "filter": [
   "all",
   [

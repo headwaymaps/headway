@@ -4,10 +4,9 @@ sources = import "../sources.exp"
 
 [
 {
-  ...sources.openmaptiles,
+  ...sources.aeroway,
   "id": "aeroway_fill",
   "type": "fill",
-  "source-layer": "aeroway",
   "minzoom": 11,
   "filter": [
   "==",
@@ -20,10 +19,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.aeroway,
   "id": "aeroway_runway",
   "type": "line",
-  "source-layer": "aeroway",
   "minzoom": 11,
   "filter": [
   "all",
@@ -56,10 +54,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.aeroway,
   "id": "aeroway_taxiway",
   "type": "line",
-  "source-layer": "aeroway",
   "minzoom": 11,
   "filter": [
   "all",
@@ -92,10 +89,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_service_track_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -155,10 +151,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_link_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -218,10 +213,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_street_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -278,10 +272,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_secondary_tertiary_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -346,10 +339,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_primary_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -397,10 +389,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_trunk_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -448,10 +439,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_motorway_link_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -515,10 +505,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_motorway_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -586,10 +575,9 @@ sources = import "../sources.exp"
   "minzoom": 10
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_service_track",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -646,10 +634,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_link",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -705,10 +692,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_minor",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -764,10 +750,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_path_pedestrian",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -810,10 +795,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_secondary_tertiary",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -874,10 +858,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_primary",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -929,10 +912,9 @@ sources = import "../sources.exp"
   "minzoom": 8
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_trunk",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -988,10 +970,9 @@ sources = import "../sources.exp"
   "minzoom": 6
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_motorway_link",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 8,
   "filter": [
   "all",
@@ -1048,10 +1029,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_motorway",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -1112,10 +1092,9 @@ sources = import "../sources.exp"
   "minzoom": 5
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_major_rail",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -1154,10 +1133,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_major_rail_hatching",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -1197,10 +1175,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_transit_rail",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -1239,10 +1216,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "tunnel_transit_rail_hatching",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -1282,10 +1258,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_area_pattern",
   "type": "fill",
-  "source-layer": "transportation",
   "filter": [
   "==",
   "$type",
@@ -1296,10 +1271,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_service_track_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -1357,10 +1331,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_link_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -1430,10 +1403,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_minor_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -1500,10 +1472,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_secondary_tertiary_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -1574,10 +1545,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_primary_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -1626,10 +1596,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_trunk_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -1678,10 +1647,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_motorway_link_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -1743,10 +1711,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_motorway_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 10,
   "filter": [
   "all",
@@ -1812,10 +1779,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_service_track",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -1873,10 +1839,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_link",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -1942,10 +1907,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_minor",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -2007,10 +1971,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_path_pedestrian",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -2057,10 +2020,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_secondary_tertiary",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -2122,10 +2084,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_primary",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2178,10 +2139,9 @@ sources = import "../sources.exp"
   "minzoom": 8
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_trunk",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2238,10 +2198,9 @@ sources = import "../sources.exp"
   "minzoom": 6
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_motorway_link",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 8,
   "filter": [
   "all",
@@ -2299,10 +2258,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_motorway",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 5,
   "filter": [
   "all",
@@ -2364,10 +2322,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_major_rail",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2407,10 +2364,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_major_rail_hatching",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2451,10 +2407,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_transit_rail",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2494,10 +2449,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_transit_rail_hatching",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2538,10 +2492,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_service_track_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -2597,10 +2550,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_link_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -2659,10 +2611,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_street_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2718,10 +2669,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_path_pedestrian_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -2775,10 +2725,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_secondary_tertiary_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -2842,10 +2791,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_primary_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2892,10 +2840,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_trunk_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -2942,10 +2889,9 @@ sources = import "../sources.exp"
   "minzoom": 13
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_motorway_link_casing",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -3005,10 +2951,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_motorway_casing",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3072,10 +3017,9 @@ sources = import "../sources.exp"
   "minzoom": 10
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_service_track",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -3131,10 +3075,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_link",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -3189,10 +3132,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_street",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -3247,10 +3189,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_path_pedestrian",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 13,
   "filter": [
   "all",
@@ -3293,10 +3234,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_secondary_tertiary",
   "type": "line",
-  "source-layer": "transportation",
   "minzoom": 12,
   "filter": [
   "all",
@@ -3356,10 +3296,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_primary",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3410,10 +3349,9 @@ sources = import "../sources.exp"
   "minzoom": 8
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_trunk",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3468,10 +3406,9 @@ sources = import "../sources.exp"
   "minzoom": 6
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_motorway_link",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3527,10 +3464,9 @@ sources = import "../sources.exp"
   "minzoom": 8
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_motorway",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3590,10 +3526,9 @@ sources = import "../sources.exp"
   "minzoom": 5
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_major_rail",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3629,10 +3564,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_major_rail_hatching",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3672,10 +3606,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_transit_rail",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3711,10 +3644,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "bridge_transit_rail_hatching",
   "type": "line",
-  "source-layer": "transportation",
   "filter": [
   "all",
   [
@@ -3754,10 +3686,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.building,
   "id": "building",
   "type": "fill",
-  "source-layer": "building",
   "minzoom": 14,
   "paint": {
   "fill-color": "hsl(40, 5.5%, 89.2%)",
@@ -3788,10 +3719,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.boundary,
   "id": "boundary_3",
   "type": "line",
-  "source-layer": "boundary",
   "minzoom": 3,
   "filter": [
   "in",
@@ -3827,10 +3757,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.boundary,
   "id": "boundary_2_z0-4",
   "type": "line",
-  "source-layer": "boundary",
   "maxzoom": 5,
   "filter": [
   "all",
@@ -3881,10 +3810,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.boundary,
   "id": "boundary_2_z5-",
   "type": "line",
-  "source-layer": "boundary",
   "minzoom": 5,
   "filter": [
   "==",
@@ -3928,10 +3856,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_one_way_arrow",
   "type": "symbol",
-  "source-layer": "transportation",
   "minzoom": 15,
   "filter": [
   "==",
@@ -3944,10 +3871,9 @@ sources = import "../sources.exp"
 }
 },
 {
-  ...sources.openmaptiles,
+  ...sources.transportation,
   "id": "road_one_way_arrow_opposite",
   "type": "symbol",
-  "source-layer": "transportation",
   "minzoom": 15,
   "filter": [
   "==",
