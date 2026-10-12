@@ -1197,5 +1197,8 @@ mod tests {
 
         assert_eq!(270, bearing_at_start(&b).unwrap());
         assert_eq!(180, bearing_at_end(&b).unwrap());
+
+        let point = wkt!(LINESTRING(1. 1.));
+        assert_eq!(None, bearing_at_end(&point));
     }
 }

@@ -1,4 +1,6 @@
+mod profile;
 mod service;
+pub use profile::{ElevationProfile, SteepSection};
 pub use service::ElevationService;
 
 use geo::geometry::LineString;
