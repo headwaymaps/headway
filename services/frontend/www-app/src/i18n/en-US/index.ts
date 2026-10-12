@@ -67,7 +67,7 @@ export default {
   steep_section_$length_$street_$steepest:
     '{length} on {street}, steepest {steepest}',
   steep_section_$length_$steepest: '{length}, steepest {steepest}',
-  elevation_climbs: 'Climbs:',
+  elevation_hills: 'Hills:',
   moderate_grade_$grade: '{grade} moderate grade',
   steep_grade_$grade: '{grade} steep grade',
   very_steep_grade_$grade: '{grade} very steep grade',
