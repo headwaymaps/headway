@@ -28,7 +28,7 @@ fn surface() -> Filter {
 #[derive(Clone, Copy)]
 struct RoadShield {
     network: &'static str,
-    text: Option<&'static str>,
+    text: RoadShieldText,
     text_offset: Option<[f64; 2]>,
     text_size: Option<f64>,
     text_width: Option<f64>,
@@ -38,11 +38,17 @@ struct RoadShield {
     halo_width: Option<f64>,
 }
 
+#[derive(Clone, Copy)]
+enum RoadShieldText {
+    NoText,
+    Route1Ref,
+}
+
 impl RoadShield {
     fn new(network: &'static str) -> Self {
         Self {
             network,
-            text: None,
+            text: RoadShieldText::Route1Ref,
             text_offset: None,
             text_size: Some(9.0),
             text_width: None,
@@ -53,8 +59,8 @@ impl RoadShield {
         }
     }
 
-    fn text(mut self, value: &'static str) -> Self {
-        self.text = Some(value);
+    fn text(mut self, value: RoadShieldText) -> Self {
+        self.text = value;
         self
     }
     fn text_offset(mut self, value: [f64; 2]) -> Self {
@@ -122,20 +128,20 @@ impl RoadShield {
 
 fn road_shields() -> Vec<RoadShield> {
     vec![
-        RoadShield::new("CA:transcanada:namedRoute").text(""),
-        RoadShield::new("MX:CDMX:EJE:CENTRAL").text(""),
-        RoadShield::new("US:FL:Turnpike").text(""),
-        RoadShield::new("US:GLST").text(""),
-        RoadShield::new("US:GRR").text(""),
-        RoadShield::new("US:IL:Cook:Chicago:Skyway").text(""),
-        RoadShield::new("US:IN:Toll").text(""),
-        RoadShield::new("US:KS:Turnpike").text(""),
-        RoadShield::new("US:MA:Turnpike").text(""),
-        RoadShield::new("US:NPS:Blue_Ridge").text(""),
-        RoadShield::new("US:NPS:Natchez_Trace").text(""),
-        RoadShield::new("US:NY:Parkway:LOSP").text(""),
-        RoadShield::new("US:NY:STE").text(""),
-        RoadShield::new("US:NY:Thruway").text(""),
+        RoadShield::new("CA:transcanada:namedRoute").text(RoadShieldText::NoText),
+        RoadShield::new("MX:CDMX:EJE:CENTRAL").text(RoadShieldText::NoText),
+        RoadShield::new("US:FL:Turnpike").text(RoadShieldText::NoText),
+        RoadShield::new("US:GLST").text(RoadShieldText::NoText),
+        RoadShield::new("US:GRR").text(RoadShieldText::NoText),
+        RoadShield::new("US:IL:Cook:Chicago:Skyway").text(RoadShieldText::NoText),
+        RoadShield::new("US:IN:Toll").text(RoadShieldText::NoText),
+        RoadShield::new("US:KS:Turnpike").text(RoadShieldText::NoText),
+        RoadShield::new("US:MA:Turnpike").text(RoadShieldText::NoText),
+        RoadShield::new("US:NPS:Blue_Ridge").text(RoadShieldText::NoText),
+        RoadShield::new("US:NPS:Natchez_Trace").text(RoadShieldText::NoText),
+        RoadShield::new("US:NY:Parkway:LOSP").text(RoadShieldText::NoText),
+        RoadShield::new("US:NY:STE").text(RoadShieldText::NoText),
+        RoadShield::new("US:NY:Thruway").text(RoadShieldText::NoText),
         RoadShield::new("US:I")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
@@ -1912,7 +1918,10 @@ fn style_from_builders() -> Style {
             RoadShield::with_ref(RoadShield::property(
                 &shields,
                 expr![Var, "ref"],
-                |shield| shield.text.map(Expression::literal),
+                |shield| match shield.text {
+                    RoadShieldText::NoText => Some(Expression::literal("")),
+                    RoadShieldText::Route1Ref => None,
+                },
             )),
         )
         .text_font(["Overpass Heavy"])
