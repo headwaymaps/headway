@@ -44,9 +44,9 @@ impl RoadShield {
             network,
             text: None,
             text_offset: None,
-            text_size: None,
+            text_size: Some(9.0),
             text_width: None,
-            icon_size: None,
+            icon_size: Some(1.0),
             text_color: None,
             halo_color: None,
             halo_width: None,
@@ -67,10 +67,6 @@ impl RoadShield {
     }
     fn text_width(mut self, value: f64) -> Self {
         self.text_width = Some(value);
-        self
-    }
-    fn icon_size(mut self, value: f64) -> Self {
-        self.icon_size = Some(value);
         self
     }
     fn text_color(mut self, value: &'static str) -> Self {
@@ -126,481 +122,225 @@ impl RoadShield {
 
 fn road_shields() -> Vec<RoadShield> {
     vec![
-        RoadShield::new("CA:transcanada:namedRoute")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("MX:CDMX:EJE:CENTRAL")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:FL:Turnpike")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:GLST")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:GRR")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:IL:Cook:Chicago:Skyway")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:IN:Toll")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:KS:Turnpike")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:MA:Turnpike")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NPS:Blue_Ridge")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NPS:Natchez_Trace")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NY:Parkway:LOSP")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NY:STE")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NY:Thruway")
-            .text("")
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("CA:transcanada:namedRoute").text(""),
+        RoadShield::new("MX:CDMX:EJE:CENTRAL").text(""),
+        RoadShield::new("US:FL:Turnpike").text(""),
+        RoadShield::new("US:GLST").text(""),
+        RoadShield::new("US:GRR").text(""),
+        RoadShield::new("US:IL:Cook:Chicago:Skyway").text(""),
+        RoadShield::new("US:IN:Toll").text(""),
+        RoadShield::new("US:KS:Turnpike").text(""),
+        RoadShield::new("US:MA:Turnpike").text(""),
+        RoadShield::new("US:NPS:Blue_Ridge").text(""),
+        RoadShield::new("US:NPS:Natchez_Trace").text(""),
+        RoadShield::new("US:NY:Parkway:LOSP").text(""),
+        RoadShield::new("US:NY:STE").text(""),
+        RoadShield::new("US:NY:Thruway").text(""),
         RoadShield::new("US:I")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
         RoadShield::new("US:I:Business:Loop")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
-        RoadShield::new("US:OH")
-            .text_offset([0.0, -0.12])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("US:OH").text_offset([0.0, -0.12]),
         RoadShield::new("US:MT:secondary")
             .text_offset([0.0, -0.12])
-            .text_size(9.0)
-            .text_width(21.0)
-            .icon_size(1.0),
+            .text_width(21.0),
         RoadShield::new("US:NM:Frontage")
             .text_offset([0.0, -0.12])
-            .text_size(9.0)
-            .text_width(29.0)
-            .icon_size(1.0),
-        RoadShield::new("US:OH:SCI")
-            .text_offset([0.0, -0.12])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:OR")
-            .text_offset([0.0, -0.12])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:SD")
-            .text_offset([0.0, -0.12])
-            .text_size(9.0)
-            .icon_size(1.0),
+            .text_width(29.0),
+        RoadShield::new("US:OH:SCI").text_offset([0.0, -0.12]),
+        RoadShield::new("US:OR").text_offset([0.0, -0.12]),
+        RoadShield::new("US:SD").text_offset([0.0, -0.12]),
         RoadShield::new("US:NV:Clark")
             .text_offset([0.0, -0.12])
-            .text_size(9.0)
             .text_width(27.0)
-            .icon_size(1.0)
             .text_color("#003f87"),
         RoadShield::new("US:WA")
             .text_offset([-0.06, -0.01])
-            .text_size(9.0)
-            .text_width(22.0)
-            .icon_size(1.0),
+            .text_width(22.0),
         RoadShield::new("CA:NB:tertiary")
             .text_offset([-0.06, 0.11])
-            .text_size(9.0)
-            .text_width(23.0)
-            .icon_size(1.0),
+            .text_width(23.0),
         RoadShield::new("US:CA")
             .text_offset([0.0, 0.18])
-            .text_size(9.0)
             .text_width(29.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
         RoadShield::new("US:SC")
             .text_offset([0.0, 0.18])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#003f87"),
         RoadShield::new("US:VT")
             .text_offset([0.0, 0.18])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#006747"),
-        RoadShield::new("PE:national")
-            .text_offset([0.0, 0.18])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("PE:national").text_offset([0.0, 0.18]),
         RoadShield::new("US:AK")
             .text_offset([0.0, -0.45])
-            .text_size(9.0)
-            .text_width(24.5)
-            .icon_size(1.0),
-        RoadShield::new("US:AL")
-            .text_offset([0.0, -0.18])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:MO")
-            .text_offset([0.0, -0.18])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:WI")
-            .text_offset([0.0, -0.18])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:SD:Custer:CSP")
-            .text_offset([0.0, -0.18])
-            .text_size(9.0)
-            .icon_size(1.0),
+            .text_width(24.5),
+        RoadShield::new("US:AL").text_offset([0.0, -0.18]),
+        RoadShield::new("US:MO").text_offset([0.0, -0.18]),
+        RoadShield::new("US:WI").text_offset([0.0, -0.18]),
+        RoadShield::new("US:SD:Custer:CSP").text_offset([0.0, -0.18]),
         RoadShield::new("US:AS")
             .text_offset([0.0, 0.51])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
-        RoadShield::new("US:CO")
-            .text_offset([0.0, 0.51])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:CO:E470")
-            .text_offset([0.0, 0.51])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("US:CO").text_offset([0.0, 0.51]),
+        RoadShield::new("US:CO:E470").text_offset([0.0, 0.51]),
         RoadShield::new("CA:SK:secondary")
             .text_offset([0.0, 0.51])
-            .text_size(9.0)
             .text_width(27.0)
-            .icon_size(1.0)
             .text_color("#006747"),
         RoadShield::new("US:DC")
             .text_offset([0.0, 0.29])
-            .text_size(9.0)
             .text_width(24.0)
-            .icon_size(1.0)
             .halo_color("#ffffff")
             .halo_width(1.0),
-        RoadShield::new("US:FL")
-            .text_offset([-0.15, 0.12])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("US:FL").text_offset([-0.15, 0.12]),
         RoadShield::new("US:ID")
             .text_offset([0.24, -0.45])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
-        RoadShield::new("US:ND")
-            .text_offset([-0.18, 0.0])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NH")
-            .text_offset([0.12, 0.0])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("US:ND").text_offset([-0.18, 0.0]),
+        RoadShield::new("US:NH").text_offset([0.12, 0.0]),
         RoadShield::new("US:NV")
             .text_offset([0.0, -0.64])
-            .text_size(9.0)
-            .text_width(21.5)
-            .icon_size(1.0),
+            .text_width(21.5),
         RoadShield::new("CA:NT")
             .text_offset([0.0, 0.41])
-            .text_size(9.0)
             .text_width(25.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
         RoadShield::new("MX:CDMX:EJE:NTE")
             .text_offset([0.0, 0.36])
-            .text_size(9.0)
-            .text_width(22.5)
-            .icon_size(1.0),
-        RoadShield::new("MX:CDMX:EJE:OTE")
-            .text_offset([-0.36, 0.0])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("MX:CDMX:EJE:PTE")
-            .text_offset([0.36, 0.0])
-            .text_size(9.0)
-            .icon_size(1.0),
+            .text_width(22.5),
+        RoadShield::new("MX:CDMX:EJE:OTE").text_offset([-0.36, 0.0]),
+        RoadShield::new("MX:CDMX:EJE:PTE").text_offset([0.36, 0.0]),
         RoadShield::new("MX:CDMX:EJE:SUR")
             .text_offset([0.0, -0.36])
-            .text_size(9.0)
-            .text_width(22.5)
-            .icon_size(1.0),
-        RoadShield::new("US:NY:Parkway:NYC")
-            .text_offset([0.0, -0.36])
-            .text_size(9.0)
-            .icon_size(1.0),
+            .text_width(22.5),
+        RoadShield::new("US:NY:Parkway:NYC").text_offset([0.0, -0.36]),
         RoadShield::new("US:TX:Fort_Bend:FBCTRA")
             .text_offset([0.0, -0.36])
-            .text_size(9.0)
             .text_width(25.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
         RoadShield::new("US:MN")
             .text_offset([0.0, 0.24])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
-        RoadShield::new("US:OK")
-            .text_offset([0.0, 0.24])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("US:OK").text_offset([0.0, 0.24]),
         RoadShield::new("CA:ON:primary")
             .text_offset([0.0, 0.24])
-            .text_size(9.0)
-            .text_width(28.0)
-            .icon_size(1.0),
+            .text_width(28.0),
         RoadShield::new("CN:expressway")
             .text_offset([0.0, 0.24])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
         RoadShield::new("KR:expressway")
             .text_offset([0.0, 0.24])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
         RoadShield::new("NL:DR:Hunebed_Highway")
             .text_offset([0.0, 0.24])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
         RoadShield::new("US:MN:Business")
             .text_offset([0.0, 0.24])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
-        RoadShield::new("US:LA")
-            .text_offset([0.0, 0.31])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("US:LA").text_offset([0.0, 0.31]),
         RoadShield::new("US:CO:NW")
             .text_offset([0.0, 0.6])
-            .text_size(9.0)
             .text_width(23.0)
-            .icon_size(1.0)
             .text_color("#003f87"),
         RoadShield::new("US:FL:Toll")
             .text_offset([-0.18, 0.18])
-            .text_size(9.0)
-            .text_width(21.5)
-            .icon_size(1.0),
+            .text_width(21.5),
         RoadShield::new("US:KY:Parkway")
             .text_offset([0.0, -0.24])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#003f87"),
-        RoadShield::new("co:national")
-            .text_offset([0.0, -0.24])
-            .text_size(9.0)
-            .icon_size(1.0),
+        RoadShield::new("co:national").text_offset([0.0, -0.24]),
         RoadShield::new("US:NY:Parkway:LI")
             .text_offset([0.24, -0.36])
-            .text_size(9.0)
-            .text_width(21.5)
-            .icon_size(1.0),
-        RoadShield::new("US:OH:TUS:Salem")
-            .text_offset([-0.12, -0.18])
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:TN:primary")
-            .text_offset([0.0, -0.3])
-            .text_size(9.0)
-            .icon_size(1.0),
+            .text_width(21.5),
+        RoadShield::new("US:OH:TUS:Salem").text_offset([-0.12, -0.18]),
+        RoadShield::new("US:TN:primary").text_offset([0.0, -0.3]),
         RoadShield::new("US:WI:Rustic")
             .text_offset([-0.15, 0.3])
-            .text_size(9.0)
-            .icon_size(1.0)
             .text_color("#ffcd00"),
         RoadShield::new("US:AZ:Indian")
             .text_offset([0.0, -0.01])
-            .text_size(9.0)
-            .text_width(24.0)
-            .icon_size(1.0),
+            .text_width(24.0),
         RoadShield::new("US:BIA")
             .text_offset([0.0, -0.01])
-            .text_size(9.0)
-            .text_width(22.5)
-            .icon_size(1.0),
-        RoadShield::new("US:US").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:AR").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:AZ").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:CKC").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:GA").text_size(9.0).icon_size(1.0),
+            .text_width(22.5),
+        RoadShield::new("US:US"),
+        RoadShield::new("US:AR"),
+        RoadShield::new("US:AZ"),
+        RoadShield::new("US:CKC"),
+        RoadShield::new("US:GA"),
         RoadShield::new("US:GU")
-            .text_size(9.0)
             .text_width(24.5)
-            .icon_size(1.0)
             .text_color("#ffffff"),
-        RoadShield::new("US:KS").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:LHT").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:MP").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:NHT").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:NM").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:Navajo").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:ORSB").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:PA").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:PANYNJ").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:PIPC").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:UT").text_size(9.0).icon_size(1.0),
-        RoadShield::new("CA:BC")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#003f87"),
-        RoadShield::new("CA:NS:S").text_size(9.0).icon_size(1.0),
-        RoadShield::new("CA:ON:Hamilton:Expressway")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("CA:ON:Toronto:Expressway")
-            .text_size(9.0)
-            .text_width(15.0)
-            .icon_size(1.0),
-        RoadShield::new("CA:PE")
-            .text_size(9.0)
-            .text_width(28.0)
-            .icon_size(1.0),
-        RoadShield::new("CA:QC:A")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#ffffff"),
+        RoadShield::new("US:KS"),
+        RoadShield::new("US:LHT"),
+        RoadShield::new("US:MP"),
+        RoadShield::new("US:NHT"),
+        RoadShield::new("US:NM"),
+        RoadShield::new("US:Navajo"),
+        RoadShield::new("US:ORSB"),
+        RoadShield::new("US:PA"),
+        RoadShield::new("US:PANYNJ"),
+        RoadShield::new("US:PIPC"),
+        RoadShield::new("US:UT"),
+        RoadShield::new("CA:BC").text_color("#003f87"),
+        RoadShield::new("CA:NS:S"),
+        RoadShield::new("CA:ON:Hamilton:Expressway"),
+        RoadShield::new("CA:ON:Toronto:Expressway").text_width(15.0),
+        RoadShield::new("CA:PE").text_width(28.0),
+        RoadShield::new("CA:QC:A").text_color("#ffffff"),
         RoadShield::new("CA:QC:R")
-            .text_size(9.0)
             .text_width(28.0)
-            .icon_size(1.0)
             .text_color("#ffffff"),
-        RoadShield::new("CA:transcanada")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#006747"),
-        RoadShield::new("CL:national")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#ffffff"),
-        RoadShield::new("EC:secundaria")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#ffffff"),
-        RoadShield::new("GLCT").text_size(9.0).icon_size(1.0),
-        RoadShield::new("GLCT:Loop").text_size(9.0).icon_size(1.0),
-        RoadShield::new("ID:national").text_size(9.0).icon_size(1.0),
-        RoadShield::new("IN:NH").text_size(9.0).icon_size(1.0),
-        RoadShield::new("MX:MX").text_size(9.0).icon_size(1.0),
-        RoadShield::new("NZ:Touring:AH")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:CNZWT")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:MWT")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:PCH")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:SLH")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:SSR")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:TCDH")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:TEH")
-            .text_size(9.0)
-            .text_width(27.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:Touring:VLH")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("NZ:WRR").text_size(9.0).icon_size(1.0),
-        RoadShield::new("PK:motorway")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#ffffff"),
-        RoadShield::new("TW:freeway")
-            .text_size(9.0)
-            .text_width(18.5)
-            .icon_size(1.0),
-        RoadShield::new("US:AL:Baldwin:Foley_Beach_Express")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:AZ:Scenic")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:CA:San_Francisco:49_Mile_Scenic_Drive")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:CO:Scenic")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:CT:Parkway")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:IN:JHMHT").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:LA:Causeway")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:ME:Turnpike")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NE:Scenic")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NH:Turnpike")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NJ:ACE").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:NJ:GSP").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:NJ:NJTP").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:NY:Scenic")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:NY:TBTA").text_size(9.0).icon_size(1.0),
+        RoadShield::new("CA:transcanada").text_color("#006747"),
+        RoadShield::new("CL:national").text_color("#ffffff"),
+        RoadShield::new("EC:secundaria").text_color("#ffffff"),
+        RoadShield::new("GLCT"),
+        RoadShield::new("GLCT:Loop"),
+        RoadShield::new("ID:national"),
+        RoadShield::new("IN:NH"),
+        RoadShield::new("MX:MX"),
+        RoadShield::new("NZ:Touring:AH"),
+        RoadShield::new("NZ:Touring:CNZWT"),
+        RoadShield::new("NZ:Touring:MWT"),
+        RoadShield::new("NZ:Touring:PCH"),
+        RoadShield::new("NZ:Touring:SLH"),
+        RoadShield::new("NZ:Touring:SSR"),
+        RoadShield::new("NZ:Touring:TCDH"),
+        RoadShield::new("NZ:Touring:TEH").text_width(27.0),
+        RoadShield::new("NZ:Touring:VLH"),
+        RoadShield::new("NZ:WRR"),
+        RoadShield::new("PK:motorway").text_color("#ffffff"),
+        RoadShield::new("TW:freeway").text_width(18.5),
+        RoadShield::new("US:AL:Baldwin:Foley_Beach_Express"),
+        RoadShield::new("US:AZ:Scenic"),
+        RoadShield::new("US:CA:San_Francisco:49_Mile_Scenic_Drive"),
+        RoadShield::new("US:CO:Scenic"),
+        RoadShield::new("US:CT:Parkway"),
+        RoadShield::new("US:IN:JHMHT"),
+        RoadShield::new("US:LA:Causeway"),
+        RoadShield::new("US:ME:Turnpike"),
+        RoadShield::new("US:NE:Scenic"),
+        RoadShield::new("US:NH:Turnpike"),
+        RoadShield::new("US:NJ:ACE"),
+        RoadShield::new("US:NJ:GSP"),
+        RoadShield::new("US:NJ:NJTP"),
+        RoadShield::new("US:NY:Scenic"),
+        RoadShield::new("US:NY:TBTA"),
         RoadShield::new("US:OH:ASD")
-            .text_size(9.0)
             .text_width(25.0)
-            .icon_size(1.0)
             .text_color("#006747"),
-        RoadShield::new("US:OH:HOL")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#ffffff"),
-        RoadShield::new("US:OH:JHMHT").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:OH:OEC").text_size(9.0).icon_size(1.0),
-        RoadShield::new("US:OH:Turnpike")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:OK:Turnpike")
-            .text_size(9.0)
-            .icon_size(1.0),
-        RoadShield::new("US:PA:Turnpike")
-            .text_size(9.0)
-            .icon_size(1.0)
-            .text_color("#ffffff"),
+        RoadShield::new("US:OH:HOL").text_color("#ffffff"),
+        RoadShield::new("US:OH:JHMHT"),
+        RoadShield::new("US:OH:OEC"),
+        RoadShield::new("US:OH:Turnpike"),
+        RoadShield::new("US:OK:Turnpike"),
+        RoadShield::new("US:PA:Turnpike").text_color("#ffffff"),
     ]
 }
 
