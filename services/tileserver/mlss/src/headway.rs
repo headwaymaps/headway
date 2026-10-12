@@ -129,234 +129,218 @@ impl RoadShield {
     }
 }
 
+fn shield(network: &'static str) -> RoadShield {
+    RoadShield::new(network)
+}
+
 fn road_shields() -> Vec<RoadShield> {
     vec![
-        RoadShield::new("CA:BC").text_color("#003f87"),
-        RoadShield::new("CA:NB:tertiary")
+        shield("CA:BC").text_color("#003f87"),
+        shield("CA:NB:tertiary")
             .text_offset([-0.06, 0.11])
             .text_width(23.0),
-        RoadShield::new("CA:NS:S"),
-        RoadShield::new("CA:NT")
+        shield("CA:NS:S"),
+        shield("CA:NT")
             .text_offset([0.0, 0.41])
             .text_width(25.0)
             .white_text_color(),
-        RoadShield::new("CA:ON:Hamilton:Expressway"),
-        RoadShield::new("CA:ON:Toronto:Expressway").text_width(15.0),
-        RoadShield::new("CA:ON:primary")
+        shield("CA:ON:Hamilton:Expressway"),
+        shield("CA:ON:Toronto:Expressway").text_width(15.0),
+        shield("CA:ON:primary")
             .text_offset([0.0, 0.24])
             .text_width(28.0),
-        RoadShield::new("CA:PE").text_width(28.0),
-        RoadShield::new("CA:QC:A").white_text_color(),
-        RoadShield::new("CA:QC:R")
-            .text_width(28.0)
-            .white_text_color(),
-        RoadShield::new("CA:SK:secondary")
+        shield("CA:PE").text_width(28.0),
+        shield("CA:QC:A").white_text_color(),
+        shield("CA:QC:R").text_width(28.0).white_text_color(),
+        shield("CA:SK:secondary")
             .text_offset([0.0, 0.51])
             .text_width(27.0)
             .text_color("#006747"),
-        RoadShield::new("CA:transcanada").text_color("#006747"),
-        RoadShield::new("CA:transcanada:namedRoute").no_text(),
-        RoadShield::new("CL:national").white_text_color(),
-        RoadShield::new("CN:expressway")
+        shield("CA:transcanada").text_color("#006747"),
+        shield("CA:transcanada:namedRoute").no_text(),
+        shield("CL:national").white_text_color(),
+        shield("CN:expressway")
             .text_offset([0.0, 0.24])
             .white_text_color(),
-        RoadShield::new("EC:secundaria").white_text_color(),
-        RoadShield::new("GLCT"),
-        RoadShield::new("GLCT:Loop"),
-        RoadShield::new("ID:national"),
-        RoadShield::new("IN:NH"),
-        RoadShield::new("KR:expressway")
+        shield("EC:secundaria").white_text_color(),
+        shield("GLCT"),
+        shield("GLCT:Loop"),
+        shield("ID:national"),
+        shield("IN:NH"),
+        shield("KR:expressway")
             .text_offset([0.0, 0.24])
             .white_text_color(),
-        RoadShield::new("MX:CDMX:EJE:CENTRAL").no_text(),
-        RoadShield::new("MX:CDMX:EJE:NTE")
+        shield("MX:CDMX:EJE:CENTRAL").no_text(),
+        shield("MX:CDMX:EJE:NTE")
             .text_offset([0.0, 0.36])
             .text_width(22.5),
-        RoadShield::new("MX:CDMX:EJE:OTE").text_offset([-0.36, 0.0]),
-        RoadShield::new("MX:CDMX:EJE:PTE").text_offset([0.36, 0.0]),
-        RoadShield::new("MX:CDMX:EJE:SUR")
+        shield("MX:CDMX:EJE:OTE").text_offset([-0.36, 0.0]),
+        shield("MX:CDMX:EJE:PTE").text_offset([0.36, 0.0]),
+        shield("MX:CDMX:EJE:SUR")
             .text_offset([0.0, -0.36])
             .text_width(22.5),
-        RoadShield::new("MX:MX"),
-        RoadShield::new("NL:DR:Hunebed_Highway")
+        shield("MX:MX"),
+        shield("NL:DR:Hunebed_Highway")
             .text_offset([0.0, 0.24])
             .white_text_color(),
-        RoadShield::new("NZ:Touring:AH"),
-        RoadShield::new("NZ:Touring:CNZWT"),
-        RoadShield::new("NZ:Touring:MWT"),
-        RoadShield::new("NZ:Touring:PCH"),
-        RoadShield::new("NZ:Touring:SLH"),
-        RoadShield::new("NZ:Touring:SSR"),
-        RoadShield::new("NZ:Touring:TCDH"),
-        RoadShield::new("NZ:Touring:TEH").text_width(27.0),
-        RoadShield::new("NZ:Touring:VLH"),
-        RoadShield::new("NZ:WRR"),
-        RoadShield::new("PE:national").text_offset([0.0, 0.18]),
-        RoadShield::new("PK:motorway").white_text_color(),
-        RoadShield::new("TW:freeway").text_width(18.5),
-        RoadShield::new("US:AK")
-            .text_offset([0.0, -0.45])
-            .text_width(24.5),
-        RoadShield::new("US:AL").text_offset([0.0, -0.18]),
-        RoadShield::new("US:AL:Baldwin:Foley_Beach_Express"),
-        RoadShield::new("US:AR"),
-        RoadShield::new("US:AS")
-            .text_offset([0.0, 0.51])
-            .white_text_color(),
-        RoadShield::new("US:AZ"),
-        RoadShield::new("US:AZ:Indian")
+        shield("NZ:Touring:AH"),
+        shield("NZ:Touring:CNZWT"),
+        shield("NZ:Touring:MWT"),
+        shield("NZ:Touring:PCH"),
+        shield("NZ:Touring:SLH"),
+        shield("NZ:Touring:SSR"),
+        shield("NZ:Touring:TCDH"),
+        shield("NZ:Touring:TEH").text_width(27.0),
+        shield("NZ:Touring:VLH"),
+        shield("NZ:WRR"),
+        shield("PE:national").text_offset([0.0, 0.18]),
+        shield("PK:motorway").white_text_color(),
+        shield("TW:freeway").text_width(18.5),
+        shield("US:AK").text_offset([0.0, -0.45]).text_width(24.5),
+        shield("US:AL").text_offset([0.0, -0.18]),
+        shield("US:AL:Baldwin:Foley_Beach_Express"),
+        shield("US:AR"),
+        shield("US:AS").text_offset([0.0, 0.51]).white_text_color(),
+        shield("US:AZ"),
+        shield("US:AZ:Indian")
             .text_offset([0.0, -0.01])
             .text_width(24.0),
-        RoadShield::new("US:AZ:Scenic"),
-        RoadShield::new("US:BIA")
-            .text_offset([0.0, -0.01])
-            .text_width(22.5),
-        RoadShield::new("US:CA")
+        shield("US:AZ:Scenic"),
+        shield("US:BIA").text_offset([0.0, -0.01]).text_width(22.5),
+        shield("US:CA")
             .text_offset([0.0, 0.18])
             .text_width(29.0)
             .white_text_color(),
-        RoadShield::new("US:CA:San_Francisco:49_Mile_Scenic_Drive"),
-        RoadShield::new("US:CKC"),
-        RoadShield::new("US:CO").text_offset([0.0, 0.51]),
-        RoadShield::new("US:CO:E470").text_offset([0.0, 0.51]),
-        RoadShield::new("US:CO:NW")
+        shield("US:CA:San_Francisco:49_Mile_Scenic_Drive"),
+        shield("US:CKC"),
+        shield("US:CO").text_offset([0.0, 0.51]),
+        shield("US:CO:E470").text_offset([0.0, 0.51]),
+        shield("US:CO:NW")
             .text_offset([0.0, 0.6])
             .text_width(23.0)
             .text_color("#003f87"),
-        RoadShield::new("US:CO:Scenic"),
-        RoadShield::new("US:CT:Parkway"),
-        RoadShield::new("US:DC")
+        shield("US:CO:Scenic"),
+        shield("US:CT:Parkway"),
+        shield("US:DC")
             .text_offset([0.0, 0.29])
             .text_width(24.0)
             .halo_color("#ffffff")
             .halo_width(1.0),
-        RoadShield::new("US:FL").text_offset([-0.15, 0.12]),
-        RoadShield::new("US:FL:Toll")
+        shield("US:FL").text_offset([-0.15, 0.12]),
+        shield("US:FL:Toll")
             .text_offset([-0.18, 0.18])
             .text_width(21.5),
-        RoadShield::new("US:FL:Turnpike").no_text(),
-        RoadShield::new("US:GA"),
-        RoadShield::new("US:GLST").no_text(),
-        RoadShield::new("US:GRR").no_text(),
-        RoadShield::new("US:GU").text_width(24.5).white_text_color(),
-        RoadShield::new("US:I")
+        shield("US:FL:Turnpike").no_text(),
+        shield("US:GA"),
+        shield("US:GLST").no_text(),
+        shield("US:GRR").no_text(),
+        shield("US:GU").text_width(24.5).white_text_color(),
+        shield("US:I")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
             .white_text_color(),
-        RoadShield::new("US:I:Business:Loop")
+        shield("US:I:Business:Loop")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
             .white_text_color(),
-        RoadShield::new("US:ID")
+        shield("US:ID")
             .text_offset([0.24, -0.45])
             .white_text_color(),
-        RoadShield::new("US:IL:Cook:Chicago:Skyway").no_text(),
-        RoadShield::new("US:IN:JHMHT"),
-        RoadShield::new("US:IN:Toll").no_text(),
-        RoadShield::new("US:KS"),
-        RoadShield::new("US:KS:Turnpike").no_text(),
-        RoadShield::new("US:KY:Parkway")
+        shield("US:IL:Cook:Chicago:Skyway").no_text(),
+        shield("US:IN:JHMHT"),
+        shield("US:IN:Toll").no_text(),
+        shield("US:KS"),
+        shield("US:KS:Turnpike").no_text(),
+        shield("US:KY:Parkway")
             .text_offset([0.0, -0.24])
             .text_color("#003f87"),
-        RoadShield::new("US:LA").text_offset([0.0, 0.31]),
-        RoadShield::new("US:LA:Causeway"),
-        RoadShield::new("US:LHT"),
-        RoadShield::new("US:MA:Turnpike").no_text(),
-        RoadShield::new("US:ME:Turnpike"),
-        RoadShield::new("US:MN")
+        shield("US:LA").text_offset([0.0, 0.31]),
+        shield("US:LA:Causeway"),
+        shield("US:LHT"),
+        shield("US:MA:Turnpike").no_text(),
+        shield("US:ME:Turnpike"),
+        shield("US:MN").text_offset([0.0, 0.24]).white_text_color(),
+        shield("US:MN:Business")
             .text_offset([0.0, 0.24])
             .white_text_color(),
-        RoadShield::new("US:MN:Business")
-            .text_offset([0.0, 0.24])
-            .white_text_color(),
-        RoadShield::new("US:MO").text_offset([0.0, -0.18]),
-        RoadShield::new("US:MP"),
-        RoadShield::new("US:MT:secondary")
+        shield("US:MO").text_offset([0.0, -0.18]),
+        shield("US:MP"),
+        shield("US:MT:secondary")
             .text_offset([0.0, -0.12])
             .text_width(21.0),
-        RoadShield::new("US:ND").text_offset([-0.18, 0.0]),
-        RoadShield::new("US:NE:Scenic"),
-        RoadShield::new("US:NH").text_offset([0.12, 0.0]),
-        RoadShield::new("US:NH:Turnpike"),
-        RoadShield::new("US:NHT"),
-        RoadShield::new("US:NJ:ACE"),
-        RoadShield::new("US:NJ:GSP"),
-        RoadShield::new("US:NJ:NJTP"),
-        RoadShield::new("US:NM"),
-        RoadShield::new("US:NM:Frontage")
+        shield("US:ND").text_offset([-0.18, 0.0]),
+        shield("US:NE:Scenic"),
+        shield("US:NH").text_offset([0.12, 0.0]),
+        shield("US:NH:Turnpike"),
+        shield("US:NHT"),
+        shield("US:NJ:ACE"),
+        shield("US:NJ:GSP"),
+        shield("US:NJ:NJTP"),
+        shield("US:NM"),
+        shield("US:NM:Frontage")
             .text_offset([0.0, -0.12])
             .text_width(29.0),
-        RoadShield::new("US:NPS:Blue_Ridge").no_text(),
-        RoadShield::new("US:NPS:Natchez_Trace").no_text(),
-        RoadShield::new("US:NV")
-            .text_offset([0.0, -0.64])
-            .text_width(21.5),
-        RoadShield::new("US:NV:Clark")
+        shield("US:NPS:Blue_Ridge").no_text(),
+        shield("US:NPS:Natchez_Trace").no_text(),
+        shield("US:NV").text_offset([0.0, -0.64]).text_width(21.5),
+        shield("US:NV:Clark")
             .text_offset([0.0, -0.12])
             .text_width(27.0)
             .text_color("#003f87"),
-        RoadShield::new("US:NY:Parkway:LI")
+        shield("US:NY:Parkway:LI")
             .text_offset([0.24, -0.36])
             .text_width(21.5),
-        RoadShield::new("US:NY:Parkway:LOSP").no_text(),
-        RoadShield::new("US:NY:Parkway:NYC").text_offset([0.0, -0.36]),
-        RoadShield::new("US:NY:STE").no_text(),
-        RoadShield::new("US:NY:Scenic"),
-        RoadShield::new("US:NY:TBTA"),
-        RoadShield::new("US:NY:Thruway").no_text(),
-        RoadShield::new("US:Navajo"),
-        RoadShield::new("US:OH").text_offset([0.0, -0.12]),
-        RoadShield::new("US:OH:ASD")
-            .text_width(25.0)
-            .text_color("#006747"),
-        RoadShield::new("US:OH:HOL").white_text_color(),
-        RoadShield::new("US:OH:JHMHT"),
-        RoadShield::new("US:OH:OEC"),
-        RoadShield::new("US:OH:SCI").text_offset([0.0, -0.12]),
-        RoadShield::new("US:OH:TUS:Salem").text_offset([-0.12, -0.18]),
-        RoadShield::new("US:OH:Turnpike"),
-        RoadShield::new("US:OK").text_offset([0.0, 0.24]),
-        RoadShield::new("US:OK:Turnpike"),
-        RoadShield::new("US:OR").text_offset([0.0, -0.12]),
-        RoadShield::new("US:ORSB"),
-        RoadShield::new("US:PA"),
-        RoadShield::new("US:PA:Turnpike").white_text_color(),
-        RoadShield::new("US:PANYNJ"),
-        RoadShield::new("US:PIPC"),
-        RoadShield::new("US:SC")
+        shield("US:NY:Parkway:LOSP").no_text(),
+        shield("US:NY:Parkway:NYC").text_offset([0.0, -0.36]),
+        shield("US:NY:STE").no_text(),
+        shield("US:NY:Scenic"),
+        shield("US:NY:TBTA"),
+        shield("US:NY:Thruway").no_text(),
+        shield("US:Navajo"),
+        shield("US:OH").text_offset([0.0, -0.12]),
+        shield("US:OH:ASD").text_width(25.0).text_color("#006747"),
+        shield("US:OH:HOL").white_text_color(),
+        shield("US:OH:JHMHT"),
+        shield("US:OH:OEC"),
+        shield("US:OH:SCI").text_offset([0.0, -0.12]),
+        shield("US:OH:TUS:Salem").text_offset([-0.12, -0.18]),
+        shield("US:OH:Turnpike"),
+        shield("US:OK").text_offset([0.0, 0.24]),
+        shield("US:OK:Turnpike"),
+        shield("US:OR").text_offset([0.0, -0.12]),
+        shield("US:ORSB"),
+        shield("US:PA"),
+        shield("US:PA:Turnpike").white_text_color(),
+        shield("US:PANYNJ"),
+        shield("US:PIPC"),
+        shield("US:SC")
             .text_offset([0.0, 0.18])
             .text_color("#003f87"),
-        RoadShield::new("US:SD").text_offset([0.0, -0.12]),
-        RoadShield::new("US:SD:Custer:CSP").text_offset([0.0, -0.18]),
-        RoadShield::new("US:TN:primary").text_offset([0.0, -0.3]),
-        RoadShield::new("US:TX:Fort_Bend:FBCTRA")
+        shield("US:SD").text_offset([0.0, -0.12]),
+        shield("US:SD:Custer:CSP").text_offset([0.0, -0.18]),
+        shield("US:TN:primary").text_offset([0.0, -0.3]),
+        shield("US:TX:Fort_Bend:FBCTRA")
             .text_offset([0.0, -0.36])
             .text_width(25.0)
             .white_text_color(),
-        RoadShield::new("US:US"),
-        RoadShield::new("US:UT"),
-        RoadShield::new("US:VT")
+        shield("US:US"),
+        shield("US:UT"),
+        shield("US:VT")
             .text_offset([0.0, 0.18])
             .text_color("#006747"),
-        RoadShield::new("US:WA")
-            .text_offset([-0.06, -0.01])
-            .text_width(22.0),
-        RoadShield::new("US:WI").text_offset([0.0, -0.18]),
-        RoadShield::new("US:WI:Rustic")
+        shield("US:WA").text_offset([-0.06, -0.01]).text_width(22.0),
+        shield("US:WI").text_offset([0.0, -0.18]),
+        shield("US:WI:Rustic")
             .text_offset([-0.15, 0.3])
             .text_color("#ffcd00"),
-        RoadShield::new("co:national").text_offset([0.0, -0.24]),
+        shield("co:national").text_offset([0.0, -0.24]),
     ]
 }
 
 /// The Headway default style.
 pub fn style() -> Style {
-    style_from_builders()
-}
-
-fn style_from_builders() -> Style {
     let mut style = Style::new("Headway Default")
         .id("omt-headway")
         .sprite("/sprite/sprites")
