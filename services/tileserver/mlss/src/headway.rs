@@ -59,8 +59,8 @@ impl RoadShield {
         }
     }
 
-    fn text(mut self, value: RoadShieldText) -> Self {
-        self.text = value;
+    fn no_text(mut self) -> Self {
+        self.text = RoadShieldText::NoText;
         self
     }
     fn text_offset(mut self, value: [f64; 2]) -> Self {
@@ -78,6 +78,9 @@ impl RoadShield {
     fn text_color(mut self, value: &'static str) -> Self {
         self.text_color = Some(value);
         self
+    }
+    fn white_text_color(self) -> Self {
+        self.text_color("#ffffff")
     }
     fn halo_color(mut self, value: &'static str) -> Self {
         self.halo_color = Some(value);
@@ -128,30 +131,30 @@ impl RoadShield {
 
 fn road_shields() -> Vec<RoadShield> {
     vec![
-        RoadShield::new("CA:transcanada:namedRoute").text(RoadShieldText::NoText),
-        RoadShield::new("MX:CDMX:EJE:CENTRAL").text(RoadShieldText::NoText),
-        RoadShield::new("US:FL:Turnpike").text(RoadShieldText::NoText),
-        RoadShield::new("US:GLST").text(RoadShieldText::NoText),
-        RoadShield::new("US:GRR").text(RoadShieldText::NoText),
-        RoadShield::new("US:IL:Cook:Chicago:Skyway").text(RoadShieldText::NoText),
-        RoadShield::new("US:IN:Toll").text(RoadShieldText::NoText),
-        RoadShield::new("US:KS:Turnpike").text(RoadShieldText::NoText),
-        RoadShield::new("US:MA:Turnpike").text(RoadShieldText::NoText),
-        RoadShield::new("US:NPS:Blue_Ridge").text(RoadShieldText::NoText),
-        RoadShield::new("US:NPS:Natchez_Trace").text(RoadShieldText::NoText),
-        RoadShield::new("US:NY:Parkway:LOSP").text(RoadShieldText::NoText),
-        RoadShield::new("US:NY:STE").text(RoadShieldText::NoText),
-        RoadShield::new("US:NY:Thruway").text(RoadShieldText::NoText),
+        RoadShield::new("CA:transcanada:namedRoute").no_text(),
+        RoadShield::new("MX:CDMX:EJE:CENTRAL").no_text(),
+        RoadShield::new("US:FL:Turnpike").no_text(),
+        RoadShield::new("US:GLST").no_text(),
+        RoadShield::new("US:GRR").no_text(),
+        RoadShield::new("US:IL:Cook:Chicago:Skyway").no_text(),
+        RoadShield::new("US:IN:Toll").no_text(),
+        RoadShield::new("US:KS:Turnpike").no_text(),
+        RoadShield::new("US:MA:Turnpike").no_text(),
+        RoadShield::new("US:NPS:Blue_Ridge").no_text(),
+        RoadShield::new("US:NPS:Natchez_Trace").no_text(),
+        RoadShield::new("US:NY:Parkway:LOSP").no_text(),
+        RoadShield::new("US:NY:STE").no_text(),
+        RoadShield::new("US:NY:Thruway").no_text(),
         RoadShield::new("US:I")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:I:Business:Loop")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:OH").text_offset([0.0, -0.12]),
         RoadShield::new("US:MT:secondary")
             .text_offset([0.0, -0.12])
@@ -175,7 +178,7 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("US:CA")
             .text_offset([0.0, 0.18])
             .text_width(29.0)
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:SC")
             .text_offset([0.0, 0.18])
             .text_color("#003f87"),
@@ -192,7 +195,7 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("US:SD:Custer:CSP").text_offset([0.0, -0.18]),
         RoadShield::new("US:AS")
             .text_offset([0.0, 0.51])
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:CO").text_offset([0.0, 0.51]),
         RoadShield::new("US:CO:E470").text_offset([0.0, 0.51]),
         RoadShield::new("CA:SK:secondary")
@@ -207,7 +210,7 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("US:FL").text_offset([-0.15, 0.12]),
         RoadShield::new("US:ID")
             .text_offset([0.24, -0.45])
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:ND").text_offset([-0.18, 0.0]),
         RoadShield::new("US:NH").text_offset([0.12, 0.0]),
         RoadShield::new("US:NV")
@@ -216,7 +219,7 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("CA:NT")
             .text_offset([0.0, 0.41])
             .text_width(25.0)
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("MX:CDMX:EJE:NTE")
             .text_offset([0.0, 0.36])
             .text_width(22.5),
@@ -229,26 +232,26 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("US:TX:Fort_Bend:FBCTRA")
             .text_offset([0.0, -0.36])
             .text_width(25.0)
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:MN")
             .text_offset([0.0, 0.24])
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:OK").text_offset([0.0, 0.24]),
         RoadShield::new("CA:ON:primary")
             .text_offset([0.0, 0.24])
             .text_width(28.0),
         RoadShield::new("CN:expressway")
             .text_offset([0.0, 0.24])
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("KR:expressway")
             .text_offset([0.0, 0.24])
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("NL:DR:Hunebed_Highway")
             .text_offset([0.0, 0.24])
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:MN:Business")
             .text_offset([0.0, 0.24])
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("US:LA").text_offset([0.0, 0.31]),
         RoadShield::new("US:CO:NW")
             .text_offset([0.0, 0.6])
@@ -280,9 +283,7 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("US:AZ"),
         RoadShield::new("US:CKC"),
         RoadShield::new("US:GA"),
-        RoadShield::new("US:GU")
-            .text_width(24.5)
-            .text_color("#ffffff"),
+        RoadShield::new("US:GU").text_width(24.5).white_text_color(),
         RoadShield::new("US:KS"),
         RoadShield::new("US:LHT"),
         RoadShield::new("US:MP"),
@@ -299,13 +300,13 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("CA:ON:Hamilton:Expressway"),
         RoadShield::new("CA:ON:Toronto:Expressway").text_width(15.0),
         RoadShield::new("CA:PE").text_width(28.0),
-        RoadShield::new("CA:QC:A").text_color("#ffffff"),
+        RoadShield::new("CA:QC:A").white_text_color(),
         RoadShield::new("CA:QC:R")
             .text_width(28.0)
-            .text_color("#ffffff"),
+            .white_text_color(),
         RoadShield::new("CA:transcanada").text_color("#006747"),
-        RoadShield::new("CL:national").text_color("#ffffff"),
-        RoadShield::new("EC:secundaria").text_color("#ffffff"),
+        RoadShield::new("CL:national").white_text_color(),
+        RoadShield::new("EC:secundaria").white_text_color(),
         RoadShield::new("GLCT"),
         RoadShield::new("GLCT:Loop"),
         RoadShield::new("ID:national"),
@@ -321,7 +322,7 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("NZ:Touring:TEH").text_width(27.0),
         RoadShield::new("NZ:Touring:VLH"),
         RoadShield::new("NZ:WRR"),
-        RoadShield::new("PK:motorway").text_color("#ffffff"),
+        RoadShield::new("PK:motorway").white_text_color(),
         RoadShield::new("TW:freeway").text_width(18.5),
         RoadShield::new("US:AL:Baldwin:Foley_Beach_Express"),
         RoadShield::new("US:AZ:Scenic"),
@@ -341,12 +342,12 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new("US:OH:ASD")
             .text_width(25.0)
             .text_color("#006747"),
-        RoadShield::new("US:OH:HOL").text_color("#ffffff"),
+        RoadShield::new("US:OH:HOL").white_text_color(),
         RoadShield::new("US:OH:JHMHT"),
         RoadShield::new("US:OH:OEC"),
         RoadShield::new("US:OH:Turnpike"),
         RoadShield::new("US:OK:Turnpike"),
-        RoadShield::new("US:PA:Turnpike").text_color("#ffffff"),
+        RoadShield::new("US:PA:Turnpike").white_text_color(),
     ]
 }
 
