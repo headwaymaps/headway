@@ -603,6 +603,7 @@ impl LegElevation {
         let mut steep_sections: Vec<SteepSectionResponse> = profile
             .steep_sections()
             .into_iter()
+            .filter(SteepSection::is_worth_marking)
             .filter_map(|section| {
                 let start_meters = section.start_meters * to_geometry_meters;
                 let end_meters = section.end_meters * to_geometry_meters;

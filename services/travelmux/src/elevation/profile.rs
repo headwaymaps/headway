@@ -20,6 +20,15 @@ pub struct SteepSection {
     pub max_grade: f64,
 }
 
+impl SteepSection {
+    pub const VERY_STEEP_GRADE: f64 = 0.13;
+
+    /// Every steep climb is worth showing a rider, but only a very steep descent is.
+    pub fn is_worth_marking(&self) -> bool {
+        self.average_grade > 0.0 || self.average_grade <= -Self::VERY_STEEP_GRADE
+    }
+}
+
 impl ElevationProfile {
     const SAMPLE_METERS: f64 = 10.0;
     /// Averaging elevations over this distance keeps a noisy DEM pixel from reading as a hill.
@@ -284,6 +293,20 @@ mod tests {
         let sections = hill.steep_sections();
         assert_eq!(sections.len(), 1);
         assert_relative_eq!(sections[0].max_grade, -0.1, epsilon = 1e-9);
+    }
+
+    #[test]
+    fn only_very_steep_descents_are_worth_marking() {
+        let section = |average_grade| SteepSection {
+            start_meters: 0.0,
+            end_meters: 100.0,
+            average_grade,
+            max_grade: average_grade,
+        };
+        assert!(section(0.06).is_worth_marking());
+        assert!(!section(-0.06).is_worth_marking());
+        assert!(!section(-0.12).is_worth_marking());
+        assert!(section(-0.13).is_worth_marking());
     }
 
     #[test]
