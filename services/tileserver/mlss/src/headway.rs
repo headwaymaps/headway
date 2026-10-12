@@ -33,6 +33,7 @@ struct RoadShield {
     text_size: Option<f64>,
     text_width: Option<f64>,
     icon_size: Option<f64>,
+    icon: Option<RoadShieldIcon>,
     text_color: Option<&'static str>,
     halo_color: Option<&'static str>,
     halo_width: Option<f64>,
@@ -44,6 +45,15 @@ enum RoadShieldText {
     Route1Ref,
 }
 
+#[derive(Clone, Copy)]
+enum RoadShieldIcon {
+    Sized {
+        base: &'static str,
+        four_digit: bool,
+    },
+    Fixed(&'static str),
+}
+
 impl RoadShield {
     fn new(network: &'static str) -> Self {
         Self {
@@ -53,6 +63,7 @@ impl RoadShield {
             text_size: Some(9.0),
             text_width: None,
             icon_size: Some(1.0),
+            icon: None,
             text_color: None,
             halo_color: None,
             halo_width: None,
@@ -81,6 +92,24 @@ impl RoadShield {
     }
     fn white_text_color(self) -> Self {
         self.text_color("#ffffff")
+    }
+    fn sized_icon(mut self, base: &'static str) -> Self {
+        self.icon = Some(RoadShieldIcon::Sized {
+            base,
+            four_digit: false,
+        });
+        self
+    }
+    fn wide_sized_icon(mut self, base: &'static str) -> Self {
+        self.icon = Some(RoadShieldIcon::Sized {
+            base,
+            four_digit: true,
+        });
+        self
+    }
+    fn icon(mut self, image: &'static str) -> Self {
+        self.icon = Some(RoadShieldIcon::Fixed(image));
+        self
     }
     fn halo_color(mut self, value: &'static str) -> Self {
         self.halo_color = Some(value);
@@ -127,6 +156,61 @@ impl RoadShield {
             ])],
         )
     }
+
+    fn icon_image(shields: &[Self]) -> Expression {
+        let sized = Self::property(shields, Expression::literal(""), |shield| {
+            match shield.icon {
+                Some(RoadShieldIcon::Sized { base, .. }) => Some(Expression::literal(base)),
+                _ => None,
+            }
+        });
+        let four_digit = Self::property(shields, Expression::literal(false), |shield| {
+            matches!(
+                shield.icon,
+                Some(RoadShieldIcon::Sized {
+                    four_digit: true,
+                    ..
+                })
+            )
+            .then_some(Expression::literal(true))
+        });
+        let suffix = Expression::op(
+            Operator::Case,
+            [
+                expr![LessEqual, [Length, [Var, "ref"]], 2],
+                Expression::literal("_2"),
+                Expression::op(
+                    Operator::All,
+                    [expr![GreaterEqual, [Length, [Var, "ref"]], 4], four_digit],
+                ),
+                Expression::literal("_4"),
+                Expression::literal("_3"),
+            ],
+        );
+        let fixed = Self::property(
+            shields,
+            expr![Concat, "default_", [ToString, [Length, [Var, "ref"]]]],
+            |shield| match shield.icon {
+                Some(RoadShieldIcon::Fixed(image)) => Some(Expression::literal(image)),
+                _ => None,
+            },
+        );
+        Self::with_ref(Expression::op(
+            Operator::Let,
+            [
+                Expression::literal("shield_base"),
+                sized,
+                Expression::op(
+                    Operator::Case,
+                    [
+                        expr![NotEqual, [Var, "shield_base"], ""],
+                        Expression::op(Operator::Concat, [expr![Var, "shield_base"], suffix]),
+                        fixed,
+                    ],
+                ),
+            ],
+        ))
+    }
 }
 
 fn shield(network: &'static str) -> RoadShield {
@@ -135,207 +219,332 @@ fn shield(network: &'static str) -> RoadShield {
 
 fn road_shields() -> Vec<RoadShield> {
     vec![
-        shield("CA:BC").text_color("#003f87"),
+        shield("CA:BC").text_color("#003f87").sized_icon("us-ca-bc"),
         shield("CA:NB:tertiary")
             .text_offset([-0.06, 0.11])
-            .text_width(23.0),
-        shield("CA:NS:S"),
+            .text_width(23.0)
+            .icon("us-ca-nb-tertiary"),
+        shield("CA:NS:S").icon("us-ca-ns-s"),
         shield("CA:NT")
             .text_offset([0.0, 0.41])
             .text_width(25.0)
-            .white_text_color(),
-        shield("CA:ON:Hamilton:Expressway"),
-        shield("CA:ON:Toronto:Expressway").text_width(15.0),
+            .white_text_color()
+            .icon("us-ca-nt"),
+        shield("CA:ON:Hamilton:Expressway").icon("us-ca-on-hamilton-expressway"),
+        shield("CA:ON:Toronto:Expressway")
+            .text_width(15.0)
+            .icon("us-ca-on-toronto-expressway"),
         shield("CA:ON:primary")
             .text_offset([0.0, 0.24])
-            .text_width(28.0),
-        shield("CA:PE").text_width(28.0),
-        shield("CA:QC:A").white_text_color(),
-        shield("CA:QC:R").text_width(28.0).white_text_color(),
+            .text_width(28.0)
+            .icon("us-ca-on-primary"),
+        shield("CA:PE").text_width(28.0).icon("us-ca-pe"),
+        shield("CA:QC:A")
+            .white_text_color()
+            .sized_icon("us-ca-qc-a"),
+        shield("CA:QC:R")
+            .text_width(28.0)
+            .white_text_color()
+            .icon("us-ca-qc-r"),
         shield("CA:SK:secondary")
             .text_offset([0.0, 0.51])
             .text_width(27.0)
-            .text_color("#006747"),
-        shield("CA:transcanada").text_color("#006747"),
-        shield("CA:transcanada:namedRoute").no_text(),
-        shield("CL:national").white_text_color(),
+            .text_color("#006747")
+            .icon("us-ca-sk-secondary"),
+        shield("CA:transcanada")
+            .text_color("#006747")
+            .sized_icon("us-ca-transcanada"),
+        shield("CA:transcanada:namedRoute")
+            .no_text()
+            .icon("us-ca-transcanada-namedroute_2"),
+        shield("CL:national")
+            .white_text_color()
+            .sized_icon("us-cl-national"),
         shield("CN:expressway")
             .text_offset([0.0, 0.24])
-            .white_text_color(),
-        shield("EC:secundaria").white_text_color(),
-        shield("GLCT"),
-        shield("GLCT:Loop"),
-        shield("ID:national"),
-        shield("IN:NH"),
+            .white_text_color()
+            .wide_sized_icon("us-cn-expressway"),
+        shield("EC:secundaria")
+            .white_text_color()
+            .wide_sized_icon("us-ec-secundaria"),
+        shield("GLCT").icon("us-glct"),
+        shield("GLCT:Loop").icon("us-glct-loop"),
+        shield("ID:national").icon("us-id-national"),
+        shield("IN:NH").wide_sized_icon("us-in-nh"),
         shield("KR:expressway")
             .text_offset([0.0, 0.24])
-            .white_text_color(),
-        shield("MX:CDMX:EJE:CENTRAL").no_text(),
+            .white_text_color()
+            .sized_icon("us-kr-expressway"),
+        shield("MX:CDMX:EJE:CENTRAL")
+            .no_text()
+            .icon("us-mx-cdmx-eje-central"),
         shield("MX:CDMX:EJE:NTE")
             .text_offset([0.0, 0.36])
-            .text_width(22.5),
-        shield("MX:CDMX:EJE:OTE").text_offset([-0.36, 0.0]),
-        shield("MX:CDMX:EJE:PTE").text_offset([0.36, 0.0]),
+            .text_width(22.5)
+            .icon("us-mx-cdmx-eje-nte"),
+        shield("MX:CDMX:EJE:OTE")
+            .text_offset([-0.36, 0.0])
+            .icon("us-mx-cdmx-eje-ote"),
+        shield("MX:CDMX:EJE:PTE")
+            .text_offset([0.36, 0.0])
+            .icon("us-mx-cdmx-eje-pte"),
         shield("MX:CDMX:EJE:SUR")
             .text_offset([0.0, -0.36])
-            .text_width(22.5),
-        shield("MX:MX"),
+            .text_width(22.5)
+            .icon("us-mx-cdmx-eje-sur"),
+        shield("MX:MX").wide_sized_icon("us-mx-mx"),
         shield("NL:DR:Hunebed_Highway")
             .text_offset([0.0, 0.24])
-            .white_text_color(),
-        shield("NZ:Touring:AH"),
-        shield("NZ:Touring:CNZWT"),
-        shield("NZ:Touring:MWT"),
-        shield("NZ:Touring:PCH"),
-        shield("NZ:Touring:SLH"),
-        shield("NZ:Touring:SSR"),
-        shield("NZ:Touring:TCDH"),
-        shield("NZ:Touring:TEH").text_width(27.0),
-        shield("NZ:Touring:VLH"),
-        shield("NZ:WRR"),
-        shield("PE:national").text_offset([0.0, 0.18]),
-        shield("PK:motorway").white_text_color(),
-        shield("TW:freeway").text_width(18.5),
-        shield("US:AK").text_offset([0.0, -0.45]).text_width(24.5),
-        shield("US:AL").text_offset([0.0, -0.18]),
-        shield("US:AL:Baldwin:Foley_Beach_Express"),
-        shield("US:AR"),
-        shield("US:AS").text_offset([0.0, 0.51]).white_text_color(),
-        shield("US:AZ"),
+            .white_text_color()
+            .icon("us-nl-dr-hunebed-highway"),
+        shield("NZ:Touring:AH").icon("us-nz-touring-ah"),
+        shield("NZ:Touring:CNZWT").icon("us-nz-touring-cnzwt"),
+        shield("NZ:Touring:MWT").icon("us-nz-touring-mwt"),
+        shield("NZ:Touring:PCH").icon("us-nz-touring-pch"),
+        shield("NZ:Touring:SLH").icon("us-nz-touring-slh"),
+        shield("NZ:Touring:SSR").icon("us-nz-touring-ssr"),
+        shield("NZ:Touring:TCDH").icon("us-nz-touring-tcdh"),
+        shield("NZ:Touring:TEH")
+            .text_width(27.0)
+            .icon("us-nz-touring-teh"),
+        shield("NZ:Touring:VLH").icon("us-nz-touring-vlh"),
+        shield("NZ:WRR").icon("us-nz-wrr"),
+        shield("PE:national")
+            .text_offset([0.0, 0.18])
+            .sized_icon("us-pe-national"),
+        shield("PK:motorway")
+            .white_text_color()
+            .icon("us-pk-motorway"),
+        shield("TW:freeway").text_width(18.5).icon("us-tw-freeway"),
+        shield("US:AK")
+            .text_offset([0.0, -0.45])
+            .text_width(24.5)
+            .icon("us-state-ak"),
+        shield("US:AL")
+            .text_offset([0.0, -0.18])
+            .sized_icon("us-state-al"),
+        shield("US:AL:Baldwin:Foley_Beach_Express").icon("us-al-baldwin-foley-beach-express"),
+        shield("US:AR").sized_icon("us-state-ar"),
+        shield("US:AS")
+            .text_offset([0.0, 0.51])
+            .white_text_color()
+            .icon("us-state-as"),
+        shield("US:AZ").sized_icon("us-state-az"),
         shield("US:AZ:Indian")
             .text_offset([0.0, -0.01])
-            .text_width(24.0),
-        shield("US:AZ:Scenic"),
-        shield("US:BIA").text_offset([0.0, -0.01]).text_width(22.5),
+            .text_width(24.0)
+            .icon("us-az-indian"),
+        shield("US:AZ:Scenic").icon("us-az-scenic"),
+        shield("US:BIA")
+            .text_offset([0.0, -0.01])
+            .text_width(22.5)
+            .icon("us-state-bia"),
         shield("US:CA")
             .text_offset([0.0, 0.18])
             .text_width(29.0)
-            .white_text_color(),
-        shield("US:CA:San_Francisco:49_Mile_Scenic_Drive"),
-        shield("US:CKC"),
-        shield("US:CO").text_offset([0.0, 0.51]),
-        shield("US:CO:E470").text_offset([0.0, 0.51]),
+            .white_text_color()
+            .sized_icon("us-state-ca"),
+        shield("US:CA:San_Francisco:49_Mile_Scenic_Drive")
+            .icon("us-ca-san-francisco-49-mile-scenic-drive"),
+        shield("US:CKC").icon("us-state-ckc"),
+        shield("US:CO").text_offset([0.0, 0.51]).icon("us-state-co"),
+        shield("US:CO:E470")
+            .text_offset([0.0, 0.51])
+            .icon("us-co-e470"),
         shield("US:CO:NW")
             .text_offset([0.0, 0.6])
             .text_width(23.0)
-            .text_color("#003f87"),
-        shield("US:CO:Scenic"),
-        shield("US:CT:Parkway"),
+            .text_color("#003f87")
+            .icon("us-co-nw"),
+        shield("US:CO:Scenic").icon("us-co-scenic"),
+        shield("US:CT:Parkway").icon("us-ct-parkway"),
         shield("US:DC")
             .text_offset([0.0, 0.29])
             .text_width(24.0)
             .halo_color("#ffffff")
-            .halo_width(1.0),
-        shield("US:FL").text_offset([-0.15, 0.12]),
+            .halo_width(1.0)
+            .icon("us-state-dc"),
+        shield("US:FL")
+            .text_offset([-0.15, 0.12])
+            .sized_icon("us-state-fl"),
         shield("US:FL:Toll")
             .text_offset([-0.18, 0.18])
-            .text_width(21.5),
-        shield("US:FL:Turnpike").no_text(),
-        shield("US:GA"),
-        shield("US:GLST").no_text(),
-        shield("US:GRR").no_text(),
-        shield("US:GU").text_width(24.5).white_text_color(),
+            .text_width(21.5)
+            .icon("us-fl-toll"),
+        shield("US:FL:Turnpike").no_text().icon("us-fl-turnpike"),
+        shield("US:GA").sized_icon("us-state-ga"),
+        shield("US:GLST").no_text().icon("us-state-glst"),
+        shield("US:GRR").no_text().icon("us-state-grr"),
+        shield("US:GU")
+            .text_width(24.5)
+            .white_text_color()
+            .sized_icon("us-state-gu"),
         shield("US:I")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
-            .white_text_color(),
+            .white_text_color()
+            .sized_icon("us-interstate"),
         shield("US:I:Business:Loop")
             .text_offset([0.0, 0.06])
             .text_size(9.5)
             .text_width(32.0)
-            .white_text_color(),
+            .white_text_color()
+            .sized_icon("us-i-business-loop"),
         shield("US:ID")
             .text_offset([0.24, -0.45])
-            .white_text_color(),
-        shield("US:IL:Cook:Chicago:Skyway").no_text(),
-        shield("US:IN:JHMHT"),
-        shield("US:IN:Toll").no_text(),
-        shield("US:KS"),
-        shield("US:KS:Turnpike").no_text(),
+            .white_text_color()
+            .sized_icon("us-state-id"),
+        shield("US:IL:Cook:Chicago:Skyway")
+            .no_text()
+            .icon("us-il-cook-chicago-skyway"),
+        shield("US:IN:JHMHT").icon("us-in-jhmht"),
+        shield("US:IN:Toll").no_text().icon("us-in-toll"),
+        shield("US:KS").sized_icon("us-state-ks"),
+        shield("US:KS:Turnpike").no_text().icon("us-ks-turnpike"),
         shield("US:KY:Parkway")
             .text_offset([0.0, -0.24])
-            .text_color("#003f87"),
-        shield("US:LA").text_offset([0.0, 0.31]),
-        shield("US:LA:Causeway"),
-        shield("US:LHT"),
-        shield("US:MA:Turnpike").no_text(),
-        shield("US:ME:Turnpike"),
-        shield("US:MN").text_offset([0.0, 0.24]).white_text_color(),
+            .text_color("#003f87")
+            .icon("us-ky-parkway"),
+        shield("US:LA")
+            .text_offset([0.0, 0.31])
+            .sized_icon("us-state-la"),
+        shield("US:LA:Causeway").icon("us-la-causeway"),
+        shield("US:LHT").icon("us-state-lht"),
+        shield("US:MA:Turnpike").no_text().icon("us-ma-turnpike"),
+        shield("US:ME:Turnpike").icon("us-me-turnpike"),
+        shield("US:MN")
+            .text_offset([0.0, 0.24])
+            .white_text_color()
+            .sized_icon("us-state-mn"),
         shield("US:MN:Business")
             .text_offset([0.0, 0.24])
-            .white_text_color(),
-        shield("US:MO").text_offset([0.0, -0.18]),
-        shield("US:MP"),
+            .white_text_color()
+            .sized_icon("us-mn-business"),
+        shield("US:MO")
+            .text_offset([0.0, -0.18])
+            .sized_icon("us-state-mo"),
+        shield("US:MP").sized_icon("us-state-mp"),
         shield("US:MT:secondary")
             .text_offset([0.0, -0.12])
-            .text_width(21.0),
-        shield("US:ND").text_offset([-0.18, 0.0]),
-        shield("US:NE:Scenic"),
-        shield("US:NH").text_offset([0.12, 0.0]),
-        shield("US:NH:Turnpike"),
-        shield("US:NHT"),
-        shield("US:NJ:ACE"),
-        shield("US:NJ:GSP"),
-        shield("US:NJ:NJTP"),
-        shield("US:NM"),
+            .text_width(21.0)
+            .icon("us-mt-secondary"),
+        shield("US:ND")
+            .text_offset([-0.18, 0.0])
+            .sized_icon("us-state-nd"),
+        shield("US:NE:Scenic").icon("us-ne-scenic"),
+        shield("US:NH")
+            .text_offset([0.12, 0.0])
+            .sized_icon("us-state-nh"),
+        shield("US:NH:Turnpike").icon("us-nh-turnpike"),
+        shield("US:NHT").icon("us-state-nht"),
+        shield("US:NJ:ACE").icon("us-nj-ace"),
+        shield("US:NJ:GSP").icon("us-nj-gsp"),
+        shield("US:NJ:NJTP").icon("us-nj-njtp"),
+        shield("US:NM").sized_icon("us-state-nm"),
         shield("US:NM:Frontage")
             .text_offset([0.0, -0.12])
-            .text_width(29.0),
-        shield("US:NPS:Blue_Ridge").no_text(),
-        shield("US:NPS:Natchez_Trace").no_text(),
-        shield("US:NV").text_offset([0.0, -0.64]).text_width(21.5),
+            .text_width(29.0)
+            .icon("us-nm-frontage"),
+        shield("US:NPS:Blue_Ridge")
+            .no_text()
+            .icon("us-nps-blue-ridge"),
+        shield("US:NPS:Natchez_Trace")
+            .no_text()
+            .icon("us-nps-natchez-trace"),
+        shield("US:NV")
+            .text_offset([0.0, -0.64])
+            .text_width(21.5)
+            .icon("us-state-nv"),
         shield("US:NV:Clark")
             .text_offset([0.0, -0.12])
             .text_width(27.0)
-            .text_color("#003f87"),
+            .text_color("#003f87")
+            .icon("us-nv-clark"),
         shield("US:NY:Parkway:LI")
             .text_offset([0.24, -0.36])
-            .text_width(21.5),
-        shield("US:NY:Parkway:LOSP").no_text(),
-        shield("US:NY:Parkway:NYC").text_offset([0.0, -0.36]),
-        shield("US:NY:STE").no_text(),
-        shield("US:NY:Scenic"),
-        shield("US:NY:TBTA"),
-        shield("US:NY:Thruway").no_text(),
-        shield("US:Navajo"),
-        shield("US:OH").text_offset([0.0, -0.12]),
-        shield("US:OH:ASD").text_width(25.0).text_color("#006747"),
-        shield("US:OH:HOL").white_text_color(),
-        shield("US:OH:JHMHT"),
-        shield("US:OH:OEC"),
-        shield("US:OH:SCI").text_offset([0.0, -0.12]),
-        shield("US:OH:TUS:Salem").text_offset([-0.12, -0.18]),
-        shield("US:OH:Turnpike"),
-        shield("US:OK").text_offset([0.0, 0.24]),
-        shield("US:OK:Turnpike"),
-        shield("US:OR").text_offset([0.0, -0.12]),
-        shield("US:ORSB"),
-        shield("US:PA"),
-        shield("US:PA:Turnpike").white_text_color(),
-        shield("US:PANYNJ"),
-        shield("US:PIPC"),
+            .text_width(21.5)
+            .icon("us-ny-parkway-li"),
+        shield("US:NY:Parkway:LOSP")
+            .no_text()
+            .icon("us-ny-parkway-losp"),
+        shield("US:NY:Parkway:NYC")
+            .text_offset([0.0, -0.36])
+            .icon("us-ny-parkway-nyc"),
+        shield("US:NY:STE").no_text().icon("us-ny-ste"),
+        shield("US:NY:Scenic").icon("us-ny-scenic"),
+        shield("US:NY:TBTA").icon("us-ny-tbta"),
+        shield("US:NY:Thruway").no_text().icon("us-ny-thruway"),
+        shield("US:Navajo").wide_sized_icon("us-state-navajo"),
+        shield("US:OH")
+            .text_offset([0.0, -0.12])
+            .sized_icon("us-state-oh"),
+        shield("US:OH:ASD")
+            .text_width(25.0)
+            .text_color("#006747")
+            .icon("us-oh-asd"),
+        shield("US:OH:HOL").white_text_color().icon("us-oh-hol"),
+        shield("US:OH:JHMHT").icon("us-oh-jhmht"),
+        shield("US:OH:OEC").icon("us-oh-oec"),
+        shield("US:OH:SCI")
+            .text_offset([0.0, -0.12])
+            .sized_icon("us-oh-sci"),
+        shield("US:OH:TUS:Salem")
+            .text_offset([-0.12, -0.18])
+            .icon("us-oh-tus-salem"),
+        shield("US:OH:Turnpike").icon("us-oh-turnpike"),
+        shield("US:OK")
+            .text_offset([0.0, 0.24])
+            .sized_icon("us-state-ok"),
+        shield("US:OK:Turnpike").icon("us-ok-turnpike"),
+        shield("US:OR")
+            .text_offset([0.0, -0.12])
+            .sized_icon("us-state-or"),
+        shield("US:ORSB").icon("us-state-orsb"),
+        shield("US:PA").sized_icon("us-state-pa"),
+        shield("US:PA:Turnpike")
+            .white_text_color()
+            .sized_icon("us-pa-turnpike"),
+        shield("US:PANYNJ").icon("us-state-panynj"),
+        shield("US:PIPC").icon("us-state-pipc"),
         shield("US:SC")
             .text_offset([0.0, 0.18])
-            .text_color("#003f87"),
-        shield("US:SD").text_offset([0.0, -0.12]),
-        shield("US:SD:Custer:CSP").text_offset([0.0, -0.18]),
-        shield("US:TN:primary").text_offset([0.0, -0.3]),
+            .text_color("#003f87")
+            .icon("us-state-sc"),
+        shield("US:SD")
+            .text_offset([0.0, -0.12])
+            .sized_icon("us-state-sd"),
+        shield("US:SD:Custer:CSP")
+            .text_offset([0.0, -0.18])
+            .icon("us-sd-custer-csp"),
+        shield("US:TN:primary")
+            .text_offset([0.0, -0.3])
+            .icon("us-tn-primary"),
         shield("US:TX:Fort_Bend:FBCTRA")
             .text_offset([0.0, -0.36])
             .text_width(25.0)
-            .white_text_color(),
-        shield("US:US"),
-        shield("US:UT"),
+            .white_text_color()
+            .icon("us-tx-fort-bend-fbctra"),
+        shield("US:US").sized_icon("us-highway"),
+        shield("US:UT").sized_icon("us-state-ut"),
         shield("US:VT")
             .text_offset([0.0, 0.18])
-            .text_color("#006747"),
-        shield("US:WA").text_offset([-0.06, -0.01]).text_width(22.0),
-        shield("US:WI").text_offset([0.0, -0.18]),
+            .text_color("#006747")
+            .sized_icon("us-state-vt"),
+        shield("US:WA")
+            .text_offset([-0.06, -0.01])
+            .text_width(22.0)
+            .icon("us-state-wa"),
+        shield("US:WI")
+            .text_offset([0.0, -0.18])
+            .sized_icon("us-state-wi"),
         shield("US:WI:Rustic")
             .text_offset([-0.15, 0.3])
-            .text_color("#ffcd00"),
-        shield("co:national").text_offset([0.0, -0.24]),
+            .text_color("#ffcd00")
+            .icon("us-wi-rustic"),
+        shield("co:national")
+            .text_offset([0.0, -0.24])
+            .sized_icon("us-co-national"),
     ]
 }
 
@@ -1569,332 +1778,7 @@ pub fn style() -> Style {
                 6
             ]
         ]))
-        .layout(
-            "icon-image",
-            expr![
-                Let,
-                "ref",
-                [Coalesce, [Get, "route_1_ref"], [Get, "ref"]],
-                [
-                    Let,
-                    "shield_base",
-                    [
-                        Match,
-                        [Get, "route_1_network"],
-                        "US:I",
-                        "us-interstate",
-                        "US:US",
-                        "us-highway",
-                        "US:CA",
-                        "us-state-ca",
-                        "US:OR",
-                        "us-state-or",
-                        "US:AL",
-                        "us-state-al",
-                        "US:AR",
-                        "us-state-ar",
-                        "US:AZ",
-                        "us-state-az",
-                        "US:FL",
-                        "us-state-fl",
-                        "US:GA",
-                        "us-state-ga",
-                        "US:GU",
-                        "us-state-gu",
-                        "US:ID",
-                        "us-state-id",
-                        "US:KS",
-                        "us-state-ks",
-                        "US:LA",
-                        "us-state-la",
-                        "US:MN",
-                        "us-state-mn",
-                        "US:MO",
-                        "us-state-mo",
-                        "US:MP",
-                        "us-state-mp",
-                        "US:ND",
-                        "us-state-nd",
-                        "US:NH",
-                        "us-state-nh",
-                        "US:NM",
-                        "us-state-nm",
-                        "US:Navajo",
-                        "us-state-navajo",
-                        "US:OH",
-                        "us-state-oh",
-                        "US:OK",
-                        "us-state-ok",
-                        "US:PA",
-                        "us-state-pa",
-                        "US:SD",
-                        "us-state-sd",
-                        "US:UT",
-                        "us-state-ut",
-                        "US:VT",
-                        "us-state-vt",
-                        "US:WI",
-                        "us-state-wi",
-                        "CA:BC",
-                        "us-ca-bc",
-                        "CA:QC:A",
-                        "us-ca-qc-a",
-                        "CA:transcanada",
-                        "us-ca-transcanada",
-                        "CL:national",
-                        "us-cl-national",
-                        "CN:expressway",
-                        "us-cn-expressway",
-                        "EC:secundaria",
-                        "us-ec-secundaria",
-                        "IN:NH",
-                        "us-in-nh",
-                        "KR:expressway",
-                        "us-kr-expressway",
-                        "MX:MX",
-                        "us-mx-mx",
-                        "PE:national",
-                        "us-pe-national",
-                        "US:I:Business:Loop",
-                        "us-i-business-loop",
-                        "US:MN:Business",
-                        "us-mn-business",
-                        "US:OH:SCI",
-                        "us-oh-sci",
-                        "US:PA:Turnpike",
-                        "us-pa-turnpike",
-                        "co:national",
-                        "us-co-national",
-                        ""
-                    ],
-                    [
-                        Case,
-                        [NotEqual, [Var, "shield_base"], ""],
-                        [
-                            Concat,
-                            [Var, "shield_base"],
-                            [
-                                Case,
-                                [LessEqual, [Length, [Var, "ref"]], 2],
-                                "_2",
-                                [
-                                    All,
-                                    [GreaterEqual, [Length, [Var, "ref"]], 4],
-                                    [
-                                        Match,
-                                        [Get, "route_1_network"],
-                                        "US:Navajo",
-                                        true,
-                                        "CN:expressway",
-                                        true,
-                                        "EC:secundaria",
-                                        true,
-                                        "IN:NH",
-                                        true,
-                                        "MX:MX",
-                                        true,
-                                        false
-                                    ]
-                                ],
-                                "_4",
-                                "_3"
-                            ]
-                        ],
-                        [
-                            Match,
-                            [Get, "route_1_network"],
-                            "US:WA",
-                            "us-state-wa",
-                            "US:AK",
-                            "us-state-ak",
-                            "US:AS",
-                            "us-state-as",
-                            "US:BIA",
-                            "us-state-bia",
-                            "US:CKC",
-                            "us-state-ckc",
-                            "US:CO",
-                            "us-state-co",
-                            "US:DC",
-                            "us-state-dc",
-                            "US:GLST",
-                            "us-state-glst",
-                            "US:GRR",
-                            "us-state-grr",
-                            "US:LHT",
-                            "us-state-lht",
-                            "US:NHT",
-                            "us-state-nht",
-                            "US:NV",
-                            "us-state-nv",
-                            "US:ORSB",
-                            "us-state-orsb",
-                            "US:PANYNJ",
-                            "us-state-panynj",
-                            "US:PIPC",
-                            "us-state-pipc",
-                            "US:SC",
-                            "us-state-sc",
-                            "CA:NB:tertiary",
-                            "us-ca-nb-tertiary",
-                            "CA:NS:S",
-                            "us-ca-ns-s",
-                            "CA:NT",
-                            "us-ca-nt",
-                            "CA:ON:Hamilton:Expressway",
-                            "us-ca-on-hamilton-expressway",
-                            "CA:ON:Toronto:Expressway",
-                            "us-ca-on-toronto-expressway",
-                            "CA:ON:primary",
-                            "us-ca-on-primary",
-                            "CA:PE",
-                            "us-ca-pe",
-                            "CA:QC:R",
-                            "us-ca-qc-r",
-                            "CA:SK:secondary",
-                            "us-ca-sk-secondary",
-                            "CA:transcanada:namedRoute",
-                            "us-ca-transcanada-namedroute_2",
-                            "GLCT",
-                            "us-glct",
-                            "GLCT:Loop",
-                            "us-glct-loop",
-                            "ID:national",
-                            "us-id-national",
-                            "MX:CDMX:EJE:CENTRAL",
-                            "us-mx-cdmx-eje-central",
-                            "MX:CDMX:EJE:NTE",
-                            "us-mx-cdmx-eje-nte",
-                            "MX:CDMX:EJE:OTE",
-                            "us-mx-cdmx-eje-ote",
-                            "MX:CDMX:EJE:PTE",
-                            "us-mx-cdmx-eje-pte",
-                            "MX:CDMX:EJE:SUR",
-                            "us-mx-cdmx-eje-sur",
-                            "NL:DR:Hunebed_Highway",
-                            "us-nl-dr-hunebed-highway",
-                            "NZ:Touring:AH",
-                            "us-nz-touring-ah",
-                            "NZ:Touring:CNZWT",
-                            "us-nz-touring-cnzwt",
-                            "NZ:Touring:MWT",
-                            "us-nz-touring-mwt",
-                            "NZ:Touring:PCH",
-                            "us-nz-touring-pch",
-                            "NZ:Touring:SLH",
-                            "us-nz-touring-slh",
-                            "NZ:Touring:SSR",
-                            "us-nz-touring-ssr",
-                            "NZ:Touring:TCDH",
-                            "us-nz-touring-tcdh",
-                            "NZ:Touring:TEH",
-                            "us-nz-touring-teh",
-                            "NZ:Touring:VLH",
-                            "us-nz-touring-vlh",
-                            "NZ:WRR",
-                            "us-nz-wrr",
-                            "PK:motorway",
-                            "us-pk-motorway",
-                            "TW:freeway",
-                            "us-tw-freeway",
-                            "US:AL:Baldwin:Foley_Beach_Express",
-                            "us-al-baldwin-foley-beach-express",
-                            "US:AZ:Indian",
-                            "us-az-indian",
-                            "US:AZ:Scenic",
-                            "us-az-scenic",
-                            "US:CA:San_Francisco:49_Mile_Scenic_Drive",
-                            "us-ca-san-francisco-49-mile-scenic-drive",
-                            "US:CO:E470",
-                            "us-co-e470",
-                            "US:CO:NW",
-                            "us-co-nw",
-                            "US:CO:Scenic",
-                            "us-co-scenic",
-                            "US:CT:Parkway",
-                            "us-ct-parkway",
-                            "US:FL:Toll",
-                            "us-fl-toll",
-                            "US:FL:Turnpike",
-                            "us-fl-turnpike",
-                            "US:IL:Cook:Chicago:Skyway",
-                            "us-il-cook-chicago-skyway",
-                            "US:IN:JHMHT",
-                            "us-in-jhmht",
-                            "US:IN:Toll",
-                            "us-in-toll",
-                            "US:KS:Turnpike",
-                            "us-ks-turnpike",
-                            "US:KY:Parkway",
-                            "us-ky-parkway",
-                            "US:LA:Causeway",
-                            "us-la-causeway",
-                            "US:MA:Turnpike",
-                            "us-ma-turnpike",
-                            "US:ME:Turnpike",
-                            "us-me-turnpike",
-                            "US:MT:secondary",
-                            "us-mt-secondary",
-                            "US:NE:Scenic",
-                            "us-ne-scenic",
-                            "US:NH:Turnpike",
-                            "us-nh-turnpike",
-                            "US:NJ:ACE",
-                            "us-nj-ace",
-                            "US:NJ:GSP",
-                            "us-nj-gsp",
-                            "US:NJ:NJTP",
-                            "us-nj-njtp",
-                            "US:NM:Frontage",
-                            "us-nm-frontage",
-                            "US:NPS:Blue_Ridge",
-                            "us-nps-blue-ridge",
-                            "US:NPS:Natchez_Trace",
-                            "us-nps-natchez-trace",
-                            "US:NV:Clark",
-                            "us-nv-clark",
-                            "US:NY:Parkway:LI",
-                            "us-ny-parkway-li",
-                            "US:NY:Parkway:LOSP",
-                            "us-ny-parkway-losp",
-                            "US:NY:Parkway:NYC",
-                            "us-ny-parkway-nyc",
-                            "US:NY:STE",
-                            "us-ny-ste",
-                            "US:NY:Scenic",
-                            "us-ny-scenic",
-                            "US:NY:TBTA",
-                            "us-ny-tbta",
-                            "US:NY:Thruway",
-                            "us-ny-thruway",
-                            "US:OH:ASD",
-                            "us-oh-asd",
-                            "US:OH:HOL",
-                            "us-oh-hol",
-                            "US:OH:JHMHT",
-                            "us-oh-jhmht",
-                            "US:OH:OEC",
-                            "us-oh-oec",
-                            "US:OH:TUS:Salem",
-                            "us-oh-tus-salem",
-                            "US:OH:Turnpike",
-                            "us-oh-turnpike",
-                            "US:OK:Turnpike",
-                            "us-ok-turnpike",
-                            "US:SD:Custer:CSP",
-                            "us-sd-custer-csp",
-                            "US:TN:primary",
-                            "us-tn-primary",
-                            "US:TX:Fort_Bend:FBCTRA",
-                            "us-tx-fort-bend-fbctra",
-                            "US:WI:Rustic",
-                            "us-wi-rustic",
-                            [Concat, "default_", [ToString, [Length, [Var, "ref"]]]]
-                        ]
-                    ]
-                ]
-            ],
-        )
+        .layout("icon-image", RoadShield::icon_image(&shields))
         .icon_rotation_alignment("viewport")
         .layout("symbol-placement", stops![10.0 => "point", 11.0 => "line"])
         .spacing(500.0)
