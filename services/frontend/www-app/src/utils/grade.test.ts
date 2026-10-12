@@ -34,9 +34,7 @@ describe('gradeShade', () => {
   test('shades climbs and descents by steepness', () => {
     expect(gradeShade(0.06)).toBe(GradeShade.ModerateClimb);
     expect(gradeShade(0.14)).toBe(GradeShade.VerySteepClimb);
-    expect(gradeShade(-0.06)).toBe(GradeShade.ModerateDescent);
-    expect(gradeShade(-0.1)).toBe(GradeShade.SteepDescent);
-    expect(gradeShade(-0.14)).toBe(GradeShade.SteepDescent);
+    expect(gradeShade(-0.14)).toBe(GradeShade.VerySteepDescent);
   });
 });
 

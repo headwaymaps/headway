@@ -21,25 +21,22 @@ export function gradeTier(grade: number): GradeTier {
 /// Ground that isn't steep enough to be a `SteepSection`.
 export const FLAT_GRADE_COLOR = '#43A047';
 
-/// How a steep stretch is drawn: climbs in warm colors and descents in deep greens, by how steep.
+/// How a steep stretch is drawn: climbs in warm colors by how steep, and descents in deep green.
+/// travelmux only sends descents that are very steep.
 export enum GradeShade {
   ModerateClimb = 'moderate_climb',
   SteepClimb = 'steep_climb',
   VerySteepClimb = 'very_steep_climb',
-  ModerateDescent = 'moderate_descent',
-  SteepDescent = 'steep_descent',
+  VerySteepDescent = 'very_steep_descent',
 }
 
 export const GradeShades = Object.values(GradeShade);
 
 export function gradeShade(grade: number): GradeShade {
-  const tier = gradeTier(grade);
   if (grade < 0) {
-    return tier === GradeTier.Moderate
-      ? GradeShade.ModerateDescent
-      : GradeShade.SteepDescent;
+    return GradeShade.VerySteepDescent;
   }
-  switch (tier) {
+  switch (gradeTier(grade)) {
     case GradeTier.Moderate:
       return GradeShade.ModerateClimb;
     case GradeTier.Steep:
@@ -57,9 +54,7 @@ export function gradeShadeColor(shade: GradeShade): string {
       return '#F27405';
     case GradeShade.VerySteepClimb:
       return '#D92B04';
-    case GradeShade.ModerateDescent:
-      return '#2E7D32';
-    case GradeShade.SteepDescent:
+    case GradeShade.VerySteepDescent:
       return '#1B5E20';
   }
 }
@@ -75,9 +70,9 @@ export function describeGrade(grade: number): string {
   });
 }
 
-/// e.g. "↗ 14%"
-export function formatClimbGrade(grade: number): string {
-  return `↗ ${Math.round(grade * 100)}%`;
+/// e.g. "↗ 14%", or "↘ 14%" descending
+export function formatSteepGrade(grade: number): string {
+  return `${grade > 0 ? '↗' : '↘'} ${Math.round(Math.abs(grade) * 100)}%`;
 }
 
 /// How far along `profile` the middle of `section` is, as a fraction.

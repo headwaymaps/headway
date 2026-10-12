@@ -14,12 +14,12 @@
       v-if="elevation"
       dense
       header-class="climbs-header"
-      :hide-expand-icon="steepClimbs.length === 0"
+      :hide-expand-icon="elevation.steepSections.length === 0"
     >
       <template #header>
         <q-item-section class="climbs-summary">
           <div>
-            {{ $t('elevation_climbs') }}
+            {{ $t('elevation_hills') }}
             <elevation-totals
               :climb-meters="elevation.totalClimbMeters"
               :fall-meters="elevation.totalFallMeters"
@@ -30,7 +30,7 @@
       </template>
       <q-list dense>
         <q-item
-          v-for="(section, idx) in steepClimbs"
+          v-for="(section, idx) in elevation.steepSections"
           :key="idx"
           clickable
           @click="selectSteepClimb(section)"
@@ -39,7 +39,7 @@
             <span
               class="steep-section-grade"
               :style="{ color: gradeColor(section.averageGrade) }"
-              >{{ formatClimbGrade(section.averageGrade) }}</span
+              >{{ formatSteepGrade(section.averageGrade) }}</span
             >
           </q-item-section>
           <q-item-section>
@@ -92,7 +92,7 @@ import ElevationChart from './ElevationChart.vue';
 import ElevationTotals from './ElevationTotals.vue';
 import { formatDistance, getElevationUnits } from 'src/utils/format';
 import { DistanceUnits } from 'src/utils/models';
-import { formatClimbGrade, gradeColor } from 'src/utils/grade';
+import { formatSteepGrade, gradeColor } from 'src/utils/grade';
 
 export default defineComponent({
   name: 'SingleModeSteps',
@@ -123,16 +123,9 @@ export default defineComponent({
       geometry: this.trip.legs[0]!.geometry,
     };
   },
-  computed: {
-    steepClimbs(): SteepSection[] {
-      return (this.elevation?.steepSections ?? []).filter(
-        (section) => section.averageGrade > 0,
-      );
-    },
-  },
   methods: {
     valhallaTypeToIcon,
-    formatClimbGrade,
+    formatSteepGrade,
     gradeColor,
     formatSteepSection(section: SteepSection): string {
       const length = formatDistance(
