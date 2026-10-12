@@ -50,8 +50,8 @@ function next_steps() {
 Artifacts pinned in ${CONFIG_DIR}/artifacts.json. The k8s manifests still point at the
 previous artifacts until you regenerate and commit them:
 
-    bin/publish-data ${CONFIG_DIR} [--host remote.host.com]
     bin/k8s/regenerate-all
+    bin/publish-data ${CONFIG_DIR} [--host remote.host.com]
 EOS
 }
 
