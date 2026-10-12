@@ -19,6 +19,35 @@ fn normalize(value: &Json) -> Json {
             if items.first() == Some(&json!("all")) {
                 items[1..].sort_by_key(ToString::to_string);
             }
+            let route_network_match = items.len() >= 4
+                && items.first() == Some(&json!("match"))
+                && items.get(1) == Some(&json!(["get", "route_1_network"]));
+            if route_network_match {
+                let fallback = items.pop().expect("match has a fallback");
+                let mut cases = Vec::new();
+                for pair in items[2..].chunks_exact(2) {
+                    let networks = match &pair[0] {
+                        Json::String(network) => vec![network.clone()],
+                        Json::Array(networks) => networks
+                            .iter()
+                            .map(|network| network.as_str().expect("network name").to_owned())
+                            .collect(),
+                        _ => panic!("route-network match label"),
+                    };
+                    cases.extend(
+                        networks
+                            .into_iter()
+                            .map(|network| (network, pair[1].clone())),
+                    );
+                }
+                cases.sort_by(|left, right| left.0.cmp(&right.0));
+                items.truncate(2);
+                for (network, value) in cases {
+                    items.push(json!(network));
+                    items.push(value);
+                }
+                items.push(fallback);
+            }
             Json::Array(items)
         }
         Json::Object(fields) => Json::Object(

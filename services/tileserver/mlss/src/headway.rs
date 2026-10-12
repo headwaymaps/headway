@@ -24,11 +24,68 @@ fn surface() -> Filter {
     Filter::not_in("brunnel", ["bridge", "tunnel"])
 }
 
-/// Headway's route-shield conventions.
-struct RoadShield;
+/// The per-network exceptions to Headway's road-shield defaults.
+#[derive(Clone, Copy)]
+struct RoadShield {
+    network: &'static str,
+    text: Option<&'static str>,
+    text_offset: Option<[f64; 2]>,
+    text_size: Option<f64>,
+    text_width: Option<f64>,
+    icon_size: Option<f64>,
+    text_color: Option<&'static str>,
+    halo_color: Option<&'static str>,
+    halo_width: Option<f64>,
+}
 
 impl RoadShield {
-    /// Binds the preferred route reference for expressions that need it.
+    fn new(network: &'static str) -> Self {
+        Self {
+            network,
+            text: None,
+            text_offset: None,
+            text_size: None,
+            text_width: None,
+            icon_size: None,
+            text_color: None,
+            halo_color: None,
+            halo_width: None,
+        }
+    }
+
+    fn text(mut self, value: &'static str) -> Self {
+        self.text = Some(value);
+        self
+    }
+    fn text_offset(mut self, value: [f64; 2]) -> Self {
+        self.text_offset = Some(value);
+        self
+    }
+    fn text_size(mut self, value: f64) -> Self {
+        self.text_size = Some(value);
+        self
+    }
+    fn text_width(mut self, value: f64) -> Self {
+        self.text_width = Some(value);
+        self
+    }
+    fn icon_size(mut self, value: f64) -> Self {
+        self.icon_size = Some(value);
+        self
+    }
+    fn text_color(mut self, value: &'static str) -> Self {
+        self.text_color = Some(value);
+        self
+    }
+    fn halo_color(mut self, value: &'static str) -> Self {
+        self.halo_color = Some(value);
+        self
+    }
+    fn halo_width(mut self, value: f64) -> Self {
+        self.halo_width = Some(value);
+        self
+    }
+
     fn with_ref(body: Expression) -> Expression {
         Expression::op(
             Operator::Let,
@@ -40,19 +97,511 @@ impl RoadShield {
         )
     }
 
-    /// Builds a network match from only its non-default cases.
-    fn network_match(default: Expression, overrides: &[(&[&str], Expression)]) -> Expression {
+    fn property(
+        shields: &[Self],
+        default: Expression,
+        value: impl Fn(Self) -> Option<Expression>,
+    ) -> Expression {
         let mut operands = vec![expr![Get, "route_1_network"]];
-        for (networks, value) in overrides {
-            operands.push(match *networks {
-                [network] => Expression::literal(*network),
-                many => Expression::array(many.iter().map(|network| Expression::literal(*network))),
-            });
-            operands.push(value.clone());
+        for shield in shields.iter().copied() {
+            if let Some(value) = value(shield) {
+                operands.push(Expression::literal(shield.network));
+                operands.push(value);
+            }
         }
         operands.push(default);
         Expression::op(Operator::Match, operands)
     }
+
+    fn offset([x, y]: [f64; 2]) -> Expression {
+        Expression::op(
+            Operator::Literal,
+            [Expression::array([
+                Expression::literal(x),
+                Expression::literal(y),
+            ])],
+        )
+    }
+}
+
+fn road_shields() -> Vec<RoadShield> {
+    vec![
+        RoadShield::new("CA:transcanada:namedRoute")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("MX:CDMX:EJE:CENTRAL")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:FL:Turnpike")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:GLST")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:GRR")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:IL:Cook:Chicago:Skyway")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:IN:Toll")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:KS:Turnpike")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:MA:Turnpike")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NPS:Blue_Ridge")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NPS:Natchez_Trace")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NY:Parkway:LOSP")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NY:STE")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NY:Thruway")
+            .text("")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:I")
+            .text_offset([0.0, 0.06])
+            .text_size(9.5)
+            .text_width(32.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:I:Business:Loop")
+            .text_offset([0.0, 0.06])
+            .text_size(9.5)
+            .text_width(32.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:OH")
+            .text_offset([0.0, -0.12])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:MT:secondary")
+            .text_offset([0.0, -0.12])
+            .text_size(9.0)
+            .text_width(21.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NM:Frontage")
+            .text_offset([0.0, -0.12])
+            .text_size(9.0)
+            .text_width(29.0)
+            .icon_size(1.0),
+        RoadShield::new("US:OH:SCI")
+            .text_offset([0.0, -0.12])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:OR")
+            .text_offset([0.0, -0.12])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:SD")
+            .text_offset([0.0, -0.12])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NV:Clark")
+            .text_offset([0.0, -0.12])
+            .text_size(9.0)
+            .text_width(27.0)
+            .icon_size(1.0)
+            .text_color("#003f87"),
+        RoadShield::new("US:WA")
+            .text_offset([-0.06, -0.01])
+            .text_size(9.0)
+            .text_width(22.0)
+            .icon_size(1.0),
+        RoadShield::new("CA:NB:tertiary")
+            .text_offset([-0.06, 0.11])
+            .text_size(9.0)
+            .text_width(23.0)
+            .icon_size(1.0),
+        RoadShield::new("US:CA")
+            .text_offset([0.0, 0.18])
+            .text_size(9.0)
+            .text_width(29.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:SC")
+            .text_offset([0.0, 0.18])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#003f87"),
+        RoadShield::new("US:VT")
+            .text_offset([0.0, 0.18])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#006747"),
+        RoadShield::new("PE:national")
+            .text_offset([0.0, 0.18])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:AK")
+            .text_offset([0.0, -0.45])
+            .text_size(9.0)
+            .text_width(24.5)
+            .icon_size(1.0),
+        RoadShield::new("US:AL")
+            .text_offset([0.0, -0.18])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:MO")
+            .text_offset([0.0, -0.18])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:WI")
+            .text_offset([0.0, -0.18])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:SD:Custer:CSP")
+            .text_offset([0.0, -0.18])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:AS")
+            .text_offset([0.0, 0.51])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:CO")
+            .text_offset([0.0, 0.51])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:CO:E470")
+            .text_offset([0.0, 0.51])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("CA:SK:secondary")
+            .text_offset([0.0, 0.51])
+            .text_size(9.0)
+            .text_width(27.0)
+            .icon_size(1.0)
+            .text_color("#006747"),
+        RoadShield::new("US:DC")
+            .text_offset([0.0, 0.29])
+            .text_size(9.0)
+            .text_width(24.0)
+            .icon_size(1.0)
+            .halo_color("#ffffff")
+            .halo_width(1.0),
+        RoadShield::new("US:FL")
+            .text_offset([-0.15, 0.12])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:ID")
+            .text_offset([0.24, -0.45])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:ND")
+            .text_offset([-0.18, 0.0])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NH")
+            .text_offset([0.12, 0.0])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NV")
+            .text_offset([0.0, -0.64])
+            .text_size(9.0)
+            .text_width(21.5)
+            .icon_size(1.0),
+        RoadShield::new("CA:NT")
+            .text_offset([0.0, 0.41])
+            .text_size(9.0)
+            .text_width(25.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("MX:CDMX:EJE:NTE")
+            .text_offset([0.0, 0.36])
+            .text_size(9.0)
+            .text_width(22.5)
+            .icon_size(1.0),
+        RoadShield::new("MX:CDMX:EJE:OTE")
+            .text_offset([-0.36, 0.0])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("MX:CDMX:EJE:PTE")
+            .text_offset([0.36, 0.0])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("MX:CDMX:EJE:SUR")
+            .text_offset([0.0, -0.36])
+            .text_size(9.0)
+            .text_width(22.5)
+            .icon_size(1.0),
+        RoadShield::new("US:NY:Parkway:NYC")
+            .text_offset([0.0, -0.36])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:TX:Fort_Bend:FBCTRA")
+            .text_offset([0.0, -0.36])
+            .text_size(9.0)
+            .text_width(25.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:MN")
+            .text_offset([0.0, 0.24])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:OK")
+            .text_offset([0.0, 0.24])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("CA:ON:primary")
+            .text_offset([0.0, 0.24])
+            .text_size(9.0)
+            .text_width(28.0)
+            .icon_size(1.0),
+        RoadShield::new("CN:expressway")
+            .text_offset([0.0, 0.24])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("KR:expressway")
+            .text_offset([0.0, 0.24])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("NL:DR:Hunebed_Highway")
+            .text_offset([0.0, 0.24])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:MN:Business")
+            .text_offset([0.0, 0.24])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:LA")
+            .text_offset([0.0, 0.31])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:CO:NW")
+            .text_offset([0.0, 0.6])
+            .text_size(9.0)
+            .text_width(23.0)
+            .icon_size(1.0)
+            .text_color("#003f87"),
+        RoadShield::new("US:FL:Toll")
+            .text_offset([-0.18, 0.18])
+            .text_size(9.0)
+            .text_width(21.5)
+            .icon_size(1.0),
+        RoadShield::new("US:KY:Parkway")
+            .text_offset([0.0, -0.24])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#003f87"),
+        RoadShield::new("co:national")
+            .text_offset([0.0, -0.24])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NY:Parkway:LI")
+            .text_offset([0.24, -0.36])
+            .text_size(9.0)
+            .text_width(21.5)
+            .icon_size(1.0),
+        RoadShield::new("US:OH:TUS:Salem")
+            .text_offset([-0.12, -0.18])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:TN:primary")
+            .text_offset([0.0, -0.3])
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:WI:Rustic")
+            .text_offset([-0.15, 0.3])
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffcd00"),
+        RoadShield::new("US:AZ:Indian")
+            .text_offset([0.0, -0.01])
+            .text_size(9.0)
+            .text_width(24.0)
+            .icon_size(1.0),
+        RoadShield::new("US:BIA")
+            .text_offset([0.0, -0.01])
+            .text_size(9.0)
+            .text_width(22.5)
+            .icon_size(1.0),
+        RoadShield::new("US:US").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:AR").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:AZ").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:CKC").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:GA").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:GU")
+            .text_size(9.0)
+            .text_width(24.5)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:KS").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:LHT").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:MP").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:NHT").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:NM").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:Navajo").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:ORSB").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:PA").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:PANYNJ").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:PIPC").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:UT").text_size(9.0).icon_size(1.0),
+        RoadShield::new("CA:BC")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#003f87"),
+        RoadShield::new("CA:NS:S").text_size(9.0).icon_size(1.0),
+        RoadShield::new("CA:ON:Hamilton:Expressway")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("CA:ON:Toronto:Expressway")
+            .text_size(9.0)
+            .text_width(15.0)
+            .icon_size(1.0),
+        RoadShield::new("CA:PE")
+            .text_size(9.0)
+            .text_width(28.0)
+            .icon_size(1.0),
+        RoadShield::new("CA:QC:A")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("CA:QC:R")
+            .text_size(9.0)
+            .text_width(28.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("CA:transcanada")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#006747"),
+        RoadShield::new("CL:national")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("EC:secundaria")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("GLCT").text_size(9.0).icon_size(1.0),
+        RoadShield::new("GLCT:Loop").text_size(9.0).icon_size(1.0),
+        RoadShield::new("ID:national").text_size(9.0).icon_size(1.0),
+        RoadShield::new("IN:NH").text_size(9.0).icon_size(1.0),
+        RoadShield::new("MX:MX").text_size(9.0).icon_size(1.0),
+        RoadShield::new("NZ:Touring:AH")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:CNZWT")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:MWT")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:PCH")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:SLH")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:SSR")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:TCDH")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:TEH")
+            .text_size(9.0)
+            .text_width(27.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:Touring:VLH")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("NZ:WRR").text_size(9.0).icon_size(1.0),
+        RoadShield::new("PK:motorway")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("TW:freeway")
+            .text_size(9.0)
+            .text_width(18.5)
+            .icon_size(1.0),
+        RoadShield::new("US:AL:Baldwin:Foley_Beach_Express")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:AZ:Scenic")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:CA:San_Francisco:49_Mile_Scenic_Drive")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:CO:Scenic")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:CT:Parkway")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:IN:JHMHT").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:LA:Causeway")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:ME:Turnpike")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NE:Scenic")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NH:Turnpike")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NJ:ACE").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:NJ:GSP").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:NJ:NJTP").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:NY:Scenic")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:NY:TBTA").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:OH:ASD")
+            .text_size(9.0)
+            .text_width(25.0)
+            .icon_size(1.0)
+            .text_color("#006747"),
+        RoadShield::new("US:OH:HOL")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+        RoadShield::new("US:OH:JHMHT").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:OH:OEC").text_size(9.0).icon_size(1.0),
+        RoadShield::new("US:OH:Turnpike")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:OK:Turnpike")
+            .text_size(9.0)
+            .icon_size(1.0),
+        RoadShield::new("US:PA:Turnpike")
+            .text_size(9.0)
+            .icon_size(1.0)
+            .text_color("#ffffff"),
+    ]
 }
 
 /// The Headway default style.
@@ -1275,6 +1824,7 @@ fn style_from_builders() -> Style {
         .text_color("#765")
         .text_halo("#ffffff", 1.0)
         .text_halo_blur(0.5);
+    let shields = road_shields();
     style
         .symbol(&transportation_name, "road_shield")
         .minzoom(7.0)
@@ -1619,104 +2169,18 @@ fn style_from_builders() -> Style {
         .spacing(500.0)
         .layout(
             "text-field",
-            RoadShield::with_ref(RoadShield::network_match(
+            RoadShield::with_ref(RoadShield::property(
+                &shields,
                 expr![Var, "ref"],
-                &[
-                    (&["CA:transcanada:namedRoute"], Expression::literal("")),
-                    (&["MX:CDMX:EJE:CENTRAL"], Expression::literal("")),
-                    (&["US:FL:Turnpike"], Expression::literal("")),
-                    (&["US:GLST"], Expression::literal("")),
-                    (&["US:GRR"], Expression::literal("")),
-                    (&["US:IL:Cook:Chicago:Skyway"], Expression::literal("")),
-                    (&["US:IN:Toll"], Expression::literal("")),
-                    (&["US:KS:Turnpike"], Expression::literal("")),
-                    (&["US:MA:Turnpike"], Expression::literal("")),
-                    (&["US:NPS:Blue_Ridge"], Expression::literal("")),
-                    (&["US:NPS:Natchez_Trace"], Expression::literal("")),
-                    (&["US:NY:Parkway:LOSP"], Expression::literal("")),
-                    (&["US:NY:STE"], Expression::literal("")),
-                    (&["US:NY:Thruway"], Expression::literal("")),
-                ],
+                |shield| shield.text.map(Expression::literal),
             )),
         )
         .text_font(["Overpass Heavy"])
         .layout(
             "text-offset",
-            RoadShield::network_match(
-                expr![Literal, [0, 0.11]],
-                &[
-                    (&["US:I", "US:I:Business:Loop"], expr![Literal, [0.0, 0.06]]),
-                    (
-                        &[
-                            "US:OH",
-                            "US:MT:secondary",
-                            "US:NM:Frontage",
-                            "US:OH:SCI",
-                            "US:OR",
-                            "US:SD",
-                            "US:NV:Clark",
-                        ],
-                        expr![Literal, [0, -0.12]],
-                    ),
-                    (&["US:WA"], expr![Literal, [-0.06, -0.01]]),
-                    (&["CA:NB:tertiary"], expr![Literal, [-0.06, 0.11]]),
-                    (
-                        &["US:CA", "US:SC", "US:VT", "PE:national"],
-                        expr![Literal, [0, 0.18]],
-                    ),
-                    (&["US:AK"], expr![Literal, [0, -0.45]]),
-                    (
-                        &["US:AL", "US:MO", "US:WI", "US:SD:Custer:CSP"],
-                        expr![Literal, [0, -0.18]],
-                    ),
-                    (
-                        &["US:AS", "US:CO", "US:CO:E470", "CA:SK:secondary"],
-                        expr![Literal, [0, 0.51]],
-                    ),
-                    (&["US:DC"], expr![Literal, [0, 0.29]]),
-                    (&["US:FL"], expr![Literal, [-0.15, 0.12]]),
-                    (&["US:ID"], expr![Literal, [0.24, -0.45]]),
-                    (&["US:ND"], expr![Literal, [-0.18, 0]]),
-                    (&["US:NH"], expr![Literal, [0.12, 0]]),
-                    (&["US:NV"], expr![Literal, [0, -0.64]]),
-                    (&["CA:NT"], expr![Literal, [0, 0.41]]),
-                    (&["MX:CDMX:EJE:NTE"], expr![Literal, [0, 0.36]]),
-                    (&["MX:CDMX:EJE:OTE"], expr![Literal, [-0.36, 0]]),
-                    (&["MX:CDMX:EJE:PTE"], expr![Literal, [0.36, 0]]),
-                    (
-                        &[
-                            "MX:CDMX:EJE:SUR",
-                            "US:NY:Parkway:NYC",
-                            "US:TX:Fort_Bend:FBCTRA",
-                        ],
-                        expr![Literal, [0, -0.36]],
-                    ),
-                    (
-                        &[
-                            "US:MN",
-                            "US:OK",
-                            "CA:ON:primary",
-                            "CN:expressway",
-                            "KR:expressway",
-                            "NL:DR:Hunebed_Highway",
-                            "US:MN:Business",
-                        ],
-                        expr![Literal, [0, 0.24]],
-                    ),
-                    (&["US:LA"], expr![Literal, [0, 0.31]]),
-                    (&["US:CO:NW"], expr![Literal, [0, 0.6]]),
-                    (&["US:FL:Toll"], expr![Literal, [-0.18, 0.18]]),
-                    (
-                        &["US:KY:Parkway", "co:national"],
-                        expr![Literal, [0, -0.24]],
-                    ),
-                    (&["US:NY:Parkway:LI"], expr![Literal, [0.24, -0.36]]),
-                    (&["US:OH:TUS:Salem"], expr![Literal, [-0.12, -0.18]]),
-                    (&["US:TN:primary"], expr![Literal, [0, -0.3]]),
-                    (&["US:WI:Rustic"], expr![Literal, [-0.15, 0.3]]),
-                    (&["US:AZ:Indian", "US:BIA"], expr![Literal, [0, -0.01]]),
-                ],
-            ),
+            RoadShield::property(&shields, expr![Literal, [0, 0.11]], |shield| {
+                shield.text_offset.map(RoadShield::offset)
+            }),
         )
         .text_rotation_alignment("viewport")
         .layout(
@@ -1724,188 +2188,15 @@ fn style_from_builders() -> Style {
             RoadShield::with_ref(Expression::op(
                 Operator::Min,
                 [
-                    RoadShield::network_match(
-                        Expression::literal(8.5),
-                        &[
-                            (&["US:I", "US:I:Business:Loop"], Expression::literal(9.5)),
-                            (
-                                &[
-                                    "US:US",
-                                    "US:WA",
-                                    "US:CA",
-                                    "US:OR",
-                                    "US:AK",
-                                    "US:AL",
-                                    "US:AR",
-                                    "US:AS",
-                                    "US:AZ",
-                                    "US:BIA",
-                                    "US:CKC",
-                                    "US:CO",
-                                    "US:DC",
-                                    "US:FL",
-                                    "US:GA",
-                                    "US:GLST",
-                                    "US:GRR",
-                                    "US:GU",
-                                    "US:ID",
-                                    "US:KS",
-                                    "US:LA",
-                                    "US:LHT",
-                                    "US:MN",
-                                    "US:MO",
-                                    "US:MP",
-                                    "US:ND",
-                                    "US:NH",
-                                    "US:NHT",
-                                    "US:NM",
-                                    "US:NV",
-                                    "US:Navajo",
-                                    "US:OH",
-                                    "US:OK",
-                                    "US:ORSB",
-                                    "US:PA",
-                                    "US:PANYNJ",
-                                    "US:PIPC",
-                                    "US:SC",
-                                    "US:SD",
-                                    "US:UT",
-                                    "US:VT",
-                                    "US:WI",
-                                    "CA:BC",
-                                    "CA:NB:tertiary",
-                                    "CA:NS:S",
-                                    "CA:NT",
-                                    "CA:ON:Hamilton:Expressway",
-                                    "CA:ON:Toronto:Expressway",
-                                    "CA:ON:primary",
-                                    "CA:PE",
-                                    "CA:QC:A",
-                                    "CA:QC:R",
-                                    "CA:SK:secondary",
-                                    "CA:transcanada",
-                                    "CA:transcanada:namedRoute",
-                                    "CL:national",
-                                    "CN:expressway",
-                                    "EC:secundaria",
-                                    "GLCT",
-                                    "GLCT:Loop",
-                                    "ID:national",
-                                    "IN:NH",
-                                    "KR:expressway",
-                                    "MX:CDMX:EJE:CENTRAL",
-                                    "MX:CDMX:EJE:NTE",
-                                    "MX:CDMX:EJE:OTE",
-                                    "MX:CDMX:EJE:PTE",
-                                    "MX:CDMX:EJE:SUR",
-                                    "MX:MX",
-                                    "NL:DR:Hunebed_Highway",
-                                    "NZ:Touring:AH",
-                                    "NZ:Touring:CNZWT",
-                                    "NZ:Touring:MWT",
-                                    "NZ:Touring:PCH",
-                                    "NZ:Touring:SLH",
-                                    "NZ:Touring:SSR",
-                                    "NZ:Touring:TCDH",
-                                    "NZ:Touring:TEH",
-                                    "NZ:Touring:VLH",
-                                    "NZ:WRR",
-                                    "PE:national",
-                                    "PK:motorway",
-                                    "TW:freeway",
-                                    "US:AL:Baldwin:Foley_Beach_Express",
-                                    "US:AZ:Indian",
-                                    "US:AZ:Scenic",
-                                    "US:CA:San_Francisco:49_Mile_Scenic_Drive",
-                                    "US:CO:E470",
-                                    "US:CO:NW",
-                                    "US:CO:Scenic",
-                                    "US:CT:Parkway",
-                                    "US:FL:Toll",
-                                    "US:FL:Turnpike",
-                                    "US:IL:Cook:Chicago:Skyway",
-                                    "US:IN:JHMHT",
-                                    "US:IN:Toll",
-                                    "US:KS:Turnpike",
-                                    "US:KY:Parkway",
-                                    "US:LA:Causeway",
-                                    "US:MA:Turnpike",
-                                    "US:ME:Turnpike",
-                                    "US:MN:Business",
-                                    "US:MT:secondary",
-                                    "US:NE:Scenic",
-                                    "US:NH:Turnpike",
-                                    "US:NJ:ACE",
-                                    "US:NJ:GSP",
-                                    "US:NJ:NJTP",
-                                    "US:NM:Frontage",
-                                    "US:NPS:Blue_Ridge",
-                                    "US:NPS:Natchez_Trace",
-                                    "US:NV:Clark",
-                                    "US:NY:Parkway:LI",
-                                    "US:NY:Parkway:LOSP",
-                                    "US:NY:Parkway:NYC",
-                                    "US:NY:STE",
-                                    "US:NY:Scenic",
-                                    "US:NY:TBTA",
-                                    "US:NY:Thruway",
-                                    "US:OH:ASD",
-                                    "US:OH:HOL",
-                                    "US:OH:JHMHT",
-                                    "US:OH:OEC",
-                                    "US:OH:SCI",
-                                    "US:OH:TUS:Salem",
-                                    "US:OH:Turnpike",
-                                    "US:OK:Turnpike",
-                                    "US:PA:Turnpike",
-                                    "US:SD:Custer:CSP",
-                                    "US:TN:primary",
-                                    "US:TX:Fort_Bend:FBCTRA",
-                                    "US:WI:Rustic",
-                                    "co:national",
-                                ],
-                                Expression::literal(9),
-                            ),
-                        ],
-                    ),
+                    RoadShield::property(&shields, Expression::literal(8.5), |shield| {
+                        shield.text_size.map(Expression::literal)
+                    }),
                     Expression::op(
                         Operator::Divide,
                         [
-                            RoadShield::network_match(
-                                Expression::literal(30),
-                                &[
-                                    (&["US:GU", "US:AK"], Expression::literal(24.5)),
-                                    (
-                                        &["US:BIA", "MX:CDMX:EJE:NTE", "MX:CDMX:EJE:SUR"],
-                                        Expression::literal(22.5),
-                                    ),
-                                    (
-                                        &["US:NV", "US:FL:Toll", "US:NY:Parkway:LI"],
-                                        Expression::literal(21.5),
-                                    ),
-                                    (&["US:WA"], Expression::literal(22)),
-                                    (&["US:CA", "US:NM:Frontage"], Expression::literal(29)),
-                                    (
-                                        &["CA:ON:primary", "CA:PE", "CA:QC:R"],
-                                        Expression::literal(28),
-                                    ),
-                                    (&["US:DC"], Expression::literal(24)),
-                                    (&["US:AZ:Indian"], Expression::literal(24)),
-                                    (&["CA:NB:tertiary", "US:CO:NW"], Expression::literal(23)),
-                                    (
-                                        &["CA:SK:secondary", "NZ:Touring:TEH", "US:NV:Clark"],
-                                        Expression::literal(27),
-                                    ),
-                                    (&["CA:ON:Toronto:Expressway"], Expression::literal(15)),
-                                    (&["TW:freeway"], Expression::literal(18.5)),
-                                    (&["US:MT:secondary"], Expression::literal(21)),
-                                    (
-                                        &["CA:NT", "US:OH:ASD", "US:TX:Fort_Bend:FBCTRA"],
-                                        Expression::literal(25),
-                                    ),
-                                    (&["US:I", "US:I:Business:Loop"], Expression::literal(32)),
-                                ],
-                            ),
+                            RoadShield::property(&shields, Expression::literal(30), |shield| {
+                                shield.text_width.map(Expression::literal)
+                            }),
                             expr![Length, [Var, "ref"]],
                         ],
                     ),
@@ -1914,203 +2205,27 @@ fn style_from_builders() -> Style {
         )
         .layout(
             "icon-size",
-            RoadShield::network_match(
-                Expression::literal(0.667),
-                &[(
-                    &[
-                        "US:I",
-                        "US:US",
-                        "US:WA",
-                        "US:CA",
-                        "US:OR",
-                        "US:AK",
-                        "US:AL",
-                        "US:AR",
-                        "US:AS",
-                        "US:AZ",
-                        "US:BIA",
-                        "US:CKC",
-                        "US:CO",
-                        "US:DC",
-                        "US:FL",
-                        "US:GA",
-                        "US:GLST",
-                        "US:GRR",
-                        "US:GU",
-                        "US:ID",
-                        "US:KS",
-                        "US:LA",
-                        "US:LHT",
-                        "US:MN",
-                        "US:MO",
-                        "US:MP",
-                        "US:ND",
-                        "US:NH",
-                        "US:NHT",
-                        "US:NM",
-                        "US:NV",
-                        "US:Navajo",
-                        "US:OH",
-                        "US:OK",
-                        "US:ORSB",
-                        "US:PA",
-                        "US:PANYNJ",
-                        "US:PIPC",
-                        "US:SC",
-                        "US:SD",
-                        "US:UT",
-                        "US:VT",
-                        "US:WI",
-                        "CA:BC",
-                        "CA:NB:tertiary",
-                        "CA:NS:S",
-                        "CA:NT",
-                        "CA:ON:Hamilton:Expressway",
-                        "CA:ON:Toronto:Expressway",
-                        "CA:ON:primary",
-                        "CA:PE",
-                        "CA:QC:A",
-                        "CA:QC:R",
-                        "CA:SK:secondary",
-                        "CA:transcanada",
-                        "CA:transcanada:namedRoute",
-                        "CL:national",
-                        "CN:expressway",
-                        "EC:secundaria",
-                        "GLCT",
-                        "GLCT:Loop",
-                        "ID:national",
-                        "IN:NH",
-                        "KR:expressway",
-                        "MX:CDMX:EJE:CENTRAL",
-                        "MX:CDMX:EJE:NTE",
-                        "MX:CDMX:EJE:OTE",
-                        "MX:CDMX:EJE:PTE",
-                        "MX:CDMX:EJE:SUR",
-                        "MX:MX",
-                        "NL:DR:Hunebed_Highway",
-                        "NZ:Touring:AH",
-                        "NZ:Touring:CNZWT",
-                        "NZ:Touring:MWT",
-                        "NZ:Touring:PCH",
-                        "NZ:Touring:SLH",
-                        "NZ:Touring:SSR",
-                        "NZ:Touring:TCDH",
-                        "NZ:Touring:TEH",
-                        "NZ:Touring:VLH",
-                        "NZ:WRR",
-                        "PE:national",
-                        "PK:motorway",
-                        "TW:freeway",
-                        "US:AL:Baldwin:Foley_Beach_Express",
-                        "US:AZ:Indian",
-                        "US:AZ:Scenic",
-                        "US:CA:San_Francisco:49_Mile_Scenic_Drive",
-                        "US:CO:E470",
-                        "US:CO:NW",
-                        "US:CO:Scenic",
-                        "US:CT:Parkway",
-                        "US:FL:Toll",
-                        "US:FL:Turnpike",
-                        "US:I:Business:Loop",
-                        "US:IL:Cook:Chicago:Skyway",
-                        "US:IN:JHMHT",
-                        "US:IN:Toll",
-                        "US:KS:Turnpike",
-                        "US:KY:Parkway",
-                        "US:LA:Causeway",
-                        "US:MA:Turnpike",
-                        "US:ME:Turnpike",
-                        "US:MN:Business",
-                        "US:MT:secondary",
-                        "US:NE:Scenic",
-                        "US:NH:Turnpike",
-                        "US:NJ:ACE",
-                        "US:NJ:GSP",
-                        "US:NJ:NJTP",
-                        "US:NM:Frontage",
-                        "US:NPS:Blue_Ridge",
-                        "US:NPS:Natchez_Trace",
-                        "US:NV:Clark",
-                        "US:NY:Parkway:LI",
-                        "US:NY:Parkway:LOSP",
-                        "US:NY:Parkway:NYC",
-                        "US:NY:STE",
-                        "US:NY:Scenic",
-                        "US:NY:TBTA",
-                        "US:NY:Thruway",
-                        "US:OH:ASD",
-                        "US:OH:HOL",
-                        "US:OH:JHMHT",
-                        "US:OH:OEC",
-                        "US:OH:SCI",
-                        "US:OH:TUS:Salem",
-                        "US:OH:Turnpike",
-                        "US:OK:Turnpike",
-                        "US:PA:Turnpike",
-                        "US:SD:Custer:CSP",
-                        "US:TN:primary",
-                        "US:TX:Fort_Bend:FBCTRA",
-                        "US:WI:Rustic",
-                        "co:national",
-                    ],
-                    Expression::literal(1),
-                )],
-            ),
+            RoadShield::property(&shields, Expression::literal(0.667), |shield| {
+                shield.icon_size.map(Expression::literal)
+            }),
         )
         .paint(
             "text-color",
-            RoadShield::network_match(
-                Expression::literal("#000000"),
-                &[
-                    (
-                        &["US:I", "US:I:Business:Loop"],
-                        Expression::literal("#ffffff"),
-                    ),
-                    (&["US:CA"], Expression::literal("#ffffff")),
-                    (&["US:AS"], Expression::literal("#ffffff")),
-                    (&["US:GU"], Expression::literal("#ffffff")),
-                    (&["US:ID"], Expression::literal("#ffffff")),
-                    (&["US:MN"], Expression::literal("#ffffff")),
-                    (&["US:SC"], Expression::literal("#003f87")),
-                    (&["US:VT"], Expression::literal("#006747")),
-                    (&["CA:BC"], Expression::literal("#003f87")),
-                    (&["CA:NT"], Expression::literal("#ffffff")),
-                    (&["CA:QC:A"], Expression::literal("#ffffff")),
-                    (&["CA:QC:R"], Expression::literal("#ffffff")),
-                    (&["CA:SK:secondary"], Expression::literal("#006747")),
-                    (&["CA:transcanada"], Expression::literal("#006747")),
-                    (&["CL:national"], Expression::literal("#ffffff")),
-                    (&["CN:expressway"], Expression::literal("#ffffff")),
-                    (&["EC:secundaria"], Expression::literal("#ffffff")),
-                    (&["KR:expressway"], Expression::literal("#ffffff")),
-                    (&["NL:DR:Hunebed_Highway"], Expression::literal("#ffffff")),
-                    (&["PK:motorway"], Expression::literal("#ffffff")),
-                    (&["US:CO:NW"], Expression::literal("#003f87")),
-                    (&["US:KY:Parkway"], Expression::literal("#003f87")),
-                    (&["US:MN:Business"], Expression::literal("#ffffff")),
-                    (&["US:NV:Clark"], Expression::literal("#003f87")),
-                    (&["US:OH:ASD"], Expression::literal("#006747")),
-                    (&["US:OH:HOL"], Expression::literal("#ffffff")),
-                    (&["US:PA:Turnpike"], Expression::literal("#ffffff")),
-                    (&["US:TX:Fort_Bend:FBCTRA"], Expression::literal("#ffffff")),
-                    (&["US:WI:Rustic"], Expression::literal("#ffcd00")),
-                ],
-            ),
+            RoadShield::property(&shields, Expression::literal("#000000"), |shield| {
+                shield.text_color.map(Expression::literal)
+            }),
         )
         .paint(
             "text-halo-color",
-            RoadShield::network_match(
-                Expression::literal("rgba(0,0,0,0)"),
-                &[(&["US:DC"], Expression::literal("#ffffff"))],
-            ),
+            RoadShield::property(&shields, Expression::literal("rgba(0,0,0,0)"), |shield| {
+                shield.halo_color.map(Expression::literal)
+            }),
         )
         .paint(
             "text-halo-width",
-            RoadShield::network_match(
-                Expression::literal(0),
-                &[(&["US:DC"], Expression::literal(1))],
-            ),
+            RoadShield::property(&shields, Expression::literal(0), |shield| {
+                shield.halo_width.map(Expression::literal)
+            }),
         );
 
     let neighbourhoods = [
