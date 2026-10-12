@@ -1,9 +1,9 @@
+import polyline from '@mapbox/polyline';
 import bbox from '@turf/bbox';
 import { Marker, Popup } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
 import type { TripLeg } from 'src/models/Trip';
 import type { SteepSection } from 'src/services/TravelmuxClient';
-import { decodePolyline } from 'src/utils/decodePolyline';
 import { describeGrade, gradeColor } from 'src/utils/grade';
 import './SteepClimbBadge.scss';
 
@@ -139,9 +139,13 @@ export function showSteepClimbBadges(legs: Pick<TripLeg, 'raw'>[]): string[] {
   for (const leg of legs) {
     const sections = leg.raw.nonTransitLeg?.elevation?.steepSections ?? [];
     for (const section of sections.filter((section) => section.annotated)) {
-      const start = decodePolyline(section.geometry, 6)[0]!;
+      const [lng, lat] = polyline.toGeoJSON(section.geometry, 6)
+        .coordinates[0]!;
       const key = steepClimbBadgeKey(section);
-      const marker = Markers.steepClimb(section.averageGrade).setLngLat(start);
+      const marker = Markers.steepClimb(section.averageGrade).setLngLat([
+        lng!,
+        lat!,
+      ]);
       map.pushMarker(key, marker);
       steepClimbBadges.set(key, marker);
     }
@@ -162,10 +166,9 @@ export function focusSteepClimb(section: SteepSection) {
     element.style.zIndex = isFocused ? '1' : '';
     element.classList.toggle('steep-climb-badge--focused', isFocused);
   });
-  const [west, south, east, north] = bbox({
-    type: 'LineString',
-    coordinates: decodePolyline(section.geometry, 6),
-  });
+  const [west, south, east, north] = bbox(
+    polyline.toGeoJSON(section.geometry, 6),
+  );
   map.fitBounds([west, south, east, north], { padding: 80, maxZoom: 17 });
 }
 

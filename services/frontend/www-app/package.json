@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@fragaria/address-formatter": "^6.3.0",
+    "@mapbox/polyline": "^1.2.1",
     "@maplibre/maplibre-gl-style-spec": "^26.4.4",
     "@quasar/extras": "^1.16.9",
     "@turf/along": "^7.4.0",
@@ -40,6 +41,7 @@
     "@quasar/cli": "^2.5.0",
     "@quasar/quasar-app-extension-testing": "^2.0.4",
     "@types/lodash": "^4.14.202",
+    "@types/mapbox__polyline": "^1.0.5",
     "@vitejs/plugin-vue": "^6.0.5",
     "@types/node": "^22.10.2",
     "autoprefixer": "^10.4.17",

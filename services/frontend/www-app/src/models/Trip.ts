@@ -18,7 +18,6 @@ import {
   TravelmuxErrorCode,
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
-import { decodePolyline } from 'src/utils/decodePolyline';
 import {
   FLAT_GRADE_COLOR,
   GradeShade,
@@ -26,6 +25,7 @@ import {
   gradeShadeColor,
 } from 'src/utils/grade';
 import { i18n } from 'src/i18n/lang';
+import polyline from '@mapbox/polyline';
 import along from '@turf/along';
 import { feature } from '@turf/helpers';
 import length from '@turf/length';
@@ -252,17 +252,10 @@ export class TripLeg {
   constructor(raw: TravelmuxLeg, tripMode: TravelMode) {
     this.raw = raw;
     this.tripMode = tripMode;
-    const points = decodePolyline(this.raw.geometry, 6);
-    this.geometry = {
-      type: 'LineString',
-      coordinates: points,
-    };
+    this.geometry = polyline.toGeoJSON(this.raw.geometry, 6);
     const patternGeometry = this.raw.transitLeg?.patternGeometry;
     if (patternGeometry) {
-      this.patternGeometry = {
-        type: 'LineString',
-        coordinates: decodePolyline(patternGeometry, 6),
-      };
+      this.patternGeometry = polyline.toGeoJSON(patternGeometry, 6);
     }
     // Travelmux packs the stops as a polyline too - it encodes a list of coordinates as well as
     // it encodes a shape.
@@ -270,21 +263,21 @@ export class TripLeg {
     if (riddenStops) {
       this.riddenStops = {
         type: 'MultiPoint',
-        coordinates: decodePolyline(riddenStops, 6),
+        coordinates: polyline.toGeoJSON(riddenStops, 6).coordinates,
       };
     }
     const contextStops = this.raw.transitLeg?.contextStops;
     if (contextStops) {
       this.contextStops = {
         type: 'MultiPoint',
-        coordinates: decodePolyline(contextStops, 6),
+        coordinates: polyline.toGeoJSON(contextStops, 6).coordinates,
       };
     }
     const onOffStops = this.raw.transitLeg?.onOffStops;
     if (onOffStops) {
       this.onOffStops = {
         type: 'MultiPoint',
-        coordinates: decodePolyline(onOffStops, 6),
+        coordinates: polyline.toGeoJSON(onOffStops, 6).coordinates,
       };
     }
   }
@@ -408,7 +401,7 @@ export class TripLeg {
     for (const section of sections) {
       const shade = gradeShade(section.averageGrade);
       const lines = byShade.get(shade) ?? [];
-      lines.push(decodePolyline(section.geometry, 6));
+      lines.push(polyline.toGeoJSON(section.geometry, 6).coordinates);
       byShade.set(shade, lines);
     }
     return [...byShade].map(([shade, coordinates]) => ({
