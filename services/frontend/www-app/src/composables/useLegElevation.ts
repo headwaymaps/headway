@@ -18,15 +18,26 @@ export function useLegElevation(leg: TripLeg) {
   const elevation = ref<LegElevation>();
   /// How far along the leg the scrubber is, as a fraction, or null when it's hidden.
   const scrubFraction = ref<number | null>(null);
+  /// Set when the map already shows the scrubber where it's going: dragged on the map, the dot is
+  /// under the pointer, and a picked climb zooms to fit.
+  let mapIsPlaced = false;
 
   watch(scrubFraction, (fraction) => {
     if (fraction === null) {
       hideElevationScrubber();
       return;
     }
-    showElevationScrubber(leg, fraction, (dragged) => {
-      scrubFraction.value = dragged;
-    });
+    const keepInView = !mapIsPlaced;
+    mapIsPlaced = false;
+    showElevationScrubber(
+      leg,
+      fraction,
+      (dragged) => {
+        mapIsPlaced = true;
+        scrubFraction.value = dragged;
+      },
+      keepInView,
+    );
   });
 
   onMounted(async () => {
@@ -45,6 +56,7 @@ export function useLegElevation(leg: TripLeg) {
 
   /// Scrubs to the middle of `section` and shows it on the map.
   function selectSteepClimb(section: SteepSection) {
+    mapIsPlaced = true;
     scrubFraction.value = midpointFraction(elevation.value!.profile, section);
     focusSteepClimb(section);
   }
