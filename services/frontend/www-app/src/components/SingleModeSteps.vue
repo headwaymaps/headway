@@ -17,7 +17,7 @@
       :hide-expand-icon="elevation.steepSections.length === 0"
     >
       <template #header>
-        <q-item-section class="climbs-summary">
+        <q-item-section class="climbs-summary hw-secondary">
           <div>
             {{ $t('elevation_hills') }}
             <elevation-totals
@@ -38,7 +38,7 @@
           <q-item-section avatar>
             <span
               class="steep-section-grade"
-              :style="{ color: gradeColor(section.averageGrade) }"
+              :style="{ color: gradeInkColor(section.averageGrade) }"
               >{{ formatSteepGrade(section.averageGrade) }}</span
             >
           </q-item-section>
@@ -67,7 +67,7 @@
           <q-item-label>
             {{ maneuver.instruction }}
           </q-item-label>
-          <q-item-label caption>
+          <q-item-label class="hw-secondary">
             {{ maneuver.verbalPostTransitionInstruction }}
           </q-item-label>
         </q-item-section>
@@ -92,7 +92,7 @@ import ElevationChart from './ElevationChart.vue';
 import ElevationTotals from './ElevationTotals.vue';
 import { formatDistance, getElevationUnits } from 'src/utils/format';
 import { DistanceUnits } from 'src/utils/models';
-import { formatSteepGrade, gradeColor } from 'src/utils/grade';
+import { formatSteepGrade, gradeInkColor } from 'src/utils/grade';
 
 export default defineComponent({
   name: 'SingleModeSteps',
@@ -126,7 +126,7 @@ export default defineComponent({
   methods: {
     valhallaTypeToIcon,
     formatSteepGrade,
-    gradeColor,
+    gradeInkColor,
     formatSteepSection(section: SteepSection): string {
       const length = formatDistance(
         section.endMeters - section.startMeters,
@@ -173,13 +173,8 @@ export default defineComponent({
   padding-bottom: 6px;
 }
 
-.climbs-summary {
-  font-size: 13px;
-
-  .elevation-totals {
-    font-size: 13px;
-    margin-left: 4px;
-  }
+.climbs-summary .elevation-totals {
+  margin-left: 4px;
 }
 
 .maneuver {

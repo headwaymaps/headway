@@ -1,6 +1,6 @@
 <template>
   <q-card-section>
-    <div class="text-subtitle1 title-bar" style="display: flex">
+    <div class="hw-title title-bar" style="display: flex">
       <span style="flex: 1">{{ primaryName }}</span>
       <q-btn
         v-if="didPressClose"

@@ -1,5 +1,5 @@
 <template>
-  <q-item-label>
+  <q-item-label class="hw-heading">
     {{ trip.startStopTimesFormatted }}
   </q-item-label>
   <q-item-label>
@@ -12,7 +12,7 @@
       /></sup>
     </span>
   </q-item-label>
-  <q-item-label v-if="active" caption>
+  <q-item-label v-if="active" class="hw-caption">
     {{ trip.walkingDistanceFormatted }}
   </q-item-label>
   <div v-if="formattedDurationUntilStart() !== undefined">

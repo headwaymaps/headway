@@ -37,12 +37,12 @@
         class="list-item"
       >
         <q-item-section>
-          <q-item-label>
+          <q-item-label class="hw-heading">
             {{ $t('search_results_not_found_header') }}
           </q-item-label>
           <!-- eslint-disable vue/no-v-html vue/no-v-text-v-html-on-component -->
           <q-item-label
-            class="text-weight-light"
+            class="hw-secondary"
             v-html="
               $t('search_results_not_found_subheader', {
                 osmLink:

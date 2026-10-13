@@ -6,9 +6,9 @@ import {
   TravelmuxVehicle,
 } from 'src/services/TravelmuxClient';
 import { formatDuration } from 'src/utils/format';
+import { Palette } from 'src/utils/palette';
 
 /// The color of a vehicle whose route doesn't name one, matching an active trip line.
-const DEFAULT_VEHICLE_COLOR = '#1296FF';
 
 /// Within this much of the boarding stop, a countdown is less use to a waiting rider than being
 /// told to look up.
@@ -97,7 +97,7 @@ export default class TransitVehicle {
   /// The color of the chip's ring and the badge's border.
   get color(): string {
     const color = this.raw.route.color;
-    return color ? `#${color}` : DEFAULT_VEHICLE_COLOR;
+    return color ? `#${color}` : Palette.activeRoute;
   }
 
   /// A vehicle whose feed names no mode is still some kind of transit.

@@ -1,10 +1,10 @@
 <template>
   <q-item class="list-item" active-class="list-item--selected" :active="active">
     <q-item-section>
-      <q-item-label>
+      <q-item-label class="hw-heading">
         {{ place.name }}
       </q-item-label>
-      <q-item-label class="text-weight-light">
+      <q-item-label class="hw-secondary">
         {{ place.address }}
       </q-item-label>
     </q-item-section>

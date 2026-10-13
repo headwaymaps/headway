@@ -10,11 +10,11 @@
       <slot />
     </q-item-section>
     <q-item-section class="col-3" top style="text-align: right">
-      <q-item-label>
+      <q-item-label class="hw-figure">
         {{ durationFormatted }}
       </q-item-label>
-      <q-item-label>
-        <span class="text-weight-light">{{ distanceFormatted }}</span>
+      <q-item-label class="hw-secondary">
+        {{ distanceFormatted }}
       </q-item-label>
     </q-item-section>
   </q-item>

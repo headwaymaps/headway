@@ -42,7 +42,7 @@ const Markers = {
   steepClimb: (grade: number): Marker => {
     const element = document.createElement('div');
     element.className = 'steep-climb-badge';
-    element.style.background = gradeColor(grade);
+    element.style.borderColor = gradeColor(grade);
     element.innerHTML = `${Math.round(grade * 100)}<span class="steep-climb-badge-percent">%</span><span class="steep-climb-badge-arrow">↗</span>`;
     const popup = new Popup({
       anchor: 'bottom',

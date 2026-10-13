@@ -3,7 +3,46 @@
   padding: 16px;
 }
 
-.list-item--selected {
+.q-item.list-item--selected {
   border-left: solid $accent 8px;
   padding-left: 8px;
+  // the bar alone marks the selection
+  color: inherit;
+}
+
+// Text roles, as docs/style-guide.html in the ios-maps repo describes them.
+.hw-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.hw-figure {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.hw-heading {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.hw-body {
+  font-size: 0.875rem;
+}
+
+.hw-secondary {
+  font-size: 0.8125rem;
+  color: $hw-dark-gray;
+}
+
+.hw-caption {
+  font-size: 0.75rem;
+  color: $hw-dark-gray;
+}
+
+.hw-label {
+  font-size: 0.75rem;
+  font-weight: 600;
 }

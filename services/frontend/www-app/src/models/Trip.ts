@@ -18,13 +18,9 @@ import {
   TravelmuxErrorCode,
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
-import {
-  FLAT_GRADE_COLOR,
-  GradeShade,
-  gradeShade,
-  gradeShadeColor,
-} from 'src/utils/grade';
+import { GradeShade, gradeShade, gradeShadeColor } from 'src/utils/grade';
 import { i18n } from 'src/i18n/lang';
+import { Palette } from 'src/utils/palette';
 import polyline from '@mapbox/polyline';
 import along from '@turf/along';
 import { feature } from '@turf/helpers';
@@ -493,8 +489,8 @@ export class TripLeg {
     if (this.mode == TravelMode.Walk || this.mode == TravelMode.Bike) {
       return this.gradedPaint(
         active
-          ? LineStyles.gradedActive(FLAT_GRADE_COLOR)
-          : LineStyles.gradedInactive,
+          ? LineStyles.gradedActive(Palette.activeRoute)
+          : LineStyles.inactive,
       );
     }
     if (active) {
@@ -629,11 +625,11 @@ export const LineStyles = {
     };
   },
   active: {
-    'line-color': '#1296FF',
+    'line-color': Palette.activeRoute,
     'line-width': 8,
   },
   inactive: {
-    'line-color': '#6FC1EE',
+    'line-color': Palette.inactiveRoute,
     'line-width': 4,
   },
   /// A walking or cycling leg's line, or one of its steep stretches, in `color`.
@@ -642,11 +638,6 @@ export const LineStyles = {
       'line-color': color,
       'line-width': 6,
     };
-  },
-  gradedInactive: {
-    'line-color': FLAT_GRADE_COLOR,
-    'line-opacity': 0.5,
-    'line-width': 4,
   },
   dotted(
     paint: LineLayerSpecification['paint'],

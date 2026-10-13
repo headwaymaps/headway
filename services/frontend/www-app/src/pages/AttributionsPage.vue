@@ -12,7 +12,7 @@
 
   <div class="bottom-card attributions">
     <header>
-      <h1>{{ $t('attributions') }}</h1>
+      <h1 class="hw-title">{{ $t('attributions') }}</h1>
       <q-btn flat round dense icon="close" to="/" />
     </header>
     <p>
@@ -22,7 +22,7 @@
     </p>
 
     <section v-for="section in sections" :key="section.title">
-      <h2>{{ section.title }}</h2>
+      <h2 class="hw-heading">{{ section.title }}</h2>
       <ul>
         <li v-for="credit in section.credits" :key="credit.name">
           <a :href="credit.url" target="_blank" rel="noopener">{{
@@ -34,7 +34,7 @@
     </section>
 
     <section>
-      <h2>And many more</h2>
+      <h2 class="hw-heading">And many more</h2>
       <p>
         Beyond these are hundreds of smaller libraries, tools, and data sets
         that each make something here a little nicer. Thank you to all of their
@@ -208,14 +208,10 @@ export default defineComponent({
   }
 
   h1 {
-    font-size: 1.3rem;
-    line-height: 1.4;
     margin: 0;
   }
 
   h2 {
-    font-size: 1rem;
-    font-weight: 500;
     line-height: 1.4;
     margin: 16px 0 4px;
   }
