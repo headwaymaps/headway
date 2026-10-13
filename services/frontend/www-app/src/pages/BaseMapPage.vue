@@ -14,7 +14,7 @@
         no-ripple
         no-icon-animation
         dense
-        text-color="primary"
+        text-color="dark"
         dropdown-icon="menu"
       >
         <q-list>

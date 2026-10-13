@@ -8,7 +8,7 @@
         v-for="preference in trip.raw.routePreferences"
         :key="preference"
         rounded
-        :class="`route-preference route-preference--${preference}`"
+        :class="`route-preference hw-label route-preference--${preference}`"
       >
         <span class="route-preference-emoji" aria-hidden="true">
           {{ preference === 'quieter' ? '🦦' : '⚡' }}
@@ -28,7 +28,7 @@
     />
     <elevation-totals
       v-if="elevation"
-      class="chart-totals"
+      class="chart-totals hw-caption"
       :climb-meters="elevation.totalClimbMeters"
       :fall-meters="elevation.totalFallMeters"
       :distance-units="trip.preferredDistanceUnits"
@@ -84,9 +84,7 @@ export default defineComponent({
 }
 
 .route-preference {
-  color: white;
   padding: 5px 10px;
-  font-weight: 500;
 }
 
 .route-preference-emoji {
@@ -97,10 +95,12 @@ export default defineComponent({
 }
 
 .route-preference--quieter {
-  background: #5a9b5e;
+  background: $hw-teal-100;
+  color: $hw-teal-700;
 }
 
 .route-preference--faster {
-  background: #d66a62;
+  background: $hw-amber-100;
+  color: $hw-amber-700;
 }
 </style>

@@ -1,5 +1,6 @@
 import type { SteepSection } from 'src/services/TravelmuxClient';
 import { i18n } from 'src/i18n/lang';
+import { Palette } from 'src/utils/palette';
 
 export enum GradeTier {
   Moderate = 'moderate',
@@ -18,10 +19,8 @@ export function gradeTier(grade: number): GradeTier {
   }
 }
 
-/// Ground that isn't steep enough to be a `SteepSection`.
-export const FLAT_GRADE_COLOR = '#43A047';
-
-/// How a steep stretch is drawn: climbs in warm colors by how steep, and descents in deep green.
+/// How a steep stretch is drawn over the route: climbs in amber, darker the steeper, and descents
+/// in teal.
 /// travelmux only sends descents that are very steep.
 export enum GradeShade {
   ModerateClimb = 'moderate_climb',
@@ -49,18 +48,23 @@ export function gradeShade(grade: number): GradeShade {
 export function gradeShadeColor(shade: GradeShade): string {
   switch (shade) {
     case GradeShade.ModerateClimb:
-      return '#F2B705';
+      return Palette.amber500;
     case GradeShade.SteepClimb:
-      return '#F27405';
+      return Palette.amber600;
     case GradeShade.VerySteepClimb:
-      return '#D92B04';
+      return Palette.amber700;
     case GradeShade.VerySteepDescent:
-      return '#1B5E20';
+      return Palette.teal700;
   }
 }
 
 export function gradeColor(grade: number): string {
   return gradeShadeColor(gradeShade(grade));
+}
+
+/// Type showing a grade: the shades are for shapes, and the steepness is in the number.
+export function gradeInkColor(grade: number): string {
+  return grade < 0 ? Palette.teal700 : Palette.amber700;
 }
 
 /// e.g. "12% steep grade"

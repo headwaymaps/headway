@@ -20,3 +20,22 @@ test('finds every network the road_shield layer has a blank for', () => {
   expect(new Set(networks).size).toBe(networks.length);
   expect(qa.adjustments(networks[0]!)).toEqual(expect.any(String));
 });
+
+test("draws every row on a motorway, with the style's own road layers", () => {
+  const qa = ShieldQa.fromStyle(style);
+  const rowCount = qa.rows('').length;
+  const motorways = qa
+    .scenery()
+    .transportation.features.filter(
+      (feature) => feature.properties?.class === 'motorway',
+    );
+  expect(motorways).toHaveLength(rowCount);
+
+  const layers = qa.style(qa.rows('')).layers;
+  const motorway = layers.find((layer) => layer.id === 'road_motorway');
+  expect(motorway).toMatchObject({
+    source: 'shield-qa-scenery-transportation',
+  });
+  expect(motorway).not.toHaveProperty('source-layer');
+  expect(layers.at(-1)?.id).toBe('road_shield');
+});

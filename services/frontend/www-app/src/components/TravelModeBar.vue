@@ -1,49 +1,17 @@
 <template>
   <div class="travel-mode-bar">
     <q-btn
-      v-if="transitRoutingEnabled"
-      icon="directions_bus"
+      v-for="option in options"
+      :key="option.mode"
+      :icon="option.icon"
       unelevated
-      rounded
       :ripple="false"
       size="sm"
-      :to="linkPath('transit')"
-      :color="currentMode === TravelMode.Transit ? 'primary' : undefined"
+      :to="linkPath(option.mode)"
+      class="travel-mode"
+      :class="{ 'travel-mode--selected': currentMode === option.mode }"
     >
-      {{ $t('modes.transit') }}
-    </q-btn>
-    <q-btn
-      icon="directions_car"
-      unelevated
-      rounded
-      :ripple="false"
-      size="sm"
-      :to="linkPath('car')"
-      :color="currentMode === TravelMode.Drive ? 'primary' : undefined"
-    >
-      {{ $t('modes.drive') }}
-    </q-btn>
-    <q-btn
-      icon="directions_bike"
-      unelevated
-      rounded
-      :ripple="false"
-      size="sm"
-      :to="linkPath('bicycle')"
-      :color="currentMode === TravelMode.Bike ? 'primary' : undefined"
-    >
-      {{ $t('modes.bike') }}
-    </q-btn>
-    <q-btn
-      icon="directions_walk"
-      unelevated
-      rounded
-      :ripple="false"
-      size="sm"
-      :to="linkPath('walk')"
-      :color="currentMode === TravelMode.Walk ? 'primary' : undefined"
-    >
-      {{ $t('modes.walk') }}
+      {{ $t(option.label) }}
     </q-btn>
   </div>
 </template>
@@ -70,14 +38,27 @@ export default defineComponent({
       default: undefined,
     },
   },
-  setup: function () {
-    return { transitRoutingEnabled: Config.transitRoutingEnabled };
+  computed: {
+    options(): { mode: TravelMode; icon: string; label: string }[] {
+      const transit = {
+        mode: TravelMode.Transit,
+        icon: 'directions_bus',
+        label: 'modes.transit',
+      };
+      return [
+        ...(Config.transitRoutingEnabled ? [transit] : []),
+        {
+          mode: TravelMode.Drive,
+          icon: 'directions_car',
+          label: 'modes.drive',
+        },
+        { mode: TravelMode.Bike, icon: 'directions_bike', label: 'modes.bike' },
+        { mode: TravelMode.Walk, icon: 'directions_walk', label: 'modes.walk' },
+      ];
+    },
   },
-  data: () => ({
-    TravelMode,
-  }),
   methods: {
-    linkPath(mode: string): string {
+    linkPath(mode: TravelMode): string {
       const f = (place?: Place): string => place?.urlEncodedId() ?? '_';
 
       return `/directions/${mode}/${f(this.toPlace)}/${f(this.fromPlace)}`;
@@ -87,7 +68,32 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
-.travel-mode-bar a:not(:last-child) {
-  margin-right: 8px;
+// A segmented control: one track, with the selected mode on a white thumb.
+.travel-mode-bar {
+  display: flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: $hw-search-field-background;
+}
+
+.q-btn.travel-mode {
+  flex: 1;
+  padding: 4px 2px;
+  border-radius: 7px;
+  color: $hw-field-label;
+
+  .q-btn__content {
+    flex-wrap: nowrap;
+  }
+
+  .q-icon {
+    margin-right: 4px;
+  }
+}
+
+.q-btn.travel-mode--selected {
+  background: white;
+  color: $dark;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 </style>

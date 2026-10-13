@@ -12,9 +12,29 @@
 // to match your app's branding.
 // Tip: Use the "Theme Builder" on Quasar's documentation website.
 
-$primary: #282a2c;
+// The palette, as docs/style-guide.html in the ios-maps repo describes it.
+$hw-blue: #3498db;
+$hw-active-route: #1296ff;
+$hw-inactive-route: #6fc1ee;
+$hw-dark-gray: #808080;
+$hw-search-field-background: #d9e1e8;
+$hw-field-label: #5b6167;
+
+$hw-teal-50: #e7f9f8;
+$hw-teal-100: #c5edea;
+$hw-teal-500: #2da9a1;
+$hw-teal-600: #218c85;
+$hw-teal-700: #156660;
+
+$hw-amber-50: #fceed9;
+$hw-amber-100: #f5dab2;
+$hw-amber-500: #d48611;
+$hw-amber-600: #ad6c0b;
+$hw-amber-700: #794d0c;
+
+$primary: $hw-blue;
 $secondary: #26a69a;
-$accent: #9c27b0;
+$accent: $hw-blue;
 
 $dark: #1d1d1d;
 $dark-page: #121212;
@@ -26,9 +46,6 @@ $warning: #f2c037;
 
 // components
 $separator: #ccc;
-
-// climbing: the total climbed, and each steep climb's label on the elevation chart
-$climb-color: #e53e3e;
 
 // App specific UI
 $walkColor: #1976d2;

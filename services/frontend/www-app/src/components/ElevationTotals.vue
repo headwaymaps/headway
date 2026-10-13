@@ -48,16 +48,15 @@ export default defineComponent({
 .elevation-totals {
   display: inline-flex;
   gap: 8px;
-  font-size: 11px;
 }
 
 .climb-total {
-  color: $climb-color;
+  color: $hw-amber-700;
   font-weight: 500;
 }
 
 .fall-total {
-  color: #3182ce;
+  color: $hw-teal-700;
   font-weight: 500;
 }
 </style>

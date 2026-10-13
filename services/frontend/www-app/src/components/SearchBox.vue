@@ -41,8 +41,10 @@
           @mouseleave="hoverPlace(undefined)"
         >
           <q-item-section>
-            <q-item-label>{{ place.name || place.address }}</q-item-label>
-            <q-item-label v-if="place.name" caption>{{
+            <q-item-label class="hw-heading">{{
+              place.name || place.address
+            }}</q-item-label>
+            <q-item-label v-if="place.name" class="hw-secondary">{{
               place.address
             }}</q-item-label>
           </q-item-section>

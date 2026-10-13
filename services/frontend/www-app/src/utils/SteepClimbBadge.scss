@@ -1,13 +1,12 @@
 .steep-climb-badge {
   // digits have no descenders, so the line box's room for them would leave the text riding high
   padding: 2px 5px 0;
-  border: 1px solid white;
+  border: 1.5px solid;
   border-radius: 999px;
-  color: white;
+  background: $hw-amber-100;
+  color: $hw-amber-700;
   // the app's font rather than the map's, which draws a spindly ↗
   font-family: $typography-font-family;
-  // keeps white legible on the lighter grades
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.45);
   font-size: 11px;
   font-weight: 700;
   line-height: 14px;

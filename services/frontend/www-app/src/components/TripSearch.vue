@@ -13,7 +13,7 @@
         :style="{ marginLeft: '0.5em', marginRight: 0 }"
         flat
         round
-        color="primary"
+        color="dark"
         icon="gps_fixed"
         @click="didClickFromGps"
       />
@@ -31,7 +31,7 @@
         :style="{ marginLeft: '0.5em', marginRight: 0 }"
         flat
         round
-        color="primary"
+        color="dark"
         icon="swap_vert"
         @click="didClickSwap"
       />

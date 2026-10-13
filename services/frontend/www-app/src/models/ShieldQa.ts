@@ -3,6 +3,8 @@ import { expression, latest } from '@maplibre/maplibre-gl-style-spec';
 import type { StylePropertyExpression } from '@maplibre/maplibre-gl-style-spec';
 import type {
   ExpressionSpecification,
+  LayerSpecification,
+  SourceSpecification,
   StyleSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl';
@@ -26,6 +28,11 @@ export const ROW_HEIGHT = 36;
 
 const UNKNOWN_NETWORK = 'XX:none';
 export const SHIELD_QA_SOURCE = 'shield-qa';
+const SCENERY_SOURCE_PREFIX = 'shield-qa-scenery-';
+/** Wider than any window, so the scenery runs off the right edge. */
+const SCENERY_WIDTH = 4000;
+/** Of the base style's source layers, the ones the scenery draws. */
+type ScenerySourceLayer = 'landuse' | 'park' | 'transportation';
 const WORLD_SIZE = 512 * 2 ** SHIELD_QA_ZOOM;
 const LONGEST_REF = '123456';
 
@@ -176,6 +183,17 @@ export default class ShieldQa {
 
   style(rows: string[]): StyleSpecification {
     const background = this.base.layers.filter((l) => l.type === 'background');
+    const scenery = this.scenery();
+    const sceneryLayers = this.base.layers.flatMap((layer) =>
+      this.sceneryLayer(layer, scenery),
+    );
+    const scenerySources: Record<string, SourceSpecification> = {};
+    for (const [sourceLayer, data] of Object.entries(scenery)) {
+      scenerySources[SCENERY_SOURCE_PREFIX + sourceLayer] = {
+        type: 'geojson',
+        data,
+      };
+    }
     const roadShield: SymbolLayerSpecification = {
       id: this.roadShield.id,
       type: 'symbol',
@@ -194,9 +212,91 @@ export default class ShieldQa {
       sprite: this.base.sprite,
       glyphs: this.base.glyphs,
       sources: {
+        ...scenerySources,
         [SHIELD_QA_SOURCE]: { type: 'geojson', data: this.features(rows) },
       },
-      layers: [...background, roadShield],
+      layers: [...background, ...sceneryLayers, roadShield],
+    };
+  }
+
+  /** `layer` drawing the scenery instead of tiles, if it draws land or roads. */
+  private sceneryLayer(
+    layer: LayerSpecification,
+    scenery: Record<ScenerySourceLayer, GeoJSON.FeatureCollection>,
+  ): LayerSpecification[] {
+    if (layer.type !== 'fill' && layer.type !== 'line') {
+      return [];
+    }
+    const sourceLayer = layer['source-layer'];
+    if (!sourceLayer || !(sourceLayer in scenery)) {
+      return [];
+    }
+    const sceneryLayer = {
+      ...layer,
+      source: SCENERY_SOURCE_PREFIX + sourceLayer,
+    };
+    delete sceneryLayer['source-layer'];
+    return [sceneryLayer];
+  }
+
+  /**
+   * A neighbourhood for the shields to sit on, as the style's own tiles would describe it: each row's
+   * shields ride a motorway, over houses, the odd park, and streets running between the columns.
+   */
+  scenery(): Record<ScenerySourceLayer, GeoJSON.FeatureCollection> {
+    const rowCount = this.rows('').length;
+    const height = rowCount * ROW_HEIGHT;
+    const columnXs = Array.from(
+      { length: Math.ceil((SCENERY_WIDTH - LABEL_WIDTH) / COLUMN_WIDTH) + 1 },
+      (_, idx) => LABEL_WIDTH + idx * COLUMN_WIDTH,
+    );
+
+    const streets = columnXs.map((x, idx) =>
+      lineAt(
+        [
+          [x, 0],
+          [x, height],
+        ],
+        { class: idx % 4 === 0 ? 'secondary' : 'minor' },
+      ),
+    );
+    const motorways = Array.from({ length: rowCount }, (_, row) => {
+      const y = (row + 0.5) * ROW_HEIGHT;
+      return lineAt(
+        [
+          [0, y],
+          [SCENERY_WIDTH, y],
+        ],
+        { class: 'motorway' },
+      );
+    });
+
+    // A block sits between two streets and two motorways; a few of them are parks.
+    const inset = 4;
+    const parks: GeoJSON.Feature[] = [];
+    for (let row = 0; row < rowCount - 1; row++) {
+      columnXs.slice(0, -1).forEach((x, column) => {
+        if ((row * 7 + column * 3) % 11 === 0) {
+          const top = (row + 0.5) * ROW_HEIGHT;
+          parks.push(
+            rectAt(
+              x + inset,
+              top + inset,
+              x + COLUMN_WIDTH - inset,
+              top + ROW_HEIGHT - inset,
+              {},
+            ),
+          );
+        }
+      });
+    }
+
+    return {
+      landuse: collection([
+        rectAt(0, 0, SCENERY_WIDTH, height, { class: 'residential' }),
+      ]),
+      park: collection(parks),
+      transportation: collection([...streets, ...motorways]),
     };
   }
 
@@ -255,6 +355,48 @@ function fitDelta(
   }
   const delta = fit - defaultFit;
   return `${delta > 0 ? '+' : ''}${round(delta)}`;
+}
+
+function collection(features: GeoJSON.Feature[]): GeoJSON.FeatureCollection {
+  return { type: 'FeatureCollection', features };
+}
+
+function lineAt(
+  points: [number, number][],
+  properties: GeoJSON.GeoJsonProperties,
+): GeoJSON.Feature<GeoJSON.LineString> {
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      coordinates: points.map(([x, y]) => tablePixelToLngLat(x, y)),
+    },
+    properties,
+  };
+}
+
+function rectAt(
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+  properties: GeoJSON.GeoJsonProperties,
+): GeoJSON.Feature<GeoJSON.Polygon> {
+  const corners: [number, number][] = [
+    [left, top],
+    [right, top],
+    [right, bottom],
+    [left, bottom],
+    [left, top],
+  ];
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [corners.map(([x, y]) => tablePixelToLngLat(x, y))],
+    },
+    properties,
+  };
 }
 
 function pointAt(

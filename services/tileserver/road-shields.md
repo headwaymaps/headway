@@ -129,6 +129,9 @@ lightness) the navy is about 8.9:1, the heaviest mark on the map. Ours are
 #1966b3 and #c43142: about 5.1:1, with white text on it near 5.8:1. Business
 loops share the interstate's text size, offset and white text.
 
+Every other blank that used the same navy, and the shield text drawn in it,
+takes #1966b3 too, so no shield outweighs the interstate.
+
 Known gaps
 ----------
 

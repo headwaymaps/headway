@@ -17,11 +17,11 @@
         <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop
             offset="0%"
-            :style="`stop-color: ${FLAT_GRADE_COLOR}; stop-opacity: 0.3`"
+            :style="`stop-color: ${ROUTE_COLOR}; stop-opacity: 0.3`"
           />
           <stop
             offset="100%"
-            :style="`stop-color: ${FLAT_GRADE_COLOR}; stop-opacity: 0.1`"
+            :style="`stop-color: ${ROUTE_COLOR}; stop-opacity: 0.1`"
           />
         </linearGradient>
       </defs>
@@ -44,7 +44,7 @@
       <path
         :d="linePath"
         fill="none"
-        :stroke="FLAT_GRADE_COLOR"
+        :stroke="ROUTE_COLOR"
         stroke-width="1.5"
         class="elevation-line"
       />
@@ -94,14 +94,17 @@
         stroke-width="2"
       />
     </svg>
-    <div v-else class="no-elevation-data">No elevation data available</div>
+    <div v-else class="no-elevation-data hw-caption">
+      No elevation data available
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, PropType } from 'vue';
 import { SteepSection } from 'src/services/TravelmuxClient';
-import { describeGrade, FLAT_GRADE_COLOR, gradeColor } from 'src/utils/grade';
+import { describeGrade, gradeColor } from 'src/utils/grade';
+import { Palette } from 'src/utils/palette';
 
 interface SteepClimbAnnotation {
   x: number;
@@ -146,7 +149,7 @@ export default defineComponent({
   },
   emits: ['update:scrubFraction', 'select-steep-section'],
   setup() {
-    return { FLAT_GRADE_COLOR };
+    return { ROUTE_COLOR: Palette.activeRoute };
   },
   data(): { scrubbing: boolean } {
     return { scrubbing: false };
@@ -328,7 +331,7 @@ export default defineComponent({
 .steep-annotation-label {
   font-size: 10px;
   font-weight: 700;
-  fill: $climb-color;
+  fill: $hw-amber-700;
   stroke: white;
   stroke-width: 2px;
   stroke-linejoin: round;
@@ -352,8 +355,6 @@ export default defineComponent({
 }
 
 .no-elevation-data {
-  font-size: 12px;
-  color: #888;
   text-align: center;
   padding: 20px;
 }
