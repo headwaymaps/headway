@@ -199,7 +199,16 @@ export default defineComponent({
       this.searchDate = dateToInput(new Date());
       this.searchTime = timeToInput(new Date());
     },
-    didClickSwap() {
+    didClickSwap(event: Event) {
+      (event.currentTarget as HTMLElement)
+        .querySelector('.q-icon')
+        ?.animate(
+          [{ transform: 'rotate(0)' }, { transform: 'rotate(180deg)' }],
+          {
+            duration: 300,
+            easing: 'ease-out',
+          },
+        );
       this.didSwapPlaces(this.toPlace, this.fromPlace);
     },
     didClickFromGps() {
