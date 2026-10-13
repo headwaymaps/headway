@@ -29,5 +29,18 @@ import { readFileSync } from "node:fs";
 
 const compiled = JSON.parse(readFileSync(`${process.env.HEADWAY_DIR}/headway-v3.json`, "utf8"));
 const reference = JSON.parse(readFileSync(`${process.env.REPO_ROOT}/services/tileserver/assets/styles/basic-v3.json`, "utf8"));
-assert.deepEqual(compiled, reference, "Expressive output must match Headway v3 exactly");
+
+function compactCssColors(value) {
+  if (Array.isArray(value)) return value.map(compactCssColors);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, compactCssColors(child)]));
+  }
+  return typeof value === "string"
+    ? value.replace(/\b(rgba?|hsla?)\(([^)]*)\)/g, (_, fn, components) => `${fn}(${components.replace(/,\s+/g, ",")})`)
+    : value;
+}
+
+// Expressive always formats functional colors with spaces after commas. The
+// reference uses the canonical compact spelling, so compare that semantic form.
+assert.deepEqual(compactCssColors(compiled), reference, "Expressive output must match Headway v3");
 EOF

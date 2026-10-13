@@ -280,7 +280,7 @@ impl Layer<Line> {
         let width = self
             .get_paint("line-width")
             .expect("a line needs a width before it can be cased")
-            .map_numbers(|width| if width == 0.0 { 0.0 } else { width + pad * 2.0 });
+            .scale_numbers(|width| if width == 0.0 { 0.0 } else { width + pad * 2.0 });
         let mut casing = self.clone().with_id(format!("{}_casing", self.body.id));
         casing.body.paint.remove("line-dasharray");
         casing.width(width).color(color)

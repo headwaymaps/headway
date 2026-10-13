@@ -11,31 +11,30 @@ pub struct Stops {
     stops: Vec<(f64, Json)>,
 }
 
-/// A zoom function, written as the table it is: `zoom!(base 1.2; 12 => 0.5, 20 => 10.0)`.
+/// A zoom function, written as the table it is: `zoom!(base: 1.2; 12 => 0.5, 20 => 10.0)`.
 #[macro_export]
 macro_rules! zoom {
-    (base $base:expr; $($zoom:expr => $value:expr),* $(,)?) => {
-        $crate::stops([$(($zoom as f64, $value)),*]).base($base)
+    (base: $base:expr; $($zoom:expr => $value:expr),* $(,)?) => {
+        $crate::zoom_with_base($base, [$(($zoom as f64, $value)),*])
     };
     ($($zoom:expr => $value:expr),* $(,)?) => {
-        $crate::stops([$(($zoom as f64, $value)),*])
-    };
-}
-
-/// A zoom function, written as `stops![12 => 0.5, 20 => 10.0]`.
-///
-/// Call [`Stops::base`] when the interpolation needs a non-linear base.
-#[macro_export]
-macro_rules! stops {
-    ($($zoom:expr => $value:expr),* $(,)?) => {
-        $crate::stops([$(($zoom as f64, $value)),*])
+        $crate::zoom([$(($zoom as f64, $value)),*])
     };
 }
 
 /// Interpolates `value` across zoom levels.
-pub fn stops<V: Into<Json>>(pairs: impl IntoIterator<Item = (f64, V)>) -> Stops {
+pub fn zoom<V: Into<Json>>(pairs: impl IntoIterator<Item = (f64, V)>) -> Stops {
+    zoom_with_base(1.0, pairs)
+}
+
+/// Interpolates `value` across zoom levels with an exponential interpolation base.
+#[doc(hidden)]
+pub fn zoom_with_base<V: Into<Json>>(
+    base: f64,
+    pairs: impl IntoIterator<Item = (f64, V)>,
+) -> Stops {
     Stops {
-        base: None,
+        base: (base != 1.0).then_some(base),
         stops: pairs
             .into_iter()
             .map(|(zoom, value)| (zoom, value.into()))
@@ -44,12 +43,6 @@ pub fn stops<V: Into<Json>>(pairs: impl IntoIterator<Item = (f64, V)>) -> Stops 
 }
 
 impl Stops {
-    /// The exponential base of the interpolation; maplibre defaults to 1 (linear).
-    pub fn base(mut self, base: f64) -> Self {
-        self.base = Some(base);
-        self
-    }
-
     fn to_json(&self) -> Json {
         let stops: Vec<Json> = self
             .stops
@@ -79,7 +72,7 @@ impl Property {
     }
 
     /// Applies `scale` to every number in the property, zoom stops included.
-    pub fn map_numbers(&self, scale: impl Fn(f64) -> f64) -> Property {
+    pub fn scale_numbers(&self, scale: impl Fn(f64) -> f64) -> Property {
         let apply = |value: &Json| match value.as_f64() {
             Some(number) => json!(scale(number)),
             None => value.clone(),
@@ -151,10 +144,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn stops_macro_reads_like_a_zoom_table() {
+    fn zoom_macro_reads_like_a_zoom_table() {
         assert_eq!(
-            crate::stops![10.0 => 0.5, 13.0 => 2.0].base(1.2).to_json(),
-            stops([(10.0, 0.5), (13.0, 2.0)]).base(1.2).to_json()
+            crate::zoom!(base: 1.2; 10.0 => 0.5, 13.0 => 2.0).to_json(),
+            zoom_with_base(1.2, [(10.0, 0.5), (13.0, 2.0)]).to_json()
         );
     }
 }

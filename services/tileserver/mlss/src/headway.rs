@@ -3,8 +3,13 @@
 use crate::filter::Geometry;
 use crate::*;
 
-const WATER: &str = "rgb(141,220,248)";
-pub(super) const HALO: &str = "rgba(255,255,255,0.8)";
+fn water() -> Color {
+    rgb!(141, 220, 248)
+}
+
+fn halo() -> Color {
+    rgba!(255, 255, 255, 0.8)
+}
 pub(super) const REGULAR: &str = "Roboto Regular";
 pub(super) const ITALIC: &str = "Roboto Condensed Italic";
 pub(super) const MEDIUM: &str = "Roboto Medium";
@@ -219,11 +224,10 @@ impl RoadShield {
     }
 }
 
-fn shield(network: &'static str) -> RoadShield {
-    RoadShield::new(network)
-}
-
 fn road_shields() -> Vec<RoadShield> {
+    fn shield(network: &'static str) -> RoadShield {
+        RoadShield::new(network)
+    }
     vec![
         shield("CA:BC").text_color("#003f87").sized_icon(),
         shield("CA:NB:tertiary")
@@ -465,7 +469,7 @@ pub fn style() -> Style {
     let poi = openmaptiles.poi();
     let place = openmaptiles.place();
 
-    style.background("background").color("rgb(241,239,231)");
+    style.background("background").color(rgb!(241, 239, 231));
     style
         .raster(&terrain_source, "terrain")
         .maxzoom(8.0)
@@ -479,30 +483,30 @@ pub fn style() -> Style {
             Match,
             [Get, "class"],
             "barren",
-            "rgb(255, 231, 220)",
+            (rgb!(255, 231, 220)),
             "crop",
-            "rgb(149, 222, 58)",
+            (rgb!(149, 222, 58)),
             "grass",
-            "rgb(230, 255, 133)",
+            (rgb!(230, 255, 133)),
             "shrub",
-            "rgb(230, 255, 133)",
+            (rgb!(230, 255, 133)),
             "snow",
-            "rgb(250, 250, 250)",
+            (rgb!(250, 250, 250)),
             "trees",
-            "rgb(130, 235, 60)",
+            (rgb!(130, 235, 60)),
             "urban",
-            "rgb(226, 231, 215)",
+            (rgb!(226, 231, 215)),
             "transparent"
         ]);
 
     style.add_layers(openmaptiles.park(), |s| {
         s.fill("park")
-            .color("hsl(101,62.6%,63.3%)")
+            .color(hsl!(101, 62.6%, 63.3%))
             .opacity(0.7)
-            .outline_color("rgba(95, 208, 100, 1)");
+            .outline_color(rgba!(95, 208, 100, 1));
         s.line("park_outline")
             .dasharray(vec![1.0, 1.5])
-            .color("rgb(228, 241, 215)");
+            .color(rgb!(228, 241, 215));
     });
 
     // REVIEW: Do I even care about landuse? I feel like maybe i was using it as a proxy for
@@ -513,80 +517,80 @@ pub fn style() -> Style {
         .maxzoom(17.0)
         .filter(Filter::class("residential"))
         .opacity(zoom!(16 => 1.0, 17 => 0.0))
-        .color(zoom!(9 => "hsla(0, 3%, 85%, 0.84)", 12 => "hsla(35, 57%, 88%, 0.49)"));
+        .color(zoom!(9 => hsla!(0, 3%, 85%, 0.84), 12 => hsla!(35, 57%, 88%, 0.49)));
 
     // Ground cover reads as a wash, so it is drawn without antialiasing.
-    let mut landcover_fill = |class: &str, css: &str, opacity: f64| {
+    let mut landcover_fill = |class: &str, color: Color, opacity: f64| {
         style
             .fill(&landcover, format!("landcover_{class}"))
             .filter(Filter::class(class))
             .antialias(false)
-            .color(css)
+            .color(color)
             .opacity(opacity);
     };
     // TODO: Replace the opacity with an adjustment to hsl.
-    landcover_fill("wood", "hsl(101,62.6%,43.3%)", 0.3);
-    landcover_fill("grass", "hsl(101,62.6%,63.3%)", 0.5);
+    landcover_fill("wood", hsl!(101, 62.6%, 43.3%), 0.3);
+    landcover_fill("grass", hsl!(101, 62.6%, 63.3%), 0.5);
     // TODO: Convert ice to hsl
-    landcover_fill("ice", "rgba(224, 236, 236, 1)", 0.8);
+    landcover_fill("ice", rgba!(224, 236, 236, 1), 0.8);
     style.add_layers(landuse, |s| {
         s.fill("landuse_cemetery")
             .filter(Filter::class("cemetery"))
-            .color("hsl(75, 37%, 81%)");
+            .color(hsl!(75, 37%, 81%));
         s.fill("landuse_hospital")
             .filter(Filter::class("hospital"))
             .color("#fde");
         s.fill("landuse_school")
             .filter(Filter::class("school"))
-            .color("rgb(236,238,204)");
+            .color(rgb!(236, 238, 204));
     });
 
     style
         .line(&waterway, "waterway_tunnel")
         .filter(tunnel())
-        .color(WATER)
+        .color(water())
         .dasharray(vec![3.0, 3.0])
         .gap_width(zoom!(12 => 0.0, 20 => 6.0))
-        .width(zoom!(base 1.4; 8 => 1.0, 20 => 2.0));
+        .width(zoom!(base: 1.4; 8 => 1.0, 20 => 2.0));
     style
         .fill(&landcover, "landcover_sand")
         .filter(Filter::class("sand"))
-        .color("rgba(247, 239, 195, 1)");
+        .color(rgba!(247, 239, 195, 1));
     style
         .fill(&openmaptiles.water(), "water")
         .filter(Filter::ne("brunnel", "tunnel"))
-        .color(WATER);
+        .color(water());
 
     let above_ground = Filter::ne("brunnel", "tunnel");
     style
         .line(&waterway, "waterway_river")
         .filter(Filter::class("river").and(above_ground.clone()))
         .cap_round()
-        .color(WATER)
-        .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
+        .color(water())
+        .width(zoom!(base: 1.2; 11 => 0.5, 20 => 6.0));
     style
         .line(&waterway, "waterway_other")
         .filter(Filter::class_not("river").and(above_ground))
         .cap_round()
-        .color(WATER)
-        .width(zoom!(base 1.3; 13 => 0.5, 20 => 6.0));
+        .color(water())
+        .width(zoom!(base: 1.3; 13 => 0.5, 20 => 6.0));
 
     style.add_layers(openmaptiles.aeroway(), |s| {
         s.fill("aeroway_fill")
             .minzoom(11.0)
             .filter(Filter::geometry(Geometry::Polygon))
-            .color("rgba(229, 228, 224, 1)")
+            .color(rgba!(229, 228, 224, 1))
             .opacity(0.7);
         s.line("aeroway_runway")
             .minzoom(11.0)
             .filter(Filter::geometry(Geometry::LineString).class("runway"))
             .color("#f0ede9")
-            .width(zoom!(base 1.2; 11 => 3.0, 20 => 16.0));
+            .width(zoom!(base: 1.2; 11 => 3.0, 20 => 16.0));
         s.line("aeroway_taxiway")
             .minzoom(11.0)
             .filter(Filter::geometry(Geometry::LineString).class("taxiway"))
             .color("#f0ede9")
-            .width(zoom!(base 1.2; 11 => 0.5, 20 => 6.0));
+            .width(zoom!(base: 1.2; 11 => 0.5, 20 => 6.0));
     });
 
     style
@@ -596,16 +600,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                15.0 => "hsl(0, 0%, 94%)",
-                18.0 => "hsl(0, 0%, 87%)",
-                20.0 => "hsl(0, 0%, 82%)",
+            zoom![
+                15.0 => hsl!(0, 0%, 94%),
+                18.0 => hsl!(0, 0%, 87%),
+                20.0 => hsl!(0, 0%, 82%),
             ],
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            stops![13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0].base(1.2),
+            zoom!(base: 1.2; 13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0),
         );
     style
         .line(&transportation, "tunnel_link_casing")
@@ -615,16 +619,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 93%)",
-                12.0 => "hsl(0, 0%, 93%)",
-                15.0 => "hsl(0, 0%, 89%)",
-                20.0 => "hsl(0, 0%, 82%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 93%),
+                12.0 => hsl!(0, 0%, 93%),
+                15.0 => hsl!(0, 0%, 89%),
+                20.0 => hsl!(0, 0%, 82%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5].base(1.2),
+            zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5),
         );
     style
         .line(&transportation, "tunnel_street_casing")
@@ -634,15 +638,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                13.0 => "hsl(0, 0%, 93%)",
-                16.0 => "hsl(0, 0%, 87.5%)",
-                20.0 => "hsl(0, 0%, 82%)",
+            zoom![
+                13.0 => hsl!(0, 0%, 93%),
+                16.0 => hsl!(0, 0%, 87.5%),
+                20.0 => hsl!(0, 0%, 82%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0),
         );
     style
         .line(&transportation, "tunnel_secondary_tertiary_casing")
@@ -652,17 +656,17 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 91%)",
-                11.0 => "hsl(0, 0%, 91%)",
-                12.0 => "hsl(0, 0%, 91%)",
-                13.0 => "hsl(0, 0%, 89%)",
-                20.0 => "hsl(0, 0%, 82%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 91%),
+                11.0 => hsl!(0, 0%, 91%),
+                12.0 => hsl!(0, 0%, 91%),
+                13.0 => hsl!(0, 0%, 89%),
+                20.0 => hsl!(0, 0%, 82%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0),
         );
     style
         .line(&transportation, "tunnel_primary_casing")
@@ -672,9 +676,9 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![13.0 => "hsl(0, 0%, 83.5%)", 20.0 => "hsl(0, 0%, 76%)"],
+            zoom![13.0 => hsl!(0, 0%, 83.5%), 20.0 => hsl!(0, 0%, 76%)],
         )
-        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
     style
         .line(&transportation, "tunnel_trunk_casing")
         .minzoom(13.0)
@@ -683,9 +687,9 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![13.0 => "hsl(0, 0%, 81%)", 20.0 => "hsl(0, 0%, 74.5%)"],
+            zoom![13.0 => hsl!(0, 0%, 81%), 20.0 => hsl!(0, 0%, 74.5%)],
         )
-        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
     style
         .line(&transportation, "tunnel_motorway_link_casing")
         .minzoom(13.0)
@@ -693,16 +697,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                12.0 => "hsl(0, 0%, 82%)",
-                15.0 => "hsl(0, 0%, 77%)",
-                20.0 => "hsl(0, 0%, 70%)",
+            zoom![
+                12.0 => hsl!(0, 0%, 82%),
+                15.0 => hsl!(0, 0%, 77%),
+                20.0 => hsl!(0, 0%, 70%),
             ],
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            stops![8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0),
         );
     style
         .line(&transportation, "tunnel_motorway_casing")
@@ -711,16 +715,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                7.0 => "hsl(0, 0%, 80%)",
-                13.0 => "hsl(0, 0%, 75%)",
-                20.0 => "hsl(0, 0%, 70%)",
+            zoom![
+                7.0 => hsl!(0, 0%, 80%),
+                13.0 => hsl!(0, 0%, 75%),
+                20.0 => hsl!(0, 0%, 70%),
             ],
         )
         .dasharray(vec![0.5, 0.25])
         .paint(
             "line-width",
-            stops![5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0].base(1.2),
+            zoom!(base: 1.2; 5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0),
         );
     style
         .line(&transportation, "tunnel_service_track")
@@ -730,15 +734,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 97%)",
-                13.0 => "hsl(0, 0%, 92%)",
-                20.0 => "hsl(0, 0%, 87%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 97%),
+                13.0 => hsl!(0, 0%, 92%),
+                20.0 => hsl!(0, 0%, 87%),
             ],
         )
         .paint(
             "line-width",
-            stops![13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5].base(1.2),
+            zoom!(base: 1.2; 13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5),
         );
     style
         .line(&transportation, "tunnel_link")
@@ -748,15 +752,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 94%)",
-                12.0 => "hsl(0, 0%, 94%)",
-                20.0 => "hsl(0, 0%, 87%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 94%),
+                12.0 => hsl!(0, 0%, 94%),
+                20.0 => hsl!(0, 0%, 87%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0),
         );
     style
         .line(&transportation, "tunnel_minor")
@@ -766,15 +770,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 93%)",
-                13.0 => "hsl(0, 0%, 93%)",
-                20.0 => "hsl(0, 0%, 87%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 93%),
+                13.0 => hsl!(0, 0%, 93%),
+                20.0 => hsl!(0, 0%, 87%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0),
         );
     style
         .line(&transportation, "tunnel_path_pedestrian")
@@ -784,9 +788,9 @@ pub fn style() -> Style {
                 .and_geometry(Geometry::LineString)
                 .class_in(["path", "pedestrian"]),
         )
-        .color("hsl(0, 0%, 98%)")
+        .color(hsl!(0, 0%, 98%))
         .dasharray(vec![1.0, 0.75])
-        .paint("line-width", stops![13.0 => 0.75, 20.0 => 10.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
     style
         .line(&transportation, "tunnel_secondary_tertiary")
         .minzoom(12.0)
@@ -795,16 +799,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 95%)",
-                11.0 => "hsl(0, 0%, 95%)",
-                12.0 => "hsl(0, 0%, 95%)",
-                20.0 => "hsl(0, 0%, 87%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 95%),
+                11.0 => hsl!(0, 0%, 95%),
+                12.0 => hsl!(0, 0%, 95%),
+                20.0 => hsl!(0, 0%, 87%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0),
         );
     style
         .line(&transportation, "tunnel_primary")
@@ -814,11 +818,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 64%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 64%)],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "tunnel_trunk")
@@ -828,11 +832,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 61%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 61%)],
         )
         .paint(
             "line-width",
-            stops![6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "tunnel_motorway_link")
@@ -842,11 +846,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 84%)", 20.0 => "hsl(0, 0%, 76%)"],
+            zoom![10.0 => hsl!(0, 0%, 84%), 20.0 => hsl!(0, 0%, 76%)],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "tunnel_motorway")
@@ -856,47 +860,47 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 84%)", 20.0 => "hsl(0, 0%, 76%)"],
+            zoom![10.0 => hsl!(0, 0%, 84%), 20.0 => hsl!(0, 0%, 76%)],
         )
         .paint(
             "line-width",
-            stops![5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0].base(1.2),
+            zoom!(base: 1.2; 5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0),
         );
     style
         .line(&transportation, "tunnel_major_rail")
         .filter(tunnel().class_in(["rail"]))
         .cap_round()
-        .color("hsl(0, 0%, 86.6667%)")
+        .color(hsl!(0, 0%, 86.6667%))
         .paint(
             "line-width",
-            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
+            zoom!(base: 1.4; 14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0),
         );
     style
         .line(&transportation, "tunnel_major_rail_hatching")
         .filter(tunnel().class("rail"))
-        .color("hsl(0, 0%, 86.6667%)")
+        .color(hsl!(0, 0%, 86.6667%))
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
+            zoom!(base: 1.4; 14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0),
         );
     style
         .line(&transportation, "tunnel_transit_rail")
         .filter(tunnel().class_in(["transit"]))
         .cap_round()
-        .color("hsl(0, 0%, 86.6667%)")
+        .color(hsl!(0, 0%, 86.6667%))
         .paint(
             "line-width",
-            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
+            zoom!(base: 1.4; 14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0),
         );
     style
         .line(&transportation, "tunnel_transit_rail_hatching")
         .filter(tunnel().class("transit"))
-        .color("hsl(0, 0%, 86.6667%)")
+        .color(hsl!(0, 0%, 86.6667%))
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
+            zoom!(base: 1.4; 14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0),
         );
     style
         .fill(&transportation, "road_area_pattern")
@@ -910,15 +914,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                15.0 => "hsl(0, 0%, 88%)",
-                18.0 => "hsl(0, 0%, 74%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                15.0 => hsl!(0, 0%, 88%),
+                18.0 => hsl!(0, 0%, 74%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0].base(1.2),
+            zoom!(base: 1.2; 13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0),
         );
     style
         .line(&transportation, "road_link_casing")
@@ -935,23 +939,23 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 86%)",
-                12.0 => "hsl(0, 0%, 86%)",
-                15.0 => "hsl(0, 0%, 78%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 86%),
+                12.0 => hsl!(0, 0%, 86%),
+                15.0 => hsl!(0, 0%, 78%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5].base(1.2),
+            zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5),
         );
     style
         .line(&transportation, "road_minor_casing")
         .minzoom(13.0)
         .filter(
             Filter::geometry(Geometry::LineString)
-                .and_not_in("brunnel", ["bridge", "tunnel"])
+                .and(surface())
                 .class_in(["minor"])
                 .and_ne("ramp", 1.0),
         )
@@ -959,15 +963,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                13.0 => "hsl(0, 0%, 86%)",
-                16.0 => "hsl(0, 0%, 75%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                13.0 => hsl!(0, 0%, 86%),
+                16.0 => hsl!(0, 0%, 75%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0),
         );
     style
         .line(&transportation, "road_secondary_tertiary_casing")
@@ -981,17 +985,17 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 82%)",
-                11.0 => "hsl(0, 0%, 82%)",
-                12.0 => "hsl(0, 0%, 82%)",
-                13.0 => "hsl(0, 0%, 78%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 82%),
+                11.0 => hsl!(0, 0%, 82%),
+                12.0 => hsl!(0, 0%, 82%),
+                13.0 => hsl!(0, 0%, 78%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0),
         );
     style
         .line(&transportation, "road_primary_casing")
@@ -1001,9 +1005,9 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![13.0 => "hsl(0, 0%, 67%)", 20.0 => "hsl(0, 0%, 52%)"],
+            zoom![13.0 => hsl!(0, 0%, 67%), 20.0 => hsl!(0, 0%, 52%)],
         )
-        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
     style
         .line(&transportation, "road_trunk_casing")
         .minzoom(13.0)
@@ -1012,9 +1016,9 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![13.0 => "hsl(0, 0%, 62%)", 20.0 => "hsl(0, 0%, 49%)"],
+            zoom![13.0 => hsl!(0, 0%, 62%), 20.0 => hsl!(0, 0%, 49%)],
         )
-        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
     style
         .line(&transportation, "road_motorway_link_casing")
         .minzoom(13.0)
@@ -1023,15 +1027,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                12.0 => "hsl(0, 0%, 64%)",
-                15.0 => "hsl(0, 0%, 54%)",
-                20.0 => "hsl(0, 0%, 40%)",
+            zoom![
+                12.0 => hsl!(0, 0%, 64%),
+                15.0 => hsl!(0, 0%, 54%),
+                20.0 => hsl!(0, 0%, 40%),
             ],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0),
         );
     style
         .line(&transportation, "road_motorway_casing")
@@ -1041,15 +1045,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                7.0 => "hsl(0, 0%, 60%)",
-                13.0 => "hsl(0, 0%, 50%)",
-                20.0 => "hsl(0, 0%, 40%)",
+            zoom![
+                7.0 => hsl!(0, 0%, 60%),
+                13.0 => hsl!(0, 0%, 50%),
+                20.0 => hsl!(0, 0%, 40%),
             ],
         )
         .paint(
             "line-width",
-            stops![5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0].base(1.2),
+            zoom!(base: 1.2; 5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0),
         );
     style
         .line(&transportation, "road_service_track")
@@ -1059,15 +1063,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 94%)",
-                13.0 => "hsl(0, 0%, 84%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 94%),
+                13.0 => hsl!(0, 0%, 84%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5].base(1.2),
+            zoom!(base: 1.2; 13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5),
         );
     style
         .line(&transportation, "road_link")
@@ -1080,50 +1084,50 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 88%)",
-                12.0 => "hsl(0, 0%, 88%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 88%),
+                12.0 => hsl!(0, 0%, 88%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0),
         );
     style
         .line(&transportation, "road_minor")
         .minzoom(12.0)
         .filter(
             Filter::geometry(Geometry::LineString)
-                .and_not_in("brunnel", ["bridge", "tunnel"])
+                .and(surface())
                 .class_in(["minor"]),
         )
         .cap_round()
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 86%)",
-                13.0 => "hsl(0, 0%, 86%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 86%),
+                13.0 => hsl!(0, 0%, 86%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0),
         );
     style
         .line(&transportation, "road_path_pedestrian")
         .minzoom(13.0)
         .filter(
             Filter::geometry(Geometry::LineString)
-                .and_not_in("brunnel", ["bridge", "tunnel"])
+                .and(surface())
                 .class_in(["path", "pedestrian"]),
         )
         .join_round()
-        .color("hsl(0, 0%, 96%)")
+        .color(hsl!(0, 0%, 96%))
         .dasharray(vec![1.0, 0.7])
-        .paint("line-width", stops![13.0 => 0.75, 20.0 => 10.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
     style
         .line(&transportation, "road_secondary_tertiary")
         .minzoom(12.0)
@@ -1132,16 +1136,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 90%)",
-                11.0 => "hsl(0, 0%, 90%)",
-                12.0 => "hsl(0, 0%, 90%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 90%),
+                11.0 => hsl!(0, 0%, 90%),
+                12.0 => hsl!(0, 0%, 90%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0),
         );
     style
         .line(&transportation, "road_primary")
@@ -1151,11 +1155,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 64%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 64%)],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "road_trunk")
@@ -1165,11 +1169,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 61%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 61%)],
         )
         .paint(
             "line-width",
-            stops![6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "road_motorway_link")
@@ -1179,11 +1183,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "road_motorway")
@@ -1193,11 +1197,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)],
         )
         .paint(
             "line-width",
-            stops![5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0].base(1.2),
+            zoom!(base: 1.2; 5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0),
         );
     style
         .line(&transportation, "road_major_rail")
@@ -1206,7 +1210,7 @@ pub fn style() -> Style {
         .color("#bbb")
         .paint(
             "line-width",
-            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
+            zoom!(base: 1.4; 14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0),
         );
     style
         .line(&transportation, "road_major_rail_hatching")
@@ -1215,7 +1219,7 @@ pub fn style() -> Style {
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
+            zoom!(base: 1.4; 14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0),
         );
     style
         .line(&transportation, "road_transit_rail")
@@ -1224,7 +1228,7 @@ pub fn style() -> Style {
         .color("#bbb")
         .paint(
             "line-width",
-            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
+            zoom!(base: 1.4; 14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0),
         );
     style
         .line(&transportation, "road_transit_rail_hatching")
@@ -1233,7 +1237,7 @@ pub fn style() -> Style {
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
+            zoom!(base: 1.4; 14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0),
         );
     style
         .line(&transportation, "bridge_service_track_casing")
@@ -1242,15 +1246,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                15.0 => "hsl(0, 0%, 88%)",
-                18.0 => "hsl(0, 0%, 74%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                15.0 => hsl!(0, 0%, 88%),
+                18.0 => hsl!(0, 0%, 74%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0].base(1.2),
+            zoom!(base: 1.2; 13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0),
         );
     style
         .line(&transportation, "bridge_link_casing")
@@ -1259,16 +1263,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 86%)",
-                12.0 => "hsl(0, 0%, 86%)",
-                15.0 => "hsl(0, 0%, 78%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 86%),
+                12.0 => hsl!(0, 0%, 86%),
+                15.0 => hsl!(0, 0%, 78%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5].base(1.2),
+            zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5),
         );
     style
         .line(&transportation, "bridge_street_casing")
@@ -1277,15 +1281,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                13.0 => "hsl(0, 0%, 86%)",
-                16.0 => "hsl(0, 0%, 75%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                13.0 => hsl!(0, 0%, 86%),
+                16.0 => hsl!(0, 0%, 75%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0),
         );
     style
         .line(&transportation, "bridge_path_pedestrian_casing")
@@ -1297,10 +1301,10 @@ pub fn style() -> Style {
         )
         .paint(
             "line-color",
-            stops![14.0 => "hsl(0, 0%, 88%)", 20.0 => "hsl(0, 0%, 64%)"],
+            zoom![14.0 => hsl!(0, 0%, 88%), 20.0 => hsl!(0, 0%, 64%)],
         )
         .dasharray(vec![1.0, 0.0])
-        .paint("line-width", stops![14.0 => 1.125, 20.0 => 18.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 14.0 => 1.125, 20.0 => 18.0));
     style
         .line(&transportation, "bridge_secondary_tertiary_casing")
         .minzoom(13.0)
@@ -1308,17 +1312,17 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 82%)",
-                11.0 => "hsl(0, 0%, 82%)",
-                12.0 => "hsl(0, 0%, 82%)",
-                13.0 => "hsl(0, 0%, 78%)",
-                20.0 => "hsl(0, 0%, 64%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 82%),
+                11.0 => hsl!(0, 0%, 82%),
+                12.0 => hsl!(0, 0%, 82%),
+                13.0 => hsl!(0, 0%, 78%),
+                20.0 => hsl!(0, 0%, 64%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0),
         );
     style
         .line(&transportation, "bridge_primary_casing")
@@ -1327,9 +1331,9 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![13.0 => "hsl(0, 0%, 67%)", 20.0 => "hsl(0, 0%, 52%)"],
+            zoom![13.0 => hsl!(0, 0%, 67%), 20.0 => hsl!(0, 0%, 52%)],
         )
-        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
     style
         .line(&transportation, "bridge_trunk_casing")
         .minzoom(13.0)
@@ -1337,9 +1341,9 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![13.0 => "hsl(0, 0%, 62%)", 20.0 => "hsl(0, 0%, 49%)"],
+            zoom![13.0 => hsl!(0, 0%, 62%), 20.0 => hsl!(0, 0%, 49%)],
         )
-        .paint("line-width", stops![13.0 => 5.9, 20.0 => 36.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
     style
         .line(&transportation, "bridge_motorway_link_casing")
         .minzoom(13.0)
@@ -1347,15 +1351,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                12.0 => "hsl(0, 0%, 64%)",
-                15.0 => "hsl(0, 0%, 54%)",
-                20.0 => "hsl(0, 0%, 40%)",
+            zoom![
+                12.0 => hsl!(0, 0%, 64%),
+                15.0 => hsl!(0, 0%, 54%),
+                20.0 => hsl!(0, 0%, 40%),
             ],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0),
         );
     style
         .line(&transportation, "bridge_motorway_casing")
@@ -1364,15 +1368,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                7.0 => "hsl(0, 0%, 60%)",
-                13.0 => "hsl(0, 0%, 50%)",
-                20.0 => "hsl(0, 0%, 40%)",
+            zoom![
+                7.0 => hsl!(0, 0%, 60%),
+                13.0 => hsl!(0, 0%, 50%),
+                20.0 => hsl!(0, 0%, 40%),
             ],
         )
         .paint(
             "line-width",
-            stops![5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0].base(1.2),
+            zoom!(base: 1.2; 5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0),
         );
     style
         .line(&transportation, "bridge_service_track")
@@ -1381,15 +1385,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 94%)",
-                13.0 => "hsl(0, 0%, 84%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 94%),
+                13.0 => hsl!(0, 0%, 84%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5].base(1.2),
+            zoom!(base: 1.2; 13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5),
         );
     style
         .line(&transportation, "bridge_link")
@@ -1398,15 +1402,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 88%)",
-                12.0 => "hsl(0, 0%, 88%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 88%),
+                12.0 => hsl!(0, 0%, 88%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0),
         );
     style
         .line(&transportation, "bridge_street")
@@ -1415,15 +1419,15 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 86%)",
-                13.0 => "hsl(0, 0%, 86%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 86%),
+                13.0 => hsl!(0, 0%, 86%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0),
         );
     style
         .line(&transportation, "bridge_path_pedestrian")
@@ -1433,9 +1437,9 @@ pub fn style() -> Style {
                 .and_geometry(Geometry::LineString)
                 .class_in(["path", "pedestrian"]),
         )
-        .color("hsl(0, 0%, 96%)")
+        .color(hsl!(0, 0%, 96%))
         .dasharray(vec![1.0, 0.3])
-        .paint("line-width", stops![13.0 => 0.75, 20.0 => 10.0].base(1.2));
+        .paint("line-width", zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
     style
         .line(&transportation, "bridge_secondary_tertiary")
         .minzoom(12.0)
@@ -1443,16 +1447,16 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![
-                10.0 => "hsl(0, 0%, 90%)",
-                11.0 => "hsl(0, 0%, 90%)",
-                12.0 => "hsl(0, 0%, 90%)",
-                20.0 => "hsl(0, 0%, 74%)",
+            zoom![
+                10.0 => hsl!(0, 0%, 90%),
+                11.0 => hsl!(0, 0%, 90%),
+                12.0 => hsl!(0, 0%, 90%),
+                20.0 => hsl!(0, 0%, 74%),
             ],
         )
         .paint(
             "line-width",
-            stops![12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0].base(1.2),
+            zoom!(base: 1.2; 12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0),
         );
     style
         .line(&transportation, "bridge_primary")
@@ -1461,11 +1465,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 64%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 64%)],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "bridge_trunk")
@@ -1474,11 +1478,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 61%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 61%)],
         )
         .paint(
             "line-width",
-            stops![6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "bridge_motorway_link")
@@ -1487,11 +1491,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)],
         )
         .paint(
             "line-width",
-            stops![8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0].base(1.2),
+            zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
     style
         .line(&transportation, "bridge_motorway")
@@ -1500,11 +1504,11 @@ pub fn style() -> Style {
         .join_round()
         .paint(
             "line-color",
-            stops![10.0 => "hsl(0, 0%, 68%)", 20.0 => "hsl(0, 0%, 52%)"],
+            zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)],
         )
         .paint(
             "line-width",
-            stops![5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0].base(1.2),
+            zoom!(base: 1.2; 5.0 => 1.0, 7.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0),
         );
     style
         .line(&transportation, "bridge_major_rail")
@@ -1512,7 +1516,7 @@ pub fn style() -> Style {
         .color("#bbb")
         .paint(
             "line-width",
-            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
+            zoom!(base: 1.4; 14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0),
         );
     style
         .line(&transportation, "bridge_major_rail_hatching")
@@ -1521,7 +1525,7 @@ pub fn style() -> Style {
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
+            zoom!(base: 1.4; 14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0),
         );
     style
         .line(&transportation, "bridge_transit_rail")
@@ -1529,7 +1533,7 @@ pub fn style() -> Style {
         .color("#bbb")
         .paint(
             "line-width",
-            stops![14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0].base(1.4),
+            zoom!(base: 1.4; 14.0 => 0.4, 15.0 => 0.75, 20.0 => 2.0),
         );
     style
         .line(&transportation, "bridge_transit_rail_hatching")
@@ -1538,15 +1542,15 @@ pub fn style() -> Style {
         .dasharray(vec![0.2, 8.0])
         .paint(
             "line-width",
-            stops![14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0].base(1.4),
+            zoom!(base: 1.4; 14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0),
         );
 
     style
         .fill(&openmaptiles.building(), "building")
         .minzoom(14.0)
-        .color("hsl(40, 5.5%, 89.2%)")
+        .color(hsl!(40, 5.5%, 89.2%))
         .opacity(zoom!(14 => 0.0, 15 => 1.0))
-        .outline_color(zoom!(14 => "hsla(40, 6%, 79%, 0.32)", 15 => "hsl(40, 6%, 79%)"));
+        .outline_color(zoom!(14 => hsla!(40, 6%, 79%, 0.32), 15 => hsl!(40, 6%, 79%)));
 
     style.add_layers(openmaptiles.boundary(), |s| {
         s.line("boundary_3")
@@ -1559,14 +1563,14 @@ pub fn style() -> Style {
         // Disputed borders are only drawn once they can be labelled as such.
         s.line("boundary_2_z0-4")
             .rounded()
-            .color("hsl(248, 1%, 41%)")
+            .color(hsl!(248, 1%, 41%))
             .opacity(zoom!(0 => 0.4, 4 => 1.0))
             .width(zoom!(3 => 1.0, 5 => 1.2, 12 => 3.0))
             .maxzoom(5.0)
             .filter(Filter::eq("admin_level", 2).and_not_has("claimed_by"));
         s.line("boundary_2_z5-")
             .rounded()
-            .color("hsl(248, 1%, 41%)")
+            .color(hsl!(248, 1%, 41%))
             .opacity(zoom!(0 => 0.4, 4 => 1.0))
             .width(zoom!(3 => 1.0, 5 => 1.2, 12 => 3.0))
             .minzoom(5.0)
@@ -1604,7 +1608,7 @@ pub fn style() -> Style {
             .text_max_width(5.0)
             .text_size(12.0)
             .text_color("#5d60be")
-            .text_halo("rgba(255,255,255,0.7)", 1.0);
+            .text_halo(rgba!(255, 255, 255, 0.7), 1.0);
         water_label
             .symbol(&waterway, "water_name_line")
             .filter(Filter::geometry(Geometry::LineString))
@@ -1657,7 +1661,7 @@ pub fn style() -> Style {
         .text_field("{name}")
         .text_font([REGULAR])
         .text_offset([0.0, 0.15])
-        .text_size(stops![13.0 => 12.0, 14.0 => 13.0])
+        .text_size(zoom![13.0 => 12.0, 14.0 => 13.0])
         .text_color("#765")
         .text_halo("#ffffff", 1.0)
         .text_halo_blur(0.5);
@@ -1677,7 +1681,7 @@ pub fn style() -> Style {
         ]))
         .layout("icon-image", RoadShield::icon_image(&shields))
         .icon_rotation_alignment("viewport")
-        .layout("symbol-placement", stops![10.0 => "point", 11.0 => "line"])
+        .layout("symbol-placement", zoom![10.0 => "point", 11.0 => "line"])
         .spacing(500.0)
         .layout(
             "text-field",
@@ -1755,41 +1759,41 @@ pub fn style() -> Style {
         .symbol(&place, "place_other")
         .filter(Filter::is_in("class", neighbourhoods))
         .text_field("{name_en}")
-        .text_halo(HALO, 1.2)
+        .text_halo(halo(), 1.2)
         .text_font([ITALIC])
         .text_letter_spacing(0.1)
         .text_max_width(9.0)
-        .text_size(zoom!(base 1.2; 12 => 10.0, 15 => 14.0))
+        .text_size(zoom!(base: 1.2; 12 => 10.0, 15 => 14.0))
         .text_transform("uppercase")
         .text_color("#633");
     style
         .symbol(&place, "place_village")
         .filter(Filter::class("village"))
         .text_field("{name_en}")
-        .text_halo(HALO, 1.2)
+        .text_halo(halo(), 1.2)
         .text_font([REGULAR])
         .text_max_width(8.0)
-        .text_size(zoom!(base 1.2; 10 => 12.0, 15 => 22.0))
+        .text_size(zoom!(base: 1.2; 10 => 12.0, 15 => 22.0))
         .text_color("#333");
     // Towns and cities carry a dot until their own footprint is visible.
-    let town_size = zoom!(base 1.2; 7 => 12.0, 11 => 16.0);
+    let town_size = zoom!(base: 1.2; 7 => 12.0, 11 => 16.0);
     style
         .symbol(&place, "place_town")
         .filter(Filter::class("town"))
         .text_field("{name_en}")
-        .text_halo(HALO, 1.2)
+        .text_halo(halo(), 1.2)
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
         .text_anchor("bottom")
         .text_font([REGULAR])
         .text_max_width(8.0)
         .text_size(town_size)
         .text_color("#333");
-    let city_size = zoom!(base 1.2; 7 => 14.0, 11 => 24.0);
+    let city_size = zoom!(base: 1.2; 7 => 14.0, 11 => 24.0);
     style
         .symbol(&place, "place_city")
         .filter(Filter::class("city"))
         .text_field("{name_en}")
-        .text_halo(HALO, 1.2)
+        .text_halo(halo(), 1.2)
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
         .text_anchor("bottom")
         .text_font([MEDIUM])
@@ -1804,13 +1808,13 @@ pub fn style() -> Style {
         .symbol(&place, "state")
         .filter(Filter::class("state"))
         .text_field("{name_en}")
-        .text_halo(HALO, 1.2)
+        .text_halo(halo(), 1.2)
         .maxzoom(6.0)
         .text_font([ITALIC])
         .text_size(zoom!(4 => 11.0, 6 => 15.0))
         .text_transform("uppercase")
         .text_color("#633")
-        .text_halo("rgba(255,255,255,0.7)", 1.0);
+        .text_halo(rgba!(255, 255, 255, 0.7), 1.0);
     for (id, rank, size) in [
         (
             "country_3",
@@ -1837,19 +1841,19 @@ pub fn style() -> Style {
             .text_size(size)
             .text_color("#334")
             .text_halo_blur(1.0)
-            .text_halo(HALO, 1.0);
+            .text_halo(halo(), 1.0);
     }
     style
         .symbol(&place, "continent")
         .filter(Filter::class("continent"))
         .text_field("{name_en}")
-        .text_halo(HALO, 1.2)
+        .text_halo(halo(), 1.2)
         .maxzoom(1.0)
         .text_font([ITALIC])
         .text_size(13.0)
         .text_transform("uppercase")
         .text_color("#633")
-        .text_halo("rgba(255,255,255,0.7)", 1.0);
+        .text_halo(rgba!(255, 255, 255, 0.7), 1.0);
 
     style.validate();
     style

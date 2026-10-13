@@ -5,10 +5,137 @@ use std::fmt;
 
 /// How a color renders back to CSS.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Notation {
+pub enum ColorFormat {
     Hex,
     Rgb,
     Hsl,
+}
+
+/// Parses a CSS-shaped color while retaining its authored spelling exactly in output.
+#[macro_export]
+macro_rules! color {
+    (# $hex:tt) => {
+        $crate::Color::parse(concat!("#", stringify!($hex)))
+    };
+    (hsl($hue:literal, $saturation:literal %, $lightness:literal %)) => {
+        $crate::Color::parse(concat!(
+            "hsl(",
+            stringify!($hue),
+            ", ",
+            stringify!($saturation),
+            "%, ",
+            stringify!($lightness),
+            "%)"
+        ))
+    };
+    (hsla($hue:literal, $saturation:literal %, $lightness:literal %, $alpha:literal)) => {
+        $crate::Color::parse(concat!(
+            "hsla(",
+            stringify!($hue),
+            ", ",
+            stringify!($saturation),
+            "%, ",
+            stringify!($lightness),
+            "%, ",
+            stringify!($alpha),
+            ")"
+        ))
+    };
+    (rgb($red:literal, $green:literal, $blue:literal)) => {
+        $crate::Color::parse(concat!(
+            "rgb(",
+            stringify!($red),
+            ",",
+            stringify!($green),
+            ",",
+            stringify!($blue),
+            ")"
+        ))
+    };
+    (rgba($red:literal, $green:literal, $blue:literal, $alpha:literal)) => {
+        $crate::Color::parse(concat!(
+            "rgba(",
+            stringify!($red),
+            ",",
+            stringify!($green),
+            ",",
+            stringify!($blue),
+            ",",
+            stringify!($alpha),
+            ")"
+        ))
+    };
+    ($css:expr) => {
+        $crate::Color::parse($css)
+    };
+}
+
+/// Constructs an HSL color from CSS-style components.
+#[macro_export]
+macro_rules! hsl {
+    ($hue:literal, $saturation:literal %, $lightness:literal %) => {
+        $crate::Color::parse(concat!(
+            "hsl(",
+            stringify!($hue),
+            ",",
+            stringify!($saturation),
+            "%,",
+            stringify!($lightness),
+            "%)"
+        ))
+    };
+}
+
+/// Constructs an HSL color with an alpha channel.
+#[macro_export]
+macro_rules! hsla {
+    ($hue:literal, $saturation:literal %, $lightness:literal %, $alpha:literal) => {
+        $crate::Color::parse(concat!(
+            "hsla(",
+            stringify!($hue),
+            ",",
+            stringify!($saturation),
+            "%,",
+            stringify!($lightness),
+            "%,",
+            stringify!($alpha),
+            ")"
+        ))
+    };
+}
+
+/// Constructs an RGB color from byte components.
+#[macro_export]
+macro_rules! rgb {
+    ($red:literal, $green:literal, $blue:literal) => {
+        $crate::Color::parse(concat!(
+            "rgb(",
+            stringify!($red),
+            ",",
+            stringify!($green),
+            ",",
+            stringify!($blue),
+            ")"
+        ))
+    };
+}
+
+/// Constructs an RGB color with an alpha channel.
+#[macro_export]
+macro_rules! rgba {
+    ($red:literal, $green:literal, $blue:literal, $alpha:literal) => {
+        $crate::Color::parse(concat!(
+            "rgba(",
+            stringify!($red),
+            ",",
+            stringify!($green),
+            ",",
+            stringify!($blue),
+            ",",
+            stringify!($alpha),
+            ")"
+        ))
+    };
 }
 
 /// An HSLA color, remembering the notation it was written in.
@@ -18,7 +145,7 @@ pub struct Color {
     saturation: f64,
     lightness: f64,
     alpha: f64,
-    notation: Notation,
+    notation: ColorFormat,
     /// The source text, preserved verbatim until the color is modified.
     literal: Option<String>,
 }
@@ -36,7 +163,7 @@ impl Color {
             saturation: saturation.clamp(0.0, 1.0),
             lightness: lightness.clamp(0.0, 1.0),
             alpha: alpha.clamp(0.0, 1.0),
-            notation: Notation::Hsl,
+            notation: ColorFormat::Hsl,
             literal: None,
         }
     }
@@ -53,7 +180,7 @@ impl Color {
             blue as f64 / 255.0,
             alpha,
         );
-        color.notation = Notation::Rgb;
+        color.notation = ColorFormat::Rgb;
         color
     }
 
@@ -102,7 +229,7 @@ impl Color {
             _ => return None,
         };
         let mut color = Self::from_rgb_f64(red, green, blue, alpha);
-        color.notation = Notation::Hex;
+        color.notation = ColorFormat::Hex;
         Some(color)
     }
 
@@ -125,7 +252,7 @@ impl Color {
                     number(args[2])? / 255.0,
                     alpha,
                 );
-                color.notation = Notation::Rgb;
+                color.notation = ColorFormat::Rgb;
                 Some(color)
             }
             "hsl" | "hsla" => Some(Self::hsla(
@@ -157,7 +284,7 @@ impl Color {
             (hue, saturation)
         };
         let mut color = Self::hsla(hue, saturation, lightness, alpha);
-        color.notation = Notation::Hex;
+        color.notation = ColorFormat::Hex;
         color
     }
 
@@ -231,7 +358,7 @@ impl Color {
             return literal.clone();
         }
         match self.notation {
-            Notation::Hex if self.alpha == 1.0 => {
+            ColorFormat::Hex if self.alpha == 1.0 => {
                 let (red, green, blue) = self.to_rgb_f64();
                 let channel = |value: f64| (value * 255.0).round() as u8;
                 format!(
@@ -241,7 +368,7 @@ impl Color {
                     channel(blue)
                 )
             }
-            Notation::Hex | Notation::Rgb => {
+            ColorFormat::Hex | ColorFormat::Rgb => {
                 let (red, green, blue) = self.to_rgb_f64();
                 let channel = |value: f64| (value * 255.0).round() as u8;
                 let (red, green, blue) = (channel(red), channel(green), channel(blue));
@@ -251,7 +378,7 @@ impl Color {
                     format!("rgba({red}, {green}, {blue}, {})", trim(self.alpha))
                 }
             }
-            Notation::Hsl => {
+            ColorFormat::Hsl => {
                 let hue = trim(self.hue);
                 let saturation = trim(self.saturation * 100.0);
                 let lightness = trim(self.lightness * 100.0);
@@ -304,6 +431,26 @@ mod tests {
         for css in ["#fc8", "rgb(141,220,248)", "hsl(101,62.6%,63.3%)"] {
             assert_eq!(Color::parse(css).to_css(), css);
         }
+    }
+
+    #[test]
+    fn macros_keep_their_css_notation() {
+        assert_eq!(crate::color!(#fde).to_css(), "#fde");
+        for css in [
+            "#fff",
+            "#11223344",
+            "rgb(1, 2, 3)",
+            "rgba(1, 2, 3, 0.4)",
+            "hsl(1, 2%, 3%)",
+            "hsla(1, 2%, 3%, 0.4)",
+        ] {
+            assert_eq!(crate::color!(css).to_css(), css);
+        }
+        assert_eq!(crate::hsl!(0, 0%, 86.6667%).to_css(), "hsl(0,0%,86.6667%)");
+        assert_eq!(
+            crate::rgba!(255, 255, 255, 0.8).to_css(),
+            "rgba(255,255,255,0.8)"
+        );
     }
 
     #[test]

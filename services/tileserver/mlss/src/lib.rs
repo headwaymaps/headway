@@ -11,7 +11,7 @@
 //!
 //! let mut streets = Streets::new();
 //! streets.cased(
-//!     roads.line("motorway").color(Color::parse("#fc8")).width(zoom!(base 1.2; 7 => 1.0, 20 => 18.0)),
+//!     roads.line("motorway").color(Color::parse("#fc8")).width(zoom!(base: 1.2; 7 => 1.0, 20 => 18.0)),
 //!     1.0,
 //!     Color::parse("#fc8").darken(0.15),
 //! );
@@ -29,12 +29,12 @@ pub mod source;
 pub mod street;
 pub mod style;
 
-pub use color::Color;
+pub use color::{Color, ColorFormat};
 pub use expression::{Expression, Operator};
 pub use filter::{ClassFilter, Filter, Geometry};
 pub use layer::{AnyLayer, Cap, Join, Layer};
 pub use openmaptiles::OpenMapTiles;
-pub use property::{stops, Property, Stops};
+pub use property::{zoom, zoom_with_base, Property, Stops};
 pub use source::{background, Source, SourceLayer, SourceRef};
 pub use street::Streets;
 pub use style::{Style, SymbolLayerFactory};

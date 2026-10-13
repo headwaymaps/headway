@@ -59,7 +59,7 @@ impl IntoIterator for Streets {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{stops, Color, Source, Style};
+    use crate::{zoom, Color, Source, Style};
 
     fn ids(streets: Streets) -> Vec<String> {
         streets
@@ -74,7 +74,7 @@ mod tests {
         let roads = style
             .source("t", Source::vector("/t"))
             .layer("transportation");
-        let width = stops([(12.0, 1.0), (20.0, 10.0)]);
+        let width = zoom([(12.0, 1.0), (20.0, 10.0)]);
 
         let mut streets = Streets::new();
         streets.plain(roads.line("path").width(width.clone()));
@@ -109,7 +109,7 @@ mod tests {
             .layer("transportation");
         let street = roads
             .line("minor")
-            .width(stops([(12.0, 0.0), (14.0, 2.0), (20.0, 10.0)]));
+            .width(zoom([(12.0, 0.0), (14.0, 2.0), (20.0, 10.0)]));
 
         let casing = AnyLayer::from(street.casing(1.5, Color::parse("#ccc"))).to_json();
         // The zero stop stays zero, so the casing appears with the street.
