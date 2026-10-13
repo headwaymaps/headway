@@ -135,6 +135,7 @@ export interface BaseMapInterface {
   getBounds: () => LngLatBounds;
   flyTo: (location: LngLatLike, options?: FlyToOptions) => void;
   panBy: (offset: [number, number]) => void;
+  slideUnder: (lngLat: LngLatLike, previous?: LngLatLike) => void;
   flyToPlace: (place: Place, options?: FlyToOptions) => void;
   fitBounds: (bounds: LngLatBoundsLike, options?: FitBoundsOptions) => void;
   setCursor: (key: string) => void;
@@ -240,6 +241,7 @@ export default defineComponent({
       flyToPlace: this.flyToPlace,
       flyTo: this.flyTo,
       panBy: (offset: [number, number]) => map.panBy(offset),
+      slideUnder: this.slideUnder,
       fitBounds: this.fitBounds,
       pushMarker: this.pushMarker,
       hasMarker: this.hasMarker,
@@ -681,6 +683,21 @@ export default defineComponent({
       const distanceInTiles =
         Math.hypot(to.x - from.x, to.y - from.y) * 2 ** map.getZoom();
       return distanceInTiles <= MAX_ANIMATED_DISTANCE_IN_TILES;
+    },
+    /// Pans, without zooming, so that `lngLat` lands where `previous` is on screen: a point being
+    /// scrubbed holds still while the map slides under it. A `previous` out of view is first
+    /// brought just into it.
+    slideUnder(lngLat: LngLatLike, previous?: LngLatLike): void {
+      if (!map) {
+        return;
+      }
+      const margin = 24;
+      const { clientWidth: width, clientHeight: height } = map.getContainer();
+      const dot = map.project(previous ?? lngLat);
+      const anchorX = Math.min(Math.max(dot.x, margin), width - margin);
+      const anchorY = Math.min(Math.max(dot.y, margin), height - margin);
+      const point = map.project(lngLat);
+      map.panBy([point.x - anchorX, point.y - anchorY], { animate: false });
     },
     flyTo: function (location: LngLatLike, options: FlyToOptions = {}): void {
       if (this.loaded) {

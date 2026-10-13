@@ -1,5 +1,8 @@
 <template>
-  <div class="travel-mode-bar">
+  <div
+    class="travel-mode-bar"
+    :class="{ 'travel-mode-bar--choices': currentMode === undefined }"
+  >
     <q-btn
       v-for="option in options"
       :key="option.mode"
@@ -88,6 +91,15 @@ export default defineComponent({
 
   .q-icon {
     margin-right: 4px;
+  }
+}
+
+// With no mode chosen yet, like on a place's card, each mode is a plain link to directions.
+.travel-mode-bar--choices {
+  background: white;
+
+  .q-btn.travel-mode {
+    color: $dark;
   }
 }
 

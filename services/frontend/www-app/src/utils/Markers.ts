@@ -84,12 +84,13 @@ let elevationScrubber:
   | { marker: Marker; leg: TripLeg; onDrag: (fraction: number) => void }
   | undefined;
 
-/// Marks the point `fraction` of the way along `leg`. Dragging the mark slides it along `leg`,
-/// reporting where it is to `onDrag`.
+/// Marks the point `fraction` of the way along `leg`, sliding the map to keep it in view when
+/// `keepInView`. Dragging the mark slides it along `leg`, reporting where it is to `onDrag`.
 export function showElevationScrubber(
   leg: TripLeg,
   fraction: number,
   onDrag: (fraction: number) => void,
+  keepInView: boolean,
 ) {
   const map = getBaseMap();
   if (!map) {
@@ -107,13 +108,22 @@ export function showElevationScrubber(
       onDrag(dragged);
     });
     elevationScrubber = { marker, leg, onDrag };
-    marker.setLngLat(leg.pointAlong(fraction));
+    const lngLat = leg.pointAlong(fraction);
+    marker.setLngLat(lngLat);
     map.pushMarker(ELEVATION_SCRUBBER_KEY, marker);
+    if (keepInView) {
+      map.slideUnder(lngLat);
+    }
     return;
   }
   elevationScrubber.leg = leg;
   elevationScrubber.onDrag = onDrag;
-  elevationScrubber.marker.setLngLat(leg.pointAlong(fraction));
+  const previous = elevationScrubber.marker.getLngLat();
+  const lngLat = leg.pointAlong(fraction);
+  elevationScrubber.marker.setLngLat(lngLat);
+  if (keepInView) {
+    map.slideUnder(lngLat, previous);
+  }
 }
 
 export function hideElevationScrubber() {
