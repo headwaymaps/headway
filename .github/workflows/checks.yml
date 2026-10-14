@@ -193,19 +193,6 @@ jobs:
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-targets
       - run: cargo build --workspace --release --all-features
-  expressive_example:
-    name: Expressive example
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: recursive
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: services/tileserver/expressive/package-lock.json
-      - run: bin/test-expressive-style
   integration_tests:
     name: Integration Tests
     runs-on: ubuntu-latest

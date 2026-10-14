@@ -1,15 +1,17 @@
+import { execFileSync } from 'node:child_process';
 import { expect, test } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type { StyleSpecification } from 'maplibre-gl';
 import ShieldQa from './ShieldQa';
 
 const style: StyleSpecification = JSON.parse(
-  readFileSync(
-    new URL(
-      '../../../../tileserver/assets/styles/basic-v3.json',
-      import.meta.url,
-    ),
-    'utf8',
+  execFileSync(
+    'cargo',
+    ['run', '--locked', '--quiet', '-p', 'mlss', '--bin', 'headway-style'],
+    {
+      cwd: fileURLToPath(new URL('../../../../../', import.meta.url)),
+      encoding: 'utf8',
+    },
   ),
 );
 

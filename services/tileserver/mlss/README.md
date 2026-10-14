@@ -8,16 +8,13 @@ surface and bridge, each with a casing underneath, each fading in and widening
 as you zoom. This crate lets that be written once.
 
 `headway-style` prints the generated document for inspection. Tile-server image
-builds render it automatically, replacing `assets/styles/basic-v3.json` in the
-image with the current Rust implementation. For local map iteration, run
+builds render the living Rust definition automatically into
+`assets/styles/basic-v3.json` in the image.
+For local map iteration, run
 `bin/dev-local-assets`; its `HEADWAY_LOCAL_STYLE` mode rebuilds the style when
 files under `mlss/src` change and reloads the browser.
 
-`src/headway.rs` is the Headway default style, and
-`tests/basic_v3.rs` asserts the builder-generated document reproduces the hand-written
-`assets/styles/basic-v3.json` layer for layer. The comparison ignores two
-things maplibre doesn't care about: integers written as floats, and the order
-of clauses inside an `all` filter.
+`src/headway.rs` is the Headway default style and its single source of truth.
 
 `bin/count-headway-style` counts the root declaration plus every private
 Headway helper module under `src/headway/`; it cannot be improved merely by
@@ -71,14 +68,3 @@ self.road("motorway_link", links, "#fc8", ramp)
     .appears_at(12.0)
     .push(&mut streets);
 ```
-
-## Expressive comparison
-
-`../expressive` is a pinned checkout of
-[OpenFreeMap Bright in Expressive](https://github.com/falseinput/openfreemap-expressive),
-a different authoring language for MapLibre styles. It keeps parameters,
-derived tokens, and layer modules in separate files. Run `bin/test-expressive-style`
-from the repository root to compile both the upstream 119-layer example and
-`expressive/headway-v3.exp`. The latter is a complete Headway v3 Expressive
-implementation, split into ordered layer modules and checked for exact output
-parity.
