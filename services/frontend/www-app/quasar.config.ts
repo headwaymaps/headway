@@ -1,6 +1,7 @@
 /* eslint-env node */
 
-import { readFileSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
@@ -27,14 +28,28 @@ const travelmuxProxy = HEADWAY_TRAVELMUX_HOST
     }
   : { target: HEADWAY_HOST };
 
-// Serve the checked-out style locally, while its tiles, sprites, and fonts continue through the
-// /tileserver proxy. This makes it possible to iterate on a style against upstream world data.
+// Render the Rust style locally, while its tiles, sprites, and fonts continue through the
+// /tileserver proxy. This makes it possible to iterate on a style against upstream world data:
+// changing mlss/src recompiles the style and redraws the map.
 //   HEADWAY_LOCAL_STYLE=1 yarn dev
 const LOCAL_STYLE_ENABLED = process.env.HEADWAY_LOCAL_STYLE === '1';
-const LOCAL_STYLE_PATH = resolve(
-  __dirname,
-  '../../tileserver/assets/styles/basic-v3.json',
-);
+const REPO_ROOT = resolve(__dirname, '../../..');
+const MLSS_DIR = resolve(REPO_ROOT, 'services/tileserver/mlss');
+const MLSS_SOURCE_DIR = resolve(MLSS_DIR, 'src');
+const MLSS_INPUTS = [
+  MLSS_SOURCE_DIR,
+  resolve(MLSS_DIR, 'Cargo.toml'),
+  resolve(REPO_ROOT, 'Cargo.toml'),
+  resolve(REPO_ROOT, 'Cargo.lock'),
+];
+
+function renderLocalStyle(): string {
+  return execFileSync(
+    'cargo',
+    ['run', '--locked', '--quiet', '-p', 'mlss', '--bin', 'headway-style'],
+    { cwd: REPO_ROOT, encoding: 'utf8' },
+  );
+}
 
 // Sprites and fonts come from a martin serving ./services/tileserver/assets, so new
 // sprites show up without publishing them, while tiles still come from upstream.
@@ -60,6 +75,8 @@ const localStylePlugin: Plugin = {
       return;
     }
 
+    let renderedStyle = renderLocalStyle();
+
     server.middlewares.use((request, response, next) => {
       if (request.url?.split('?')[0] !== '/local-style/basic-v3.json') {
         next();
@@ -69,7 +86,7 @@ const localStylePlugin: Plugin = {
       // maplibre rejects a relative sprite URL outright, so serve an absolute one.
       const origin = `http://${request.headers.host}`;
 
-      const style = JSON.parse(readFileSync(LOCAL_STYLE_PATH, 'utf8'));
+      const style = JSON.parse(renderedStyle);
       for (const source of Object.values(style.sources) as Array<{
         url?: string;
       }>) {
@@ -86,9 +103,14 @@ const localStylePlugin: Plugin = {
       response.end(JSON.stringify(style));
     });
 
-    server.watcher.add(LOCAL_STYLE_PATH);
+    server.watcher.add(MLSS_INPUTS);
     server.watcher.on('all', (_event, path) => {
-      if (path === LOCAL_STYLE_PATH) {
+      if (
+        path === MLSS_SOURCE_DIR ||
+        path.startsWith(`${MLSS_SOURCE_DIR}/`) ||
+        MLSS_INPUTS.includes(path)
+      ) {
+        renderedStyle = renderLocalStyle();
         server.ws.send({ type: 'full-reload' });
       }
     });

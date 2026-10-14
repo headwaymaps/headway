@@ -1,5 +1,7 @@
 #!/bin/bash
-# Run the frontend with this checkout's style, sprites, and fonts over upstream tiles.
+# Run the frontend with the style rendered from this checkout's Rust source,
+# plus local sprites and fonts, over upstream tiles. Changes under mlss/src
+# rebuild the local style and reload the map.
 #
 #     bin/dev-local-assets
 #

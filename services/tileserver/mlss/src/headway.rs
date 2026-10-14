@@ -233,7 +233,7 @@ fn road_shields() -> Vec<RoadShield> {
         RoadShield::new(network)
     }
     vec![
-        shield("CA:BC").text_color("#003f87").sized_icon(),
+        shield("CA:BC").text_color("#1966b3").sized_icon(),
         shield("CA:NB:tertiary")
             .text_offset([-0.06, 0.11])
             .text_width(23.0),
@@ -321,7 +321,7 @@ fn road_shields() -> Vec<RoadShield> {
         shield("US:CO:NW")
             .text_offset([0.0, 0.6])
             .text_width(23.0)
-            .text_color("#003f87"),
+            .text_color("#1966b3"),
         shield("US:CO:Scenic"),
         shield("US:CT:Parkway"),
         shield("US:DC")
@@ -364,7 +364,7 @@ fn road_shields() -> Vec<RoadShield> {
         shield("US:KS:Turnpike").no_text(),
         shield("US:KY:Parkway")
             .text_offset([0.0, -0.24])
-            .text_color("#003f87"),
+            .text_color("#1966b3"),
         shield("US:LA").text_offset([0.0, 0.31]).sized_icon(),
         shield("US:LA:Causeway"),
         shield("US:LHT"),
@@ -401,7 +401,7 @@ fn road_shields() -> Vec<RoadShield> {
         shield("US:NV:Clark")
             .text_offset([0.0, -0.12])
             .text_width(27.0)
-            .text_color("#003f87"),
+            .text_color("#1966b3"),
         shield("US:NY:Parkway:LI")
             .text_offset([0.24, -0.36])
             .text_width(21.5),
@@ -430,7 +430,7 @@ fn road_shields() -> Vec<RoadShield> {
         shield("US:PIPC"),
         shield("US:SC")
             .text_offset([0.0, 0.18])
-            .text_color("#003f87"),
+            .text_color("#1966b3"),
         shield("US:SD").text_offset([0.0, -0.12]).sized_icon(),
         shield("US:SD:Custer:CSP").text_offset([0.0, -0.18]),
         shield("US:TN:primary").text_offset([0.0, -0.3]),

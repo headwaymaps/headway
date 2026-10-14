@@ -7,9 +7,11 @@ the road layers alone are the same handful of lines repeated across tunnel,
 surface and bridge, each with a casing underneath, each fading in and widening
 as you zoom. This crate lets that be written once.
 
-```
-cargo run -p mlss --bin headway-style > ../assets/styles/basic-v3.json
-```
+`headway-style` prints the generated document for inspection. Tile-server image
+builds render it automatically, replacing `assets/styles/basic-v3.json` in the
+image with the current Rust implementation. For local map iteration, run
+`bin/dev-local-assets`; its `HEADWAY_LOCAL_STYLE` mode rebuilds the style when
+files under `mlss/src` change and reloads the browser.
 
 `src/headway.rs` is the Headway default style, and
 `tests/basic_v3.rs` asserts the builder-generated document reproduces the hand-written
