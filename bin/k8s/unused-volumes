@@ -95,7 +95,7 @@ if [ -n "$reclaiming" ]; then
     echo ""
     echo "Waiting for the provisioner to reclaim released volumes..."
     # shellcheck disable=SC2086
-    "${KUBECTL[@]}" wait --for=delete --timeout=120s $reclaiming > /dev/null || true
+    "${KUBECTL[@]}" wait --for=delete --timeout=120s $reclaiming 2>&1 | sed 's/^/  /' || true
 fi
 
 stuck=$(released_pvs Delete)
