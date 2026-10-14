@@ -1604,6 +1604,10 @@ pub fn style() -> Style {
             .text_font([ITALIC])
             .text_max_width(9.0)
             .text_size(12.0)
+            .text_field("{name}")
+            .text_anchor("top")
+            .text_offset([0.0, 0.6])
+            .text_color("#666")
             .text_halo("#ffffff", 1.0)
             .text_halo_blur(0.5);
         for (id, zoom, rank) in [
@@ -1614,11 +1618,7 @@ pub fn style() -> Style {
             poi_label
                 .symbol(&poi, id)
                 .minzoom(zoom)
-                .filter(Filter::geometry(Geometry::Point).and(rank))
-                .text_field("{name}")
-                .text_anchor("top")
-                .text_offset([0.0, 0.6])
-                .text_color("#666");
+                .filter(Filter::geometry(Geometry::Point).and(rank));
         }
         poi_label
             .symbol(&poi, "poi_transit")

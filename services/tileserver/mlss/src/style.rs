@@ -85,6 +85,14 @@ impl SymbolLayerFactory<'_> {
         self.map(|layer| layer.text_max_width(value))
     }
 
+    pub fn text_offset(self, value: [f64; 2]) -> Self {
+        self.map(|layer| layer.text_offset(value))
+    }
+
+    pub fn text_anchor(self, value: &str) -> Self {
+        self.map(|layer| layer.text_anchor(value))
+    }
+
     pub fn text_color(self, value: impl Into<Property>) -> Self {
         self.map(|layer| layer.text_color(value))
     }
