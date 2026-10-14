@@ -136,10 +136,15 @@ jobs:
         run: bin/build-images
       - name: Export Rust build caches
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        timeout-minutes: 15
         run: |
           rm -rf ~/rust-caches
+          df -h
           dagger call export-rust-caches export --path ~/rust-caches
           du -sh ~/rust-caches/*
+      - name: Show disk usage after failed export
+        if: failure()
+        run: df -h
       - name: Save Rust build caches
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v6
