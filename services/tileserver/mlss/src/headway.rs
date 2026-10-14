@@ -29,6 +29,10 @@ fn surface() -> Filter {
     Filter::not_in("brunnel", ["bridge", "tunnel"])
 }
 
+fn above_ground() -> Filter {
+    Filter::ne("brunnel", "tunnel")
+}
+
 /// The per-network exceptions to Headway's road-shield defaults.
 #[derive(Clone, Copy)]
 struct RoadShield {
@@ -558,19 +562,18 @@ pub fn style() -> Style {
         .color(rgba!(247, 239, 195, 1));
     style
         .fill(&openmaptiles.water(), "water")
-        .filter(Filter::ne("brunnel", "tunnel"))
+        .filter(above_ground())
         .color(water());
 
-    let above_ground = Filter::ne("brunnel", "tunnel");
     style
         .line(&waterway, "waterway_river")
-        .filter(Filter::class("river").and(above_ground.clone()))
+        .filter(Filter::class("river").and(above_ground()))
         .cap_round()
         .color(water())
         .width(zoom!(base: 1.2; 11 => 0.5, 20 => 6.0));
     style
         .line(&waterway, "waterway_other")
-        .filter(Filter::class_not("river").and(above_ground))
+        .filter(Filter::class_not("river").and(above_ground()))
         .cap_round()
         .color(water())
         .width(zoom!(base: 1.3; 13 => 0.5, 20 => 6.0));
