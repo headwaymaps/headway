@@ -51,6 +51,48 @@ pub struct SymbolLayerFactory<'a> {
     template: Layer<Symbol>,
 }
 
+/// A reusable set of line properties for one source layer.
+#[derive(Clone)]
+pub struct LineFactory {
+    source: SourceLayer,
+    template: Layer<Line>,
+}
+
+impl LineFactory {
+    fn map(mut self, change: impl FnOnce(Layer<Line>) -> Layer<Line>) -> Self {
+        self.template = change(self.template);
+        self
+    }
+
+    /// Starts a configured line layer from this template.
+    pub fn line<'a>(&self, style: &'a mut Style, id: impl Into<String>) -> AttachedLayer<'a, Line> {
+        AttachedLayer {
+            style,
+            layer: Some(self.source.line(id).with_template(&self.template)),
+        }
+    }
+
+    pub fn color(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.color(value))
+    }
+
+    pub fn width(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.width(value))
+    }
+
+    pub fn opacity(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.opacity(value))
+    }
+
+    pub fn dasharray(self, value: impl Into<Property>) -> Self {
+        self.map(|layer| layer.dasharray(value))
+    }
+
+    pub fn rounded(self) -> Self {
+        self.map(Layer::rounded)
+    }
+}
+
 impl SymbolLayerFactory<'_> {
     fn map(mut self, change: impl FnOnce(Layer<Symbol>) -> Layer<Symbol>) -> Self {
         self.template = change(self.template);
@@ -346,6 +388,14 @@ impl Style {
     pub fn symbol_factory(&mut self) -> SymbolLayerFactory<'_> {
         SymbolLayerFactory {
             style: self,
+            template: Layer::new("", None, None),
+        }
+    }
+
+    /// Starts a reusable line-layer template for `source`.
+    pub fn line_factory(&self, source: SourceLayer) -> LineFactory {
+        LineFactory {
+            source,
             template: Layer::new("", None, None),
         }
     }

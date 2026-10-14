@@ -596,6 +596,8 @@ pub fn style() -> Style {
             .width(zoom!(base: 1.2; 11 => 0.5, 20 => 6.0));
     });
 
+    let transportation_lines = style.line_factory(transportation.clone());
+    let rounded_transportation = transportation_lines.rounded();
     style
         .line(&transportation, "tunnel_service_track_casing")
         .minzoom(13.0)
@@ -614,11 +616,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0),
         );
-    style
-        .line(&transportation, "tunnel_link_casing")
+    rounded_transportation
+        .line(&mut style, "tunnel_link_casing")
         .minzoom(13.0)
         .filter(tunnel().and_eq("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -632,11 +633,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5),
         );
-    style
-        .line(&transportation, "tunnel_street_casing")
+    rounded_transportation
+        .line(&mut style, "tunnel_street_casing")
         .minzoom(13.0)
         .filter(tunnel().class_in(["street", "street_limited"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -649,11 +649,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0),
         );
-    style
-        .line(&transportation, "tunnel_secondary_tertiary_casing")
+    rounded_transportation
+        .line(&mut style, "tunnel_secondary_tertiary_casing")
         .minzoom(13.0)
         .filter(tunnel().class_in(["secondary", "tertiary"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -668,21 +667,19 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0),
         );
-    style
-        .line(&transportation, "tunnel_primary_casing")
+    rounded_transportation
+        .line(&mut style, "tunnel_primary_casing")
         .minzoom(13.0)
         .filter(tunnel().class("primary"))
-        .rounded()
         .paint(
             "line-color",
             zoom![13.0 => hsl!(0, 0%, 83.5%), 20.0 => hsl!(0, 0%, 76%)],
         )
         .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
-    style
-        .line(&transportation, "tunnel_trunk_casing")
+    rounded_transportation
+        .line(&mut style, "tunnel_trunk_casing")
         .minzoom(13.0)
         .filter(tunnel().class("trunk"))
-        .rounded()
         .paint(
             "line-color",
             zoom![13.0 => hsl!(0, 0%, 81%), 20.0 => hsl!(0, 0%, 74.5%)],
@@ -724,11 +721,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0),
         );
-    style
-        .line(&transportation, "tunnel_service_track")
+    rounded_transportation
+        .line(&mut style, "tunnel_service_track")
         .minzoom(13.0)
         .filter(tunnel().class_in(["service", "track"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -741,11 +737,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5),
         );
-    style
-        .line(&transportation, "tunnel_link")
+    rounded_transportation
+        .line(&mut style, "tunnel_link")
         .minzoom(12.0)
         .filter(tunnel().and_eq("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -758,11 +753,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0),
         );
-    style
-        .line(&transportation, "tunnel_minor")
+    rounded_transportation
+        .line(&mut style, "tunnel_minor")
         .minzoom(12.0)
         .filter(tunnel().class_in(["minor"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -786,11 +780,10 @@ pub fn style() -> Style {
         .color(hsl!(0, 0%, 98%))
         .dasharray(vec![1.0, 0.75])
         .paint("line-width", zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
-    style
-        .line(&transportation, "tunnel_secondary_tertiary")
+    rounded_transportation
+        .line(&mut style, "tunnel_secondary_tertiary")
         .minzoom(12.0)
         .filter(tunnel().class_in(["secondary", "tertiary"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -804,11 +797,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0),
         );
-    style
-        .line(&transportation, "tunnel_primary")
+    rounded_transportation
+        .line(&mut style, "tunnel_primary")
         .minzoom(8.0)
         .filter(tunnel().class("primary"))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 64%)],
@@ -817,11 +809,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
-    style
-        .line(&transportation, "tunnel_trunk")
+    rounded_transportation
+        .line(&mut style, "tunnel_trunk")
         .minzoom(6.0)
         .filter(tunnel().class("trunk"))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 61%)],
@@ -830,11 +821,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0),
         );
-    style
-        .line(&transportation, "tunnel_motorway_link")
+    rounded_transportation
+        .line(&mut style, "tunnel_motorway_link")
         .minzoom(8.0)
         .filter(tunnel().class("motorway").and_eq("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 84%), 20.0 => hsl!(0, 0%, 76%)],
@@ -843,11 +833,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
-    style
-        .line(&transportation, "tunnel_motorway")
+    rounded_transportation
+        .line(&mut style, "tunnel_motorway")
         .minzoom(5.0)
         .filter(tunnel().class("motorway").and_ne("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 84%), 20.0 => hsl!(0, 0%, 76%)],
@@ -896,11 +885,10 @@ pub fn style() -> Style {
         .fill(&transportation, "road_area_pattern")
         .filter(Filter::geometry(Geometry::Polygon))
         .pattern("pedestrian_polygon");
-    style
-        .line(&transportation, "road_service_track_casing")
+    rounded_transportation
+        .line(&mut style, "road_service_track_casing")
         .minzoom(13.0)
         .filter(surface().class_in(["service", "track"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -913,8 +901,8 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 13.0 => 0.76, 16.0 => 4.0, 20.0 => 11.0),
         );
-    style
-        .line(&transportation, "road_link_casing")
+    rounded_transportation
+        .line(&mut style, "road_link_casing")
         .minzoom(13.0)
         .filter(
             surface()
@@ -924,7 +912,6 @@ pub fn style() -> Style {
                 )
                 .and_eq("ramp", 1.0),
         )
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -938,8 +925,8 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 23.5),
         );
-    style
-        .line(&transportation, "road_minor_casing")
+    rounded_transportation
+        .line(&mut style, "road_minor_casing")
         .minzoom(13.0)
         .filter(
             Filter::geometry(Geometry::LineString)
@@ -947,7 +934,6 @@ pub fn style() -> Style {
                 .class_in(["minor"])
                 .and_ne("ramp", 1.0),
         )
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -960,15 +946,14 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 2.12, 14.0 => 4.0, 20.0 => 20.0),
         );
-    style
-        .line(&transportation, "road_secondary_tertiary_casing")
+    rounded_transportation
+        .line(&mut style, "road_secondary_tertiary_casing")
         .minzoom(13.0)
         .filter(
             surface()
                 .class_in(["secondary", "tertiary"])
                 .and_ne("ramp", 1.0),
         )
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -983,31 +968,28 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 1.76, 13.0 => 3.6, 20.0 => 30.0),
         );
-    style
-        .line(&transportation, "road_primary_casing")
+    rounded_transportation
+        .line(&mut style, "road_primary_casing")
         .minzoom(13.0)
         .filter(surface().class("primary"))
-        .rounded()
         .paint(
             "line-color",
             zoom![13.0 => hsl!(0, 0%, 67%), 20.0 => hsl!(0, 0%, 52%)],
         )
         .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
-    style
-        .line(&transportation, "road_trunk_casing")
+    rounded_transportation
+        .line(&mut style, "road_trunk_casing")
         .minzoom(13.0)
         .filter(surface().class("trunk"))
-        .rounded()
         .paint(
             "line-color",
             zoom![13.0 => hsl!(0, 0%, 62%), 20.0 => hsl!(0, 0%, 49%)],
         )
         .paint("line-width", zoom!(base: 1.2; 13.0 => 5.9, 20.0 => 36.0));
-    style
-        .line(&transportation, "road_motorway_link_casing")
+    rounded_transportation
+        .line(&mut style, "road_motorway_link_casing")
         .minzoom(13.0)
         .filter(surface().class("motorway").and_eq("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -1020,11 +1002,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 8.0 => 1.74, 13.0 => 5.9, 20.0 => 35.0),
         );
-    style
-        .line(&transportation, "road_motorway_casing")
+    rounded_transportation
+        .line(&mut style, "road_motorway_casing")
         .minzoom(10.0)
         .filter(surface().class("motorway").and_ne("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -1037,11 +1018,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 5.0 => 1.4, 7.0 => 1.75, 13.0 => 5.9, 20.0 => 40.0),
         );
-    style
-        .line(&transportation, "road_service_track")
+    rounded_transportation
+        .line(&mut style, "road_service_track")
         .minzoom(13.0)
         .filter(surface().class_in(["service", "track"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -1054,14 +1034,13 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5),
         );
-    style
-        .line(&transportation, "road_link")
+    rounded_transportation
+        .line(&mut style, "road_link")
         .minzoom(12.0)
         .filter(surface().and_eq("ramp", 1.0).and_not_in(
             "class",
             ["pedestrian", "path", "track", "service", "motorway"],
         ))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -1074,15 +1053,14 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0),
         );
-    style
-        .line(&transportation, "road_minor")
+    rounded_transportation
+        .line(&mut style, "road_minor")
         .minzoom(12.0)
         .filter(
             Filter::geometry(Geometry::LineString)
                 .and(surface())
                 .class_in(["minor"]),
         )
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -1107,11 +1085,10 @@ pub fn style() -> Style {
         .color(hsl!(0, 0%, 96%))
         .dasharray(vec![1.0, 0.7])
         .paint("line-width", zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
-    style
-        .line(&transportation, "road_secondary_tertiary")
+    rounded_transportation
+        .line(&mut style, "road_secondary_tertiary")
         .minzoom(12.0)
         .filter(surface().class_in(["secondary", "tertiary"]))
-        .rounded()
         .paint(
             "line-color",
             zoom![
@@ -1125,11 +1102,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0),
         );
-    style
-        .line(&transportation, "road_primary")
+    rounded_transportation
+        .line(&mut style, "road_primary")
         .minzoom(8.0)
         .filter(surface().class("primary"))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 64%)],
@@ -1138,11 +1114,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
-    style
-        .line(&transportation, "road_trunk")
+    rounded_transportation
+        .line(&mut style, "road_trunk")
         .minzoom(6.0)
         .filter(surface().class("trunk"))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 61%)],
@@ -1151,11 +1126,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0),
         );
-    style
-        .line(&transportation, "road_motorway_link")
+    rounded_transportation
+        .line(&mut style, "road_motorway_link")
         .minzoom(8.0)
         .filter(surface().class("motorway").and_eq("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)],
@@ -1164,11 +1138,10 @@ pub fn style() -> Style {
             "line-width",
             zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0),
         );
-    style
-        .line(&transportation, "road_motorway")
+    rounded_transportation
+        .line(&mut style, "road_motorway")
         .minzoom(5.0)
         .filter(surface().class("motorway").and_ne("ramp", 1.0))
-        .rounded()
         .paint(
             "line-color",
             zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)],

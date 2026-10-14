@@ -37,4 +37,4 @@ pub use openmaptiles::OpenMapTiles;
 pub use property::{zoom, zoom_with_base, Property, Stops};
 pub use source::{background, Source, SourceLayer, SourceRef};
 pub use street::Streets;
-pub use style::{Style, SymbolLayerFactory};
+pub use style::{LineFactory, Style, SymbolLayerFactory};
