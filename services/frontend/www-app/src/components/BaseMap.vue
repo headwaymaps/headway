@@ -78,6 +78,8 @@ async function loadMap(): Promise<MaplibreMap> {
     style: mapStyle,
     center: initialCenter, // starting position [lng, lat]
     zoom: initialZoom, // starting zoom
+    // Keeps the viewport in the URL as `#map=zoom/lat/lng`, the same format openstreetmap.org uses.
+    hash: 'map',
     attributionControl: false,
     canvasContextAttributes: {
       antialias: true,
