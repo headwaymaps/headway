@@ -1,3 +1,0 @@
-[submodule "services/tileserver/expressive"]
-	path = services/tileserver/expressive
-	url = https://github.com/falseinput/openfreemap-expressive.git
