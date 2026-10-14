@@ -75,11 +75,12 @@ fi
 # machines that don't have data/ - so the last one seen is kept alongside the
 # pinned artifact manifest and used as the fallback. It lives here rather than
 # in OUTPUT_DIR because `kubectl apply -f <dir>` would try to apply a stray
-# .json as a manifest.
+# .json as a manifest. The build's dataHost names this machine's artifact host,
+# which only the import needs.
 PINNED_PELIAS_CONFIG="${CONFIG_DIR}/pelias.json"
 PELIAS_CONFIG_FILE="data/${HEADWAY_AREA}/${HEADWAY_AREA}.pelias.json"
 if [ -f "$PELIAS_CONFIG_FILE" ]; then
-    PELIAS_CONFIG_JSON=$(cat "$PELIAS_CONFIG_FILE")
+    PELIAS_CONFIG_JSON=$(jq 'del(.imports.openaddresses.dataHost)' "$PELIAS_CONFIG_FILE")
     printf '%s\n' "$PELIAS_CONFIG_JSON" > "$PINNED_PELIAS_CONFIG"
 elif [ -f "$PINNED_PELIAS_CONFIG" ]; then
     log "Warning: ${PELIAS_CONFIG_FILE} not found; falling back to ${PINNED_PELIAS_CONFIG}"
