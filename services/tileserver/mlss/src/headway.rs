@@ -1729,33 +1729,31 @@ pub fn style() -> Style {
         "suburb",
         "quarter",
     ];
-    style
+    let mut place_label = style
+        .symbol_factory()
+        .text_field("{name_en}")
+        .text_halo(halo(), 1.2);
+    place_label
         .symbol(&place, "place_other")
         .filter(Filter::is_in("class", neighbourhoods))
-        .text_field("{name_en}")
-        .text_halo(halo(), 1.2)
         .text_font([ITALIC])
         .text_letter_spacing(0.1)
         .text_max_width(9.0)
         .text_size(zoom!(base: 1.2; 12 => 10.0, 15 => 14.0))
         .text_transform("uppercase")
         .text_color("#633");
-    style
+    place_label
         .symbol(&place, "place_village")
         .filter(Filter::class("village"))
-        .text_field("{name_en}")
-        .text_halo(halo(), 1.2)
         .text_font([REGULAR])
         .text_max_width(8.0)
         .text_size(zoom!(base: 1.2; 10 => 12.0, 15 => 22.0))
         .text_color("#333");
     // Towns and cities carry a dot until their own footprint is visible.
     let town_size = zoom!(base: 1.2; 7 => 12.0, 11 => 16.0);
-    style
+    place_label
         .symbol(&place, "place_town")
         .filter(Filter::class("town"))
-        .text_field("{name_en}")
-        .text_halo(halo(), 1.2)
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
         .text_anchor("bottom")
         .text_font([REGULAR])
@@ -1763,11 +1761,9 @@ pub fn style() -> Style {
         .text_size(town_size)
         .text_color("#333");
     let city_size = zoom!(base: 1.2; 7 => 14.0, 11 => 24.0);
-    style
+    place_label
         .symbol(&place, "place_city")
         .filter(Filter::class("city"))
-        .text_field("{name_en}")
-        .text_halo(halo(), 1.2)
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
         .text_anchor("bottom")
         .text_font([MEDIUM])
@@ -1778,11 +1774,9 @@ pub fn style() -> Style {
         .icon_allow_overlap(true)
         .icon_optional(false);
 
-    style
+    place_label
         .symbol(&place, "state")
         .filter(Filter::class("state"))
-        .text_field("{name_en}")
-        .text_halo(halo(), 1.2)
         .maxzoom(6.0)
         .text_font([ITALIC])
         .text_size(zoom!(4 => 11.0, 6 => 15.0))
@@ -1806,10 +1800,9 @@ pub fn style() -> Style {
             zoom!(1 => 11.0, 4 => 17.0),
         ),
     ] {
-        style
+        place_label
             .symbol(&place, id)
             .filter(rank.class("country"))
-            .text_field("{name_en}")
             .text_font([ITALIC])
             .text_max_width(6.25)
             .text_size(size)
@@ -1817,11 +1810,9 @@ pub fn style() -> Style {
             .text_halo_blur(1.0)
             .text_halo(halo(), 1.0);
     }
-    style
+    place_label
         .symbol(&place, "continent")
         .filter(Filter::class("continent"))
-        .text_field("{name_en}")
-        .text_halo(halo(), 1.2)
         .maxzoom(1.0)
         .text_font([ITALIC])
         .text_size(13.0)
