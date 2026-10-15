@@ -857,7 +857,7 @@ const (
 var lockedCache = dagger.ContainerWithMountedCacheOpts{Sharing: dagger.CacheSharingModeLocked}
 
 func rustCachesContainer() *dagger.Container {
-	container := slimContainer().
+	container := slimContainer("zstd").
 		// The volumes' contents aren't part of the cache key, so always rerun.
 		WithEnvVariable("CACHE_BUSTER", time.Now().String())
 	for _, volume := range []string{cargoRegistryVolume, cargoTargetVolume} {
@@ -868,21 +868,24 @@ func rustCachesContainer() *dagger.Container {
 
 // Copies the Rust build caches out of the engine, to carry them between CI runs.
 //
-// +cache="never"
-func (h *Headway) ExportRustCaches() *dagger.Directory {
-	return rustCachesContainer().
-		// Extracted crate sources are regenerated from the downloaded .crate files.
-		WithExec([]string{"sh", "-c", "mkdir /export && tar -C /caches --exclude=./" + cargoRegistryVolume + "/src -cf - . | tar -C /export -xpf -"}).
-		Directory("/export")
-}
-
-// Seeds the Rust build caches from a directory made by ExportRustCaches.
+// One compressed file, since exporting the volumes' many small files to the host crawls.
 //
 // +cache="never"
-func (h *Headway) ImportRustCaches(ctx context.Context, caches *dagger.Directory) error {
+func (h *Headway) ExportRustCaches() *dagger.File {
+	const archive = "/rust-caches.tar.zst"
+	return rustCachesContainer().
+		// Extracted crate sources are regenerated from the downloaded .crate files.
+		WithExec([]string{"sh", "-c", "tar -C /caches --exclude=./" + cargoRegistryVolume + "/src -cf - . | zstd -T0 -o " + archive}).
+		File(archive)
+}
+
+// Seeds the Rust build caches from an archive made by ExportRustCaches.
+//
+// +cache="never"
+func (h *Headway) ImportRustCaches(ctx context.Context, caches *dagger.File) error {
 	_, err := rustCachesContainer().
-		WithMountedDirectory("/import", caches).
-		WithExec([]string{"cp", "-a", "/import/.", "/caches/"}).
+		WithMountedFile("/import.tar.zst", caches).
+		WithExec([]string{"sh", "-c", "zstd -dc /import.tar.zst | tar -C /caches -xpf -"}).
 		Sync(ctx)
 	return err
 }

@@ -25,13 +25,13 @@ jobs:
       - name: Restore Rust build caches
         uses: actions/cache/restore@v6
         with:
-          path: ~/rust-caches
-          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: dagger-rust-${{ steps.rust-cache.outputs.month }}-
+          path: ~/rust-caches.tar.zst
+          key: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-
       - name: Import Rust build caches
         run: |
-          if [ -d ~/rust-caches ]; then
-            dagger call import-rust-caches --caches ~/rust-caches
+          if [ -f ~/rust-caches.tar.zst ]; then
+            dagger call import-rust-caches --caches ~/rust-caches.tar.zst
           fi
       - name: Docker login
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u headwaymaps --password-stdin

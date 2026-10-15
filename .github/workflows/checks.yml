@@ -80,13 +80,13 @@ jobs:
       - name: Restore Rust build caches
         uses: actions/cache/restore@v6
         with:
-          path: ~/rust-caches
-          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: dagger-rust-${{ steps.rust-cache.outputs.month }}-
+          path: ~/rust-caches.tar.zst
+          key: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-
       - name: Import Rust build caches
         run: |
-          if [ -d ~/rust-caches ]; then
-            dagger call import-rust-caches --caches ~/rust-caches
+          if [ -f ~/rust-caches.tar.zst ]; then
+            dagger call import-rust-caches --caches ~/rust-caches.tar.zst
           fi
       - name: Build data artifacts
         run: bin/build builds/Bogota
@@ -124,13 +124,13 @@ jobs:
       - name: Restore Rust build caches
         uses: actions/cache/restore@v6
         with:
-          path: ~/rust-caches
-          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: dagger-rust-${{ steps.rust-cache.outputs.month }}-
+          path: ~/rust-caches.tar.zst
+          key: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-
       - name: Import Rust build caches
         run: |
-          if [ -d ~/rust-caches ]; then
-            dagger call import-rust-caches --caches ~/rust-caches
+          if [ -f ~/rust-caches.tar.zst ]; then
+            dagger call import-rust-caches --caches ~/rust-caches.tar.zst
           fi
       - name: Build service images
         run: bin/build-images
@@ -138,10 +138,10 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         timeout-minutes: 15
         run: |
-          rm -rf ~/rust-caches
+          rm -f ~/rust-caches.tar.zst
           df -h
-          dagger call export-rust-caches export --path ~/rust-caches
-          du -sh ~/rust-caches/*
+          dagger call export-rust-caches export --path ~/rust-caches.tar.zst
+          du -sh ~/rust-caches.tar.zst
       - name: Show disk usage after failed export
         if: failure()
         run: df -h
@@ -149,8 +149,8 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v6
         with:
-          path: ~/rust-caches
-          key: dagger-rust-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ~/rust-caches.tar.zst
+          key: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Save Docker images
         run: docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep headway) | zstd -T0 > docker-images.tar.zst
       - name: Upload Docker images
