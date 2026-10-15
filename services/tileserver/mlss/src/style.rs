@@ -1,23 +1,26 @@
 //! The style document itself.
 
 use crate::layer::{AnyLayer, Background, Fill, Kind, Layer, Line, Raster, Symbol};
-use crate::openmaptiles::OpenMapTiles;
 use crate::source::{background, Source, SourceLayer, SourceRef};
 use crate::{Cap, Filter, Join, Property};
 use serde_json::{json, Map, Value as Json};
+use std::collections::BTreeMap;
 
-/// Zooms and widths are all f64 here, but `"minzoom": 8.0` is noise in a style file.
-fn whole_numbers_as_integers(value: &Json) -> Json {
+/// Writes whole numbers as integers and sorts object keys, so regenerating the style yields a
+/// minimal diff whether or not serde_json's `preserve_order` is enabled elsewhere in the build.
+fn canonical(value: &Json) -> Json {
     match value {
         Json::Number(number) => match number.as_f64() {
             Some(number) if number.fract() == 0.0 && number.abs() < 1e15 => json!(number as i64),
             _ => value.clone(),
         },
-        Json::Array(items) => Json::Array(items.iter().map(whole_numbers_as_integers).collect()),
+        Json::Array(items) => Json::Array(items.iter().map(canonical).collect()),
         Json::Object(fields) => Json::Object(
             fields
                 .iter()
-                .map(|(key, value)| (key.clone(), whole_numbers_as_integers(value)))
+                .map(|(key, value)| (key.clone(), canonical(value)))
+                .collect::<BTreeMap<_, _>>()
+                .into_iter()
                 .collect(),
         ),
         other => other.clone(),
@@ -426,21 +429,6 @@ impl Style {
         SourceRef::new(name)
     }
 
-    /// Adds a vector-tile source and returns a handle for its source layers.
-    pub fn vector_source(&mut self, name: &str, url: impl Into<String>) -> SourceRef {
-        self.source(name, Source::vector(url))
-    }
-
-    /// Adds a raster-tile source and returns a handle for drawing it.
-    pub fn raster_source(&mut self, name: &str, url: impl Into<String>) -> SourceRef {
-        self.source(name, Source::raster(url))
-    }
-
-    /// Adds Headway's OpenMapTiles source and returns its schema-aware handle.
-    pub fn open_map_tiles_source(&mut self, url: impl Into<String>) -> OpenMapTiles {
-        OpenMapTiles::new(self.source("openmaptiles", Source::vector(url).encoding("mlt")))
-    }
-
     /// Appends a fill layer sourcing features from `source`.
     pub fn fill<'a>(
         &'a mut self,
@@ -505,18 +493,8 @@ impl Style {
         });
     }
 
-    pub fn push(&mut self, layer: impl Into<AnyLayer>) -> &mut Self {
+    fn push(&mut self, layer: impl Into<AnyLayer>) {
         self.layers.push(layer.into());
-        self
-    }
-
-    pub fn extend<L: Into<AnyLayer>>(&mut self, layers: impl IntoIterator<Item = L>) -> &mut Self {
-        self.layers.extend(layers.into_iter().map(Into::into));
-        self
-    }
-
-    pub fn layer_ids(&self) -> impl Iterator<Item = &str> {
-        self.layers.iter().map(AnyLayer::id)
     }
 
     pub fn to_json(&self) -> Json {
@@ -545,7 +523,7 @@ impl Style {
         if let Some(id) = &self.id {
             map.insert("id".into(), json!(id));
         }
-        whole_numbers_as_integers(&Json::Object(map))
+        canonical(&Json::Object(map))
     }
 
     pub fn to_json_string(&self) -> String {

@@ -9,13 +9,12 @@
 //! let tiles = style.source("openmaptiles", Source::vector("/tiles"));
 //! let roads = tiles.layer("transportation");
 //!
-//! let mut streets = Streets::new();
-//! streets.cased(
-//!     roads.line("motorway").color(Color::parse("#fc8")).width(zoom!(base: 1.2; 7 => 1.0, 20 => 18.0)),
-//!     1.0,
-//!     Color::parse("#fc8").darken(0.15),
-//! );
-//! style.extend(streets);
+//! style
+//!     .line(&roads, "motorway")
+//!     .filter(Filter::class("motorway"))
+//!     .rounded()
+//!     .color(rgb!(255, 204, 136))
+//!     .width(zoom!(base: 1.2; 7 => 1.0, 20 => 18.0));
 //! ```
 
 pub mod color;
@@ -23,18 +22,16 @@ pub mod expression;
 pub mod filter;
 pub mod headway;
 pub mod layer;
-pub mod openmaptiles;
+pub mod open_map_tiles;
 pub mod property;
 pub mod source;
-pub mod street;
 pub mod style;
 
 pub use color::{Color, ColorFormat};
 pub use expression::{Expression, Operator};
 pub use filter::{ClassFilter, Filter, Geometry};
 pub use layer::{AnyLayer, Cap, Join, Layer};
-pub use openmaptiles::OpenMapTiles;
+pub use open_map_tiles::OpenMapTiles;
 pub use property::{zoom, zoom_with_base, Property, Stops};
 pub use source::{background, Source, SourceLayer, SourceRef};
-pub use street::Streets;
 pub use style::{LineFactory, Style, SymbolLayerFactory};

@@ -70,25 +70,6 @@ impl Property {
             Property::Stops(stops) => stops.to_json(),
         }
     }
-
-    /// Applies `scale` to every number in the property, zoom stops included.
-    pub fn scale_numbers(&self, scale: impl Fn(f64) -> f64) -> Property {
-        let apply = |value: &Json| match value.as_f64() {
-            Some(number) => json!(scale(number)),
-            None => value.clone(),
-        };
-        match self {
-            Property::Constant(value) => Property::Constant(apply(value)),
-            Property::Stops(stops) => Property::Stops(Stops {
-                base: stops.base,
-                stops: stops
-                    .stops
-                    .iter()
-                    .map(|(zoom, value)| (*zoom, apply(value)))
-                    .collect(),
-            }),
-        }
-    }
 }
 
 impl From<Stops> for Property {

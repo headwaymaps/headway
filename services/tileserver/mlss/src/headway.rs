@@ -39,9 +39,8 @@ struct RoadShield {
     network: &'static str,
     text: RoadShieldText,
     text_offset: Option<[f64; 2]>,
-    text_size: Option<f64>,
+    text_size: f64,
     text_width: Option<f64>,
-    icon_size: Option<f64>,
     icon: RoadShieldIcon,
     text_color: Option<&'static str>,
     halo_color: Option<&'static str>,
@@ -67,9 +66,8 @@ impl RoadShield {
             network,
             text: RoadShieldText::Route1Ref,
             text_offset: None,
-            text_size: Some(9.0),
+            text_size: 9.0,
             text_width: None,
-            icon_size: Some(1.0),
             icon: RoadShieldIcon::Fixed,
             text_color: None,
             halo_color: None,
@@ -86,7 +84,7 @@ impl RoadShield {
         self
     }
     fn text_size(mut self, value: f64) -> Self {
-        self.text_size = Some(value);
+        self.text_size = value;
         self
     }
     fn text_width(mut self, value: f64) -> Self {
@@ -461,7 +459,13 @@ pub fn style() -> Style {
         .glyphs("/font/{fontstack}/{range}")
         .metadata("openmaptiles:version", "3.x");
 
-    let openmaptiles = style.open_map_tiles_source("/areamap-mlt");
+    let openmaptiles = {
+        let omt = style.source(
+            "openmaptiles",
+            Source::vector("/areamap-mlt").encoding("mlt"),
+        );
+        OpenMapTiles::new(omt)
+    };
     let landcover_source = style.source("landcover", Source::vector("/landcover").maxzoom(8.0));
     let terrain_source = style.source("terrain", Source::raster("/terrain").maxzoom(6.0));
 
@@ -513,9 +517,8 @@ pub fn style() -> Style {
             .color(rgb!(228, 241, 215));
     });
 
-    // REVIEW: Do I even care about landuse? I feel like maybe i was using it as a proxy for
-    // building coverage at zoom levels before buildings were visible but maybe I can use landover.urban instead
-    // and get rid of all these landuse rules.
+    // TODO: Residential landuse may only stand in for building coverage before buildings
+    // appear; landcover's urban class might replace these landuse rules.
     style
         .fill(&landuse, "landuse_residential")
         .maxzoom(17.0)
@@ -1655,7 +1658,7 @@ pub fn style() -> Style {
                 Operator::Min,
                 [
                     RoadShield::property(&shields, Expression::literal(8.5), |shield| {
-                        shield.text_size.map(Expression::literal)
+                        Some(Expression::literal(shield.text_size))
                     }),
                     Expression::op(
                         Operator::Divide,
@@ -1671,9 +1674,19 @@ pub fn style() -> Style {
         )
         .layout(
             "icon-size",
-            RoadShield::property(&shields, Expression::literal(0.667), |shield| {
-                shield.icon_size.map(Expression::literal)
-            }),
+            Expression::op(
+                Operator::Match,
+                [
+                    expr![Get, "route_1_network"],
+                    Expression::array(
+                        shields
+                            .iter()
+                            .map(|shield| Expression::literal(shield.network)),
+                    ),
+                    Expression::literal(1),
+                    Expression::literal(0.667),
+                ],
+            ),
         )
         .paint(
             "text-color",

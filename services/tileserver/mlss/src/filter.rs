@@ -163,7 +163,6 @@ impl Filter {
     pub fn and_geometry(self, geometry: Geometry) -> Filter {
         self.and(Filter::geometry(geometry))
     }
-
     pub fn raw(json: Json) -> Filter {
         Filter(json)
     }

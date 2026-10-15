@@ -2,69 +2,45 @@
 
 Builders for generating MapLibre style documents.
 
-A style sheet is a very verbose JSON document with a lot of near-repetition:
-the road layers alone are the same handful of lines repeated across tunnel,
-surface and bridge, each with a casing underneath, each fading in and widening
-as you zoom. This crate lets that be written once.
-
-`headway-style` prints the generated document for inspection. Tile-server image
-builds render the living Rust definition automatically into
-`assets/styles/basic-v3.json` in the image.
-For local map iteration, run
+`src/headway.rs` is the Headway default style and its single source of truth.
+`headway-style` prints it as JSON. Tile-server image builds render it into
+`assets/styles/basic-v3.json` in the image. For local map iteration, run
 `bin/dev-local-assets`; its `HEADWAY_LOCAL_STYLE` mode rebuilds the style when
 files under `mlss/src` change and reloads the browser.
-
-`src/headway.rs` is the Headway default style and its single source of truth.
-
-`bin/count-headway-style` counts the root declaration plus every private
-Headway helper module under `src/headway/`; it cannot be improved merely by
-moving Headway-specific code out of `headway.rs`.
 
 ## The pieces
 
 - `Style` holds sources and layers. `style.source(..)` hands back a `SourceRef`,
-  `source.layer("transportation")` a `SourceLayer`, and layers are built from that.
-- `Layer<Line>`, `Layer<Fill>`, `Layer<Symbol>` … only expose the paint and layout
-  properties their type actually has. `.paint(name, value)` and `.layout(name, value)`
-  are there for anything not yet wrapped.
-- `zoom!(base 1.2; 12 => 0.5, 20 => 10.0)` is a zoom function, written as the table
-  it is. Any property takes either a constant or one of these.
-- `style.fill(source, "id")`, `style.line(source, "id")`, and
-  `style.symbol(source, "id")` attach a layer at the end of the builder chain.
-- `Color` does arithmetic — `.darken(0.1)`, `.mix(&other, 0.5)`, `.alpha(0.8)` — and
-  renders back in the notation it was written in until you change it.
+  and `source.layer("transportation")` a `SourceLayer`. `OpenMapTiles` names the
+  schema's source layers, e.g. `openmaptiles.transportation()`.
+- `style.fill(&source_layer, "id")`, `.line(..)`, and `.symbol(..)` start a layer
+  that is appended to the style when its builder statement ends, so layer order
+  is call order. `add_layers` does the same for several layers of one source,
+  and `line_factory` / `symbol_factory` share properties across layers.
+- Layers only expose the paint and layout properties their type has.
+  `.paint(name, value)` and `.layout(name, value)` cover anything not yet wrapped.
+- `zoom!(base: 1.2; 12 => 0.5, 20 => 10.0)` is a zoom function, written as the
+  table it is. Any property takes either a constant or one of these.
+- `expr![Match, [Get, "class"], "park", "#0a0", "transparent"]` is a MapLibre
+  expression.
+- `hsl!`, `rgb!` and friends write colors in the notation they're authored in.
 - `Filter` builds the legacy filter syntax the openmaptiles styles use.
-- `Streets` collects road layers and keeps casings in a tier below every surface,
-  so a casing never paints over the neighbouring street at an intersection.
 
 ```rust
-let mut streets = Streets::new();
-let asphalt = Color::parse("#fc8");
-streets.cased(
-    roads.line("motorway").color(asphalt.clone()).width(width),
-    1.0,
-    asphalt.darken(0.15),
-);
-style.extend(streets);
+style
+    .line(&roads, "motorway")
+    .filter(Filter::class("motorway"))
+    .rounded()
+    .color(rgb!(255, 204, 136))
+    .width(zoom!(base: 1.2; 7 => 1.0, 20 => 18.0));
 ```
 
-`cased` derives the casing from the street: same filter and id with `_casing`,
-widened by the pad at every zoom stop, undashed. Where a style wants a casing
-that isn't a widened copy — osm-liberty's never are — build it yourself and hand
-it to `Streets::casing`.
+## Tests
 
-## Roads, three times over
+`tests/fixtures/headway.json` is the expected output, checked two ways:
 
-`headway.rs` draws the road network three times: buried, at grade, and raised.
-`Level` names which copy a layer belongs to, and `Level::pick(tunnel, surface,
-bridge)` supplies whatever differs between them. The `brunnel` tag itself is only
-set on the two copies that aren't at grade. A road class is then one declaration,
-not one per level:
+- byte for byte, which catches any change at all;
+- semantically, ignoring formatting and clause order.
 
-```rust
-self.road("motorway_link", links, "#fc8", ramp)
-    .cased(MAJOR_CASING, ramp_casing)
-    .dashed_when_buried()
-    .appears_at(12.0)
-    .push(&mut streets);
-```
+If only the byte-for-byte test fails, the change is formatting; regenerate the
+fixture with `cargo run -p mlss --bin headway-style > tests/fixtures/headway.json`.

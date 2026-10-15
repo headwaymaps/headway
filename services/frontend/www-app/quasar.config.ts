@@ -110,7 +110,14 @@ const localStylePlugin: Plugin = {
         path.startsWith(`${MLSS_SOURCE_DIR}/`) ||
         MLSS_INPUTS.includes(path)
       ) {
-        renderedStyle = renderLocalStyle();
+        try {
+          renderedStyle = renderLocalStyle();
+        } catch {
+          server.config.logger.error(
+            'mlss failed to render the style; serving the last good one',
+          );
+          return;
+        }
         server.ws.send({ type: 'full-reload' });
       }
     });

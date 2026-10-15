@@ -80,11 +80,6 @@ impl<K: Kind> Layer<K> {
         &self.body.id
     }
 
-    pub fn with_id(mut self, id: impl Into<String>) -> Self {
-        self.body.id = id.into();
-        self
-    }
-
     pub fn minzoom(mut self, zoom: f64) -> Self {
         self.body.minzoom = Some(zoom);
         self
@@ -130,17 +125,6 @@ impl<K: Kind> Layer<K> {
         self.body.layout.extend(template.body.layout.clone());
         self.body.paint.extend(template.body.paint.clone());
         self
-    }
-
-    fn get_paint(&self, name: &str) -> Option<&Property> {
-        self.body.paint.get(name)
-    }
-}
-
-impl<K: Kind> Layer<K> {
-    /// Ends a layer's builder chain by adding it to a style.
-    pub fn push_to(self, style: &mut crate::Style) {
-        style.push(self);
     }
 }
 
@@ -270,26 +254,6 @@ impl Layer<Line> {
     /// Rounds both the caps and the joins, which is what most road layers want.
     pub fn rounded(self) -> Self {
         self.cap_round().join_round()
-    }
-
-    /// The wider line that sits underneath this one, `pad` wider on each side.
-    ///
-    /// Zoom-varying widths are scaled stop by stop, so the casing tracks the line
-    /// as it grows.
-    pub fn casing(&self, pad: f64, color: impl Into<Property>) -> Self {
-        let width = self
-            .get_paint("line-width")
-            .expect("a line needs a width before it can be cased")
-            .scale_numbers(|width| if width == 0.0 { 0.0 } else { width + pad * 2.0 });
-        let mut casing = self.clone().with_id(format!("{}_casing", self.body.id));
-        casing.body.paint.remove("line-dasharray");
-        casing.width(width).color(color)
-    }
-
-    /// This line and its casing, bottom first, ready to push onto a style.
-    pub fn with_casing(self, pad: f64, color: impl Into<Property>) -> [Layer<Line>; 2] {
-        let casing = self.casing(pad, color);
-        [casing, self]
     }
 }
 

@@ -11,65 +11,6 @@ pub enum ColorFormat {
     Hsl,
 }
 
-/// Parses a CSS-shaped color while retaining its authored spelling exactly in output.
-#[macro_export]
-macro_rules! color {
-    (# $hex:tt) => {
-        $crate::Color::parse(concat!("#", stringify!($hex)))
-    };
-    (hsl($hue:literal, $saturation:literal %, $lightness:literal %)) => {
-        $crate::Color::parse(concat!(
-            "hsl(",
-            stringify!($hue),
-            ", ",
-            stringify!($saturation),
-            "%, ",
-            stringify!($lightness),
-            "%)"
-        ))
-    };
-    (hsla($hue:literal, $saturation:literal %, $lightness:literal %, $alpha:literal)) => {
-        $crate::Color::parse(concat!(
-            "hsla(",
-            stringify!($hue),
-            ", ",
-            stringify!($saturation),
-            "%, ",
-            stringify!($lightness),
-            "%, ",
-            stringify!($alpha),
-            ")"
-        ))
-    };
-    (rgb($red:literal, $green:literal, $blue:literal)) => {
-        $crate::Color::parse(concat!(
-            "rgb(",
-            stringify!($red),
-            ",",
-            stringify!($green),
-            ",",
-            stringify!($blue),
-            ")"
-        ))
-    };
-    (rgba($red:literal, $green:literal, $blue:literal, $alpha:literal)) => {
-        $crate::Color::parse(concat!(
-            "rgba(",
-            stringify!($red),
-            ",",
-            stringify!($green),
-            ",",
-            stringify!($blue),
-            ",",
-            stringify!($alpha),
-            ")"
-        ))
-    };
-    ($css:expr) => {
-        $crate::Color::parse($css)
-    };
-}
-
 /// Constructs an HSL color from CSS-style components.
 #[macro_export]
 macro_rules! hsl {
@@ -435,17 +376,6 @@ mod tests {
 
     #[test]
     fn macros_keep_their_css_notation() {
-        assert_eq!(crate::color!(#fde).to_css(), "#fde");
-        for css in [
-            "#fff",
-            "#11223344",
-            "rgb(1, 2, 3)",
-            "rgba(1, 2, 3, 0.4)",
-            "hsl(1, 2%, 3%)",
-            "hsla(1, 2%, 3%, 0.4)",
-        ] {
-            assert_eq!(crate::color!(css).to_css(), css);
-        }
         assert_eq!(crate::hsl!(0, 0%, 86.6667%).to_css(), "hsl(0,0%,86.6667%)");
         assert_eq!(
             crate::rgba!(255, 255, 255, 0.8).to_css(),
