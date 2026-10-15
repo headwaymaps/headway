@@ -459,13 +459,7 @@ pub fn style() -> Style {
         .glyphs("/font/{fontstack}/{range}")
         .metadata("openmaptiles:version", "3.x");
 
-    let openmaptiles = {
-        let omt = style.source(
-            "openmaptiles",
-            Source::vector("/areamap-mlt").encoding("mlt"),
-        );
-        OpenMapTiles::new(omt)
-    };
+    let openmaptiles = style.open_map_tiles_source("/areamap-mlt");
     let landcover_source = style.source("landcover", Source::vector("/landcover").maxzoom(8.0));
     let terrain_source = style.source("terrain", Source::raster("/terrain").maxzoom(6.0));
 

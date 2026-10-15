@@ -1,6 +1,7 @@
 //! The style document itself.
 
 use crate::layer::{AnyLayer, Background, Fill, Kind, Layer, Line, Raster, Symbol};
+use crate::open_map_tiles::OpenMapTiles;
 use crate::source::{background, Source, SourceLayer, SourceRef};
 use crate::{Cap, Filter, Join, Property};
 use serde_json::{json, Map, Value as Json};
@@ -427,6 +428,21 @@ impl Style {
     pub fn source(&mut self, name: &str, source: Source) -> SourceRef {
         self.sources.push((name.to_owned(), source));
         SourceRef::new(name)
+    }
+
+    /// Registers a vector-tile source and returns the handle its layers use.
+    pub fn vector_source(&mut self, name: &str, url: impl Into<String>) -> SourceRef {
+        self.source(name, Source::vector(url))
+    }
+
+    /// Registers a raster-tile source and returns the handle raster layers use.
+    pub fn raster_source(&mut self, name: &str, url: impl Into<String>) -> SourceRef {
+        self.source(name, Source::raster(url))
+    }
+
+    /// Registers an OpenMapTiles source and returns its schema-aware layer handles.
+    pub fn open_map_tiles_source(&mut self, url: impl Into<String>) -> OpenMapTiles {
+        OpenMapTiles::new(self.source("openmaptiles", Source::vector(url).encoding("mlt")))
     }
 
     /// Appends a fill layer sourcing features from `source`.
