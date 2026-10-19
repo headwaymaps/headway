@@ -1,15 +1,25 @@
+import { execFileSync } from 'node:child_process';
 import { expect, test } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type { StyleSpecification } from 'maplibre-gl';
-import ShieldQa from './ShieldQa';
+import ShieldQa, { SHIELD_QA_COLUMNS } from './ShieldQa';
 
 const style: StyleSpecification = JSON.parse(
-  readFileSync(
-    new URL(
-      '../../../../tileserver/assets/styles/basic-v3.json',
-      import.meta.url,
-    ),
-    'utf8',
+  execFileSync(
+    'cargo',
+    [
+      'run',
+      '--locked',
+      '--quiet',
+      '-p',
+      'maplibre-style',
+      '--bin',
+      'headway-style',
+    ],
+    {
+      cwd: fileURLToPath(new URL('../../../../../', import.meta.url)),
+      encoding: 'utf8',
+    },
   ),
 );
 
@@ -38,4 +48,22 @@ test("draws every row on a motorway, with the style's own road layers", () => {
   });
   expect(motorway).not.toHaveProperty('source-layer');
   expect(layers.at(-1)?.id).toBe('road_shield');
+  expect(layers.at(-1)).toMatchObject({
+    layout: {
+      'text-field': expect.arrayContaining([
+        'case',
+        ['get', 'shield_qa_no_text'],
+        '',
+      ]),
+    },
+  });
+});
+
+test('adds a no-text shield column', () => {
+  const qa = ShieldQa.fromStyle(style);
+  const features = qa.features(['US:WA']).features;
+  expect(features).toHaveLength(SHIELD_QA_COLUMNS.length);
+  expect(
+    features.find((feature) => feature.properties?.shield_qa_no_text),
+  ).toMatchObject({ properties: { route_1_ref: '5' } });
 });

@@ -21,6 +21,12 @@ export const SHIELD_QA_REFS = [
   'G1501',
   '123456',
 ];
+type ShieldQaColumn = { label: string; ref: string; noText?: boolean };
+
+export const SHIELD_QA_COLUMNS: ShieldQaColumn[] = [
+  ...SHIELD_QA_REFS.map((ref) => ({ label: ref, ref })),
+  { label: 'no text', ref: '5', noText: true },
+];
 export const SHIELD_QA_ZOOM = 14;
 export const LABEL_WIDTH = 330;
 export const COLUMN_WIDTH = 64;
@@ -170,8 +176,14 @@ export default class ShieldQa {
     );
   }
 
-  private shieldProperties(network: string, ref: string) {
-    return { network: 'road', route_1_network: network, route_1_ref: ref, ref };
+  private shieldProperties(network: string, ref: string, noText = false) {
+    return {
+      network: 'road',
+      route_1_network: network,
+      route_1_ref: ref,
+      ref,
+      shield_qa_no_text: noText,
+    };
   }
 
   rows(filter: string): string[] {
@@ -205,6 +217,12 @@ export default class ShieldQa {
         'symbol-placement': 'point',
         'icon-allow-overlap': true,
         'text-allow-overlap': true,
+        'text-field': [
+          'case',
+          ['get', 'shield_qa_no_text'],
+          '',
+          this.roadShield.layout?.['text-field'] ?? '',
+        ] as ExpressionSpecification,
       },
     };
     return {
@@ -304,9 +322,9 @@ export default class ShieldQa {
     const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
     rows.forEach((row, rowIdx) => {
       const y = (rowIdx + 0.5) * ROW_HEIGHT;
-      SHIELD_QA_REFS.forEach((ref, colIdx) => {
+      SHIELD_QA_COLUMNS.forEach(({ ref, noText }, colIdx) => {
         const x = LABEL_WIDTH + (colIdx + 0.5) * COLUMN_WIDTH;
-        features.push(pointAt(x, y, this.shieldProperties(row, ref)));
+        features.push(pointAt(x, y, this.shieldProperties(row, ref, noText)));
       });
     });
     return { type: 'FeatureCollection', features };

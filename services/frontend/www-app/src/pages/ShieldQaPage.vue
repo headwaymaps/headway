@@ -7,10 +7,10 @@
     </header>
     <div class="column-headers" :style="{ paddingLeft: `${LABEL_WIDTH}px` }">
       <span
-        v-for="shieldRef in SHIELD_QA_REFS"
-        :key="shieldRef"
+        v-for="shieldColumn in SHIELD_QA_COLUMNS"
+        :key="shieldColumn.label"
         :style="{ width: `${COLUMN_WIDTH}px` }"
-        >{{ shieldRef }}</span
+        >{{ shieldColumn.label }}</span
       >
     </div>
     <div class="map-frame" @wheel.prevent="scroll">
@@ -26,7 +26,9 @@
             class="label-row"
             :style="{ height: `${ROW_HEIGHT}px` }"
           >
-            <span>{{ row }}</span>
+            <a :href="taginfoUrl(row)" target="_blank" rel="noopener">{{
+              row
+            }}</a>
             <small v-if="adjustment(row)">{{ adjustment(row) }}</small>
           </div>
         </div>
@@ -46,7 +48,7 @@ import ShieldQa, {
   COLUMN_WIDTH,
   LABEL_WIDTH,
   ROW_HEIGHT,
-  SHIELD_QA_REFS,
+  SHIELD_QA_COLUMNS,
   SHIELD_QA_SOURCE,
   SHIELD_QA_ZOOM,
   tablePixelToLngLat,
@@ -83,6 +85,10 @@ function positionCamera() {
 
 function adjustment(row: string): string {
   return shieldQa?.adjustments(row) ?? '';
+}
+
+function taginfoUrl(network: string): string {
+  return `https://taginfo.openstreetmap.org/tags/network=${encodeURIComponent(network)}`;
 }
 
 function onResize() {
@@ -213,5 +219,9 @@ header {
 
 .label-row small {
   color: #777;
+}
+
+.label-row a {
+  color: inherit;
 }
 </style>

@@ -1,8 +1,8 @@
 Road shields
 ============
 
-Route shields in services/tileserver/assets/styles/basic-v3.json are drawn by the
-`road_shield` layer.
+Route shields in the generated Headway style are drawn by the `road_shield`
+layer.
 
 Where the artwork comes from
 ----------------------------
