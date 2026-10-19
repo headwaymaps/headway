@@ -33,7 +33,7 @@ kinds!(
 );
 
 #[derive(Clone, Debug, Serialize)]
-struct Body {
+pub(crate) struct LayerData {
     id: String,
     #[serde(rename = "type")]
     _type: &'static str,
@@ -53,62 +53,74 @@ struct Body {
     paint: BTreeMap<String, Property<Json>>,
 }
 
-/// A style layer. The type parameter fixes which paint and layout properties apply.
-#[derive(Clone, Debug)]
-pub struct Layer<K> {
-    body: Body,
-    _type: PhantomData<K>,
-}
-
-/// A layer whose kind has been erased so it can sit in the style's layer list.
-#[derive(Clone, Debug, Serialize)]
-#[serde(transparent)]
-pub struct AnyLayer(Body);
-
-impl<K: Kind> Layer<K> {
-    pub(crate) fn new(
+impl LayerData {
+    pub(crate) fn new<K: Kind>(
         id: impl Into<String>,
         source: Option<&str>,
         source_layer: Option<&str>,
     ) -> Self {
+        LayerData {
+            id: id.into(),
+            _type: K::TYPE,
+            source: source.map(str::to_owned),
+            source_layer: source_layer.map(str::to_owned),
+            minzoom: None,
+            maxzoom: None,
+            filter: None,
+            layout: BTreeMap::new(),
+            paint: BTreeMap::new(),
+        }
+    }
+
+    pub(crate) fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Starts from the layout and paint settings of `template`.
+    pub(crate) fn with_template(mut self, template: &LayerData) -> Self {
+        self.layout.extend(template.layout.clone());
+        self.paint.extend(template.paint.clone());
+        self
+    }
+}
+
+/// A style layer, configured in place. The type parameter fixes which paint and layout
+/// properties apply.
+pub struct Layer<'a, K> {
+    data: &'a mut LayerData,
+    _kind: PhantomData<K>,
+}
+
+impl<'a, K: Kind> Layer<'a, K> {
+    pub(crate) fn new(data: &'a mut LayerData) -> Self {
         Layer {
-            body: Body {
-                id: id.into(),
-                _type: K::TYPE,
-                source: source.map(str::to_owned),
-                source_layer: source_layer.map(str::to_owned),
-                minzoom: None,
-                maxzoom: None,
-                filter: None,
-                layout: BTreeMap::new(),
-                paint: BTreeMap::new(),
-            },
-            _type: PhantomData,
+            data,
+            _kind: PhantomData,
         }
     }
 
     pub fn id(&self) -> &str {
-        &self.body.id
+        &self.data.id
     }
 
-    pub fn minzoom(mut self, zoom: f64) -> Self {
-        self.body.minzoom = Some(zoom);
+    pub fn minzoom(self, zoom: f64) -> Self {
+        self.data.minzoom = Some(zoom);
         self
     }
 
-    pub fn maxzoom(mut self, zoom: f64) -> Self {
-        self.body.maxzoom = Some(zoom);
+    pub fn maxzoom(self, zoom: f64) -> Self {
+        self.data.maxzoom = Some(zoom);
         self
     }
 
-    pub fn filter(mut self, filter: Filter) -> Self {
-        self.body.filter = Some(filter);
+    pub fn filter(self, filter: Filter) -> Self {
+        self.data.filter = Some(filter);
         self
     }
 
     /// Adds a clause to the filter, or sets it if there isn't one yet.
-    pub fn and_filter(mut self, filter: Filter) -> Self {
-        self.body.filter = Some(match self.body.filter.take() {
+    pub fn and_filter(self, filter: Filter) -> Self {
+        self.data.filter = Some(match self.data.filter.take() {
             Some(existing) => existing.and(filter),
             None => filter,
         });
@@ -119,40 +131,16 @@ impl<K: Kind> Layer<K> {
         self.layout("visibility", "none")
     }
 
-    fn layout(mut self, name: &str, value: impl Into<Property<Json>>) -> Self {
-        self.body.layout.insert(name.to_owned(), value.into());
-        self
-    }
-
-    /// Sets a paint property by its spec name.
-    pub fn paint<T: Serialize>(mut self, name: &str, value: impl Into<Property<T>>) -> Self {
+    fn layout<T: Serialize>(self, name: &str, value: impl Into<Property<T>>) -> Self {
         let value: Property<T> = value.into();
-        self.body.paint.insert(name.to_owned(), value.into_json());
+        self.data.layout.insert(name.to_owned(), value.into_json());
         self
     }
 
-    fn layout_typed<T: Serialize>(self, name: &str, value: impl Into<Property<T>>) -> Self {
+    fn paint<T: Serialize>(self, name: &str, value: impl Into<Property<T>>) -> Self {
         let value: Property<T> = value.into();
-        self.layout(name, value.into_json())
-    }
-
-    /// Applies layout and paint settings from a reusable layer template.
-    pub(crate) fn with_template(mut self, template: &Self) -> Self {
-        self.body.layout.extend(template.body.layout.clone());
-        self.body.paint.extend(template.body.paint.clone());
+        self.data.paint.insert(name.to_owned(), value.into_json());
         self
-    }
-}
-
-impl<K: Kind> From<Layer<K>> for AnyLayer {
-    fn from(layer: Layer<K>) -> AnyLayer {
-        AnyLayer(layer.body)
-    }
-}
-
-impl AnyLayer {
-    pub fn id(&self) -> &str {
-        &self.0.id
     }
 }
 
@@ -171,7 +159,7 @@ pub enum Join {
     Miter,
 }
 
-impl Layer<Line> {
+impl Layer<'_, Line> {
     pub fn color(self, color: impl Into<Property<Color>>) -> Self {
         self.paint("line-color", color)
     }
@@ -196,7 +184,7 @@ impl Layer<Line> {
         self.paint("line-blur", blur)
     }
 
-    pub fn dasharray(self, dashes: impl Into<Property<Json>>) -> Self {
+    pub fn dasharray(self, dashes: impl Into<Property<Vec<f64>>>) -> Self {
         self.paint("line-dasharray", dashes)
     }
 
@@ -214,6 +202,12 @@ impl Layer<Line> {
     /// Uses round line caps.
     pub fn cap_round(self) -> Self {
         self.cap(Cap::Round)
+    }
+
+    /// Uses the renderer's default line cap.
+    pub fn cap_default(self) -> Self {
+        self.data.layout.remove("line-cap");
+        self
     }
 
     pub fn join(self, join: Join) -> Self {
@@ -238,7 +232,7 @@ impl Layer<Line> {
     }
 }
 
-impl Layer<Fill> {
+impl Layer<'_, Fill> {
     pub fn color(self, color: impl Into<Property<Color>>) -> Self {
         self.paint("fill-color", color)
     }
@@ -255,17 +249,17 @@ impl Layer<Fill> {
         self.paint("fill-antialias", antialias)
     }
 
-    pub fn pattern(self, pattern: impl Into<Property<Json>>) -> Self {
+    pub fn pattern(self, pattern: impl Into<Property<String>>) -> Self {
         self.paint("fill-pattern", pattern)
     }
 }
 
-impl Layer<Background> {
+impl Layer<'_, Background> {
     pub fn color(self, color: impl Into<Property<Color>>) -> Self {
         self.paint("background-color", color)
     }
 
-    pub fn pattern(self, pattern: impl Into<Property<Json>>) -> Self {
+    pub fn pattern(self, pattern: impl Into<Property<String>>) -> Self {
         self.paint("background-pattern", pattern)
     }
 
@@ -274,30 +268,69 @@ impl Layer<Background> {
     }
 }
 
-impl Layer<Raster> {
+impl Layer<'_, Raster> {
     pub fn opacity(self, opacity: impl Into<Property<f64>>) -> Self {
         self.paint("raster-opacity", opacity)
     }
 }
 
-impl Layer<Symbol> {
-    pub fn text_field(self, field: impl Into<Property<Json>>) -> Self {
+macro_rules! opacity_fades {
+    ($($kind:ty => $property:literal),* $(,)?) => {
+        $(
+            impl Layer<'_, $kind> {
+                pub fn fade_in(self, zoom: f64) -> Self {
+                    self
+                        .minzoom(zoom)
+                        .opacity(crate::zoom!(zoom => 0.0, zoom + 0.5 => 1.0))
+                }
+
+                pub fn fade_out(self, zoom: f64) -> Self {
+                    let fade = crate::zoom!(zoom => 1.0, zoom + 0.5 => 0.0);
+                    match self.data.paint.get_mut($property) {
+                        Some(Property::Stops(stops)) => stops.append(fade.map(|&opacity| opacity.into())),
+                        _ => {
+                            self.data.paint.insert($property.to_owned(), Property::from(fade).into_json());
+                        }
+                    }
+                    self.maxzoom(zoom + 0.5)
+                }
+            }
+        )*
+    };
+}
+
+opacity_fades!(
+    Line => "line-opacity",
+    Fill => "fill-opacity",
+    Background => "background-opacity",
+    Raster => "raster-opacity",
+);
+
+impl Layer<'_, Symbol> {
+    pub fn text_field(self, field: impl Into<Property<String>>) -> Self {
         self.layout("text-field", field)
     }
 
-    pub fn text_font<'a>(self, fonts: impl IntoIterator<Item = &'a str>) -> Self {
-        self.layout("text-font", fonts.into_iter().collect::<Vec<_>>())
+    pub fn text_font(self, font: impl Into<String>) -> Self {
+        self.layout("text-font", vec![font.into()])
+    }
+
+    pub fn text_fonts<'a>(self, fonts: impl IntoIterator<Item = &'a str>) -> Self {
+        self.layout(
+            "text-font",
+            fonts.into_iter().map(str::to_owned).collect::<Vec<_>>(),
+        )
     }
 
     pub fn text_size(self, size: impl Into<Property<f64>>) -> Self {
-        self.layout_typed("text-size", size)
+        self.layout("text-size", size)
     }
 
     pub fn text_max_width(self, width: impl Into<Property<f64>>) -> Self {
-        self.layout_typed("text-max-width", width)
+        self.layout("text-max-width", width)
     }
 
-    pub fn text_offset(self, offset: impl Into<Property<Json>>) -> Self {
+    pub fn text_offset(self, offset: impl Into<Property<[f64; 2]>>) -> Self {
         self.layout("text-offset", offset)
     }
 
@@ -314,7 +347,7 @@ impl Layer<Symbol> {
     }
 
     pub fn text_letter_spacing(self, spacing: impl Into<Property<f64>>) -> Self {
-        self.layout_typed("text-letter-spacing", spacing)
+        self.layout("text-letter-spacing", spacing)
     }
 
     pub fn text_rotation_alignment(self, alignment: &str) -> Self {
@@ -326,21 +359,32 @@ impl Layer<Symbol> {
     }
 
     /// The halo that keeps a label legible over busy ground.
-    pub fn text_halo(self, color: impl Into<Property<Color>>, width: f64) -> Self {
+    pub fn text_halo(
+        self,
+        color: impl Into<Property<Color>>,
+        width: impl Into<Property<f64>>,
+    ) -> Self {
+        self.text_halo_color(color).text_halo_width(width)
+    }
+
+    pub fn text_halo_color(self, color: impl Into<Property<Color>>) -> Self {
         self.paint("text-halo-color", color)
-            .paint::<f64>("text-halo-width", width)
+    }
+
+    pub fn text_halo_width(self, width: impl Into<Property<f64>>) -> Self {
+        self.paint("text-halo-width", width)
     }
 
     pub fn text_halo_blur(self, blur: impl Into<Property<f64>>) -> Self {
         self.paint("text-halo-blur", blur)
     }
 
-    pub fn icon_image(self, image: impl Into<Property<Json>>) -> Self {
+    pub fn icon_image(self, image: impl Into<Property<String>>) -> Self {
         self.layout("icon-image", image)
     }
 
     pub fn icon_size(self, size: impl Into<Property<f64>>) -> Self {
-        self.layout_typed("icon-size", size)
+        self.layout("icon-size", size)
     }
 
     pub fn icon_offset(self, offset: [f64; 2]) -> Self {
@@ -348,7 +392,7 @@ impl Layer<Symbol> {
     }
 
     pub fn icon_rotate(self, degrees: impl Into<Property<f64>>) -> Self {
-        self.layout_typed("icon-rotate", degrees)
+        self.layout("icon-rotate", degrees)
     }
 
     pub fn icon_rotation_alignment(self, alignment: &str) -> Self {
@@ -363,11 +407,33 @@ impl Layer<Symbol> {
         self.layout("icon-optional", optional)
     }
 
-    pub fn placement(self, placement: impl Into<Property<Json>>) -> Self {
+    pub fn placement(self, placement: impl Into<Property<String>>) -> Self {
         self.layout("symbol-placement", placement)
     }
 
     pub fn spacing(self, spacing: impl Into<Property<f64>>) -> Self {
-        self.layout_typed("symbol-spacing", spacing)
+        self.layout("symbol-spacing", spacing)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Source, Style};
+    use serde_json::json;
+
+    #[test]
+    fn opacity_fades_can_be_chained() {
+        let mut style = Style::new("Test");
+        let roads = style
+            .source("tiles", Source::vector("/tiles"))
+            .layer("roads");
+        style.line(&roads, "test").fade_in(13.0).fade_out(18.0);
+        let layer = &style.to_json()["layers"][0];
+        assert_eq!(layer["minzoom"], json!(13));
+        assert_eq!(layer["maxzoom"], json!(18.5));
+        assert_eq!(
+            layer["paint"]["line-opacity"],
+            json!({"stops": [[13, 0], [13.5, 1], [18, 1], [18.5, 0]]})
+        );
     }
 }

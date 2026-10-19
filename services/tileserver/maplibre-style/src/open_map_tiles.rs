@@ -6,23 +6,23 @@ use crate::{SourceLayer, SourceRef};
 ///
 /// The wrapper makes its stable, schema-defined source-layer names available as
 /// methods instead of repeating string literals throughout a style.
-#[derive(Clone, Debug)]
-pub struct OpenMapTiles {
-    source: SourceRef,
-}
-
-impl OpenMapTiles {
-    pub fn new(source: SourceRef) -> Self {
-        Self { source }
-    }
-}
-
 macro_rules! source_layers {
     ($($method:ident => $name:literal),* $(,)?) => {
+        #[derive(Clone, Debug)]
+        pub struct OpenMapTiles {
+            $($method: SourceLayer,)*
+        }
+
         impl OpenMapTiles {
+            pub fn new(source: SourceRef) -> Self {
+                Self {
+                    $($method: source.layer($name),)*
+                }
+            }
+
             $(
-                pub fn $method(&self) -> SourceLayer {
-                    self.source.layer($name)
+                pub fn $method(&self) -> &SourceLayer {
+                    &self.$method
                 }
             )*
         }

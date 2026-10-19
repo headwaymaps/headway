@@ -5,7 +5,7 @@ use std::fmt;
 
 /// How a color renders back to CSS.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ColorFormat {
+enum ColorFormat {
     Hex,
     Rgb,
     Hsl,
@@ -15,15 +15,7 @@ pub enum ColorFormat {
 #[macro_export]
 macro_rules! hsl {
     ($hue:literal, $saturation:literal %, $lightness:literal %) => {
-        $crate::Color::parse(concat!(
-            "hsl(",
-            stringify!($hue),
-            ",",
-            stringify!($saturation),
-            "%,",
-            stringify!($lightness),
-            "%)"
-        ))
+        $crate::Color::hsl($hue as f64, $saturation as f64, $lightness as f64)
     };
 }
 
@@ -31,17 +23,12 @@ macro_rules! hsl {
 #[macro_export]
 macro_rules! hsla {
     ($hue:literal, $saturation:literal %, $lightness:literal %, $alpha:literal) => {
-        $crate::Color::parse(concat!(
-            "hsla(",
-            stringify!($hue),
-            ",",
-            stringify!($saturation),
-            "%,",
-            stringify!($lightness),
-            "%,",
-            stringify!($alpha),
-            ")"
-        ))
+        $crate::Color::hsla(
+            $hue as f64,
+            $saturation as f64 / 100.0,
+            $lightness as f64 / 100.0,
+            $alpha as f64,
+        )
     };
 }
 
@@ -49,15 +36,7 @@ macro_rules! hsla {
 #[macro_export]
 macro_rules! rgb {
     ($red:literal, $green:literal, $blue:literal) => {
-        $crate::Color::parse(concat!(
-            "rgb(",
-            stringify!($red),
-            ",",
-            stringify!($green),
-            ",",
-            stringify!($blue),
-            ")"
-        ))
+        $crate::Color::rgb($red, $green, $blue)
     };
 }
 
@@ -65,30 +44,28 @@ macro_rules! rgb {
 #[macro_export]
 macro_rules! rgba {
     ($red:literal, $green:literal, $blue:literal, $alpha:literal) => {
-        $crate::Color::parse(concat!(
-            "rgba(",
-            stringify!($red),
-            ",",
-            stringify!($green),
-            ",",
-            stringify!($blue),
-            ",",
-            stringify!($alpha),
-            ")"
-        ))
+        $crate::Color::rgba($red, $green, $blue, $alpha as f64)
     };
 }
 
+/// Constructs a color from a `0xRRGGBB` literal, checked at compile time.
+#[macro_export]
+macro_rules! hex {
+    ($rgb:literal) => {{
+        const RGB: u32 = $rgb;
+        const _: () = assert!(RGB <= 0xff_ffff, "hex! takes 0xRRGGBB");
+        $crate::Color::hex(RGB)
+    }};
+}
+
 /// An HSLA color, remembering the notation it was written in.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Color {
     hue: f64,
     saturation: f64,
     lightness: f64,
     alpha: f64,
     notation: ColorFormat,
-    /// The source text, preserved verbatim until the color is modified.
-    literal: Option<String>,
 }
 
 impl PartialEq for Color {
@@ -105,7 +82,6 @@ impl Color {
             lightness: lightness.clamp(0.0, 1.0),
             alpha: alpha.clamp(0.0, 1.0),
             notation: ColorFormat::Hsl,
-            literal: None,
         }
     }
 
@@ -129,81 +105,12 @@ impl Color {
         Self::rgba(red, green, blue, 1.0)
     }
 
-    /// Parses any of the CSS notations maplibre accepts, panicking on anything else.
-    pub fn parse(css: &str) -> Self {
-        Self::try_parse(css).unwrap_or_else(|| panic!("unrecognized color: {css}"))
-    }
-
-    pub fn try_parse(css: &str) -> Option<Self> {
-        let trimmed = css.trim();
-        let mut color = if let Some(hex) = trimmed.strip_prefix('#') {
-            Self::parse_hex(hex)?
-        } else {
-            Self::parse_functional(trimmed)?
-        };
-        color.literal = Some(trimmed.to_owned());
-        Some(color)
-    }
-
-    fn parse_hex(hex: &str) -> Option<Self> {
-        let nibble = |c: u8| (c as char).to_digit(16).map(|d| d as f64 / 15.0);
-        let byte = |pair: &[u8]| {
-            let hi = (pair[0] as char).to_digit(16)?;
-            let lo = (pair[1] as char).to_digit(16)?;
-            Some((hi * 16 + lo) as f64 / 255.0)
-        };
-        let bytes = hex.as_bytes();
-        let (red, green, blue, alpha) = match bytes.len() {
-            3 => (nibble(bytes[0])?, nibble(bytes[1])?, nibble(bytes[2])?, 1.0),
-            6 => (
-                byte(&bytes[0..2])?,
-                byte(&bytes[2..4])?,
-                byte(&bytes[4..6])?,
-                1.0,
-            ),
-            8 => (
-                byte(&bytes[0..2])?,
-                byte(&bytes[2..4])?,
-                byte(&bytes[4..6])?,
-                byte(&bytes[6..8])?,
-            ),
-            _ => return None,
-        };
-        let mut color = Self::from_rgb_f64(red, green, blue, alpha);
+    /// A color from its `0xRRGGBB` value, rendered back as `#rrggbb`.
+    pub fn hex(rgb: u32) -> Self {
+        let [_, red, green, blue] = rgb.to_be_bytes();
+        let mut color = Self::rgb(red, green, blue);
         color.notation = ColorFormat::Hex;
-        Some(color)
-    }
-
-    fn parse_functional(css: &str) -> Option<Self> {
-        let open = css.find('(')?;
-        let name = css[..open].trim().to_ascii_lowercase();
-        let inner = css[open + 1..].strip_suffix(')')?;
-        let args: Vec<&str> = inner.split(',').map(str::trim).collect();
-        let number = |arg: &str| arg.trim_end_matches('%').trim().parse::<f64>().ok();
-        let alpha = match args.len() {
-            3 => 1.0,
-            4 => number(args[3])?,
-            _ => return None,
-        };
-        match name.as_str() {
-            "rgb" | "rgba" => {
-                let mut color = Self::from_rgb_f64(
-                    number(args[0])? / 255.0,
-                    number(args[1])? / 255.0,
-                    number(args[2])? / 255.0,
-                    alpha,
-                );
-                color.notation = ColorFormat::Rgb;
-                Some(color)
-            }
-            "hsl" | "hsla" => Some(Self::hsla(
-                number(args[0])?,
-                number(args[1])? / 100.0,
-                number(args[2])? / 100.0,
-                alpha,
-            )),
-            _ => None,
-        }
+        color
     }
 
     fn from_rgb_f64(red: f64, green: f64, blue: f64, alpha: f64) -> Self {
@@ -229,7 +136,7 @@ impl Color {
         color
     }
 
-    fn to_rgb_f64(&self) -> (f64, f64, f64) {
+    fn to_rgb_f64(self) -> (f64, f64, f64) {
         let chroma = (1.0 - (2.0 * self.lightness - 1.0).abs()) * self.saturation;
         let sector = self.hue / 60.0;
         let second = chroma * (1.0 - (sector % 2.0 - 1.0).abs());
@@ -246,8 +153,7 @@ impl Color {
     }
 
     fn derived(&self, mutate: impl FnOnce(&mut Self)) -> Self {
-        let mut color = self.clone();
-        color.literal = None;
+        let mut color = *self;
         mutate(&mut color);
         color.saturation = color.saturation.clamp(0.0, 1.0);
         color.lightness = color.lightness.clamp(0.0, 1.0);
@@ -295,9 +201,6 @@ impl Color {
     }
 
     pub fn to_css(&self) -> String {
-        if let Some(literal) = &self.literal {
-            return literal.clone();
-        }
         match self.notation {
             ColorFormat::Hex if self.alpha == 1.0 => {
                 let (red, green, blue) = self.to_rgb_f64();
@@ -314,9 +217,9 @@ impl Color {
                 let channel = |value: f64| (value * 255.0).round() as u8;
                 let (red, green, blue) = (channel(red), channel(green), channel(blue));
                 if self.alpha == 1.0 {
-                    format!("rgb({red}, {green}, {blue})")
+                    format!("rgb({red},{green},{blue})")
                 } else {
-                    format!("rgba({red}, {green}, {blue}, {})", trim(self.alpha))
+                    format!("rgba({red},{green},{blue},{})", trim(self.alpha))
                 }
             }
             ColorFormat::Hsl => {
@@ -324,10 +227,10 @@ impl Color {
                 let saturation = trim(self.saturation * 100.0);
                 let lightness = trim(self.lightness * 100.0);
                 if self.alpha == 1.0 {
-                    format!("hsl({hue}, {saturation}%, {lightness}%)")
+                    format!("hsl({hue},{saturation}%,{lightness}%)")
                 } else {
                     format!(
-                        "hsla({hue}, {saturation}%, {lightness}%, {})",
+                        "hsla({hue},{saturation}%,{lightness}%,{})",
                         trim(self.alpha)
                     )
                 }
@@ -363,26 +266,11 @@ impl From<Color> for Json {
     }
 }
 
-impl From<&str> for Color {
-    fn from(css: &str) -> Color {
-        Color::parse(css)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
-    fn round_trips_the_written_notation() {
-        for css in ["#fc8", "rgb(141,220,248)", "hsl(101,62.6%,63.3%)"] {
-            assert_eq!(Color::parse(css).to_css(), css);
-        }
-    }
-
-    #[test]
-    fn macros_keep_their_css_notation() {
-        assert_eq!(crate::hsl!(0, 0%, 86.6667%).to_css(), "hsl(0,0%,86.6667%)");
+    fn macros_use_canonical_notation() {
+        assert_eq!(crate::hsl!(0, 0%, 86.6667%).to_css(), "hsl(0,0%,86.667%)");
         assert_eq!(
             crate::rgba!(255, 255, 255, 0.8).to_css(),
             "rgba(255,255,255,0.8)"
@@ -390,17 +278,17 @@ mod tests {
     }
 
     #[test]
-    fn darkening_drops_the_literal() {
+    fn darkening_uses_computed_color() {
         assert_eq!(
-            Color::parse("hsl(0, 0%, 50%)").darken(0.1).to_css(),
-            "hsl(0, 0%, 40%)"
+            crate::hsl!(0, 0%, 50%).darken(0.1).to_css(),
+            "hsl(0,0%,40%)"
         );
-        assert_eq!(Color::parse("#ffffff").darken(0.5).to_css(), "#808080");
+        assert_eq!(crate::hex!(0xffffff).darken(0.5).to_css(), "#808080");
     }
 
     #[test]
     fn mixes_towards_the_other_color() {
-        let black = Color::parse("#000000");
-        assert_eq!(black.mix(&Color::parse("#ffffff"), 0.5).to_css(), "#808080");
+        let black = crate::hex!(0x000000);
+        assert_eq!(black.mix(&crate::hex!(0xffffff), 0.5).to_css(), "#808080");
     }
 }

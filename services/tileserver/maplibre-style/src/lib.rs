@@ -1,5 +1,3 @@
-#![recursion_limit = "512"]
-
 //! Builders for generating MapLibre style documents.
 //!
 //! ```
@@ -27,11 +25,11 @@ pub mod property;
 pub mod source;
 pub mod style;
 
-pub use color::{Color, ColorFormat};
+pub use color::Color;
 pub use expression::{Expression, Operator};
 pub use filter::{ClassFilter, Filter};
-pub use layer::{AnyLayer, Cap, Join, Layer};
+pub use layer::{Background, Cap, Fill, Join, Kind, Layer, Line, Raster, Symbol};
 pub use open_map_tiles::OpenMapTiles;
 pub use property::{zoom, zoom_with_base, Property, Stops};
-pub use source::{background, Source, SourceLayer, SourceRef};
-pub use style::{LineFactory, Style, SymbolLayerFactory};
+pub use source::{Source, SourceLayer, SourceRef};
+pub use style::{Style, SymbolLayerFactory};

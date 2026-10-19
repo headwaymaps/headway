@@ -39,6 +39,7 @@ import type {
   SourceSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { Color } from '@maplibre/maplibre-gl-style-spec';
 import Prefs from 'src/utils/Prefs';
 import Config from 'src/utils/Config';
 import { mapFeatureToPlace } from 'src/utils/models';
@@ -438,6 +439,23 @@ export default defineComponent({
       // So the compromise is to have the 3D effect always on (when zoomed in)
       // but to dampen in a bit so that the arguably "bad" side effects are minimized.
       const heightDampeningFactor = 0.333;
+
+      // Lighting makes extruded roofs look brighter than the flat 2d buildings, so darken
+      // the roofs slightly for an imperceptible transition between 2d and 3d.
+      const roofShading = 0.975;
+      const buildingColor = Color.parse(
+        map.getPaintProperty('building', 'fill-color') as string,
+      );
+      if (!buildingColor) {
+        throw new Error(
+          'style must have a building layer with a constant color',
+        );
+      }
+      const roofColor = new Color(
+        buildingColor.r * roofShading,
+        buildingColor.g * roofShading,
+        buildingColor.b * roofShading,
+      ).toString();
       map.addLayer(
         {
           id: 'subtle_3d_buildings',
@@ -447,11 +465,7 @@ export default defineComponent({
           type: 'fill-extrusion',
           minzoom: render3DZoomLevel,
           paint: {
-            // This value is based on the background-fill of the "buildings" layer in tileserver/styles/basic/style.json
-            // But the extruded rendering appears "brighter", presumably due rendering lighting effects, so I've
-            // reduced the brightness here to compensate. What we want is an imperceptible transition between 2d and 3d
-            // as the user zooms in.
-            'fill-extrusion-color': 'hsl(40, 5.5%, 87%)',
+            'fill-extrusion-color': roofColor,
             'fill-extrusion-height': zoomLerp<number>(0, [
               '*',
               ['get', 'render_height'],

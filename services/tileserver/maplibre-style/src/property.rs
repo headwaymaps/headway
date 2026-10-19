@@ -3,7 +3,7 @@
 use crate::color::Color;
 use crate::expression::Expression;
 use serde::Serialize;
-use serde_json::{json, Value as Json};
+use serde_json::Value as Json;
 
 /// A zoom function: `{"base": .., "stops": [[zoom, value], ..]}`.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -14,6 +14,10 @@ pub struct Stops<T> {
 }
 
 impl<T> Stops<T> {
+    pub(crate) fn append(&mut self, other: Stops<T>) {
+        self.stops.extend(other.stops);
+    }
+
     /// Transforms each stop's value, keeping the zooms and interpolation.
     pub fn map<U>(&self, change: impl Fn(&T) -> U) -> Stops<U> {
         Stops {
@@ -60,8 +64,7 @@ pub fn zoom_with_base<V>(base: f64, pairs: impl IntoIterator<Item = (f64, V)>) -
 
 /// The value of a paint or layout property: a constant, a zoom function, or an expression.
 ///
-/// Typed setters take `Property<Color>` or `Property<f64>`; layers store the untyped
-/// `Property<Json>`.
+/// Setters take a typed `Property<T>`; layers store each one as `Property<Json>`.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Property<T> {
@@ -119,51 +122,25 @@ macro_rules! typed_from {
     };
 }
 
-typed_from!(Color, f64);
+typed_from!(Color, f64, bool, String, Vec<f64>, Vec<String>, [f64; 2]);
 
 impl From<&Color> for Property<Color> {
     fn from(color: &Color) -> Property<Color> {
-        Property::Constant(color.clone())
+        Property::Constant(*color)
     }
 }
 
-/// Parses CSS, panicking on anything that isn't a color.
-impl From<&str> for Property<Color> {
-    fn from(css: &str) -> Property<Color> {
-        Property::Constant(Color::parse(css))
+impl From<&str> for Property<String> {
+    fn from(value: &str) -> Property<String> {
+        Property::Constant(value.to_owned())
     }
 }
 
-impl<T: Serialize> From<Stops<T>> for Property<Json> {
-    fn from(stops: Stops<T>) -> Property<Json> {
-        Property::Stops(stops.into_json())
+impl From<Stops<&str>> for Property<String> {
+    fn from(stops: Stops<&str>) -> Property<String> {
+        Property::Stops(stops.map(|value| value.to_string()))
     }
 }
-
-macro_rules! untyped_from {
-    ($($type:ty),*) => {
-        $(impl From<$type> for Property<Json> {
-            fn from(value: $type) -> Property<Json> {
-                Property::Constant(json!(value))
-            }
-        })*
-    };
-}
-
-untyped_from!(
-    Color,
-    f64,
-    i32,
-    bool,
-    &str,
-    String,
-    Json,
-    Vec<f64>,
-    Vec<&str>,
-    Vec<String>,
-    [f64; 2],
-    [f64; 4]
-);
 
 #[cfg(test)]
 mod tests {

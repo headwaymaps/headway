@@ -1,6 +1,5 @@
 //! Tile sources, and the handles used to attach layers to them.
 
-use crate::layer::{Background, Fill, Layer, Line, Raster, Symbol};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -78,38 +77,14 @@ impl SourceRef {
     pub fn layer(&self, source_layer: &str) -> SourceLayer {
         SourceLayer {
             source: self.name.clone(),
-            source_layer: Some(source_layer.to_owned()),
+            source_layer: source_layer.to_owned(),
         }
-    }
-
-    /// A raster source has no sub-layers, so it is drawn from directly.
-    pub fn raster(&self, id: impl Into<String>) -> Layer<Raster> {
-        Layer::new(id, Some(&self.name), None)
     }
 }
 
 /// A single vector-tile layer within a source: the thing features come from.
 #[derive(Clone, Debug)]
 pub struct SourceLayer {
-    source: String,
-    source_layer: Option<String>,
-}
-
-macro_rules! features {
-    ($($method:ident => $kind:ty),*) => {
-        impl SourceLayer {
-            $(
-                pub fn $method(&self, id: impl Into<String>) -> Layer<$kind> {
-                    Layer::new(id, Some(&self.source), self.source_layer.as_deref())
-                }
-            )*
-        }
-    };
-}
-
-features!(line => Line, fill => Fill, symbol => Symbol);
-
-/// The background isn't drawn from any source.
-pub fn background(id: impl Into<String>) -> Layer<Background> {
-    Layer::<Background>::new(id, None, None)
+    pub(crate) source: String,
+    pub(crate) source_layer: String,
 }
