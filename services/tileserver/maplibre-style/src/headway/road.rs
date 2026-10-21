@@ -5,8 +5,11 @@ use crate::*;
 /// Where a road runs relative to the ground.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Grade {
+    /// Road features below grade.
     Tunnel,
+    /// Road features at grade.
     Surface,
+    /// Road features carried over another feature.
     Bridge,
 }
 
@@ -19,11 +22,11 @@ impl Grade {
         }
     }
 
-    fn filter(self) -> Filter {
+    pub fn filter(self) -> Filter {
         match self {
-            Grade::Tunnel => super::tunnel(),
-            Grade::Surface => super::surface(),
-            Grade::Bridge => super::bridge(),
+            Grade::Tunnel => Filter::eq("brunnel", "tunnel"),
+            Grade::Surface => Filter::not_in("brunnel", ["bridge", "tunnel"]),
+            Grade::Bridge => Filter::eq("brunnel", "bridge"),
         }
     }
 

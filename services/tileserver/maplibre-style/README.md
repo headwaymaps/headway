@@ -9,8 +9,7 @@ For local map iteration, run `bin/dev-local-assets`. Its
 reloads the browser.
 
 `tests/fixtures/headway.json` is the expected rendered style. The tests compare
-it byte-for-byte and semantically, allowing only harmless formatting and legacy
-filter spelling differences. Regenerate it from this directory with:
+it byte-for-byte.
 
 ```sh
 cargo run --bin headway-style > tests/fixtures/headway.json

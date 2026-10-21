@@ -13,27 +13,13 @@ fn land() -> Color {
 fn halo() -> Color {
     rgba!(255, 255, 255, 0.8)
 }
+
 pub(super) const REGULAR: &str = "Roboto Regular";
 pub(super) const ITALIC: &str = "Roboto Condensed Italic";
 pub(super) const MEDIUM: &str = "Roboto Medium";
 
-/// Road features below grade.
-fn tunnel() -> Filter {
-    Filter::eq("brunnel", "tunnel")
-}
-
-/// Road features carried over another feature.
-fn bridge() -> Filter {
-    Filter::eq("brunnel", "bridge")
-}
-
-/// Road features at grade.
-fn surface() -> Filter {
-    Filter::not_in("brunnel", ["bridge", "tunnel"])
-}
-
 /// Footpaths and pedestrian streets.
-fn foot_paths() -> Filter {
+fn foot_path() -> Filter {
     Filter::linestring().class_in(["path", "pedestrian"])
 }
 
@@ -54,10 +40,13 @@ pub fn style() -> Style {
         .glyphs("/font/{fontstack}/{range}")
         .metadata("openmaptiles:version", "3.x");
 
-    let openmaptiles = OpenMapTiles::new(style.source(
-        "openmaptiles",
-        Source::vector("/areamap-mlt").encoding(Encoding::Mlt),
-    ));
+    let openmaptiles = {
+        let omt_source = style.source(
+            "openmaptiles",
+            Source::vector("/areamap-mlt").encoding(Encoding::Mlt),
+        );
+        OpenMapTiles::new(omt_source)
+    };
     let landcover_source = style.source("landcover", Source::vector("/landcover").maxzoom(8.0));
     let terrain_source = style.source("terrain", Source::raster("/terrain").maxzoom(6.0));
 
@@ -68,9 +57,8 @@ pub fn style() -> Style {
         .opacity(zoom!(5 => 0.8, 6 => 0.0));
 
     let building_color = rgb!(226, 231, 215);
-    let sourced_landcover = landcover_source.layer("landcover");
     style
-        .fill(&sourced_landcover, "landcover")
+        .fill(&landcover_source.layer("landcover"), "landcover")
         .fade_out(7.0)
         .color(expr![
             Match,
@@ -94,8 +82,8 @@ pub fn style() -> Style {
     style
         .fill(openmaptiles.park(), "park")
         .color(rgb!(140, 220, 103))
-        .opacity(0.7)
-        .outline_color(rgb!(95, 208, 100));
+        .outline_color(rgb!(95, 208, 100))
+        .opacity(0.7);
     style
         .line(openmaptiles.park(), "park_outline")
         .dasharray(vec![1.0, 1.5])
@@ -137,7 +125,7 @@ pub fn style() -> Style {
 
     style
         .line(openmaptiles.waterway(), "waterway_tunnel")
-        .filter(tunnel())
+        .filter(Grade::Tunnel.filter())
         .color(water())
         .dasharray(vec![3.0, 3.0])
         .gap_width(zoom!(12 => 0.0, 20 => 6.0))
@@ -236,7 +224,7 @@ pub fn style() -> Style {
     style
         .line(openmaptiles.transportation(), "tunnel_path_pedestrian")
         .minzoom(13.0)
-        .filter(tunnel().and(foot_paths()))
+        .filter(Grade::Tunnel.filter().and(foot_path()))
         .color(hsl!(0, 0%, 98%))
         .dasharray(vec![1.0, 0.75])
         .width(zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
@@ -255,7 +243,7 @@ pub fn style() -> Style {
     style
         .line(openmaptiles.transportation(), "road_path_pedestrian")
         .minzoom(13.0)
-        .filter(surface().and(foot_paths()))
+        .filter(Grade::Surface.filter().and(foot_path()))
         .join_round()
         .color(hsl!(0, 0%, 96%))
         .dasharray(vec![1.0, 0.7])
@@ -268,14 +256,14 @@ pub fn style() -> Style {
             "bridge_path_pedestrian_casing",
         )
         .minzoom(13.0)
-        .filter(bridge().and(foot_paths()))
+        .filter(Grade::Bridge.filter().and(foot_path()))
         .color(zoom![14.0 => hsl!(0, 0%, 88%), 20.0 => hsl!(0, 0%, 64%)])
         .dasharray(vec![1.0, 0.0])
         .width(zoom!(base: 1.2; 14.0 => 1.125, 20.0 => 18.0));
     style
         .line(openmaptiles.transportation(), "bridge_path_pedestrian")
         .minzoom(13.0)
-        .filter(bridge().and(foot_paths()))
+        .filter(Grade::Bridge.filter().and(foot_path()))
         .color(hsl!(0, 0%, 96%))
         .dasharray(vec![1.0, 0.3])
         .width(zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
