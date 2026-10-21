@@ -30,7 +30,7 @@ fn above_ground() -> Filter {
 mod road;
 mod road_shield;
 use road::{Grade, Road, Roads};
-use road_shield::{road_shields, RoadShield, RoadShieldText};
+use road_shield::RoadShields;
 
 /// The Headway default style.
 pub fn style() -> Style {
@@ -387,84 +387,7 @@ pub fn style() -> Style {
         .text_color(hex!(0x776655))
         .text_halo(hex!(0xffffff), 1.0)
         .text_halo_blur(0.5);
-    let shields = road_shields();
-    style
-        .symbol(openmaptiles.transportation_name(), "road_shield")
-        .minzoom(7.0)
-        .filter(Filter::expression(expr![
-            All,
-            [Has, "network"],
-            [Has, "ref"],
-            [
-                LessEqual,
-                [Length, [Coalesce, [Get, "route_1_ref"], [Get, "ref"]]],
-                6
-            ]
-        ]))
-        .icon_image(RoadShield::icon_image(&shields))
-        .icon_rotation_alignment(Alignment::Viewport)
-        .placement(zoom![10.0 => Placement::Point, 11.0 => Placement::Line])
-        .spacing(500.0)
-        .text_field(RoadShield::with_ref(RoadShield::property(
-            &shields,
-            expr![Var, "ref"],
-            |shield| match shield.text {
-                RoadShieldText::NoText => Some(Expression::literal("")),
-                RoadShieldText::Route1Ref => None,
-            },
-        )))
-        .text_font("Overpass Heavy")
-        .text_offset(RoadShield::property(
-            &shields,
-            expr![Literal, [0, 0.11]],
-            |shield| shield.text_offset.map(RoadShield::offset),
-        ))
-        .text_rotation_alignment(Alignment::Viewport)
-        .text_size(RoadShield::with_ref(Expression::op(
-            Operator::Min,
-            [
-                RoadShield::property(&shields, Expression::literal(9), |shield| {
-                    (shield.text_size != 9.0).then(|| Expression::literal(shield.text_size))
-                }),
-                Expression::op(
-                    Operator::Divide,
-                    [
-                        RoadShield::property(&shields, Expression::literal(30), |shield| {
-                            shield.text_width.map(Expression::literal)
-                        }),
-                        expr![Length, [Var, "ref"]],
-                    ],
-                ),
-            ],
-        )))
-        .icon_size(Expression::op(
-            Operator::Match,
-            [
-                expr![Get, "route_1_network"],
-                Expression::array(
-                    shields
-                        .iter()
-                        .map(|shield| Expression::literal(shield.network)),
-                ),
-                Expression::literal(1),
-                Expression::literal(0.667),
-            ],
-        ))
-        .text_color(RoadShield::property(
-            &shields,
-            Expression::literal(hex!(0x000000)),
-            |shield| shield.text_color.map(Expression::literal),
-        ))
-        .text_halo_color(RoadShield::property(
-            &shields,
-            Expression::literal("rgba(0,0,0,0)"),
-            |shield| shield.halo_color.map(Expression::literal),
-        ))
-        .text_halo_width(RoadShield::property(
-            &shields,
-            Expression::literal(0),
-            |shield| shield.halo_width.map(Expression::literal),
-        ));
+    RoadShields::new().add_layer(&mut style, openmaptiles.transportation_name());
 
     let neighbourhoods = [
         "hamlet",
