@@ -93,6 +93,12 @@ const sections: Section[] = [
         thanks:
           'a catalog of transit feeds, and the transit agencies who publish their schedules and realtime data openly.',
       },
+      {
+        name: 'Bus Open Data Service',
+        url: 'https://www.bus-data.dft.gov.uk',
+        thanks:
+          'London transit schedules. Contains public sector information licensed under the Open Government Licence v3.0. Powered by TfL Open Data.',
+      },
     ],
   },
   {
