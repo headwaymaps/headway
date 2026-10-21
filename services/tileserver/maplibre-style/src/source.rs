@@ -14,7 +14,7 @@ pub struct Source {
     #[serde(skip_serializing_if = "Option::is_none")]
     attribution: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    encoding: Option<String>,
+    encoding: Option<Encoding>,
 }
 
 impl Source {
@@ -51,11 +51,20 @@ impl Source {
         self
     }
 
-    /// The tile encoding, e.g. `mlt` for maplibre tiles.
-    pub fn encoding(mut self, encoding: impl Into<String>) -> Self {
-        self.encoding = Some(encoding.into());
+    pub fn encoding(mut self, encoding: Encoding) -> Self {
+        self.encoding = Some(encoding);
         self
     }
+}
+
+/// How a vector source's tiles are encoded.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Encoding {
+    /// Mapbox Vector Tiles.
+    Mvt,
+    /// MapLibre Tiles.
+    Mlt,
 }
 
 /// A named source in a style; hand it out to build layers that draw from it.

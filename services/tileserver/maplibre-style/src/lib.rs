@@ -28,8 +28,11 @@ pub mod style;
 pub use color::Color;
 pub use expression::{Expression, Operator};
 pub use filter::{ClassFilter, Filter};
-pub use layer::{Background, Cap, Fill, Join, Kind, Layer, Line, Raster, Symbol};
+pub use layer::{
+    Alignment, Anchor, Background, Cap, Fill, Join, Justify, Kind, Layer, Line, Placement, Raster,
+    Symbol, Transform,
+};
 pub use open_map_tiles::OpenMapTiles;
 pub use property::{zoom, zoom_with_base, Property, Stops};
-pub use source::{Source, SourceLayer, SourceRef};
+pub use source::{Encoding, Source, SourceLayer, SourceRef};
 pub use style::{Style, SymbolLayerFactory};

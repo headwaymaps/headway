@@ -56,7 +56,7 @@ pub fn style() -> Style {
 
     let openmaptiles = OpenMapTiles::new(style.source(
         "openmaptiles",
-        Source::vector("/areamap-mlt").encoding("mlt"),
+        Source::vector("/areamap-mlt").encoding(Encoding::Mlt),
     ));
     let landcover_source = style.source("landcover", Source::vector("/landcover").maxzoom(8.0));
     let terrain_source = style.source("terrain", Source::raster("/terrain").maxzoom(6.0));
@@ -315,13 +315,13 @@ pub fn style() -> Style {
         .minzoom(15.0)
         .filter(Filter::eq("oneway", 1))
         .icon_image("arrow")
-        .placement("line");
+        .placement(Placement::Line);
     style
         .symbol(openmaptiles.transportation(), "road_one_way_arrow_opposite")
         .minzoom(15.0)
         .filter(Filter::eq("oneway", -1))
         .icon_image("arrow")
-        .placement("line")
+        .placement(Placement::Line)
         .icon_rotate(180.0);
     style
         .line(openmaptiles.transportation(), "route_ferry")
@@ -346,11 +346,11 @@ pub fn style() -> Style {
         water_label
             .symbol(openmaptiles.waterway(), "water_name_line")
             .filter(Filter::linestring())
-            .placement("line");
+            .placement(Placement::Line);
         water_label
             .symbol(openmaptiles.water_name(), "water_name_lake_line")
             .filter(Filter::linestring())
-            .placement("line");
+            .placement(Placement::Line);
         water_label
             .symbol(openmaptiles.water_name(), "water_name_point")
             .filter(Filter::point());
@@ -364,7 +364,7 @@ pub fn style() -> Style {
                 .text_max_width(9.0)
                 .text_size(12.0)
                 .text_field("{name}")
-                .text_anchor("top")
+                .text_anchor(Anchor::Top)
                 .text_offset([0.0, 0.6])
                 .text_color(hex!(0x666666))
                 .text_halo(hex!(0xffffff), 1.0)
@@ -384,14 +384,14 @@ pub fn style() -> Style {
             .symbol(openmaptiles.poi(), "poi_transit")
             .filter(Filter::is_in("class", ["bus", "rail", "airport"]))
             .text_field("{name_en}")
-            .text_anchor("left")
+            .text_anchor(Anchor::Left)
             .text_offset([0.9, 0.0])
             .text_color(hex!(0x4898ff));
     }
 
     style
         .symbol(openmaptiles.transportation_name(), "road_label")
-        .placement("line")
+        .placement(Placement::Line)
         .text_field("{name}")
         .text_font(REGULAR)
         .text_offset([0.0, 0.15])
@@ -414,8 +414,8 @@ pub fn style() -> Style {
             ]
         ]))
         .icon_image(RoadShield::icon_image(&shields))
-        .icon_rotation_alignment("viewport")
-        .placement(zoom![10.0 => "point", 11.0 => "line"])
+        .icon_rotation_alignment(Alignment::Viewport)
+        .placement(zoom![10.0 => Placement::Point, 11.0 => Placement::Line])
         .spacing(500.0)
         .text_field(RoadShield::with_ref(RoadShield::property(
             &shields,
@@ -431,7 +431,7 @@ pub fn style() -> Style {
             expr![Literal, [0, 0.11]],
             |shield| shield.text_offset.map(RoadShield::offset),
         ))
-        .text_rotation_alignment("viewport")
+        .text_rotation_alignment(Alignment::Viewport)
         .text_size(RoadShield::with_ref(Expression::op(
             Operator::Min,
             [
@@ -496,7 +496,7 @@ pub fn style() -> Style {
         .text_letter_spacing(0.1)
         .text_max_width(9.0)
         .text_size(zoom!(base: 1.2; 12 => 10.0, 15 => 14.0))
-        .text_transform("uppercase")
+        .text_transform(Transform::Uppercase)
         .text_color(hex!(0x663333));
     place_label
         .symbol(openmaptiles.place(), "place_village")
@@ -511,7 +511,7 @@ pub fn style() -> Style {
         .symbol(openmaptiles.place(), "place_town")
         .filter(Filter::class("town"))
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
-        .text_anchor("bottom")
+        .text_anchor(Anchor::Bottom)
         .text_font(REGULAR)
         .text_max_width(8.0)
         .text_size(town_size)
@@ -521,7 +521,7 @@ pub fn style() -> Style {
         .symbol(openmaptiles.place(), "place_city")
         .filter(Filter::class("city"))
         .icon_image(zoom!(0 => "dot_9", 8 => ""))
-        .text_anchor("bottom")
+        .text_anchor(Anchor::Bottom)
         .text_font(MEDIUM)
         .text_max_width(8.0)
         .text_size(city_size)
@@ -536,7 +536,7 @@ pub fn style() -> Style {
         .maxzoom(6.0)
         .text_font(ITALIC)
         .text_size(zoom!(4 => 11.0, 6 => 15.0))
-        .text_transform("uppercase")
+        .text_transform(Transform::Uppercase)
         .text_color(hex!(0x663333))
         .text_halo(rgba!(255, 255, 255, 0.7), 1.0);
     for (id, rank, size) in [
@@ -572,7 +572,7 @@ pub fn style() -> Style {
         .maxzoom(1.0)
         .text_font(ITALIC)
         .text_size(13.0)
-        .text_transform("uppercase")
+        .text_transform(Transform::Uppercase)
         .text_color(hex!(0x663333))
         .text_halo(rgba!(255, 255, 255, 0.7), 1.0);
 

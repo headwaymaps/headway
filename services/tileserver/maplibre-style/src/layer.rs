@@ -144,19 +144,72 @@ impl<'a, K: Kind> Layer<'a, K> {
     }
 }
 
-/// How a line's ends and corners are drawn.
-#[derive(Clone, Copy, Debug)]
+/// How a line's ends are drawn.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Cap {
     Butt,
     Round,
     Square,
 }
 
-#[derive(Clone, Copy, Debug)]
+/// How a line's corners are drawn.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Join {
     Bevel,
     Round,
     Miter,
+}
+
+/// Where a symbol sits relative to its feature.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Placement {
+    Point,
+    Line,
+    LineCenter,
+}
+
+/// Which part of a label sits on its anchor point.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Anchor {
+    Center,
+    Left,
+    Right,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Justify {
+    Auto,
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Transform {
+    None,
+    Uppercase,
+    Lowercase,
+}
+
+/// What a label or icon rotates with.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Alignment {
+    Map,
+    Viewport,
+    Auto,
 }
 
 impl Layer<'_, Line> {
@@ -189,14 +242,7 @@ impl Layer<'_, Line> {
     }
 
     pub fn cap(self, cap: Cap) -> Self {
-        self.layout(
-            "line-cap",
-            match cap {
-                Cap::Butt => "butt",
-                Cap::Round => "round",
-                Cap::Square => "square",
-            },
-        )
+        self.layout("line-cap", cap)
     }
 
     /// Uses round line caps.
@@ -211,14 +257,7 @@ impl Layer<'_, Line> {
     }
 
     pub fn join(self, join: Join) -> Self {
-        self.layout(
-            "line-join",
-            match join {
-                Join::Bevel => "bevel",
-                Join::Round => "round",
-                Join::Miter => "miter",
-            },
-        )
+        self.layout("line-join", join)
     }
 
     /// Uses round line joins.
@@ -334,15 +373,15 @@ impl Layer<'_, Symbol> {
         self.layout("text-offset", offset)
     }
 
-    pub fn text_anchor(self, anchor: &str) -> Self {
+    pub fn text_anchor(self, anchor: Anchor) -> Self {
         self.layout("text-anchor", anchor)
     }
 
-    pub fn text_justify(self, justify: &str) -> Self {
+    pub fn text_justify(self, justify: Justify) -> Self {
         self.layout("text-justify", justify)
     }
 
-    pub fn text_transform(self, transform: &str) -> Self {
+    pub fn text_transform(self, transform: Transform) -> Self {
         self.layout("text-transform", transform)
     }
 
@@ -350,7 +389,7 @@ impl Layer<'_, Symbol> {
         self.layout("text-letter-spacing", spacing)
     }
 
-    pub fn text_rotation_alignment(self, alignment: &str) -> Self {
+    pub fn text_rotation_alignment(self, alignment: Alignment) -> Self {
         self.layout("text-rotation-alignment", alignment)
     }
 
@@ -395,7 +434,7 @@ impl Layer<'_, Symbol> {
         self.layout("icon-rotate", degrees)
     }
 
-    pub fn icon_rotation_alignment(self, alignment: &str) -> Self {
+    pub fn icon_rotation_alignment(self, alignment: Alignment) -> Self {
         self.layout("icon-rotation-alignment", alignment)
     }
 
@@ -407,7 +446,7 @@ impl Layer<'_, Symbol> {
         self.layout("icon-optional", optional)
     }
 
-    pub fn placement(self, placement: impl Into<Property<String>>) -> Self {
+    pub fn placement(self, placement: impl Into<Property<Placement>>) -> Self {
         self.layout("symbol-placement", placement)
     }
 

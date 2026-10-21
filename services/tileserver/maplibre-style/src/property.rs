@@ -2,6 +2,7 @@
 
 use crate::color::Color;
 use crate::expression::Expression;
+use crate::layer::{Alignment, Anchor, Cap, Join, Justify, Placement, Transform};
 use serde::Serialize;
 use serde_json::Value as Json;
 
@@ -122,7 +123,22 @@ macro_rules! typed_from {
     };
 }
 
-typed_from!(Color, f64, bool, String, Vec<f64>, Vec<String>, [f64; 2]);
+typed_from!(
+    Color,
+    f64,
+    bool,
+    String,
+    Vec<f64>,
+    Vec<String>,
+    [f64; 2],
+    Cap,
+    Join,
+    Placement,
+    Anchor,
+    Justify,
+    Transform,
+    Alignment
+);
 
 impl From<&Color> for Property<Color> {
     fn from(color: &Color) -> Property<Color> {
