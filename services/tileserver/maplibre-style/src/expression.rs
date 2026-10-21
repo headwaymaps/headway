@@ -20,6 +20,7 @@ pub enum Operator {
     Literal,
     Match,
     Min,
+    Multiply,
     NotEqual,
     ToString,
     Var,
@@ -42,6 +43,7 @@ impl Operator {
             Operator::Literal => "literal",
             Operator::Match => "match",
             Operator::Min => "min",
+            Operator::Multiply => "*",
             Operator::NotEqual => "!=",
             Operator::ToString => "to-string",
             Operator::Var => "var",
@@ -85,6 +87,7 @@ macro_rules! expr {
     (@call "literal" [$($operand:tt),*]) => { $crate::expr!(@op Literal [$($operand),*]) };
     (@call "match" [$($operand:tt),*]) => { $crate::expr!(@op Match [$($operand),*]) };
     (@call "min" [$($operand:tt),*]) => { $crate::expr!(@op Min [$($operand),*]) };
+    (@call "*" [$($operand:tt),*]) => { $crate::expr!(@op Multiply [$($operand),*]) };
     (@call "!=" [$($operand:tt),*]) => { $crate::expr!(@op NotEqual [$($operand),*]) };
     (@call "to-string" [$($operand:tt),*]) => { $crate::expr!(@op ToString [$($operand),*]) };
     (@call "var" [$($operand:tt),*]) => { $crate::expr!(@op Var [$($operand),*]) };

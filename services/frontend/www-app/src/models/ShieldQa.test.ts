@@ -15,6 +15,7 @@ const style: StyleSpecification = JSON.parse(
       'maplibre-style',
       '--bin',
       'headway-style',
+      'v4',
     ],
     {
       cwd: fileURLToPath(new URL('../../../../../', import.meta.url)),

@@ -1,6 +1,6 @@
 //! The style document itself.
 
-use crate::layer::{Background, Fill, Kind, Layer, LayerData, Line, Raster, Symbol};
+use crate::layer::{Background, Fill, FillExtrusion, Kind, Layer, LayerData, Line, Raster, Symbol};
 use crate::source::{Source, SourceLayer, SourceRef};
 use serde::Serialize;
 use serde_json::{json, Map, Value as Json};
@@ -41,8 +41,16 @@ pub struct Style {
     glyphs: Option<String>,
     #[serde(skip_serializing_if = "Map::is_empty")]
     metadata: Map<String, Json>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    light: Option<Light>,
     sources: BTreeMap<String, Source>,
     layers: Vec<LayerData>,
+}
+
+/// The light that shades 3D extrusions; MapLibre's defaults fill in the rest.
+#[derive(Debug, Serialize)]
+pub struct Light {
+    pub intensity: f64,
 }
 
 /// Symbol settings shared by several layers, each of which starts from them.
@@ -69,6 +77,7 @@ impl Style {
             sprite: None,
             glyphs: None,
             metadata: Map::new(),
+            light: None,
             sources: BTreeMap::new(),
             layers: Vec::new(),
         }
@@ -107,6 +116,10 @@ impl Style {
         self
     }
 
+    pub fn light(&mut self, light: Light) {
+        self.light = Some(light);
+    }
+
     /// Registers a source and returns the handle layers are built from.
     pub fn source(&mut self, name: &str, source: Source) -> SourceRef {
         self.sources.insert(name.to_owned(), source);
@@ -115,6 +128,15 @@ impl Style {
 
     /// Appends a fill layer sourcing features from `source`.
     pub fn fill(&mut self, source: &SourceLayer, id: impl Into<String>) -> Layer<'_, Fill> {
+        self.add_sourced(source, id)
+    }
+
+    /// Appends a 3D extruded fill layer sourcing features from `source`.
+    pub fn fill_extrusion(
+        &mut self,
+        source: &SourceLayer,
+        id: impl Into<String>,
+    ) -> Layer<'_, FillExtrusion> {
         self.add_sourced(source, id)
     }
 
