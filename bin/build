@@ -7,16 +7,26 @@ function status() {
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
 
-CONFIG_DIR="${1:-}"
-if [ -z "$CONFIG_DIR" ]; then
+function usage() {
     cat <<EOS
 $0 must specify build config directory
 e.g.
     $0 builds/planet
     $0 builds/Seattle --transit-only
 EOS
-    exit 1
-fi
+}
+
+CONFIG_DIR="${1:-}"
+case "$CONFIG_DIR" in
+    "")
+        usage
+        exit 1
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+esac
 shift
 
 set -o nounset
