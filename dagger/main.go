@@ -493,14 +493,25 @@ func martinBinary() *dagger.File {
 
 func (h *Headway) TileserverServeContainer(ctx context.Context) *dagger.Container {
 	serviceDir := h.ServiceDir("tileserver")
+	assets := serviceDir.Directory("assets").WithFile("styles/basic-v3.json", h.headwayStyle())
 	return slimContainer("ca-certificates", "libfreetype6", "libssl3").
 		WithFile("/usr/local/bin/martin", martinBinary(), dagger.ContainerWithFileOpts{Permissions: 0755}).
-		WithDirectory("/app/assets", serviceDir.Directory("assets")).
+		WithDirectory("/app/assets", assets).
 		WithFile("/app/martin-config.yaml", serviceDir.File("martin-config.yaml")).
 		WithFile("/app/configure-and-run.sh", serviceDir.File("configure-and-run.sh")).
 		WithWorkdir("/").
 		WithExposedPort(8000).
 		WithDefaultArgs([]string{"/app/configure-and-run.sh"})
+}
+
+// headwayStyle renders the checked-in Rust source during the container build,
+// so the tile server always ships the style represented by maplibre_style::headway.
+func (h *Headway) headwayStyle() *dagger.File {
+	return rustBuildContainer().
+		WithMountedDirectory("/src", h.rustWorkspace("services/tileserver/maplibre-style")).
+		WithWorkdir("/src").
+		WithExec([]string{"sh", "-c", "cargo run --locked --quiet -p maplibre-style --bin headway-style > /tmp/basic-v3.json"}).
+		File("/tmp/basic-v3.json")
 }
 
 // Builds maptiles using Planetiler
@@ -824,6 +835,7 @@ func slimContainer(packages ...string) *dagger.Container {
 var rustWorkspaceMembers = []string{
 	"services/gtfs/transit-zoner",
 	"services/gtfs/gtfout",
+	"services/tileserver/maplibre-style",
 	"services/travelmux",
 }
 

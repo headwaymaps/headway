@@ -1,7 +1,7 @@
-Road hierarchy styles (basic-v3)
-================================
+Headway road hierarchy
+======================
 
-Surface-road rules in services/tileserver/assets/styles/basic-v3.json.
+Surface-road rules in the generated Headway style.
 Lightness ranges are `(at first stop .. at z20)` as fractions; for example,
 `0.60 .. 0.40` means `hsl(0, 0%, 60%) .. hsl(0, 0%, 40%)`.
 Widths use the same range notation.

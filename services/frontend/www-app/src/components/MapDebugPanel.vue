@@ -12,6 +12,10 @@
         <input v-model="showRoadTags" type="checkbox" />
         show road tags
       </label>
+      <label class="headway-map-debug-panel__option">
+        <input v-model="showBuildingTags" type="checkbox" />
+        show building tags
+      </label>
     </div>
   </teleport>
 </template>
@@ -25,13 +29,22 @@ const props = defineProps<{ map: unknown }>();
 const map = props.map as MaplibreMap;
 
 const showRoadTagsKey = 'debug.showRoadTags';
+const showBuildingTagsKey = 'debug.showBuildingTags';
 const oldShowRoadDesignationKey = 'debug.showRoadDesignation';
 const storedRoadTags =
   window.localStorage.getItem(showRoadTagsKey) ??
   window.localStorage.getItem(oldShowRoadDesignationKey);
 const showRoadTags = ref(storedRoadTags === 'true');
+const showBuildingTags = ref(
+  window.localStorage.getItem(showBuildingTagsKey) === 'true',
+);
 const zoom = ref(map.getZoom());
 const roadTagsPopup = new Popup({
+  closeButton: false,
+  closeOnClick: false,
+  offset: 12,
+});
+const buildingTagsPopup = new Popup({
   closeButton: false,
   closeOnClick: false,
   offset: 12,
@@ -43,6 +56,26 @@ watch(showRoadTags, (enabled) => {
     roadTagsPopup.remove();
   }
 });
+
+watch(showBuildingTags, (enabled) => {
+  window.localStorage.setItem(showBuildingTagsKey, String(enabled));
+  if (!enabled) {
+    buildingTagsPopup.remove();
+  }
+});
+
+function showTags(
+  popup: Popup,
+  event: MapMouseEvent,
+  tags: Record<string, unknown>,
+) {
+  const tagList = document.createElement('pre');
+  tagList.textContent = Object.entries(tags)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+  popup.setLngLat(event.lngLat).setDOMContent(tagList).addTo(map);
+}
 
 function roadName(road: { properties?: Record<string, unknown> }): unknown {
   if (road.properties?.name) {
@@ -61,31 +94,34 @@ function roadName(road: { properties?: Record<string, unknown> }): unknown {
 }
 
 function onMapMouseMove(event: MapMouseEvent) {
-  if (!showRoadTags.value) {
-    return;
-  }
-
-  const road = map
-    .queryRenderedFeatures(event.point)
-    .find(
+  const features = map.queryRenderedFeatures(event.point);
+  if (showRoadTags.value) {
+    const road = features.find(
       (feature) =>
         feature.sourceLayer === 'transportation' &&
         typeof feature.properties?.class === 'string',
     );
-  if (!road?.properties) {
-    roadTagsPopup.remove();
-    return;
+    if (road?.properties) {
+      const name = roadName(road);
+      showTags(roadTagsPopup, event, {
+        ...road.properties,
+        ...(name ? { name } : {}),
+      });
+    } else {
+      roadTagsPopup.remove();
+    }
   }
 
-  const name = roadName(road);
-  const tags = { ...road.properties, ...(name ? { name } : {}) };
-  const tagList = document.createElement('pre');
-  tagList.textContent = Object.entries(tags)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n');
-
-  roadTagsPopup.setLngLat(event.lngLat).setDOMContent(tagList).addTo(map);
+  if (showBuildingTags.value) {
+    const building = features.find(
+      (feature) => feature.sourceLayer === 'building',
+    );
+    if (building?.properties) {
+      showTags(buildingTagsPopup, event, building.properties);
+    } else {
+      buildingTagsPopup.remove();
+    }
+  }
 }
 
 function onMove() {
@@ -94,6 +130,7 @@ function onMove() {
 
 function onCanvasMouseLeave() {
   roadTagsPopup.remove();
+  buildingTagsPopup.remove();
 }
 
 onMounted(() => {
@@ -107,6 +144,7 @@ onBeforeUnmount(() => {
   map.off('mousemove', onMapMouseMove);
   map.getCanvas().removeEventListener('mouseleave', onCanvasMouseLeave);
   roadTagsPopup.remove();
+  buildingTagsPopup.remove();
 });
 </script>
 
