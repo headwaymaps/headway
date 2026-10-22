@@ -106,6 +106,16 @@ const routes: RouteRecordRaw[] = [
           path: '/dev/shields',
           component: () => import('pages/ShieldQaPage.vue'),
         },
+        {
+          path: '/dev/buildings',
+          component: () => import('layouts/MainLayout.vue'),
+          children: [
+            {
+              path: '/dev/buildings',
+              component: () => import('pages/BuildingLightPage.vue'),
+            },
+          ],
+        },
       ]
     : []),
 

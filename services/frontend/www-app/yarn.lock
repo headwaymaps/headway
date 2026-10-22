@@ -514,9 +514,9 @@
     meow "^9.0.0"
 
 "@mapbox/tiny-sdf@^2.2.0":
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/@mapbox/tiny-sdf/-/tiny-sdf-2.2.0.tgz#95dae0dc371b8c55c53d70f3e25d56823427f4c8"
-  integrity sha512-LVL4wgI9YAum5V+LNVQO6QgFBPw7/MIIY4XJPNsPDMrjEwcE+JfKk1LuIl8GnF197ejVdC9QdPaxrx5gfgdGXg==
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@mapbox/tiny-sdf/-/tiny-sdf-2.3.0.tgz#d924ab814606bb2882ca18f320e139dbf3a7d33f"
+  integrity sha512-gBvcNDBBB66bgQYvnaJ6Jk+VCaMmVq5+IZR2kWPisT88Z8s0kBQt6hfVi8QgRW8Vpg0UWZzBA4ZSyzHHC+VeRA==
 
 "@mapbox/unitbezier@^1.0.0":
   version "1.0.0"
@@ -533,9 +533,9 @@
     pbf "^5.0.0"
 
 "@maplibre/geojson-vt@^6.1.1":
-  version "6.1.1"
-  resolved "https://registry.yarnpkg.com/@maplibre/geojson-vt/-/geojson-vt-6.1.1.tgz#25a032435b4ce2236ea0ba911aff5fb6d5454fc1"
-  integrity sha512-FVMOcmSP/yqol45t7StApEyTL5/vmqBCuFhH9n+fFuINenhaX+YgHHIt1yJ86S8kln3uJLcMvmEU2cfn6E2eCQ==
+  version "6.3.0"
+  resolved "https://registry.yarnpkg.com/@maplibre/geojson-vt/-/geojson-vt-6.3.0.tgz#468783ab2726b678751f20e9ac0766ac6ee375a5"
+  integrity sha512-3Zw2jsU9pIJG3G2CQFbLjWj2MlAHodhD7cSY+15iywUuLmmkgzcKRnueVRZ4AcC/5wOtfhidcJAAzBpoBNs3Xg==
   dependencies:
     kdbush "^4.1.0"
 
@@ -2418,10 +2418,10 @@ dunder-proto@^1.0.1:
     es-errors "^1.3.0"
     gopd "^1.2.0"
 
-earcut@^3.2.3:
-  version "3.2.3"
-  resolved "https://registry.yarnpkg.com/earcut/-/earcut-3.2.3.tgz#74aec19555a7e28773429826729d2e4bfeb19022"
-  integrity sha512-vnS4AVwp1KHAF13i1vp1/2D5evWy3k5u/iW/B81QVsUZtV8cv2tU0b2VNFlqvh4kYwrFMDdjPCfAmfyJW9y14Q==
+earcut@^3.2.4:
+  version "3.2.4"
+  resolved "https://registry.yarnpkg.com/earcut/-/earcut-3.2.4.tgz#a030635fbb9a639984ce0e319b0f16e17e6e15ad"
+  integrity sha512-FHc6yNpnTORB0tM5kmZ03iD2mDuNakDE2lvf4Hw1XkfxtEHIGVi01B/GqUSwx+NcC1WGjidAfpTXzeALtPtfpg==
 
 eastasianwidth@^0.2.0:
   version "0.2.0"
@@ -3679,10 +3679,10 @@ map-obj@^4.0.0:
   resolved "https://registry.yarnpkg.com/map-obj/-/map-obj-4.3.0.tgz#9304f906e93faae70880da102a9f1df0ea8bb05a"
   integrity sha512-hdN1wVrZbb29eBGiGjJbeP8JbKjq1urkHJ/LIP/NY48MZ1QVXUsQBV1G1zvYFHn1XE06cwjBsOI2K3Ulnj1YXQ==
 
-maplibre-gl@^6.1.0:
-  version "6.10.0"
-  resolved "https://registry.yarnpkg.com/maplibre-gl/-/maplibre-gl-6.10.0.tgz#4713f92f62092155abe51562750cb70ef13a19ee"
-  integrity sha512-pZIJ1/rsB1jDjT3eBTfMaeSY45lRKdCuZtqXqTnkUrn0UJO9IwtbywT5ym3/cz57MGEELwAwQSYjB/Fj9TlktQ==
+maplibre-gl@~6.12.0:
+  version "6.12.0"
+  resolved "https://registry.yarnpkg.com/maplibre-gl/-/maplibre-gl-6.12.0.tgz#90b84c56e68df7e0ae290c057d0919c152c54408"
+  integrity sha512-DwgganVi2BhNxOpD7ob3lJC0dQQz4HfJfuQQV3XxCY3XdOzFrMqp9ylMXhRzryRsOnIezdZcklWXIIs/Q8JPjA==
   dependencies:
     "@mapbox/point-geometry" "^1.1.0"
     "@mapbox/tiny-sdf" "^2.2.0"
@@ -3694,7 +3694,7 @@ maplibre-gl@^6.1.0:
     "@maplibre/vt-pbf" "^4.3.2"
     "@types/geojson" "^7946.0.16"
     bidi-js "^1.1.0"
-    earcut "^3.2.3"
+    earcut "^3.2.4"
     gl-matrix "^3.4.4"
     kdbush "^4.1.0"
     murmurhash-js "^1.0.0"

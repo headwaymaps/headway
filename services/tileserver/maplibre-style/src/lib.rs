@@ -35,4 +35,4 @@ pub use layer::{
 pub use open_map_tiles::OpenMapTiles;
 pub use property::{zoom, zoom_with_base, Property, Stops};
 pub use source::{Encoding, Source, SourceLayer, SourceRef};
-pub use style::{Style, SymbolLayerFactory};
+pub use style::{Light, Style, SymbolLayerFactory};

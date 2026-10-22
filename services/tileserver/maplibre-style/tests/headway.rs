@@ -1,8 +1,19 @@
-//! The generated style has to reproduce the checked-in Headway reference.
+//! The generated styles have to reproduce the checked-in Headway references.
 
-const REFERENCE: &str = include_str!("fixtures/headway.json");
+use maplibre_style::headway::{style, Version};
 
 #[test]
-fn matches_the_checked_in_headway_style() {
-    assert_eq!(maplibre_style::headway::style().to_json_string(), REFERENCE);
+fn v3_matches_the_checked_in_style() {
+    assert_eq!(
+        style(Version::V3).to_json_string(),
+        include_str!("fixtures/headway.json")
+    );
+}
+
+#[test]
+fn v4_matches_the_checked_in_style() {
+    assert_eq!(
+        style(Version::V4).to_json_string(),
+        include_str!("fixtures/headway-v4.json")
+    );
 }

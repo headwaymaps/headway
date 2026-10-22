@@ -32,8 +32,16 @@ mod road_shield;
 use road::{Grade, Road, Roads};
 use road_shield::RoadShields;
 
+/// A published revision of the style, served side by side so older clients keep working.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Version {
+    V3,
+    /// Draws buildings in 3D, which v3 clients add themselves.
+    V4,
+}
+
 /// The Headway default style.
-pub fn style() -> Style {
+pub fn style(version: Version) -> Style {
     let mut style = Style::new("Headway Default")
         .id("omt-headway")
         .sprite("/sprite/sprites")
@@ -268,11 +276,14 @@ pub fn style() -> Style {
         .dasharray(vec![1.0, 0.3])
         .width(zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
 
-    style
-        .fill(openmaptiles.building(), "building")
-        .color(building_color)
-        .fade_in(14.0)
-        .outline_color(zoom!(14 => hsla!(40, 6%, 79%, 0.32), 15 => hsl!(40, 6%, 79%)));
+    // v4 draws every building in 3D instead.
+    if version == Version::V3 {
+        style
+            .fill(openmaptiles.building(), "building")
+            .color(building_color)
+            .fade_in(14.0)
+            .outline_color(zoom!(14 => hsla!(40, 6%, 79%, 0.32), 15 => hsl!(40, 6%, 79%)));
+    }
     style
         .line(openmaptiles.boundary(), "boundary_3")
         .filter(Filter::is_in("admin_level", [3, 4]))
@@ -319,6 +330,22 @@ pub fn style() -> Style {
         .width(2.0)
         .fade_in(12.0)
         .dasharray(vec![0.3, 2.0]);
+
+    if version == Version::V4 {
+        style.light(Light { intensity: 0.3 });
+        // Dampened so the 3D effect stays subtle.
+        let extrude = |height: &str| expr!(["*", ["get", height], 0.8]);
+        style
+            .fill_extrusion(openmaptiles.building(), "building_3d")
+            .filter(Filter::ne("hide_3d", true))
+            .minzoom(14.0)
+            .opacity(zoom!(14 => 0.0, 14.5 => 0.8))
+            .color(rgb!(215, 222, 204))
+            .vertical_gradient(false)
+            .height(extrude("render_height"))
+            .base(extrude("render_min_height"))
+            .rounded_corner_distance(3.0);
+    }
 
     {
         // The shared typography for waterway and water-body labels.

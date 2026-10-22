@@ -57,6 +57,7 @@ function renderLocalStyle(): string {
       'maplibre-style',
       '--bin',
       'headway-style',
+      'v4',
     ],
     { cwd: REPO_ROOT, encoding: 'utf8' },
   );
@@ -89,7 +90,7 @@ const localStylePlugin: Plugin = {
     let renderedStyle = renderLocalStyle();
 
     server.middlewares.use((request, response, next) => {
-      if (request.url?.split('?')[0] !== '/local-style/basic-v3.json') {
+      if (request.url?.split('?')[0] !== '/local-style/basic-v4.json') {
         next();
         return;
       }

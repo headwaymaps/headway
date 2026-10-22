@@ -21,9 +21,6 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 setWorkerUrl(maplibreWorkerUrl);
 import type {
   CircleLayerSpecification,
-  ColorSpecification,
-  DataDrivenPropertyValueSpecification,
-  ExpressionSpecification,
   FitBoundsOptions,
   FlyToOptions,
   LayerSpecification,
@@ -39,7 +36,6 @@ import type {
   SourceSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Color } from '@maplibre/maplibre-gl-style-spec';
 import Prefs from 'src/utils/Prefs';
 import Config from 'src/utils/Config';
 import { mapFeatureToPlace } from 'src/utils/models';
@@ -58,8 +54,8 @@ const mapContainerId = 'map';
 const MAX_ANIMATED_DISTANCE_IN_TILES = 4;
 export const mapStyle =
   process.env.HEADWAY_LOCAL_STYLE === 'true'
-    ? '/local-style/basic-v3.json'
-    : '/tileserver/style/basic-v3';
+    ? '/local-style/basic-v4.json'
+    : '/tileserver/style/basic-v4';
 
 async function loadMap(): Promise<MaplibreMap> {
   let initialCenter: LngLatLike = [0, 0];
@@ -414,75 +410,6 @@ export default defineComponent({
           });
         }
       }
-
-      // Add 3-D buildings
-      const render3DZoomLevel = 16;
-      type LerpableValue =
-        ExpressionSpecification | ColorSpecification | number;
-      function zoomLerp<T>(
-        unzoomedValue: LerpableValue,
-        zoomedValue: LerpableValue,
-      ): DataDrivenPropertyValueSpecification<T> {
-        return [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          render3DZoomLevel,
-          unzoomedValue,
-          render3DZoomLevel + 0.5,
-          zoomedValue,
-        ];
-      }
-
-      // Rendering in 3D is cute, but it can also be annoying.
-      // Introducing a toggle button takes up valuable real estate.
-      // So the compromise is to have the 3D effect always on (when zoomed in)
-      // but to dampen in a bit so that the arguably "bad" side effects are minimized.
-      const heightDampeningFactor = 0.333;
-
-      // Lighting makes extruded roofs look brighter than the flat 2d buildings, so darken
-      // the roofs slightly for an imperceptible transition between 2d and 3d.
-      const roofShading = 0.975;
-      const buildingColor = Color.parse(
-        map.getPaintProperty('building', 'fill-color') as string,
-      );
-      if (!buildingColor) {
-        throw new Error(
-          'style must have a building layer with a constant color',
-        );
-      }
-      const roofColor = new Color(
-        buildingColor.r * roofShading,
-        buildingColor.g * roofShading,
-        buildingColor.b * roofShading,
-      ).toString();
-      map.addLayer(
-        {
-          id: 'subtle_3d_buildings',
-          source: 'openmaptiles',
-          'source-layer': 'building',
-          filter: ['!=', 'hide_3d', true],
-          type: 'fill-extrusion',
-          minzoom: render3DZoomLevel,
-          paint: {
-            'fill-extrusion-color': roofColor,
-            'fill-extrusion-height': zoomLerp<number>(0, [
-              '*',
-              ['get', 'render_height'],
-              heightDampeningFactor,
-            ]),
-            'fill-extrusion-base': zoomLerp<number>(0, [
-              '*',
-              ['get', 'render_min_height'],
-              heightDampeningFactor,
-            ]),
-          },
-        },
-        // add 3-d building layer behind any symbol layer
-        layers.find(
-          (layer) => layer.type === 'symbol' && layer.layout?.['text-field'],
-        )?.id,
-      );
 
       if (!baseMapMethods) {
         throw new Error('baseMapMethods must remain set');

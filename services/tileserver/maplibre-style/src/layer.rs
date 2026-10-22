@@ -28,6 +28,7 @@ kinds!(
     Background => "background",
     Raster => "raster",
     Fill => "fill",
+    FillExtrusion => "fill-extrusion",
     Line => "line",
     Symbol => "symbol"
 );
@@ -290,6 +291,32 @@ impl Layer<'_, Fill> {
 
     pub fn pattern(self, pattern: impl Into<Property<String>>) -> Self {
         self.paint("fill-pattern", pattern)
+    }
+}
+
+impl Layer<'_, FillExtrusion> {
+    pub fn color(self, color: impl Into<Property<Color>>) -> Self {
+        self.paint("fill-extrusion-color", color)
+    }
+
+    pub fn height(self, height: impl Into<Property<f64>>) -> Self {
+        self.paint("fill-extrusion-height", height)
+    }
+
+    pub fn base(self, base: impl Into<Property<f64>>) -> Self {
+        self.paint("fill-extrusion-base", base)
+    }
+
+    pub fn opacity(self, opacity: impl Into<Property<f64>>) -> Self {
+        self.paint("fill-extrusion-opacity", opacity)
+    }
+
+    pub fn vertical_gradient(self, enabled: bool) -> Self {
+        self.paint("fill-extrusion-vertical-gradient", enabled)
+    }
+
+    pub fn rounded_corner_distance(self, meters: f64) -> Self {
+        self.layout("fill-extrusion-rounded-corner-distance", meters)
     }
 }
 
