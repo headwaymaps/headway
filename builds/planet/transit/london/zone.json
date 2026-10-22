@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bounds": {
+    "min_lon": -0.98,
+    "min_lat": 51.23,
+    "max_lon": 0.46,
+    "max_lat": 51.69
+  },
+  "feeds": [
+    {
+      "feed_onestop_id": "f-bods~london",
+      "provider": "Bus Open Data Service (TfL buses, Underground, DLR, Tramlink, river services)",
+      "url": "https://data.bus-data.dft.gov.uk/timetable/download/gtfs-file/london/"
+    }
+  ]
+}

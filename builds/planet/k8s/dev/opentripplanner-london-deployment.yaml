@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opentripplanner-london
+spec:
+  selector:
+    matchLabels:
+      app: opentripplanner-london
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: opentripplanner-london
+      annotations:
+        # Roll the pod if the zone file changes
+        headway/zone-checksum: "40d4524736af"
+    spec:
+      initContainers:
+        - name: init
+          image: ghcr.io/headwaymaps/opentripplanner-init:maps-earth-dev
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: opentripplanner-volume
+              mountPath: /data
+            - name: zone
+              mountPath: /run/config
+              readOnly: true
+            - name: gtfs-secrets
+              mountPath: /var/run/secrets/maps.earth
+              readOnly: true
+          env:
+            - name: OTP_ARTIFACT_URL
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261005/transit/maps-earth-planet-v1.261005-london-graph-2026-10-22-bf13d558.obj.zst"
+          resources:
+            limits:
+              memory: 128Mi
+            requests:
+              memory: 128Mi
+      containers:
+        - name: main
+          image: ghcr.io/headwaymaps/opentripplanner:maps-earth-dev
+          env:
+            - name: "JAVA_OPTS"
+              # keep this in sync to be just under the resources.limits.memory
+              value: "-Xmx7G"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: opentripplanner-volume
+              mountPath: /var/opentripplanner
+          resources:
+            limits:
+              # keep this in sync to be just above env.JAVA_OPTS.-Xmx
+              memory: 7.25Gi
+            requests:
+              memory: 500Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 20
+      volumes:
+        - name: zone
+          configMap:
+            name: otp-london-zone
+        - name: gtfs-secrets
+          secret:
+            secretName: otp-london-gtfs-secrets
+            optional: true
+        - name: opentripplanner-volume
+          persistentVolumeClaim:
+            claimName: opentripplanner-london-maps-earth-planet-v1-261005-0-13-0-2026-10-22-3154e72d

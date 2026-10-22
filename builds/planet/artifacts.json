@@ -1,18 +1,20 @@
 {
   "elasticsearch": "maps-earth-planet-v1.261005-elasticsearch-2026-10-14-9ec07780.tar.zst",
-  "elevation": "transit/maps-earth-planet-v1.261005-elevation-tifs-2026-10-12-c586186a.tar.zst",
+  "elevation": "transit/maps-earth-planet-v1.261005-elevation-tifs-2026-10-22-424cef71.tar.zst",
   "gtfs": {
-    "los-angeles": "transit/maps-earth-planet-v1.261005-los-angeles-gtfs-2026-10-12-90ea2dab.tar.zst",
-    "portland": "transit/maps-earth-planet-v1.261005-portland-gtfs-2026-10-12-4571eca5.tar.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.261005-puget-sound-gtfs-2026-10-12-342ba16b.tar.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.261005-sf-bay-area-gtfs-2026-10-12-d304a5ed.tar.zst"
+    "london": "transit/maps-earth-planet-v1.261005-london-gtfs-2026-10-22-96ef622e.tar.zst",
+    "los-angeles": "transit/maps-earth-planet-v1.261005-los-angeles-gtfs-2026-10-22-34202849.tar.zst",
+    "portland": "transit/maps-earth-planet-v1.261005-portland-gtfs-2026-10-22-1f5eddfd.tar.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.261005-puget-sound-gtfs-2026-10-22-61408410.tar.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.261005-sf-bay-area-gtfs-2026-10-22-efd27cb9.tar.zst"
   },
   "osm": "maps-earth-planet-v1.261005-2026-10-14-37ef272f.osm.pbf",
   "otp-graphs": {
-    "los-angeles": "transit/maps-earth-planet-v1.261005-los-angeles-graph-2026-10-12-271abb97.obj.zst",
-    "portland": "transit/maps-earth-planet-v1.261005-portland-graph-2026-10-12-9afc2014.obj.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.261005-puget-sound-graph-2026-10-12-c7e5342a.obj.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.261005-sf-bay-area-graph-2026-10-12-3be630e1.obj.zst"
+    "london": "transit/maps-earth-planet-v1.261005-london-graph-2026-10-22-bf13d558.obj.zst",
+    "los-angeles": "transit/maps-earth-planet-v1.261005-los-angeles-graph-2026-10-22-88a17503.obj.zst",
+    "portland": "transit/maps-earth-planet-v1.261005-portland-graph-2026-10-22-8ea66b4b.obj.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.261005-puget-sound-graph-2026-10-22-196c54b9.obj.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.261005-sf-bay-area-graph-2026-10-22-51ecfc77.obj.zst"
   },
   "placeholder": "maps-earth-planet-v1.261005-placeholder-2026-10-14-065bce06.tar.zst",
   "pmtiles": "maps-earth-planet-v1.261005-2026-10-14-56ba8ac8.pmtiles",
