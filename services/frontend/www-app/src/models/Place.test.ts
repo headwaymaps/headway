@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { LngLat } from 'maplibre-gl';
-import { PlaceId } from './Place';
+import Place, { PlaceId } from './Place';
 import OSMID from './OSMID';
 
 test('PlaceId.gid', () => {
@@ -124,5 +124,33 @@ describe('PlaceId#editOSMVenueUrl', () => {
     expect(
       PlaceId.location(new LngLat(12.3, 45.6))!.editOSMVenueUrl(),
     ).toBeUndefined();
+  });
+});
+
+describe('Place.area', () => {
+  function placeWith(properties: Record<string, string>): Place {
+    return Place.fromFeature(PlaceId.location(new LngLat(-116.2, 43.6)), {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [-116.2, 43.6] },
+      properties: {
+        name: 'Somewhere',
+        country_code: 'US',
+        ...properties,
+      },
+    });
+  }
+
+  test('names the city and region', () => {
+    expect(placeWith({ locality: 'Boise', region: 'Idaho' }).area).toBe(
+      'Boise, Idaho',
+    );
+  });
+
+  test('falls back to whichever of them it has', () => {
+    expect(placeWith({ region: 'Idaho' }).area).toBe('Idaho');
+  });
+
+  test('is absent when it has neither', () => {
+    expect(placeWith({}).area).toBeUndefined();
   });
 });

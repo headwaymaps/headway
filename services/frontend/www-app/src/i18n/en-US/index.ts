@@ -1,12 +1,14 @@
 export default {
   routing_area_not_supported:
     'Sorry, directions are not supported for this trip area.',
-  transit_routing_area_not_supported:
-    'Sorry, transit directions are not currently supported for this trip area.',
-  transit_area_not_supported_for_source:
-    'Sorry, trips starting here are outside of our current transit coverage area.',
-  transit_area_not_supported_for_destination:
-    'Sorry, this destination is outside of our current transit coverage area.',
+  transit_unsupported_header: 'No transit directions here yet',
+  transit_unsupported_available_in_$areas:
+    'Transit directions are currently available in {areas}.',
+  transit_unsupported_notify: 'Want transit directions in your area?',
+  transit_unsupported_notify_$area: 'Want transit directions in {area}?',
+  transit_unsupported_notify_btn: 'Let us know',
+  transit_unsupported_email_subject: 'Transit directions in my area',
+  transit_unsupported_email_subject_$area: 'Transit directions in {area}',
   transit_trip_error_unknown:
     'Sorry, unable to find transit directions for this trip.',
   transit_routing_not_enabled:
