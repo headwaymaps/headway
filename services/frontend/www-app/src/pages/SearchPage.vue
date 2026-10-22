@@ -46,7 +46,7 @@
             v-html="
               $t('search_results_not_found_subheader', {
                 osmLink:
-                  '<a href=https://www.openstreetmap.org>OpenStreetMap</a>',
+                  '<a href=https://www.openstreetmap.org/fixthemap>OpenStreetMap</a>',
               })
             "
           />
