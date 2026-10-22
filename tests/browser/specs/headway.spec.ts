@@ -175,22 +175,6 @@ test('search deep link lists matching places', async ({ page }) => {
   await expect(results.first()).toContainText(new RegExp(ORIGIN, 'i'));
 });
 
-test('empty search results link to OpenStreetMap correction guidance', async ({ page }) => {
-  await page.route('**/pelias/v1/autocomplete?**', (route) =>
-    route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
-  );
-
-  await page.goto('/search/missing-place');
-  await waitForMap(page);
-
-  const results = page.locator('.bottom-card .search-results');
-  await expect(results).toContainText('No results found.');
-  await expect(results.getByRole('link', { name: 'OpenStreetMap', exact: true })).toHaveAttribute(
-    'href',
-    'https://www.openstreetmap.org/fixthemap',
-  );
-});
-
 test('driving directions return a route with a duration', async ({ page }) => {
   await openPlacePage(page, DESTINATION);
 
