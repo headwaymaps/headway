@@ -516,6 +516,24 @@ func (h *Headway) headwayStyle(version string) *dagger.File {
 		File("/tmp/style.json")
 }
 
+// Our fork's building-hide-outlines-with-parts branch, which carries
+// openmaptiles/planetiler-openmaptiles#342: hiding building outlines that are
+// covered by their own building:parts.
+const (
+	planetilerOpenMapTilesRepo   = "https://github.com/headwaymaps/planetiler-openmaptiles.git"
+	planetilerOpenMapTilesCommit = "ac2963f644d41df4cdb6cec689f4ff5e1106874b"
+)
+
+func planetilerJar() *dagger.File {
+	return dag.Container().From("maven:3.9.11-eclipse-temurin-21").
+		WithMountedDirectory("/src", dag.Git(planetilerOpenMapTilesRepo).Commit(planetilerOpenMapTilesCommit).Tree()).
+		WithMountedCache("/root/.m2", dag.CacheVolume("maven-m2")).
+		WithWorkdir("/src").
+		WithExec([]string{"mvn", "--batch-mode", "--quiet", "-DskipTests", "-Dspotless.check.skip=true", "package"}).
+		WithExec([]string{"sh", "-c", "cp target/*-with-deps.jar /planetiler.jar"}).
+		File("/planetiler.jar")
+}
+
 // Builds maptiles using Planetiler
 func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File, error) {
 
@@ -524,7 +542,10 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 	}
 
 	container := dag.Container().
-		From("ghcr.io/onthegomap/planetiler:0.10.2")
+		From("eclipse-temurin:21-jre").
+		WithFile("/app/planetiler.jar", planetilerJar()).
+		// Planetiler reads its downloaded sources from data/sources, relative to here.
+		WithWorkdir("/")
 
 	memoryScript := h.ServiceDir("tilebuilder").File("percent-of-available-memory")
 	memoryBudget, err := container.
@@ -548,24 +569,19 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 		WithMountedDirectory("/data/sources", sources).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
-	entrypoint, err := container.Entrypoint(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get entrypoint: %w", err)
-	}
 	output := "/data/output.pmtiles"
-	entrypoint = append(entrypoint,
+	entrypoint := []string{
+		"java", "-jar", "/app/planetiler.jar",
 		"--osm_path=/data/data.osm.pbf",
 		"--force",
+		"--building_hide_outlines_with_parts=true",
 		fmt.Sprintf("--tile-format=%s", tileFormat),
 		fmt.Sprintf("--output=%s", output),
-	)
+	}
 	if tileFormat == "mlt" {
 		entrypoint = append(entrypoint, "--tile_compression=none")
 	}
 	if h.IsPlanetBuild {
-		// The image entrypoint is `java -cp ... com.onthegomap.planetiler.Main`, so
-		// JVM flags can't be appended as args - they'd be parsed as Planetiler's own
-		// args and ignored. This is a jib-built image, so it picks them up here.
 		// -XX:MaxHeapFreeRatio returns unused heap to the OS.
 		container = container.
 			WithEnvVariable("JAVA_TOOL_OPTIONS", fmt.Sprintf("-Xmx%s -XX:MaxHeapFreeRatio=40", memoryBudget)).
