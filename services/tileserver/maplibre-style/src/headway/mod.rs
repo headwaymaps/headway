@@ -60,9 +60,9 @@ pub fn style() -> Style {
     style
         .fill(&landcover_source.layer("landcover"), "landcover")
         .fade_out(7.0)
-        .color(expr![
-            Match,
-            [Get, "class"],
+        .color(expr!([
+            "match",
+            ["get", "class"],
             "barren",
             (rgba!(255, 231, 220, 0.4)),
             "crop",
@@ -78,7 +78,7 @@ pub fn style() -> Style {
             "urban",
             (building_color.alpha(0.4)),
             "transparent"
-        ]);
+        ]));
     style
         .fill(openmaptiles.park(), "park")
         .color(rgb!(140, 220, 103))

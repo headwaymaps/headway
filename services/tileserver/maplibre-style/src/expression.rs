@@ -54,25 +54,51 @@ impl Operator {
 #[serde(transparent)]
 pub struct Expression(Json);
 
-/// Builds a typed MapLibre expression using concise prefix notation.
+/// Builds a MapLibre expression in MapLibre's own syntax, e.g.
+/// `expr!(["match", ["get", "class"], "park", (green), "transparent"])`.
 ///
-/// For example, `expr![Match, [Get, "class"], "park", "#0a0", "transparent"]`.
+/// An array starting with an operator name is a call; any other array is a literal array.
+/// Strings, numbers, and booleans are literals, and a bare variable or a parenthesized Rust
+/// expression is spliced in.
 #[macro_export]
 macro_rules! expr {
-    ($operator:ident $(, $operand:tt)* $(,)?) => {
-        $crate::Expression::op(
-            $crate::Operator::$operator,
-            [$($crate::expr!(@operand $operand)),*],
-        )
+    ([$($item:tt),* $(,)?]) => {
+        $crate::expr!(@array [$($item),*])
     };
-    (@operand [$operator:ident $(, $operand:tt)*]) => {
-        $crate::expr!($operator $(, $operand)*)
+    (@array [$first:tt $(, $rest:tt)*]) => {
+        $crate::expr!(@call $first [$($rest),*])
     };
-    (@operand [$($value:expr),* $(,)?]) => {
-        $crate::Expression::array([$($crate::Expression::literal($value)),*])
+    (@array []) => {
+        $crate::Expression::array([])
     };
-    (@operand $value:expr) => {
-        $crate::Expression::literal($value)
+    (@call "all" [$($operand:tt),*]) => { $crate::expr!(@op All [$($operand),*]) };
+    (@call "case" [$($operand:tt),*]) => { $crate::expr!(@op Case [$($operand),*]) };
+    (@call "coalesce" [$($operand:tt),*]) => { $crate::expr!(@op Coalesce [$($operand),*]) };
+    (@call "concat" [$($operand:tt),*]) => { $crate::expr!(@op Concat [$($operand),*]) };
+    (@call "/" [$($operand:tt),*]) => { $crate::expr!(@op Divide [$($operand),*]) };
+    (@call "get" [$($operand:tt),*]) => { $crate::expr!(@op Get [$($operand),*]) };
+    (@call "has" [$($operand:tt),*]) => { $crate::expr!(@op Has [$($operand),*]) };
+    (@call ">=" [$($operand:tt),*]) => { $crate::expr!(@op GreaterEqual [$($operand),*]) };
+    (@call "length" [$($operand:tt),*]) => { $crate::expr!(@op Length [$($operand),*]) };
+    (@call "let" [$($operand:tt),*]) => { $crate::expr!(@op Let [$($operand),*]) };
+    (@call "<=" [$($operand:tt),*]) => { $crate::expr!(@op LessEqual [$($operand),*]) };
+    (@call "literal" [$($operand:tt),*]) => { $crate::expr!(@op Literal [$($operand),*]) };
+    (@call "match" [$($operand:tt),*]) => { $crate::expr!(@op Match [$($operand),*]) };
+    (@call "min" [$($operand:tt),*]) => { $crate::expr!(@op Min [$($operand),*]) };
+    (@call "!=" [$($operand:tt),*]) => { $crate::expr!(@op NotEqual [$($operand),*]) };
+    (@call "to-string" [$($operand:tt),*]) => { $crate::expr!(@op ToString [$($operand),*]) };
+    (@call "var" [$($operand:tt),*]) => { $crate::expr!(@op Var [$($operand),*]) };
+    (@call $first:tt [$($rest:tt),*]) => {
+        $crate::Expression::array([$crate::expr!(@operand $first) $(, $crate::expr!(@operand $rest))*])
+    };
+    (@op $operator:ident [$($operand:tt),*]) => {
+        $crate::Expression::op($crate::Operator::$operator, [$($crate::expr!(@operand $operand)),*])
+    };
+    (@operand [$($item:tt),*]) => {
+        $crate::expr!(@array [$($item),*])
+    };
+    (@operand $value:tt) => {
+        $crate::Expression::from($value)
     };
 }
 
@@ -98,6 +124,12 @@ impl Expression {
 
     pub(crate) fn into_inner(self) -> Json {
         self.0
+    }
+}
+
+impl From<crate::Color> for Expression {
+    fn from(color: crate::Color) -> Self {
+        Self::literal(color)
     }
 }
 
@@ -154,16 +186,21 @@ mod tests {
 
     #[test]
     fn macro_reads_like_an_expression() {
+        let body = crate::expr!(["get", "ref"]);
         assert_eq!(
-            serde_json::to_value(crate::expr![
-                Match,
-                [Get, "class"],
-                "park",
-                "#0a0",
-                "transparent"
-            ])
+            serde_json::to_value(crate::expr!([
+                "let",
+                "ref",
+                ["coalesce", ["get", "route_1_ref"], body],
+                ["literal", [0, 0.11]]
+            ]))
             .unwrap(),
-            json!(["match", ["get", "class"], "park", "#0a0", "transparent"])
+            json!([
+                "let",
+                "ref",
+                ["coalesce", ["get", "route_1_ref"], ["get", "ref"]],
+                ["literal", [0, 0.11]]
+            ])
         );
     }
 }

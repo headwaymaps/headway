@@ -337,16 +337,19 @@ impl RoadShields {
         style
             .symbol(source, "road_shield")
             .minzoom(7.0)
-            .filter(Filter::expression(expr![
-                All,
-                [Has, "network"],
-                [Has, "ref"],
+            .filter(Filter::expression(expr!([
+                "all",
+                ["has", "network"],
+                ["has", "ref"],
                 [
-                    LessEqual,
-                    [Length, [Coalesce, [Get, "route_1_ref"], [Get, "ref"]]],
+                    "<=",
+                    [
+                        "length",
+                        ["coalesce", ["get", "route_1_ref"], ["get", "ref"]]
+                    ],
                     6
                 ]
-            ]))
+            ])))
             .icon_image(self.icon_image())
             .icon_rotation_alignment(Alignment::Viewport)
             .placement(zoom![10.0 => Placement::Point, 11.0 => Placement::Line])
@@ -364,7 +367,7 @@ impl RoadShields {
 
     fn text_field(&self) -> Expression {
         Self::with_ref(
-            self.property(expr![Var, "ref"], |shield| match shield.text {
+            self.property(expr!(["var", "ref"]), |shield| match shield.text {
                 RoadShieldText::NoText => Some(Expression::literal("")),
                 RoadShieldText::Route1Ref => None,
             }),
@@ -372,16 +375,8 @@ impl RoadShields {
     }
 
     fn text_offset(&self) -> Expression {
-        self.property(expr![Literal, [0, 0.11]], |shield| {
-            shield.text_offset.map(|[x, y]| {
-                Expression::op(
-                    Operator::Literal,
-                    [Expression::array([
-                        Expression::literal(x),
-                        Expression::literal(y),
-                    ])],
-                )
-            })
+        self.property(expr!(["literal", [0, 0.11]]), |shield| {
+            shield.text_offset.map(|[x, y]| expr!(["literal", [x, y]]))
         })
     }
 
@@ -393,30 +388,21 @@ impl RoadShields {
         let width = self.property(Expression::literal(30), |shield| {
             shield.text_width.map(Expression::literal)
         });
-        Self::with_ref(Expression::op(
-            Operator::Min,
-            [
-                size,
-                Expression::op(Operator::Divide, [width, expr![Length, [Var, "ref"]]]),
-            ],
-        ))
+        Self::with_ref(expr!([
+            "min",
+            size,
+            ["/", width, ["length", ["var", "ref"]]]
+        ]))
     }
 
     /// Networks with a shield sprite draw it full size; the generic fallbacks are smaller.
     fn icon_size(&self) -> Expression {
-        Expression::op(
-            Operator::Match,
-            [
-                expr![Get, "route_1_network"],
-                Expression::array(
-                    self.0
-                        .iter()
-                        .map(|shield| Expression::literal(shield.network)),
-                ),
-                Expression::literal(1),
-                Expression::literal(0.667),
-            ],
-        )
+        let networks = Expression::array(
+            self.0
+                .iter()
+                .map(|shield| Expression::literal(shield.network)),
+        );
+        expr!(["match", ["get", "route_1_network"], networks, 1, 0.667])
     }
 
     fn text_color(&self) -> Expression {
@@ -446,54 +432,47 @@ impl RoadShields {
             matches!(shield.icon, RoadShieldIcon::Sized { four_digit: true })
                 .then_some(Expression::literal(true))
         });
-        let suffix = Expression::op(
-            Operator::Case,
-            [
-                expr![LessEqual, [Length, [Var, "ref"]], 2],
-                Expression::literal("_2"),
-                Expression::op(
-                    Operator::All,
-                    [expr![GreaterEqual, [Length, [Var, "ref"]], 4], four_digit],
-                ),
-                Expression::literal("_4"),
-                Expression::literal("_3"),
-            ],
-        );
+        let suffix = expr!([
+            "case",
+            ["<=", ["length", ["var", "ref"]], 2],
+            "_2",
+            ["all", [">=", ["length", ["var", "ref"]], 4], four_digit],
+            "_4",
+            "_3"
+        ]);
         let fixed = self.property(
-            expr![Concat, "default_", [ToString, [Length, [Var, "ref"]]]],
+            expr!([
+                "concat",
+                "default_",
+                ["to-string", ["length", ["var", "ref"]]]
+            ]),
             |shield| match shield.icon {
                 RoadShieldIcon::Fixed => Some(Expression::literal(shield.sprite_name())),
                 RoadShieldIcon::Named(image) => Some(Expression::literal(image)),
                 _ => None,
             },
         );
-        Self::with_ref(Expression::op(
-            Operator::Let,
+        Self::with_ref(expr!([
+            "let",
+            "shield_base",
+            sized,
             [
-                Expression::literal("shield_base"),
-                sized,
-                Expression::op(
-                    Operator::Case,
-                    [
-                        expr![NotEqual, [Var, "shield_base"], ""],
-                        Expression::op(Operator::Concat, [expr![Var, "shield_base"], suffix]),
-                        fixed,
-                    ],
-                ),
-            ],
-        ))
+                "case",
+                ["!=", ["var", "shield_base"], ""],
+                ["concat", ["var", "shield_base"], suffix],
+                fixed
+            ]
+        ]))
     }
 
     /// Binds `ref` to the route's ref for `body` to use.
     fn with_ref(body: Expression) -> Expression {
-        Expression::op(
-            Operator::Let,
-            [
-                Expression::literal("ref"),
-                expr![Coalesce, [Get, "route_1_ref"], [Get, "ref"]],
-                body,
-            ],
-        )
+        expr!([
+            "let",
+            "ref",
+            ["coalesce", ["get", "route_1_ref"], ["get", "ref"]],
+            body
+        ])
     }
 
     /// Matches each network to its `value`, grouping networks that share one, or `default`.
@@ -513,7 +492,7 @@ impl RoadShields {
             }
         }
 
-        let mut operands = vec![expr![Get, "route_1_network"]];
+        let mut operands = vec![expr!(["get", "route_1_network"])];
         for (value, networks) in groups {
             operands.push(match networks.as_slice() {
                 [network] => Expression::literal(*network),
