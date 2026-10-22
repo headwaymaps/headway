@@ -73,8 +73,8 @@ Transit routing is layered onto a build that already works, so get
 Which agencies to route is described by a transit zone: a `zone.json` naming the
 GTFS feeds to build together. The easiest way to author one is the hosted tool
 at <https://maps.earth/transit-zones> - highlight your area of interest, check
-the providers you care about, and save the file it gives you. To run that tool
-yourself instead, see [TRANSIT_ZONER.md](./TRANSIT_ZONER.md).
+the providers you care about, name the area, and save the file it gives you.
+To run that tool yourself instead, see [TRANSIT_ZONER.md](./TRANSIT_ZONER.md).
 
 1. Save the `zone.json` into a directory named for the zone. That name is used
    verbatim from here on, including as a Kubernetes object name, so stick to

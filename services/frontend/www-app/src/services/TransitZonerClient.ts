@@ -68,11 +68,19 @@ export default class TransitZonerClient {
   /// The zone document for an area and a chosen set of feeds. Returned as text
   /// rather than parsed: it's what gets saved, and the server's formatting is
   /// the formatting that lands in the file.
-  static async zoneDocument(bbox: Bbox, feedIds: string[]): Promise<string> {
+  static async zoneDocument(
+    name: string,
+    bbox: Bbox,
+    feedIds: string[],
+  ): Promise<string> {
     const response = await fetch(`${ROOT}/zone`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ bbox: bbox.join(','), feed_ids: feedIds }),
+      body: JSON.stringify({
+        name,
+        bbox: bbox.join(','),
+        feed_ids: feedIds,
+      }),
     });
     if (!response.ok) {
       throw await errorFrom(response);

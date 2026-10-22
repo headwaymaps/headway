@@ -31,7 +31,7 @@ spec:
         - name: main
           image: ghcr.io/headwaymaps/travelmux:maps-earth-latest
           imagePullPolicy: Always
-          args: ["http://valhalla:8002", "http://opentripplanner-london:8000", "http://opentripplanner-los-angeles:8000", "http://opentripplanner-portland:8000", "http://opentripplanner-puget-sound:8000", "http://opentripplanner-sf-bay-area:8000"]
+          args: ["http://valhalla:8002","London=http://opentripplanner-london:8000","Los Angeles=http://opentripplanner-los-angeles:8000","Portland=http://opentripplanner-portland:8000","Puget Sound (Seattle Area)=http://opentripplanner-puget-sound:8000","San Francisco Bay Area=http://opentripplanner-sf-bay-area:8000"]
           env:
             - name: ELEVATION_TIFS_DIR
               value: /data/elevation-tifs

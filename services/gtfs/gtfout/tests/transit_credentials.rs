@@ -14,6 +14,7 @@ impl Fixture {
         fs::create_dir_all(path.join("build/transit/metro")).unwrap();
         fs::write(path.join("build/transit/metro/zone.json"), r#"{
           "version": 1,
+          "name": "Test",
           "bounds": {"min_lon": 0, "min_lat": 0, "max_lon": 1, "max_lat": 1},
           "feeds": [{"feed_onestop_id": "f-metro", "provider": "Metro", "url": "https://example.com/gtfs.zip",
             "authorization": {"type": "query_param", "param_name": "key", "info_url": "https://example.com/keys"}}]

@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "name": "Bogotá",
   "bounds": {
     "min_lon": -74.2155,
     "min_lat": 4.5199,

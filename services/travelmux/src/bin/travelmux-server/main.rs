@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} https://valhalla.example.com https://otp1.example.com https://otp2.example.com")
+        panic!("No endpoints specified. Usage: {bin_name} https://valhalla.example.com 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com'")
     };
 
     let Ok(valhalla_endpoint) = Url::parse(&valhalla_endpoint) else {
@@ -47,9 +47,15 @@ async fn main() -> Result<()> {
     }
     let mut otp_cluster = OtpCluster::default();
     for endpoint in endpoints {
+        let Some((name, url)) = endpoint
+            .split_once('=')
+            .filter(|(name, _)| !name.is_empty())
+        else {
+            panic!("OTP endpoint must be <area name>=<url>, e.g. 'Seattle=http://opentripplanner:8000', but was: {endpoint}")
+        };
         // If we change this to be non-blocking, we'll
         // want to update our readiness probe in health.rs
-        otp_cluster.insert_endpoint(&endpoint).await?;
+        otp_cluster.insert_endpoint(name, url).await?;
     }
 
     log::info!(

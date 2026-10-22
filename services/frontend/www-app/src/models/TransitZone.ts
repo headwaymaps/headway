@@ -6,6 +6,7 @@ export const ZONE_VERSION = 1;
 
 /// A zone.json, reduced to what the editor restores from it.
 export interface TransitZone {
+  readonly name: string;
   readonly bbox: Bbox;
   readonly feedIds: readonly string[];
 }
@@ -37,6 +38,10 @@ export function parseTransitZone(text: string): Result<TransitZone, Error> {
     );
   }
 
+  if (typeof zone.name !== 'string' || !zone.name.trim()) {
+    return Err(new Error('Zone file has no name.'));
+  }
+
   const bbox = bboxOf(zone.bounds);
   if (!bbox.ok) {
     return bbox;
@@ -45,7 +50,11 @@ export function parseTransitZone(text: string): Result<TransitZone, Error> {
   if (!feedIds.ok) {
     return feedIds;
   }
-  return Ok({ bbox: bbox.value, feedIds: feedIds.value });
+  return Ok({
+    name: zone.name,
+    bbox: bbox.value,
+    feedIds: feedIds.value,
+  });
 }
 
 function bboxOf(bounds: unknown): Result<Bbox, Error> {

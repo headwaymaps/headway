@@ -188,6 +188,7 @@ fn rendered_updaters_name_feeds_the_graph_will_have() {
 fn the_schema_refuses_a_credential() {
     let with_credential = r#"{
       "version": 1,
+      "name": "Test",
       "bounds": { "min_lon": -122.5, "min_lat": 47.3, "max_lon": -122.0, "max_lat": 47.8 },
       "feeds": [
         {

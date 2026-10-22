@@ -13,7 +13,7 @@ spec:
         app: opentripplanner-london
       annotations:
         # Roll the pod if the zone file changes
-        headway/zone-checksum: "40d4524736af"
+        headway/zone-checksum: "be71721c6883"
     spec:
       initContainers:
         - name: init

@@ -13,6 +13,8 @@ pub const VERSION: u32 = 1;
 #[serde(deny_unknown_fields)]
 pub struct Zone {
     pub version: u32,
+    /// What people call the area, e.g. "San Francisco Bay Area".
+    pub name: String,
     pub bounds: Bounds,
     pub feeds: Vec<ZoneFeed>,
 }
@@ -38,7 +40,11 @@ impl Zone {
             .into());
         }
 
-        Ok(serde_json::from_str(contents)?)
+        let zone: Self = serde_json::from_str(contents)?;
+        if zone.name.trim().is_empty() {
+            return Err("zone file has an empty name".into());
+        }
+        Ok(zone)
     }
 
     /// The zone's OTP config, with `credentials` resolved into it.

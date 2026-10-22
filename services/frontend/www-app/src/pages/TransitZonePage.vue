@@ -109,12 +109,13 @@
     </ul>
 
     <footer>
+      <q-input v-model="name" class="col" dense outlined label="Area name" />
       <q-btn
         dense
         no-caps
         color="primary"
         label="Download zone.json"
-        :disable="!selected.size"
+        :disable="!selected.size || !name.trim()"
         @click="download"
       />
     </footer>
@@ -158,6 +159,7 @@ export default defineComponent({
     dragStart: { x: number; y: number } | null;
     screenRect: ScreenRect | null;
     area: Bbox | null;
+    name: string;
     feeds: FeedSummary[];
     selected: Set<string>;
     feedBoxes: FeedBox[];
@@ -175,6 +177,7 @@ export default defineComponent({
       dragStart: null,
       screenRect: null,
       area: null,
+      name: '',
       feeds: [],
       selected: new Set(),
       feedBoxes: [],
@@ -483,6 +486,7 @@ export default defineComponent({
       this.error = null;
       this.droppedUnknownFeedIds = [];
       this.area = zone.bbox;
+      this.name = zone.name;
       const [west, south, east, north] = zone.bbox;
       getBaseMap()?.fitBounds(
         [
@@ -509,13 +513,15 @@ export default defineComponent({
       this.selected = new Set();
     },
     async download() {
-      if (!this.area || !this.selected.size) {
+      if (!this.area || !this.selected.size || !this.name.trim()) {
         return;
       }
       try {
-        const json = await TransitZonerClient.zoneDocument(this.area, [
-          ...this.selected,
-        ]);
+        const json = await TransitZonerClient.zoneDocument(
+          this.name,
+          this.area,
+          [...this.selected],
+        );
         const url = URL.createObjectURL(
           new Blob([json], { type: 'application/json' }),
         );
@@ -681,6 +687,9 @@ export default defineComponent({
   }
 
   footer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
     padding: 8px 16px;
     border-top: solid #eee 1px;
     position: sticky;

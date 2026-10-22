@@ -15,6 +15,8 @@ use url::Url;
 /// a [`PreparedGeometry`] once [`prepare`](OTPRouter::prepare)d for serving requests.
 #[derive(Debug, Clone)]
 pub struct OTPRouter<Coverage = Polygon> {
+    /// What people call the area this instance covers, e.g. "San Francisco Bay Area".
+    name: String,
     /// The instance's GTFS GraphQL endpoint (e.g. `http://opentripplanner:8000/otp/gtfs/v1`).
     endpoint: Url,
     /// The area this instance covers, used to route trips to the correct zone.
@@ -27,6 +29,10 @@ pub struct OTPRouter<Coverage = Polygon> {
 pub type PreparedOTPRouter = OTPRouter<PreparedGeometry<'static, Polygon>>;
 
 impl<Coverage> OTPRouter<Coverage> {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn endpoint(&self) -> &Url {
         &self.endpoint
     }
@@ -37,8 +43,9 @@ impl<Coverage> OTPRouter<Coverage> {
 }
 
 impl OTPRouter {
-    pub fn new(endpoint: Url, coverage: Polygon, timezone: Option<Tz>) -> Self {
+    pub fn new(name: String, endpoint: Url, coverage: Polygon, timezone: Option<Tz>) -> Self {
         Self {
+            name,
             endpoint,
             coverage,
             timezone,
@@ -52,6 +59,7 @@ impl OTPRouter {
     /// worker prepares its own copy.
     pub fn prepare(&self) -> PreparedOTPRouter {
         OTPRouter {
+            name: self.name.clone(),
             endpoint: self.endpoint.clone(),
             coverage: PreparedGeometry::from(self.coverage.clone()),
             timezone: self.timezone,
@@ -113,7 +121,8 @@ impl OTPRouterClient {
         })
     }
 
-    pub async fn fetch_all(&self) -> crate::Result<Vec<OTPRouter>> {
+    /// `name` is what people call the area the instance covers.
+    pub async fn fetch_all(&self, name: &str) -> crate::Result<Vec<OTPRouter>> {
         let data: CoverageQuery =
             gtfs_graphql::post_graphql(&self.http_client, &self.endpoint, CoverageQuery::build(()))
                 .await?;
@@ -151,6 +160,7 @@ impl OTPRouterClient {
             });
 
         Ok(vec![OTPRouter::new(
+            name.to_owned(),
             self.endpoint.clone(),
             polygon,
             timezone,

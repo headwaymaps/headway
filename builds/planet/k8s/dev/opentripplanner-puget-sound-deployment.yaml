@@ -13,7 +13,7 @@ spec:
         app: opentripplanner-puget-sound
       annotations:
         # Roll the pod if the zone file changes
-        headway/zone-checksum: "1e31b64cb1a6"
+        headway/zone-checksum: "b30d94b0e05d"
     spec:
       initContainers:
         - name: init

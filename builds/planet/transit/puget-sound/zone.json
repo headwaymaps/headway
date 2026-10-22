@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "name": "Puget Sound (Seattle Area)",
   "bounds": {
     "min_lon": -123.2654221233932,
     "min_lat": 46.93304,

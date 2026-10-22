@@ -28,6 +28,25 @@ pub struct PlanError {
     pub status_code: u16,
     pub error_code: u32,
     pub message: String,
+    /// For [`ErrorType::NoCoverageForArea`]: the areas that do have transit.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub transit_areas: Vec<TransitArea>,
+    /// For [`ErrorType::NoCoverageForArea`]: the ends of the trip outside every transit area.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub uncovered_places: Vec<TripEnd>,
+}
+
+#[derive(Debug, Serialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum TripEnd {
+    From,
+    To,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransitArea {
+    pub name: String,
 }
 
 impl fmt::Display for PlanResponseErr {
@@ -61,6 +80,8 @@ impl From<Error> for PlanError {
             status_code,
             error_code,
             message: value.source.to_string(),
+            transit_areas: vec![],
+            uncovered_places: vec![],
         }
     }
 }
@@ -73,6 +94,8 @@ impl From<valhalla_api::RouteResponseError> for PlanResponseErr {
                 // Errors originating in valhalla are offset by 2000
                 error_code: value.error_code + 2000,
                 message: value.error,
+                transit_areas: vec![],
+                uncovered_places: vec![],
             },
         }
     }
@@ -93,8 +116,28 @@ impl From<&gtfs_graphql::RoutingError> for PlanResponseErr {
                 status_code: 400,
                 error_code: error_type as u32,
                 message: format!("{}: {}", value.code.as_str(), value.description),
+                transit_areas: vec![],
+                uncovered_places: vec![],
             },
         }
+    }
+}
+
+impl PlanResponseErr {
+    /// The trip isn't within any transit area; lists the ones there are.
+    pub fn no_transit_coverage(area_names: Vec<&str>, uncovered_places: Vec<TripEnd>) -> Self {
+        let mut error = PlanError::from(
+            Error::user("Transit directions not available for this area.")
+                .error_type(ErrorType::NoCoverageForArea),
+        );
+        error.transit_areas = area_names
+            .into_iter()
+            .map(|name| TransitArea {
+                name: name.to_owned(),
+            })
+            .collect();
+        error.uncovered_places = uncovered_places;
+        Self { error }
     }
 }
 
@@ -161,6 +204,19 @@ impl PlanResponseOk {
 mod tests {
     use super::*;
     use actix_web::ResponseError;
+
+    #[test]
+    fn no_transit_coverage_lists_the_transit_areas() {
+        let err =
+            PlanResponseErr::no_transit_coverage(vec!["Portland", "Seattle"], vec![TripEnd::To]);
+        let json = serde_json::to_value(&err).unwrap();
+        assert_eq!(json["error"]["errorCode"], 1701);
+        assert_eq!(
+            json["error"]["transitAreas"],
+            serde_json::json!([{ "name": "Portland" }, { "name": "Seattle" }])
+        );
+        assert_eq!(json["error"]["uncoveredPlaces"], serde_json::json!(["to"]));
+    }
 
     #[test]
     fn error_response_has_error_code_header() {
