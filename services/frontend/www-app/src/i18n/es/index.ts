@@ -1,4 +1,5 @@
 export default {
+  view_in_osm: 'Ver esto en OpenStreetMap',
   where_to_question: '¿adonde?',
   transit_unsupported_header:
     'Aún no hay indicaciones de transporte público aquí',

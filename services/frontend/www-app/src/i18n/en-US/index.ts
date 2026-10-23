@@ -91,6 +91,7 @@ export default {
   departs_at_$location: 'from {location}',
   transit_timeline_wait_for_transit_$timeDuration: 'wait up to {timeDuration}',
   edit_poi_button: 'Edit Details',
+  view_in_osm: 'View this in OpenStreetMap',
   edit_poi_on_osm_button: 'Edit on OpenStreetMap',
   attributions: 'Attributions',
   edit_poi_about_osm:
