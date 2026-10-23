@@ -1,5 +1,18 @@
 <template>
   <div id="map"></div>
+  <div
+    v-if="contextMenu"
+    class="map-context-menu"
+    :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
+  >
+    <a
+      :href="contextMenu.osmUrl"
+      target="_blank"
+      rel="noopener"
+      @click="contextMenu = null"
+      >{{ $t('view_in_osm') }}</a
+    >
+  </div>
   <MapDebugPanel v-if="debugEnabled && mapReady" :map="mapForDebug()" />
 </template>
 
@@ -215,6 +228,7 @@ export default defineComponent({
     mapReady: boolean;
     touchHandlers: Map<BaseMapEventType, Array<BaseMapEventHandler>>;
     touchHandlerIdx: number;
+    contextMenu: { x: number; y: number; osmUrl: string } | null;
   } {
     return {
       debugEnabled,
@@ -226,6 +240,7 @@ export default defineComponent({
       mapReady: false,
       touchHandlers: new Map(),
       touchHandlerIdx: 0,
+      contextMenu: null,
     };
   },
   mounted: async function () {
@@ -319,6 +334,19 @@ export default defineComponent({
         }, 700),
       );
     });
+    map.on('contextmenu', (event: MapMouseEvent) => {
+      event.preventDefault();
+      const { lat, lng } = event.lngLat;
+      const zoom = Math.round(map.getZoom()) + 1;
+      this.contextMenu = {
+        x: event.originalEvent.clientX,
+        y: event.originalEvent.clientY,
+        osmUrl: `https://www.openstreetmap.org/?mlat=${lat.toFixed(6)}&mlon=${lng.toFixed(6)}#map=${zoom}/${lat.toFixed(6)}/${lng.toFixed(6)}`,
+      };
+    });
+    const closeContextMenu = () => (this.contextMenu = null);
+    map.on('click', closeContextMenu);
+    map.on('movestart', closeContextMenu);
     map.on('mouseup', () => clearAllTimeouts());
     map.on('mousemove', () => clearAllTimeouts());
     map.on('touchend', () => clearAllTimeouts());
@@ -700,6 +728,20 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+.map-context-menu {
+  position: fixed;
+  z-index: 3000;
+  padding: 6px 12px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
 .headway-device-orientation-indicator svg {
   position: relative;
   top: 3px;
