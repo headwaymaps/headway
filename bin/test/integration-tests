@@ -1,37 +1,58 @@
 #!/bin/bash
-# Run integration tests against running services
+# Run integration tests against running services, asserting against a build's smoke-test.env
 # Assumes services are already started (use bin/start-services builds/Bogota first)
+#
+#   bin/test/integration-tests [build-dir]    (default: builds/Bogota)
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_ROOT=$(git rev-parse --show-toplevel)
+APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SUITE_DIR="$APP_ROOT/tests/integration"
 
 cd "$APP_ROOT"
 
-# The tests assert against Bogota - see run-integration-tests.sh. Its env and its
-# built zones tell the test scripts which features to exercise.
-CONFIG_DIR="builds/Bogota"
+# The build's env and its built zones tell the test scripts which features to exercise, and its
+# smoke-test.env where to exercise them.
+CONFIG_DIR="${1:-builds/Bogota}"
+# HEADWAY_PUBLIC_URL from the environment overrides the build's, e.g. to test one blue/green host.
+public_url_override=${HEADWAY_PUBLIC_URL:-}
 source bin/_source-env.sh "$CONFIG_DIR"
+HEADWAY_PUBLIC_URL=${public_url_override:-$HEADWAY_PUBLIC_URL}
 source bin/_transit-zones.sh
-
-FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
+set -a
+source "$CONFIG_DIR/smoke-test.env"
+set +a
 
 echo "========================================"
 echo "Running Integration Tests"
 echo "========================================"
-echo "Frontend URL: $FRONTEND_URL"
+echo "URL: $HEADWAY_PUBLIC_URL"
 echo "Transit routing: ${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}"
 echo ""
 
 TESTS_PASSED=0
 TESTS_FAILED=0
 
-# Export FRONTEND_URL for test scripts
-export FRONTEND_URL
+echo "Running health tests..."
+if "$SUITE_DIR/test-health.sh"; then
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+    echo "Health tests FAILED"
+fi
 
+echo ""
+echo "Running frontend tests..."
+if "$SUITE_DIR/test-frontend.sh"; then
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+    echo "Frontend tests FAILED"
+fi
+
+echo ""
 echo "Running tileserver tests..."
-if "$SCRIPT_DIR/test-tileserver.sh"; then
+if "$SUITE_DIR/test-tileserver.sh"; then
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     TESTS_FAILED=$((TESTS_FAILED + 1))
@@ -40,7 +61,7 @@ fi
 
 echo ""
 echo "Running geosearch tests..."
-if "$SCRIPT_DIR/test-geosearch.sh"; then
+if "$SUITE_DIR/test-geosearch.sh"; then
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     TESTS_FAILED=$((TESTS_FAILED + 1))
@@ -49,7 +70,7 @@ fi
 
 echo ""
 echo "Running routing tests..."
-if "$SCRIPT_DIR/test-routing.sh"; then
+if "$SUITE_DIR/test-routing.sh"; then
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
     TESTS_FAILED=$((TESTS_FAILED + 1))

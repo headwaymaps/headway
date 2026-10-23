@@ -6,14 +6,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_test-lib.sh"
 
-FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
-
-# Bogota tile coordinates (verified from maps.earth)
-# Zoom 13, tile covering central Bogota
-ZOOM=13
-TILE_X=2409
-TILE_Y=3990
-
 echo "Testing Tileserver..."
 echo ""
 
@@ -24,13 +16,13 @@ echo ""
 
 # MVT protobuf tile
 run_binary_test "vector tile (MVT)" \
-    "$FRONTEND_URL/tileserver/areamap-mvt/$ZOOM/$TILE_X/$TILE_Y" \
+    "$HEADWAY_PUBLIC_URL/tileserver/areamap-mvt/$TILE" \
     "application/x-protobuf" \
     100
 
 # MLT tile, negotiated exactly as the web app requests it
 run_binary_test "vector tile (MLT)" \
-    "$FRONTEND_URL/tileserver/areamap-mlt/$ZOOM/$TILE_X/$TILE_Y" \
+    "$HEADWAY_PUBLIC_URL/tileserver/areamap-mlt/$TILE" \
     "application/vnd.maplibre-tile" \
     100 \
     "application/vnd.maplibre-tile"

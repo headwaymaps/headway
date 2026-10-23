@@ -224,7 +224,7 @@ jobs:
       - name: Load Docker images
         run: zstd -dc docker-images.tar.zst | docker load
       - name: Run integration tests
-        run: tests/integration/run-integration-tests.sh
+        run: bin/test/integration-tests-oneshot
       - name: Collect logs on failure
         if: failure()
         run: bin/docker-compose builds/Bogota logs > integration-test-logs.txt
@@ -271,7 +271,7 @@ jobs:
       - name: Wait for services
         run: bin/wait-for-services
       - name: Run browser tests
-        run: tests/browser/run.sh
+        run: bin/test/browser-tests builds/Bogota
       - name: Collect logs on failure
         if: failure()
         run: bin/docker-compose builds/Bogota logs > browser-test-logs.txt
