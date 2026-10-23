@@ -284,6 +284,16 @@ func (p *PeliasImporter) importPolylines(ctx context.Context, prev *dagger.Conta
 		WithExec([]string{"./bin/start"})
 }
 
+// compact merges each shard down to one segment, purging deleted documents and
+// shrinking the exported data.
+func (p *PeliasImporter) compact(ctx context.Context, prev *dagger.Container) *dagger.Container {
+	return p.importerContainerFrom(prev, peliasSchemaImage).
+		WithExec([]string{"curl", "--fail-with-body", "--silent", "--show-error", "-XPOST",
+			"http://pelias-elasticsearch:9200/pelias/_forcemerge?max_num_segments=1"}).
+		WithExec([]string{"curl", "--fail-with-body", "--silent", "--show-error", "-XPOST",
+			"http://pelias-elasticsearch:9200/pelias/_flush"})
+}
+
 func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 	importer := p.importer(ctx)
 
@@ -321,6 +331,11 @@ func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 	step, err = importer.importPolylines(ctx, step).Sync(ctx)
 	if err != nil {
 		panic(fmt.Errorf("failed to import polylines data: %w", err))
+	}
+
+	step, err = importer.compact(ctx, step).Sync(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to compact elasticsearch index: %w", err))
 	}
 
 	_, err = importer.ElasticsearchService.Stop(ctx)
