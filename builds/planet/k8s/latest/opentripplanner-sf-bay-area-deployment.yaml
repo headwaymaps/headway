@@ -13,7 +13,7 @@ spec:
         app: opentripplanner-sf-bay-area
       annotations:
         # Roll the pod if the zone file changes
-        headway/zone-checksum: "7d1accc94de6"
+        headway/zone-checksum: "965795d9d981"
     spec:
       initContainers:
         - name: init

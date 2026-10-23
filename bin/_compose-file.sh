@@ -28,8 +28,9 @@ if [ -n "$HEADWAY_TRANSIT_ZONE" ]; then
         echo "Error: no zone.json for ${HEADWAY_TRANSIT_ZONE}" >&2
         exit 1
     fi
-    export OTP_ZONE_JSON OTP_GTFS_SECRETS_JSON
+    export OTP_ZONE_JSON OTP_GTFS_SECRETS_JSON HEADWAY_TRANSIT_ZONE_NAME
     OTP_ZONE_JSON=$(cat "$ZONE_FILE")
+    HEADWAY_TRANSIT_ZONE_NAME=$(jq -r .name "$ZONE_FILE")
     ZONE_SECRETS_FILE="$(dirname "$ZONE_FILE")/gtfs-secrets.json"
     OTP_GTFS_SECRETS_JSON=""
     if [ -f "$ZONE_SECRETS_FILE" ]; then

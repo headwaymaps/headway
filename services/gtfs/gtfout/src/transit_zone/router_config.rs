@@ -230,6 +230,7 @@ mod tests {
     fn zone(realtime: Vec<ZoneRealtime>) -> Zone {
         Zone {
             version: crate::transit_zone::zone::VERSION,
+            name: "Seattle".to_owned(),
             bounds: Bounds {
                 min_lon: -122.5,
                 min_lat: 47.3,

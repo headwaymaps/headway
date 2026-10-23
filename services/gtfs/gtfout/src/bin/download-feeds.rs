@@ -171,6 +171,7 @@ mod tests {
 
     const ZONE_JSON: &str = r#"{
       "version": 1,
+      "name": "Test",
       "bounds": { "min_lon": -122.5, "min_lat": 47.3, "max_lon": -122.0, "max_lat": 47.8 },
       "feeds": [
         {

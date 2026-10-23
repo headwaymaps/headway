@@ -4,6 +4,7 @@ import { parseTransitZone } from './TransitZone';
 function zone(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
     version: 1,
+    name: 'Seattle',
     bounds: {
       min_lon: -123.265,
       min_lat: 46.933,
@@ -31,6 +32,7 @@ describe('parseTransitZone', () => {
     expect(parseTransitZone(zone())).toEqual({
       ok: true,
       value: {
+        name: 'Seattle',
         bbox: [-123.265, 46.933, -121.601, 48.999],
         feedIds: ['f-c23-metrokingcounty', 'f-c23-soundtransit'],
       },

@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "name": "Portland",
   "bounds": {
     "min_lon": -123.2,
     "min_lat": 45.2,

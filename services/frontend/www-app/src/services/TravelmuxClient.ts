@@ -219,7 +219,13 @@ export interface TravelmuxError {
   errorCode: TravelmuxErrorCode;
   statusCode: number;
   message: string;
+  // For TransitUnsupportedArea: the areas that do have transit.
+  transitAreas?: { name: string }[];
+  // For TransitUnsupportedArea: the ends of the trip outside every transit area.
+  uncoveredPlaces?: TripEnd[];
 }
+
+export type TripEnd = 'from' | 'to';
 
 // incomplete
 export type TravelmuxPlanRequest = {

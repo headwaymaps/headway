@@ -197,6 +197,7 @@ async fn feeds_by_id(state: web::Data<State>, path: web::Path<String>) -> impl R
 
 #[derive(Debug, Deserialize)]
 struct ZoneRequest {
+    name: String,
     bbox: String,
     feed_ids: Vec<FeedId>,
 }
@@ -210,6 +211,11 @@ async fn download_zone(state: web::Data<State>, request: web::Json<ZoneRequest>)
         );
     };
 
+    let name = request.name.trim();
+    if name.is_empty() {
+        return text_error(StatusCode::BAD_REQUEST, "the zone needs a name");
+    }
+
     let mut feeds = Vec::with_capacity(request.feed_ids.len());
     for id in &request.feed_ids {
         let Some(measured) = state.feeds.get(id) else {
@@ -221,7 +227,7 @@ async fn download_zone(state: web::Data<State>, request: web::Json<ZoneRequest>)
         feeds.push(measured.feed.clone());
     }
 
-    let zone = gtfout::transit_zone::Zone::new(&area, feeds);
+    let zone = gtfout::transit_zone::Zone::new(name.to_owned(), &area, feeds);
 
     match serde_json::to_string_pretty(&zone) {
         Ok(json) => HttpResponse::Ok()

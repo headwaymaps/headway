@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "name": "Los Angeles",
   "bounds": {
     "min_lon": -118.9437484,
     "min_lat": 32.8000296,

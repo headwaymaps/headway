@@ -164,6 +164,7 @@ type PlaceProperties = {
   phone?: string;
   website?: string;
   openingHours?: string;
+  area?: string;
 };
 
 /// Wrapper around a pelias response
@@ -177,6 +178,8 @@ export default class Place {
   public phone?: string | undefined;
   public website?: string | undefined;
   public openingHours?: string | undefined;
+  /// The city or region containing this place, e.g. "Boise, Idaho".
+  public area?: string | undefined;
 
   constructor(
     id: PlaceId,
@@ -193,6 +196,7 @@ export default class Place {
     this.phone = props.phone;
     this.website = props.website;
     this.openingHours = props.openingHours;
+    this.area = props.area;
   }
 
   static fromFeature(id: PlaceId, feature: GeoJSON.Feature): Place {
@@ -258,8 +262,14 @@ export default class Place {
     const phone = feature.properties?.addendum?.osm?.phone;
     const openingHours = feature.properties?.addendum?.osm?.opening_hours;
 
+    const area =
+      [feature.properties?.locality, feature.properties?.region]
+        .filter((part) => part)
+        .join(', ') || undefined;
+
     const place = new Place(id, location, bbox, {
       countryCode,
+      area,
       name,
       address,
       website,

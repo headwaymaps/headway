@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "name": "London",
   "bounds": {
     "min_lon": -0.98,
     "min_lat": 51.23,

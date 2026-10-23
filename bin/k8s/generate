@@ -164,9 +164,8 @@ if [ -n "$elevation_path" ]; then
 fi
 
 function generate_transit() {
-  local otp_endpoints=""
-  local separator=", "
-  local otp_endpoint_name line
+  local otp_endpoints=()
+  local otp_endpoint_name zone_name line
 
   local zones=() graphs=()
   while IFS= read -r line; do zones+=("$line"); done <<< "$HEADWAY_TRANSIT_ZONES"
@@ -179,10 +178,13 @@ function generate_transit() {
   local i
   for i in "${!zones[@]}"; do
       otp_endpoint_name=$(generate_otp "${zones[$i]}" "${graphs[$i]}")
-      otp_endpoints+="${separator}\"http://${otp_endpoint_name}:8000\""
+      zone_name=$(jq -r .name "$(zone_file_for "$CONFIG_DIR" "${zones[$i]}")")
+      otp_endpoints+=("${zone_name}=http://${otp_endpoint_name}:8000")
   done
 
-  export OTP_ENDPOINTS_JSON="[\"http://valhalla:8002\"${otp_endpoints}]"
+  # travelmux takes the valhalla endpoint, then one <area name>=<url> per OTP endpoint.
+  export OTP_ENDPOINTS_JSON
+  OTP_ENDPOINTS_JSON=$(jq -cn '$ARGS.positional' --args "http://valhalla:8002" "${otp_endpoints[@]}")
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
 function check_zone_tokens() {

@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "name": "San Francisco Bay Area",
   "bounds": {
     "min_lon": -123.05377,
     "min_lat": 36.97492,

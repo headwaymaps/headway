@@ -24,13 +24,22 @@ impl<Coverage> OtpCluster<Coverage> {
     pub fn router_len(&self) -> usize {
         self.routers.len()
     }
+
+    /// The names of the areas with transit coverage, each once.
+    pub fn area_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self.routers.iter().map(|router| router.name()).collect();
+        names.sort();
+        names.dedup();
+        names
+    }
 }
 
 impl OtpCluster {
-    /// `base_url` is the root of an OTP instance, e.g. `http://opentripplanner:8000` — the
-    /// GraphQL API's path is appended by [`OTPRouterClient`].
-    pub async fn insert_endpoint(&mut self, base_url: &str) -> Result<()> {
-        log::info!("adding endpoint: {base_url}");
+    /// `name` is what people call the area the instance covers. `base_url` is the root of an OTP
+    /// instance, e.g. `http://opentripplanner:8000` — the GraphQL API's path is appended by
+    /// [`OTPRouterClient`].
+    pub async fn insert_endpoint(&mut self, name: &str, base_url: &str) -> Result<()> {
+        log::info!("adding endpoint: {name}={base_url}");
         let url = Url::parse(base_url).map_err(|err| {
             log::error!("error while parsing endpoint url {base_url:?}");
             Error::server(format!("invalid endpoint url: {err}"))
@@ -38,7 +47,7 @@ impl OtpCluster {
 
         // TODO: Separate inserting an endpoint from (periodically) fetching its routers
         let routers = OTPRouterClient::new(url)?
-            .fetch_all()
+            .fetch_all(name)
             .await
             .inspect_err(|err| {
                 log::error!("error while inserting endpoint {base_url:?}, {err}");
@@ -64,6 +73,11 @@ impl OtpCluster {
 }
 
 impl PreparedOtpCluster {
+    /// Whether any instance's coverage area contains `point`.
+    pub fn covers(&self, point: &Point) -> bool {
+        self.routers.iter().any(|router| router.contains(point))
+    }
+
     /// Find the OTP instance whose coverage area contains both `source` and `destination`.
     pub fn find_router(&self, source: Point, destination: Point) -> Option<&PreparedOTPRouter> {
         for router in &self.routers {
@@ -109,7 +123,7 @@ mod test {
         let endpoint_1 = Url::parse("http://host_1.example.com/otp/gtfs/v1").unwrap();
         {
             let polygon_1 = wkt! { POLYGON((0.0 0.0, 40.0 0.0, 40.0 40.0, 0.0 40.0, 0.0 0.0)) };
-            let router_1 = OTPRouter::new(endpoint_1.clone(), polygon_1, None);
+            let router_1 = OTPRouter::new("Zone 1".to_owned(), endpoint_1.clone(), polygon_1, None);
             cluster.push_router(router_1);
         }
         // points in polygon_1
@@ -121,7 +135,7 @@ mod test {
             let polygon_2 = wkt! {
                 POLYGON((100.0 100.0, 140.0 100.0, 140.0 140.0, 100.0 140.0, 100.0 100.0))
             };
-            let router_2 = OTPRouter::new(endpoint_2.clone(), polygon_2, None);
+            let router_2 = OTPRouter::new("Zone 2".to_owned(), endpoint_2.clone(), polygon_2, None);
             cluster.push_router(router_2);
         }
         // points in polygon_2

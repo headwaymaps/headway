@@ -12,7 +12,14 @@
     />
   </div>
   <div class="bottom-card">
-    <div v-if="error" class="search-error">
+    <transit-unsupported-notice
+      v-if="error?.errorCode == TripFetchErrorCode.UnsupportedTransitArea"
+      :to-place="toPlace"
+      :from-place="fromPlace"
+      :transit-area-names="error.transitAreaNames"
+      :uncovered-places="error.uncoveredPlaces"
+    />
+    <div v-else-if="error" class="search-error">
       <p>
         {{ errorText(error) }}
       </p>
@@ -64,6 +71,7 @@ import Place, { PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
+import TransitUnsupportedNotice from 'src/components/TransitUnsupportedNotice.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 import Trip, {
@@ -82,7 +90,7 @@ import { LngLat } from 'maplibre-gl';
 
 export default defineComponent({
   name: 'AlternatesPage',
-  components: { TripListItem, TripSearch },
+  components: { TripListItem, TripSearch, TransitUnsupportedNotice },
   props: {
     mode: {
       type: String as () => TravelMode,
@@ -120,6 +128,7 @@ export default defineComponent({
     isLoading: boolean;
     vehicleOverlay?: VehicleOverlay;
     TravelMode: typeof TravelMode;
+    TripFetchErrorCode: typeof TripFetchErrorCode;
   } {
     return {
       trips: [],
@@ -129,6 +138,7 @@ export default defineComponent({
       isLoading: false,
       vehicleOverlay: undefined,
       TravelMode: TravelMode,
+      TripFetchErrorCode: TripFetchErrorCode,
     };
   },
   watch: {
@@ -155,19 +165,14 @@ export default defineComponent({
   },
   methods: {
     errorText(error: TripFetchError): string {
-      switch (error.errorCode) {
-        case TripFetchErrorCode.UnsupportedNonTransitArea:
-          return this.$t('routing_area_not_supported');
-        case TripFetchErrorCode.UnsupportedTransitArea:
-          return this.$t('transit_routing_area_not_supported');
-        case TripFetchErrorCode.Other:
-          if (error.message) {
-            return this.$t('other_routing_error_with_$message', {
-              message: error.message,
-            });
-          } else {
-            return this.$t('routing_error_unknown');
-          }
+      if (error.errorCode == TripFetchErrorCode.UnsupportedNonTransitArea) {
+        return this.$t('routing_area_not_supported');
+      } else if (error.message) {
+        return this.$t('other_routing_error_with_$message', {
+          message: error.message,
+        });
+      } else {
+        return this.$t('routing_error_unknown');
       }
     },
     componentForMode(mode: TravelMode): Component {

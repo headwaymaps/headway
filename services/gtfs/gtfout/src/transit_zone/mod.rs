@@ -42,9 +42,10 @@ impl From<&StaticFeed> for ZoneFeed {
 
 impl Zone {
     /// Assembles a zone from the described feeds a person picked off the map.
-    pub fn new(bounds: &Rect, feeds: Vec<ZoneFeed>) -> Self {
+    pub fn new(name: String, bounds: &Rect, feeds: Vec<ZoneFeed>) -> Self {
         Self {
             version: VERSION,
+            name,
             bounds: Bounds {
                 min_lon: bounds.min().x,
                 min_lat: bounds.min().y,
@@ -111,13 +112,18 @@ mod tests {
         static_feed.realtime.push(trip_updates("f-c23-kcm~rt"));
 
         let bounds = Rect::new(coord! { x: -122.4, y: 47.4 }, coord! { x: -122.0, y: 47.8 });
-        let zone = Zone::new(&bounds, vec![ZoneFeed::from(&static_feed)]);
+        let zone = Zone::new(
+            "Seattle".to_owned(),
+            &bounds,
+            vec![ZoneFeed::from(&static_feed)],
+        );
 
         let document = serde_json::to_string_pretty(&zone).unwrap();
         let reloaded =
             Zone::parse(&document).expect("the build must accept what transit-zoner wrote");
 
         assert_eq!(reloaded.version, VERSION);
+        assert_eq!(reloaded.name, "Seattle");
         assert_eq!(reloaded.bounds.min_lon, -122.4);
         assert_eq!(reloaded.feeds.len(), 1);
         let reloaded_feed = &reloaded.feeds[0];

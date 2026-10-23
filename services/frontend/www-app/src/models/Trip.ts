@@ -16,6 +16,7 @@ import {
   travelModeFromTravelmuxMode,
   TravelmuxError,
   TravelmuxErrorCode,
+  TripEnd,
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { GradeShade, gradeShade, gradeShadeColor } from 'src/utils/grade';
@@ -510,32 +511,39 @@ export enum TripFetchErrorCode {
 export class TripFetchError {
   errorCode: TripFetchErrorCode;
   message: string;
+  /// Names of the areas that do have transit, for UnsupportedTransitArea.
+  transitAreaNames: string[];
+  /// The ends of the trip outside every transit area, for UnsupportedTransitArea.
+  uncoveredPlaces: TripEnd[];
 
-  constructor(errorCode: TripFetchErrorCode, message: string) {
+  constructor(
+    errorCode: TripFetchErrorCode,
+    message: string,
+    transitAreaNames: string[] = [],
+    uncoveredPlaces: TripEnd[] = [],
+  ) {
     this.errorCode = errorCode;
     this.message = message;
+    this.transitAreaNames = transitAreaNames;
+    this.uncoveredPlaces = uncoveredPlaces;
   }
 
   static fromTravelmux(tError: TravelmuxError): TripFetchError {
     switch (tError.errorCode) {
-      case TravelmuxErrorCode.ValhallaUnsupportedArea: {
-        return {
-          errorCode: TripFetchErrorCode.UnsupportedNonTransitArea,
-          message: tError.message,
-        };
-      }
-      case TravelmuxErrorCode.TransitUnsupportedArea: {
-        return {
-          errorCode: TripFetchErrorCode.UnsupportedTransitArea,
-          message: tError.message,
-        };
-      }
-      default: {
-        return {
-          errorCode: TripFetchErrorCode.Other,
-          message: tError.message,
-        };
-      }
+      case TravelmuxErrorCode.ValhallaUnsupportedArea:
+        return new TripFetchError(
+          TripFetchErrorCode.UnsupportedNonTransitArea,
+          tError.message,
+        );
+      case TravelmuxErrorCode.TransitUnsupportedArea:
+        return new TripFetchError(
+          TripFetchErrorCode.UnsupportedTransitArea,
+          tError.message,
+          (tError.transitAreas ?? []).map((area) => area.name),
+          tError.uncoveredPlaces,
+        );
+      default:
+        return new TripFetchError(TripFetchErrorCode.Other, tError.message);
     }
   }
 }

@@ -92,7 +92,7 @@ services:
       - valhalla_backend
     volumes:
       - "travelmux_data:/data/:ro"
-    command: ["http://valhalla:8002", "http://opentripplanner:8000"]
+    command: ["http://valhalla:8002", "${HEADWAY_TRANSIT_ZONE_NAME:-}=http://opentripplanner:8000"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env

@@ -9,7 +9,7 @@ use reqwest::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::error::{PlanResponseErr, PlanResponseOk};
+use super::error::{PlanResponseErr, PlanResponseOk, TripEnd};
 use super::TravelModes;
 use crate::api::AppState;
 use crate::elevation::{ElevationProfile, SteepSection};
@@ -1148,14 +1148,20 @@ async fn otp_plan(
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     let (endpoint, timezone) = {
-        let Some(router) = app_state
-            .otp_cluster()
-            .find_router(query.from_place, query.to_place)
-        else {
-            Err(
-                Error::user("Transit directions not available for this area.")
-                    .error_type(ErrorType::NoCoverageForArea),
-            )?
+        let otp_cluster = app_state.otp_cluster();
+        let Some(router) = otp_cluster.find_router(query.from_place, query.to_place) else {
+            let uncovered_places = [
+                (TripEnd::From, query.from_place),
+                (TripEnd::To, query.to_place),
+            ]
+            .into_iter()
+            .filter(|(_, place)| !otp_cluster.covers(place))
+            .map(|(end, _)| end)
+            .collect();
+            return Err(PlanResponseErr::no_transit_coverage(
+                otp_cluster.area_names(),
+                uncovered_places,
+            ));
         };
         (router.endpoint().clone(), router.timezone())
     };
