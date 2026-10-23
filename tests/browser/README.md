@@ -8,9 +8,8 @@ correct data over HTTP; these assert the app actually wires that data into a
 usable map — tiles painted to the canvas, panning and zooming, the geocoder
 menu, and both routing engines.
 
-Like the integration tests, they assert against **Bogota** (`builds/Bogota`), so
-the fixtures are Bogota landmarks and the transit test assumes that build has a
-transit zone.
+Like the integration tests, they assert against the locations in a build's
+`smoke-test.env`, e.g. `builds/Bogota/smoke-test.env`.
 
 ## Running
 
@@ -24,22 +23,24 @@ bin/wait-for-services
 Then:
 
 ```bash
-tests/browser/run.sh                # headless (installs deps on first run)
-tests/browser/run.sh --headed       # watch it drive
-tests/browser/run.sh -g "routing"   # a subset
+bin/test/browser-tests builds/Bogota                # headless (installs deps on first run)
+bin/test/browser-tests builds/Bogota --headed       # watch it drive
+bin/test/browser-tests builds/Bogota -g "routing"   # a subset
 ```
 
-`run.sh` checks the stack is actually up and passes its arguments through to
-`playwright test`. To drive Playwright directly instead:
+`bin/test/browser-tests` checks the stack is actually up, loads the build's `smoke-test.env`,
+and passes its remaining arguments through to `playwright test`. To drive
+Playwright directly instead:
 
 ```bash
 cd tests/browser
 yarn install          # first time
+set -a; source ../../builds/Bogota/smoke-test.env; set +a
 npx playwright test
 npx playwright show-report       # last HTML report
 ```
 
-Point at a different stack with `FRONTEND_URL=http://host:port npx playwright test`.
+Point at a different stack with `HEADWAY_PUBLIC_URL=http://host:port`.
 
 Failures keep a screenshot, video and trace under `test-results/`. Open a trace
 with `npx playwright show-trace test-results/<dir>/trace.zip`.
@@ -49,8 +50,7 @@ with `npx playwright show-trace test-results/<dir>/trace.zip`.
 | Test | Flow |
 | --- | --- |
 | map renders vector tiles | tiles fetched from `/tileserver`, all non-error, canvas actually painted |
-| map can be dragged | pointer-drag pans the camera |
-| map zoom controls | `+` control raises the zoom level |
+| map can be dragged and zoomed | pointer-drag pans the camera, `+` control raises the zoom level |
 | geocoder autocompletes | typing a landmark populates the suggestion menu |
 | selecting a result | clicking a suggestion opens that place's page |
 | search deep link | `/search/:text` renders matching places |
@@ -66,11 +66,11 @@ with `npx playwright show-trace test-results/<dir>/trace.zip`.
   they poll rather than reading straight back. Don't tighten those waits below
   the debounce.
 
-- **Place names are not the query.** Many Bogota POIs carry an English
-  `name:en` that the app prefers, so searching "Museo del Oro" lands on a page
-  titled "Gold Museum". Fixtures are chosen so the display name matches the
-  query; where that can't be relied on, the test carries the clicked label
-  through instead of re-asserting the query text.
+- **Place names are not the query.** Many POIs carry an English `name:en` that
+  the app prefers, so searching Bogota's "Museo del Oro" lands on a page titled
+  "Gold Museum". Fixtures are chosen so the display name matches the query, and
+  so the query's top result is right even without a focus point - on the planet
+  a bare "Monserrate" ranks a place in Portugal first.
 
 - **Quasar class names are BEM.** Labels are `.q-item__label`, not
   `.q-item-label`. The list items themselves are `.q-item`, and trip rows carry

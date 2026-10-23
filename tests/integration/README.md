@@ -10,7 +10,7 @@ Run everything at once - starts services, runs tests, cleans up:
 
 BEWARE: This will destroy your headway docker volumes.
 ```bash
-./tests/integration/run-integration-tests.sh
+bin/test/integration-tests-oneshot
 ```
 
 This is what CI uses. Services are automatically cleaned up when tests complete.
@@ -26,11 +26,11 @@ bin/start-services --no-follow-logs builds/Bogota
 # 2. Wait for services to be ready
 bin/wait-for-services
 
-# 3. Run tests (can repeat this step)
-./tests/integration/run-tests.sh
+# 3. Run tests against the build's smoke-test.env (can repeat this step)
+bin/test/integration-tests builds/Bogota
 
 # Edit test scripts and re-run as needed...
-./tests/integration/run-tests.sh
+bin/test/integration-tests builds/Bogota
 
 # 4. Stop services when done
 # BEWARE: This will destroy your headway docker volumes.

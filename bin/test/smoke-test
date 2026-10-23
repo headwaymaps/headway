@@ -1,0 +1,21 @@
+#!/bin/bash
+# Run the integration and browser tests against a running stack, at a build's smoke-test.env locations.
+
+APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <build-dir> [playwright args...]"
+    echo ""
+    echo "  e.g. $0 builds/Bogota"
+    echo "       HEADWAY_PUBLIC_URL=https://maps.earth $0 builds/planet"
+    echo "       $0 builds/Bogota --headed -g \"driving directions\""
+    echo ""
+    echo "Tests the build's HEADWAY_PUBLIC_URL, unless it's set in the environment."
+    exit 1
+fi
+CONFIG_DIR=$1
+shift
+
+set -e
+"$APP_ROOT/bin/test/integration-tests" "$CONFIG_DIR"
+"$APP_ROOT/bin/test/browser-tests" "$CONFIG_DIR" "$@"

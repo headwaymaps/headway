@@ -6,25 +6,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_test-lib.sh"
 
-FRONTEND_URL="${FRONTEND_URL:-http://localhost:8080}"
-
-# Test coordinates for Bogota
-# Plaza de Bolivar (downtown)
-START_LAT=4.5981
-START_LNG=-74.0758
-
-# Nearby location (short route)
-END_LAT=4.6029
-END_LNG=-74.067
-
-# Portal Norte (north end of the city) - far enough that transit beats walking
-TRANSIT_END_LAT=4.7085
-TRANSIT_END_LNG=-74.0425
-
 # Depart at noon rather than "now", so the test doesn't depend on there being service at
 # whatever time it happens to run. Times without an offset are in the graph's local timezone, so
-# pair it with today's date in Bogota.
-TRANSIT_DATE=$(TZ=America/Bogota date +%Y-%m-%d)
+# pair it with today's date in the build's timezone.
+TRANSIT_DATE=$(TZ=$TRANSIT_TZ date +%Y-%m-%d)
 TRANSIT_TIME="12:00"
 
 echo "Testing Routing..."
@@ -40,7 +25,7 @@ build_route_url() {
     local to_lng=${6:-$END_LNG}
     local num_itineraries=${7:-3}
 
-    echo "${FRONTEND_URL}/travelmux/${version}/plan?fromPlace=${from_lat}%2C${from_lng}&toPlace=${to_lat}%2C${to_lng}&numItineraries=${num_itineraries}&mode=${mode}&preferredDistanceUnits=kilometers"
+    echo "${HEADWAY_PUBLIC_URL}/travelmux/${version}/plan?fromPlace=${from_lat}%2C${from_lng}&toPlace=${to_lat}%2C${to_lng}&numItineraries=${num_itineraries}&mode=${mode}&preferredDistanceUnits=kilometers"
 }
 
 # === v6 ===
@@ -123,7 +108,7 @@ build_v8_route_url() {
     local to_lng=${5:-$END_LNG}
     local num_itineraries=${6:-3}
 
-    echo "${FRONTEND_URL}/travelmux/v8/plan?fromPlace=${from_lng}%2C${from_lat}&toPlace=${to_lng}%2C${to_lat}&numItineraries=${num_itineraries}&mode=${mode}&preferredDistanceUnits=kilometers"
+    echo "${HEADWAY_PUBLIC_URL}/travelmux/v8/plan?fromPlace=${from_lng}%2C${from_lat}&toPlace=${to_lng}%2C${to_lat}&numItineraries=${num_itineraries}&mode=${mode}&preferredDistanceUnits=kilometers"
 }
 
 run_jq_test "v8 walking route" \
@@ -138,6 +123,16 @@ run_jq_test "v8 car route" \
     "$(build_v8_route_url CAR)" \
     '.itineraries' \
     '.itineraries | length > 0'
+
+run_jq_test "v8 bike route" \
+    "$(build_v8_route_url BICYCLE)" \
+    '.itineraries' \
+    '.itineraries | length > 0'
+
+run_jq_test "v8 elevation" \
+    "${HEADWAY_PUBLIC_URL}/travelmux/v8/elevation?path=${ELEVATION_PATH}" \
+    '.elevation | length > 0' \
+    '.elevation | any(. > 0)'
 
 if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
     transit_url="$(build_v8_route_url TRANSIT "$START_LAT" "$START_LNG" "$TRANSIT_END_LAT" "$TRANSIT_END_LNG")"

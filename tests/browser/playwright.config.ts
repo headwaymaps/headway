@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Points at an already-running stack, like tests/integration/run-tests.sh does.
+// Points at an already-running stack, like bin/test/integration-tests does.
 // Start one with: bin/start-services --no-follow-logs builds/Bogota
-const baseURL = process.env.FRONTEND_URL ?? 'http://localhost:8080';
+const baseURL = process.env.HEADWAY_PUBLIC_URL ?? 'http://localhost:8080';
 
 export default defineConfig({
   testDir: './specs',
