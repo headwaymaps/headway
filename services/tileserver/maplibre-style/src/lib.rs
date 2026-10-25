@@ -29,8 +29,8 @@ pub use color::Color;
 pub use expression::{Expression, Operator};
 pub use filter::{ClassFilter, Filter};
 pub use layer::{
-    Alignment, Anchor, Background, Cap, Fill, Join, Justify, Kind, Layer, Line, Placement, Raster,
-    Symbol, Transform,
+    Alignment, Anchor, Background, Cap, Circle, Fill, Join, Justify, Kind, Layer, Line, Placement,
+    Raster, Symbol, Transform,
 };
 pub use open_map_tiles::OpenMapTiles;
 pub use property::{zoom, zoom_with_base, Property, Stops};

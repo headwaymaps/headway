@@ -151,8 +151,27 @@ pub(super) struct Roads<'a> {
 }
 
 impl Roads<'_> {
+    /// A road's features at `grade`, but for roundabouts with a `radius`, which are drawn as
+    /// circles instead.
+    fn filter(road: &Road, grade: Grade) -> Filter {
+        grade
+            .filter()
+            .and(road.filter.clone())
+            .and_not_has("radius")
+    }
+
     /// Adds every road's casing at `grade`, then every road's fill above them.
     pub fn add_layers(&self, style: &mut Style, grade: Grade) {
+        self.add_layers_with(style, grade, |_| {});
+    }
+
+    /// Adds every road's layers, with `beneath_fills` between the casings and the fills.
+    pub fn add_layers_with(
+        &self,
+        style: &mut Style,
+        grade: Grade,
+        beneath_fills: impl FnOnce(&mut Style),
+    ) {
         let prefix = grade.prefix();
         for road in &self.roads {
             let Casing::From { minzoom } = road.casing else {
@@ -161,17 +180,18 @@ impl Roads<'_> {
             let casing = style
                 .line(self.source, format!("{prefix}_{}_casing", road.name))
                 .minzoom(minzoom)
-                .filter(grade.filter().and(road.filter.clone()))
+                .filter(Self::filter(road, grade))
                 .join_round()
                 .color(road.casing_color(grade))
                 .width(road.casing_width());
             grade.style_casing(casing);
         }
+        beneath_fills(style);
         for road in &self.roads {
             style
                 .line(self.source, format!("{prefix}_{}", road.name))
                 .minzoom(road.minzoom)
-                .filter(grade.filter().and(road.filter.clone()))
+                .filter(Self::filter(road, grade))
                 .cap(grade.cap())
                 .join_round()
                 .color(grade.color(road.fill_color()))
@@ -179,7 +199,7 @@ impl Roads<'_> {
             if let Some(hatching) = &road.hatching {
                 style
                     .line(self.source, format!("{prefix}_{}_hatching", road.name))
-                    .filter(grade.filter().and(road.filter.clone()))
+                    .filter(Self::filter(road, grade))
                     .color(grade.color(hatching))
                     .dasharray(vec![0.2, 4.0])
                     .width(zoom!(base: 1.4; 14.5 => 0.0, 15.0 => 3.0, 20.0 => 8.0));
