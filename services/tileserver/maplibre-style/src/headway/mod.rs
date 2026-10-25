@@ -285,6 +285,19 @@ pub fn style(version: Version) -> Style {
         .filter(Filter::polygon().class_in(["pedestrian", "path"]))
         .pattern("pedestrian_polygon");
 
+    let path_width = zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0);
+    style
+        .line(openmaptiles.transportation(), "road_sidewalk")
+        .minzoom(13.0)
+        .filter(
+            Grade::Surface
+                .filter()
+                .and(foot_path())
+                .and_eq("footway", "sidewalk"),
+        )
+        .rounded()
+        .color(land().mix(&hsl!(0, 0%, 100%), 0.4))
+        .width(path_width.clone());
     // Roundabouts are drawn as circles around their centers, since their rings are too coarse
     // to look round: a disk of road beneath the streets pouring into it, then the island on top.
     let curb_color = minor_color().map(|color| color.darken(0.12));
@@ -308,11 +321,29 @@ pub fn style(version: Version) -> Style {
     style
         .line(openmaptiles.transportation(), "road_path_pedestrian")
         .minzoom(13.0)
-        .filter(Grade::Surface.filter().and(foot_path()))
+        .filter(
+            Grade::Surface
+                .filter()
+                .and(foot_path())
+                .and_not_in("footway", ["sidewalk", "crossing"]),
+        )
         .join_round()
         .color(hsl!(0, 0%, 96%))
         .dasharray(vec![1.0, 0.7])
-        .width(zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
+        .width(path_width);
+    // Stripes across the walk, parallel to the street.
+    style
+        .line(openmaptiles.transportation(), "road_crosswalk")
+        .minzoom(13.0)
+        .filter(
+            Grade::Surface
+                .filter()
+                .and(foot_path())
+                .and_eq("footway", "crossing"),
+        )
+        .color(hsl!(0, 0%, 100%))
+        .dasharray(vec![0.2, 0.2])
+        .width(zoom!(base: 1.2; 13.0 => 1.0, 20.0 => 16.0));
 
     roads.add_layers(&mut style, Grade::Bridge);
     style

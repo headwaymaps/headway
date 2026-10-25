@@ -1669,6 +1669,58 @@
           "tunnel"
         ],
         [
+          "==",
+          "$type",
+          "LineString"
+        ],
+        [
+          "in",
+          "class",
+          "path",
+          "pedestrian"
+        ],
+        [
+          "==",
+          "footway",
+          "sidewalk"
+        ]
+      ],
+      "id": "road_sidewalk",
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "minzoom": 13,
+      "paint": {
+        "line-color": "rgb(247,245,241)",
+        "line-width": {
+          "base": 1.2,
+          "stops": [
+            [
+              13,
+              0.75
+            ],
+            [
+              20,
+              10
+            ]
+          ]
+        }
+      },
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "type": "line"
+    },
+    {
+      "filter": [
+        "all",
+        [
+          "!in",
+          "brunnel",
+          "bridge",
+          "tunnel"
+        ],
+        [
           "in",
           "class",
           "service",
@@ -3357,6 +3409,12 @@
           "class",
           "path",
           "pedestrian"
+        ],
+        [
+          "!in",
+          "footway",
+          "sidewalk",
+          "crossing"
         ]
       ],
       "id": "road_path_pedestrian",
@@ -3380,6 +3438,58 @@
             [
               20,
               10
+            ]
+          ]
+        }
+      },
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "type": "line"
+    },
+    {
+      "filter": [
+        "all",
+        [
+          "!in",
+          "brunnel",
+          "bridge",
+          "tunnel"
+        ],
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
+        [
+          "in",
+          "class",
+          "path",
+          "pedestrian"
+        ],
+        [
+          "==",
+          "footway",
+          "crossing"
+        ]
+      ],
+      "id": "road_crosswalk",
+      "minzoom": 13,
+      "paint": {
+        "line-color": "hsl(0,0%,100%)",
+        "line-dasharray": [
+          0.2,
+          0.2
+        ],
+        "line-width": {
+          "base": 1.2,
+          "stops": [
+            [
+              13,
+              1
+            ],
+            [
+              20,
+              16
             ]
           ]
         }

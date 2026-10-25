@@ -4,6 +4,7 @@ import com.onthegomap.planetiler.FeatureCollector;
 import com.onthegomap.planetiler.Planetiler;
 import com.onthegomap.planetiler.reader.SourceFeature;
 import org.openmaptiles.OpenMapTilesProfile;
+import org.openmaptiles.generated.OpenMapTilesSchema.Transportation;
 
 /** OpenMapTiles, plus what Headway's style draws beyond it. */
 public class HeadwayProfile extends OpenMapTilesProfile {
@@ -22,6 +23,19 @@ public class HeadwayProfile extends OpenMapTilesProfile {
     }
     super.processFeature(source, features);
     Roundabouts.tagJunctions(source, features);
+    tagFootways(source, features);
+  }
+
+  /** Tags the transportation features of sidewalks and crossings with their footway, from z14. */
+  static void tagFootways(SourceFeature source, FeatureCollector features) {
+    if (!source.hasTag(FOOTWAY, "sidewalk", "crossing")) {
+      return;
+    }
+    for (var feature : features) {
+      if (Transportation.LAYER_NAME.equals(feature.getLayer())) {
+        feature.setAttrWithMinzoom(FOOTWAY, source.getTag(FOOTWAY), 14);
+      }
+    }
   }
 
   /** A crossing with nothing mapped to say it's painted on the road. */
