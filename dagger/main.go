@@ -516,20 +516,23 @@ func (h *Headway) headwayStyle(version string) *dagger.File {
 		File("/tmp/style.json")
 }
 
-// Our fork's building-hide-outlines-with-parts branch, which carries
-// openmaptiles/planetiler-openmaptiles#342: hiding building outlines that are
-// covered by their own building:parts.
+// The OpenMapTiles profile that services/tilebuilder builds on. Its version
+// must match the dependency in services/tilebuilder/pom.xml.
 const (
-	planetilerOpenMapTilesRepo   = "https://github.com/headwaymaps/planetiler-openmaptiles.git"
-	planetilerOpenMapTilesCommit = "ac2963f644d41df4cdb6cec689f4ff5e1106874b"
+	planetilerOpenMapTilesRepo   = "https://github.com/openmaptiles/planetiler-openmaptiles.git"
+	planetilerOpenMapTilesCommit = "60b0ea877879bb827edf74022f3dc0119d60ccc2"
 )
 
-func planetilerJar() *dagger.File {
-	return dag.Container().From("maven:3.9.11-eclipse-temurin-21").
-		WithMountedDirectory("/src", dag.Git(planetilerOpenMapTilesRepo).Commit(planetilerOpenMapTilesCommit).Tree()).
+// Builds Headway's tile profile, on OpenMapTiles' at the pinned commit.
+func (h *Headway) planetilerJar() *dagger.File {
+	return dag.Container().From("maven:3.9.11-eclipse-temurin-25").
 		WithMountedCache("/root/.m2", dag.CacheVolume("maven-m2")).
+		WithMountedDirectory("/openmaptiles", dag.Git(planetilerOpenMapTilesRepo).Commit(planetilerOpenMapTilesCommit).Tree()).
+		WithWorkdir("/openmaptiles").
+		WithExec([]string{"mvn", "--batch-mode", "--quiet", "-DskipTests", "-Dspotless.check.skip=true", "-Dmaven.buildNumber.skip=true", "-Dassembly-phase=none", "install"}).
+		WithMountedDirectory("/src", h.ServiceDir("tilebuilder").WithoutDirectory("target")).
 		WithWorkdir("/src").
-		WithExec([]string{"mvn", "--batch-mode", "--quiet", "-DskipTests", "-Dspotless.check.skip=true", "package"}).
+		WithExec([]string{"mvn", "--batch-mode", "--quiet", "package"}).
 		WithExec([]string{"sh", "-c", "cp target/*-with-deps.jar /planetiler.jar"}).
 		File("/planetiler.jar")
 }
@@ -542,8 +545,8 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 	}
 
 	container := dag.Container().
-		From("eclipse-temurin:21-jre").
-		WithFile("/app/planetiler.jar", planetilerJar()).
+		From("eclipse-temurin:25-jre").
+		WithFile("/app/planetiler.jar", h.planetilerJar()).
 		// Planetiler reads its downloaded sources from data/sources, relative to here.
 		WithWorkdir("/")
 

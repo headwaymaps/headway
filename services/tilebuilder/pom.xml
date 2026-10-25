@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.headwaymaps</groupId>
+  <artifactId>headway-tilebuilder</artifactId>
+  <version>1.0.0</version>
+
+  <name>Headway's tiles: OpenMapTiles plus what Headway's style draws</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>25</maven.compiler.source>
+    <maven.compiler.target>25</maven.compiler.target>
+    <!-- Must match the version of the commit dagger installs. -->
+    <planetiler-openmaptiles.version>3.16.1-SNAPSHOT</planetiler-openmaptiles.version>
+    <planetiler.version>0.10.2</planetiler.version>
+    <junit.version>6.1.3</junit.version>
+  </properties>
+
+  <repositories>
+    <!-- Planetiler depends on geotools, which is not in maven central. -->
+    <repository>
+      <id>osgeo</id>
+      <url>https://repo.osgeo.org/repository/release/</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.openmaptiles</groupId>
+      <artifactId>planetiler-openmaptiles</artifactId>
+      <version>${planetiler-openmaptiles.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.6</version>
+      </plugin>
+      <!-- An executable jar from "mvn package". -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.8.0</version>
+        <dependencies>
+          <!-- Provides the with-deps descriptor. -->
+          <dependency>
+            <groupId>com.onthegomap.planetiler</groupId>
+            <artifactId>planetiler-core</artifactId>
+            <version>${planetiler.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Multi-Release>true</Multi-Release>
+            </manifestEntries>
+            <manifest>
+              <mainClass>org.headwaymaps.tilebuilder.HeadwayTilesMain</mainClass>
+            </manifest>
+          </archive>
+          <descriptorRefs>
+            <descriptorRef>with-deps</descriptorRef>
+          </descriptorRefs>
+          <attach>false</attach>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
