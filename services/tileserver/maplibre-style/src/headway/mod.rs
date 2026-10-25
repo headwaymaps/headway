@@ -23,6 +23,44 @@ fn foot_path() -> Filter {
     Filter::linestring().class_in(["path", "pedestrian"])
 }
 
+fn minor_color() -> Stops<Color> {
+    zoom![13.0 => hsl!(0, 0%, 86%), 20.0 => hsl!(0, 0%, 74%)]
+}
+
+const MINOR_WIDTH_BASE: f64 = 1.2;
+const MINOR_WIDTH: [(f64, f64); 3] = [(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)];
+
+/// A minor road's width in pixels at `zoom`, as MapLibre interpolates it.
+fn minor_width(zoom: f64) -> f64 {
+    let zoom = zoom.clamp(MINOR_WIDTH[0].0, MINOR_WIDTH[MINOR_WIDTH.len() - 1].0);
+    let next = MINOR_WIDTH
+        .iter()
+        .position(|(z, _)| zoom <= *z)
+        .expect("zoom is clamped to the stops")
+        .max(1);
+    let ((z0, w0), (z1, w1)) = (MINOR_WIDTH[next - 1], MINOR_WIDTH[next]);
+    let t = (MINOR_WIDTH_BASE.powf(zoom - z0) - 1.0) / (MINOR_WIDTH_BASE.powf(z1 - z0) - 1.0);
+    w0 + t * (w1 - w0)
+}
+
+/// A roundabout's radius, from its center to the middle of its ring, widened by `pad` times a
+/// minor road's width.
+fn roundabout_radius(pad: f64) -> Expression {
+    let mut operands = vec![expr!(["exponential", 2.0]), expr!(["zoom"])];
+    for zoom in (12..=24).map(f64::from) {
+        // `radius` is in pixels of the z14 tile, which MapLibre draws 512 pixels across.
+        let tile_scale = 2.0 * (zoom - 14.0).exp2();
+        let pad = pad * minor_width(zoom);
+        operands.push(zoom.into());
+        operands.push(expr!([
+            "max",
+            0.0,
+            ["+", ["*", ["get", "radius"], tile_scale], pad]
+        ]));
+    }
+    Expression::op(Operator::Interpolate, operands)
+}
+
 fn above_ground() -> Filter {
     Filter::ne("brunnel", "tunnel")
 }
@@ -191,8 +229,8 @@ pub fn style(version: Version) -> Style {
                 ))
                 .minzoom(12.0),
             Road::new("minor")
-                .color(zoom![13.0 => hsl!(0, 0%, 86%), 20.0 => hsl!(0, 0%, 74%)])
-                .width(zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 18.0))
+                .color(minor_color())
+                .width(zoom_with_base(MINOR_WIDTH_BASE, MINOR_WIDTH))
                 .filter(Filter::linestring().class("minor"))
                 .minzoom(12.0),
             Road::new("secondary_tertiary")
@@ -247,7 +285,26 @@ pub fn style(version: Version) -> Style {
         .filter(Filter::polygon().class_in(["pedestrian", "path"]))
         .pattern("pedestrian_polygon");
 
-    roads.add_layers(&mut style, Grade::Surface);
+    // Roundabouts are drawn as circles around their centers, since their rings are too coarse
+    // to look round: a disk of road beneath the streets pouring into it, then the island on top.
+    let curb_color = minor_color().map(|color| color.darken(0.12));
+    let roundabout = |style: &mut Style, id: &str, color: Property<Color>, radius: Expression| {
+        style
+            .circle(openmaptiles.transportation(), id)
+            .minzoom(12.0)
+            .filter(Filter::point().class("roundabout_center"))
+            .flat()
+            .color(color)
+            .radius(radius)
+            .stroke_width(1.0)
+            .stroke_color(curb_color.clone());
+    };
+    roads.add_layers_with(&mut style, Grade::Surface, |style| {
+        let radius = roundabout_radius(0.5);
+        roundabout(style, "road_roundabout", minor_color().into(), radius);
+    });
+    let radius = roundabout_radius(-0.5);
+    roundabout(&mut style, "road_roundabout_island", land().into(), radius);
     style
         .line(openmaptiles.transportation(), "road_path_pedestrian")
         .minzoom(13.0)
@@ -312,7 +369,7 @@ pub fn style(version: Version) -> Style {
     style
         .symbol(openmaptiles.transportation(), "road_one_way_arrow")
         .minzoom(15.0)
-        .filter(Filter::eq("oneway", 1))
+        .filter(Filter::eq("oneway", 1).and_ne("junction", "roundabout"))
         .icon_image("arrow")
         .placement(Placement::Line);
     style

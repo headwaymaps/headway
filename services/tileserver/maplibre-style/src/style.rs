@@ -1,6 +1,8 @@
 //! The style document itself.
 
-use crate::layer::{Background, Fill, FillExtrusion, Kind, Layer, LayerData, Line, Raster, Symbol};
+use crate::layer::{
+    Background, Circle, Fill, FillExtrusion, Kind, Layer, LayerData, Line, Raster, Symbol,
+};
 use crate::source::{Source, SourceLayer, SourceRef};
 use serde::Serialize;
 use serde_json::{json, Map, Value as Json};
@@ -152,6 +154,11 @@ impl Style {
 
     /// Appends a line layer sourcing features from `source`.
     pub fn line(&mut self, source: &SourceLayer, id: impl Into<String>) -> Layer<'_, Line> {
+        self.add_sourced(source, id)
+    }
+
+    /// Appends a circle layer sourcing features from `source`.
+    pub fn circle(&mut self, source: &SourceLayer, id: impl Into<String>) -> Layer<'_, Circle> {
         self.add_sourced(source, id)
     }
 

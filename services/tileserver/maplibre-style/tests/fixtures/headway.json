@@ -437,6 +437,10 @@
           "class",
           "service",
           "track"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_service_track_casing",
@@ -505,6 +509,10 @@
           "track",
           "service",
           "motorway"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_ramp_casing",
@@ -569,6 +577,10 @@
           "==",
           "class",
           "minor"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_minor_casing",
@@ -629,6 +641,10 @@
           "class",
           "secondary",
           "tertiary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_secondary_tertiary_casing",
@@ -688,6 +704,10 @@
           "==",
           "class",
           "primary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_primary_casing",
@@ -747,6 +767,10 @@
           "==",
           "class",
           "trunk"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_trunk_casing",
@@ -815,6 +839,10 @@
           "==",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_motorway_ramp_casing",
@@ -879,6 +907,10 @@
           "!=",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_motorway_casing",
@@ -939,6 +971,10 @@
           "class",
           "service",
           "track"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_service_track",
@@ -1003,6 +1039,10 @@
           "track",
           "service",
           "motorway"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_ramp",
@@ -1063,6 +1103,10 @@
           "==",
           "class",
           "minor"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_minor",
@@ -1119,6 +1163,10 @@
           "class",
           "secondary",
           "tertiary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_secondary_tertiary",
@@ -1174,6 +1222,10 @@
           "==",
           "class",
           "primary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_primary",
@@ -1229,6 +1281,10 @@
           "==",
           "class",
           "trunk"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_trunk",
@@ -1293,6 +1349,10 @@
           "==",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_motorway_ramp",
@@ -1353,6 +1413,10 @@
           "!=",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_motorway",
@@ -1409,6 +1473,10 @@
           "class",
           "rail",
           "transit"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_rail",
@@ -1454,6 +1522,10 @@
           "class",
           "rail",
           "transit"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "tunnel_rail_hatching",
@@ -1601,6 +1673,10 @@
           "class",
           "service",
           "track"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_service_track_casing",
@@ -1666,6 +1742,10 @@
           "track",
           "service",
           "motorway"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_ramp_casing",
@@ -1727,6 +1807,10 @@
           "==",
           "class",
           "minor"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_minor_casing",
@@ -1784,6 +1868,10 @@
           "class",
           "secondary",
           "tertiary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_secondary_tertiary_casing",
@@ -1840,6 +1928,10 @@
           "==",
           "class",
           "primary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_primary_casing",
@@ -1896,6 +1988,10 @@
           "==",
           "class",
           "trunk"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_trunk_casing",
@@ -1961,6 +2057,10 @@
           "==",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_motorway_ramp_casing",
@@ -2022,6 +2122,10 @@
           "!=",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_motorway_casing",
@@ -2069,6 +2173,286 @@
       "filter": [
         "all",
         [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "class",
+          "roundabout_center"
+        ]
+      ],
+      "id": "road_roundabout",
+      "minzoom": 12,
+      "paint": {
+        "circle-color": {
+          "stops": [
+            [
+              13,
+              "hsl(0,0%,86%)"
+            ],
+            [
+              20,
+              "hsl(0,0%,74%)"
+            ]
+          ]
+        },
+        "circle-pitch-alignment": "map",
+        "circle-pitch-scale": "map",
+        "circle-radius": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                0.5
+              ],
+              0.5
+            ]
+          ],
+          13,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                1
+              ],
+              0.840909
+            ]
+          ],
+          14,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                2
+              ],
+              1.25
+            ]
+          ],
+          15,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                4
+              ],
+              2.03047
+            ]
+          ],
+          16,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                8
+              ],
+              2.967033
+            ]
+          ],
+          17,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                16
+              ],
+              4.090909
+            ]
+          ],
+          18,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                32
+              ],
+              5.43956
+            ]
+          ],
+          19,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                64
+              ],
+              7.057942
+            ]
+          ],
+          20,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                128
+              ],
+              9
+            ]
+          ],
+          21,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                256
+              ],
+              9
+            ]
+          ],
+          22,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                512
+              ],
+              9
+            ]
+          ],
+          23,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                1024
+              ],
+              9
+            ]
+          ],
+          24,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                2048
+              ],
+              9
+            ]
+          ]
+        ],
+        "circle-stroke-color": {
+          "stops": [
+            [
+              13,
+              "hsl(0,0%,74%)"
+            ],
+            [
+              20,
+              "hsl(0,0%,62%)"
+            ]
+          ]
+        },
+        "circle-stroke-width": 1
+      },
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "type": "circle"
+    },
+    {
+      "filter": [
+        "all",
+        [
           "!in",
           "brunnel",
           "bridge",
@@ -2079,6 +2463,10 @@
           "class",
           "service",
           "track"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_service_track",
@@ -2144,6 +2532,10 @@
           "track",
           "service",
           "motorway"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_ramp",
@@ -2205,6 +2597,10 @@
           "==",
           "class",
           "minor"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_minor",
@@ -2262,6 +2658,10 @@
           "class",
           "secondary",
           "tertiary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_secondary_tertiary",
@@ -2318,6 +2718,10 @@
           "==",
           "class",
           "primary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_primary",
@@ -2374,6 +2778,10 @@
           "==",
           "class",
           "trunk"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_trunk",
@@ -2439,6 +2847,10 @@
           "==",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_motorway_ramp",
@@ -2500,6 +2912,10 @@
           "!=",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_motorway",
@@ -2557,6 +2973,10 @@
           "class",
           "rail",
           "transit"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_rail",
@@ -2603,6 +3023,10 @@
           "class",
           "rail",
           "transit"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "road_rail_hatching",
@@ -2644,6 +3068,275 @@
       "source": "openmaptiles",
       "source-layer": "transportation",
       "type": "line"
+    },
+    {
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "class",
+          "roundabout_center"
+        ]
+      ],
+      "id": "road_roundabout_island",
+      "minzoom": 12,
+      "paint": {
+        "circle-color": "rgb(241,239,231)",
+        "circle-pitch-alignment": "map",
+        "circle-pitch-scale": "map",
+        "circle-radius": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                0.5
+              ],
+              -0.5
+            ]
+          ],
+          13,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                1
+              ],
+              -0.840909
+            ]
+          ],
+          14,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                2
+              ],
+              -1.25
+            ]
+          ],
+          15,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                4
+              ],
+              -2.03047
+            ]
+          ],
+          16,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                8
+              ],
+              -2.967033
+            ]
+          ],
+          17,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                16
+              ],
+              -4.090909
+            ]
+          ],
+          18,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                32
+              ],
+              -5.43956
+            ]
+          ],
+          19,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                64
+              ],
+              -7.057942
+            ]
+          ],
+          20,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                128
+              ],
+              -9
+            ]
+          ],
+          21,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                256
+              ],
+              -9
+            ]
+          ],
+          22,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                512
+              ],
+              -9
+            ]
+          ],
+          23,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                1024
+              ],
+              -9
+            ]
+          ],
+          24,
+          [
+            "max",
+            0,
+            [
+              "+",
+              [
+                "*",
+                [
+                  "get",
+                  "radius"
+                ],
+                2048
+              ],
+              -9
+            ]
+          ]
+        ],
+        "circle-stroke-color": {
+          "stops": [
+            [
+              13,
+              "hsl(0,0%,74%)"
+            ],
+            [
+              20,
+              "hsl(0,0%,62%)"
+            ]
+          ]
+        },
+        "circle-stroke-width": 1
+      },
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "type": "circle"
     },
     {
       "filter": [
@@ -2708,6 +3401,10 @@
           "class",
           "service",
           "track"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_service_track_casing",
@@ -2772,6 +3469,10 @@
           "track",
           "service",
           "motorway"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_ramp_casing",
@@ -2832,6 +3533,10 @@
           "==",
           "class",
           "minor"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_minor_casing",
@@ -2888,6 +3593,10 @@
           "class",
           "secondary",
           "tertiary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_secondary_tertiary_casing",
@@ -2943,6 +3652,10 @@
           "==",
           "class",
           "primary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_primary_casing",
@@ -2998,6 +3711,10 @@
           "==",
           "class",
           "trunk"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_trunk_casing",
@@ -3062,6 +3779,10 @@
           "==",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_motorway_ramp_casing",
@@ -3122,6 +3843,10 @@
           "!=",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_motorway_casing",
@@ -3178,6 +3903,10 @@
           "class",
           "service",
           "track"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_service_track",
@@ -3242,6 +3971,10 @@
           "track",
           "service",
           "motorway"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_ramp",
@@ -3302,6 +4035,10 @@
           "==",
           "class",
           "minor"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_minor",
@@ -3358,6 +4095,10 @@
           "class",
           "secondary",
           "tertiary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_secondary_tertiary",
@@ -3413,6 +4154,10 @@
           "==",
           "class",
           "primary"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_primary",
@@ -3468,6 +4213,10 @@
           "==",
           "class",
           "trunk"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_trunk",
@@ -3532,6 +4281,10 @@
           "==",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_motorway_ramp",
@@ -3592,6 +4345,10 @@
           "!=",
           "ramp",
           1
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_motorway",
@@ -3648,6 +4405,10 @@
           "class",
           "rail",
           "transit"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_rail",
@@ -3693,6 +4454,10 @@
           "class",
           "rail",
           "transit"
+        ],
+        [
+          "!has",
+          "radius"
         ]
       ],
       "id": "bridge_rail_hatching",
@@ -4006,9 +4771,17 @@
     },
     {
       "filter": [
-        "==",
-        "oneway",
-        1
+        "all",
+        [
+          "==",
+          "oneway",
+          1
+        ],
+        [
+          "!=",
+          "junction",
+          "roundabout"
+        ]
       ],
       "id": "road_one_way_arrow",
       "layout": {
