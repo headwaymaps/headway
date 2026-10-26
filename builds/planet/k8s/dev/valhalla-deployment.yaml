@@ -21,7 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: VALHALLA_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261005/maps-earth-planet-v1.261005-valhalla-2026-10-12-0e5c8ea4.tar.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-valhalla-2026-10-23-037f3be0.tar.zst"
           resources:
             limits:
               memory: 512Mi
@@ -44,4 +44,4 @@ spec:
       volumes:
         - name: valhalla-volume
           persistentVolumeClaim:
-            claimName: valhalla-maps-earth-planet-v1-261005-0-13-0-2026-10-12-2220332c
+            claimName: valhalla-maps-earth-planet-v1-261019-0-13-0-2026-10-23-e4fa579d

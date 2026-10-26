@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261005/transit/maps-earth-planet-v1.261005-london-graph-2026-10-22-bf13d558.obj.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/transit/maps-earth-planet-v1.261019-london-graph-2026-10-23-d2bcc9c7.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -79,4 +79,4 @@ spec:
             optional: true
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-london-maps-earth-planet-v1-261005-0-13-0-2026-10-22-3154e72d
+            claimName: opentripplanner-london-maps-earth-planet-v1-261019-0-13-0-2026-10-23-c803f708

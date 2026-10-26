@@ -1,26 +1,26 @@
 {
-  "elasticsearch": "maps-earth-planet-v1.261005-elasticsearch-2026-10-14-9ec07780.tar.zst",
-  "elevation": "transit/maps-earth-planet-v1.261005-elevation-tifs-2026-10-22-424cef71.tar.zst",
+  "elasticsearch": "maps-earth-planet-v1.261019-elasticsearch-2026-10-24-a35ed6f1.tar.zst",
+  "elevation": "transit/maps-earth-planet-v1.261019-elevation-tifs-2026-10-23-424cef71.tar.zst",
   "gtfs": {
-    "london": "transit/maps-earth-planet-v1.261005-london-gtfs-2026-10-22-96ef622e.tar.zst",
-    "los-angeles": "transit/maps-earth-planet-v1.261005-los-angeles-gtfs-2026-10-22-34202849.tar.zst",
-    "portland": "transit/maps-earth-planet-v1.261005-portland-gtfs-2026-10-22-1f5eddfd.tar.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.261005-puget-sound-gtfs-2026-10-22-61408410.tar.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.261005-sf-bay-area-gtfs-2026-10-22-efd27cb9.tar.zst"
+    "london": "transit/maps-earth-planet-v1.261019-london-gtfs-2026-10-23-e3a9d5eb.tar.zst",
+    "los-angeles": "transit/maps-earth-planet-v1.261019-los-angeles-gtfs-2026-10-23-6f5edbb8.tar.zst",
+    "portland": "transit/maps-earth-planet-v1.261019-portland-gtfs-2026-10-23-a35f2cce.tar.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.261019-puget-sound-gtfs-2026-10-23-0ae8f465.tar.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.261019-sf-bay-area-gtfs-2026-10-23-ec16068e.tar.zst"
   },
-  "osm": "maps-earth-planet-v1.261005-2026-10-14-37ef272f.osm.pbf",
+  "osm": "maps-earth-planet-v1.261019-2026-10-24-58f96453.osm.pbf",
   "otp-graphs": {
-    "london": "transit/maps-earth-planet-v1.261005-london-graph-2026-10-22-bf13d558.obj.zst",
-    "los-angeles": "transit/maps-earth-planet-v1.261005-los-angeles-graph-2026-10-22-88a17503.obj.zst",
-    "portland": "transit/maps-earth-planet-v1.261005-portland-graph-2026-10-22-8ea66b4b.obj.zst",
-    "puget-sound": "transit/maps-earth-planet-v1.261005-puget-sound-graph-2026-10-22-196c54b9.obj.zst",
-    "sf-bay-area": "transit/maps-earth-planet-v1.261005-sf-bay-area-graph-2026-10-22-51ecfc77.obj.zst"
+    "london": "transit/maps-earth-planet-v1.261019-london-graph-2026-10-23-d2bcc9c7.obj.zst",
+    "los-angeles": "transit/maps-earth-planet-v1.261019-los-angeles-graph-2026-10-23-0db44675.obj.zst",
+    "portland": "transit/maps-earth-planet-v1.261019-portland-graph-2026-10-23-53f009c2.obj.zst",
+    "puget-sound": "transit/maps-earth-planet-v1.261019-puget-sound-graph-2026-10-23-3356dbf7.obj.zst",
+    "sf-bay-area": "transit/maps-earth-planet-v1.261019-sf-bay-area-graph-2026-10-23-e30566dc.obj.zst"
   },
-  "placeholder": "maps-earth-planet-v1.261005-placeholder-2026-10-14-065bce06.tar.zst",
-  "pmtiles": "maps-earth-planet-v1.261005-2026-10-14-56ba8ac8.pmtiles",
+  "placeholder": "maps-earth-planet-v1.261019-placeholder-2026-10-24-15dcb169.tar.zst",
+  "pmtiles": "maps-earth-planet-v1.261019-2026-10-24-ff5644ac.pmtiles",
   "shared": {
-    "landcover": "landcover-2026-10-14-af6aa17e.mbtiles",
-    "terrain": "terrain-2026-10-14-d961012b.mbtiles"
+    "landcover": "landcover-2026-10-24-af6aa17e.mbtiles",
+    "terrain": "terrain-2026-10-24-d961012b.mbtiles"
   },
-  "valhalla": "maps-earth-planet-v1.261005-valhalla-2026-10-12-0e5c8ea4.tar.zst"
+  "valhalla": "maps-earth-planet-v1.261019-valhalla-2026-10-23-037f3be0.tar.zst"
 }
