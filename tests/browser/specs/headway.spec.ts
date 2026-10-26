@@ -6,17 +6,19 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
  * same services at the HTTP level: these assert that the app actually wires
  * those responses into a usable map.
  *
- * Fixtures are Bogota landmarks, matching builds/Bogota — the area the
- * integration tests assert against.
+ * Fixtures come from the build's smoke-test.env, via bin/test/browser-tests.
  */
 
 const MAP_CANVAS = '#map canvas.maplibregl-canvas';
 
-// Bogota fixtures. Both are chosen because OSM's display name matches the
-// query: many Bogota POIs carry an English `name:en` that the app prefers, so
-// e.g. searching "Museo del Oro" lands on a page titled "Gold Museum".
-const DESTINATION = 'Universidad Nacional';
-const ORIGIN = 'Monserrate';
+const DESTINATION = requiredEnv('DESTINATION');
+const ORIGIN = requiredEnv('ORIGIN');
+
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is unset - run these tests via bin/test/browser-tests`);
+  return value;
+}
 
 /** Wait for MapLibre to mount its canvas at a non-zero size. */
 async function waitForMap(page: Page): Promise<Locator> {
@@ -108,7 +110,7 @@ test('map renders vector tiles from the tileserver', async ({ page }) => {
   expect(painted.byteLength).toBeGreaterThan(10_000);
 });
 
-test('map can be dragged to a new location', async ({ page }) => {
+test('map can be dragged and zoomed', async ({ page }) => {
   await page.goto('/');
   const canvas = await waitForMap(page);
 
@@ -121,11 +123,6 @@ test('map can be dragged to a new location', async ({ page }) => {
   const afterSecondDrag = await waitForStoredCenter(page);
 
   expect(afterSecondDrag, 'dragging back should land somewhere else').not.toEqual(afterFirstDrag);
-});
-
-test('map zoom controls change the zoom level', async ({ page }) => {
-  await page.goto('/');
-  await waitForMap(page);
 
   const zoomIn = page.locator('.maplibregl-ctrl-zoom-in');
   await expect(zoomIn).toBeVisible();
