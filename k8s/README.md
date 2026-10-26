@@ -7,7 +7,7 @@ These configs are experimental, and pretty specific to my own needs at this poin
 
 `bin/k8s/generate <build-dir> <variant>` renders one `latest` or `dev` variant into `<build-dir>/k8s/<variant>`. `bin/k8s/regenerate-all` re-renders all checked-in variants, which is usually what you want after editing a template.
 
-The deploy scripts take a build directory and use its lowercased basename as the Kubernetes namespace. They select the `latest` rendered variant by default; `--dev` selects `dev`. For example: `bin/k8s/apply-latest builds/Seattle --dev` deploys `builds/Seattle/k8s/dev` to the `seattle` namespace.
+`bin/k8s/apply` takes a build directory and use its lowercased basename as the Kubernetes namespace. It selects the `latest` rendered variant by default; `--dev` selects `dev`. It rolls only the pods whose manifests changed; `--restart` rolls everything else too, to pick up containers republished to the same tag. For example: `bin/k8s/apply builds/Seattle --dev` deploys `builds/Seattle/k8s/dev` to the `seattle` namespace.
 
 ## Data volumes
 
@@ -21,7 +21,7 @@ bin/update-planet-version                        # bumps builds/planet/.env
 bin/build builds/planet
 bin/publish-data builds/planet --host <asset-host>
 bin/k8s/generate builds/planet latest
-bin/k8s/apply-latest builds/planet
+bin/k8s/apply builds/planet
 ```
 
 ## Deploying a transit rebuild
@@ -30,7 +30,7 @@ bin/k8s/apply-latest builds/planet
 bin/build builds/planet --transit-only
 bin/publish-data builds/planet --host <asset-host>
 bin/k8s/generate builds/planet latest
-bin/k8s/apply-latest builds/planet
+bin/k8s/apply builds/planet
 ```
 
 ### Reclaiming old volumes

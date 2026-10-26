@@ -11,9 +11,9 @@ usage: $0 <build-dir> <variant>
 
 <variant> must be latest or dev.
 
-Renders the named configuration variant into <build-dir>/k8s/<variant>. The
-deploy scripts select latest by default or dev with --dev, and always
-deploy to the lowercased build directory name as the Kubernetes namespace.
+Renders the named configuration variant into <build-dir>/k8s/<variant>.
+bin/k8s/apply selects latest by default or dev with --dev, and always
+deploys to the lowercased build directory name as the Kubernetes namespace.
 
 examples:
 
