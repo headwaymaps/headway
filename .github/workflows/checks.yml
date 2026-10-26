@@ -11,6 +11,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # Add any new jobs to "needs" to include it in GH's CI requirements
   all_checks:

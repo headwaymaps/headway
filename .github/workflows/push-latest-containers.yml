@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+  # The job logs in to ghcr.io with GITHUB_TOKEN to publish the images.
+  packages: write
+
 jobs:
   build-latest:
     name: Push latest images to ghcr.io

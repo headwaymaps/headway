@@ -4,6 +4,11 @@ on:
   push:
     branches: [dev]
 
+permissions:
+  contents: read
+  # The job logs in to ghcr.io with GITHUB_TOKEN to publish the images.
+  packages: write
+
 jobs:
   build:
     name: Push dev images to ghcr.io
