@@ -286,15 +286,15 @@ pub fn style(version: Version) -> Style {
         .pattern("pedestrian_polygon");
 
     let path_width = zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0);
+    // Unmarked crossings join the sidewalks beneath the streets, so each sidewalk runs on under the
+    // street's edge instead of stopping short of it.
     style
         .line(openmaptiles.transportation(), "road_sidewalk")
         .minzoom(13.0)
-        .filter(
-            Grade::Surface
-                .filter()
-                .and(foot_path())
-                .and_eq("footway", "sidewalk"),
-        )
+        .filter(Grade::Surface.filter().and(foot_path()).and(Filter::any([
+            Filter::eq("footway", "sidewalk"),
+            Filter::eq("crossing", "unmarked"),
+        ])))
         .rounded()
         .color(land().mix(&hsl!(0, 0%, 100%), 0.4))
         .width(path_width.clone());
@@ -331,7 +331,7 @@ pub fn style(version: Version) -> Style {
         .color(hsl!(0, 0%, 96%))
         .dasharray(vec![1.0, 0.7])
         .width(path_width);
-    // Stripes across the walk, parallel to the street.
+    // Stripes across the walk, parallel to the street, where they're painted.
     style
         .line(openmaptiles.transportation(), "road_crosswalk")
         .minzoom(13.0)
@@ -339,7 +339,8 @@ pub fn style(version: Version) -> Style {
             Grade::Surface
                 .filter()
                 .and(foot_path())
-                .and_eq("footway", "crossing"),
+                .and_eq("footway", "crossing")
+                .and_ne("crossing", "unmarked"),
         )
         .color(hsl!(0, 0%, 100%))
         .dasharray(vec![0.2, 0.2])
