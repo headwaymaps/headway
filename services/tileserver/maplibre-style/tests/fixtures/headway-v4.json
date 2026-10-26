@@ -1680,9 +1680,17 @@
           "pedestrian"
         ],
         [
-          "==",
-          "footway",
-          "sidewalk"
+          "any",
+          [
+            "==",
+            "footway",
+            "sidewalk"
+          ],
+          [
+            "==",
+            "crossing",
+            "unmarked"
+          ]
         ]
       ],
       "id": "road_sidewalk",
@@ -3470,6 +3478,11 @@
           "==",
           "footway",
           "crossing"
+        ],
+        [
+          "!=",
+          "crossing",
+          "unmarked"
         ]
       ],
       "id": "road_crosswalk",
