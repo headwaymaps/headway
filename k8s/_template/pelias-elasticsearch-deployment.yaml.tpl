@@ -4,10 +4,14 @@ metadata:
   name: pelias-elasticsearch
 spec:
   replicas: 1
-  # Elasticsearch takes an exclusive node.lock on its data dir, so the old pod
-  # must fully stop before the new one starts.
+  # Keep the old pod serving until the new one is ready. Elasticsearch locks
+  # its data dir, so this relies on every change to this pod getting a fresh
+  # volume - see ELASTICSEARCH_VOLUME_VERSION in bin/k8s/generate.
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   minReadySeconds: 10
   selector:
     matchLabels:
