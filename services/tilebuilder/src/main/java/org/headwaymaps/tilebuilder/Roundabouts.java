@@ -71,10 +71,10 @@ class Roundabouts implements ForwardingProfile.LayerPostProcessor {
       var first = ring.getFirst();
       centers.add(new VectorTile.Feature(first.layer(), first.id(),
         VectorTile.encodeGeometry(GeoUtils.point(circle.center)),
-        new HashMap<>(Map.of(Transportation.Fields.CLASS, ROUNDABOUT_CENTER, RADIUS, circle.roundedRadius()))));
+        new HashMap<>(Map.of(Transportation.Fields.CLASS, ROUNDABOUT_CENTER, RADIUS, circle.z14Radius(zoom)))));
       for (var item : ring) {
         var arcs = item.copyWithNewGeometry(circle.arcs(lines(item)));
-        arcs.tags().put(RADIUS, circle.roundedRadius());
+        arcs.tags().put(RADIUS, circle.z14Radius(zoom));
         rounded.put(item, arcs);
       }
     }
@@ -181,8 +181,9 @@ class Roundabouts implements ForwardingProfile.LayerPostProcessor {
       return new Circle(center, radius);
     }
 
-    double roundedRadius() {
-      return Math.round(radius * 100) / 100.0;
+    /** The radius in z14 tile pixels, from this tile's at {@code zoom}. */
+    double z14Radius(int zoom) {
+      return Math.round(radius / Math.pow(2, zoom - 14) * 100) / 100.0;
     }
 
     /** Each of {@code lines}, redrawn along this circle from where it starts to where it ends. */
