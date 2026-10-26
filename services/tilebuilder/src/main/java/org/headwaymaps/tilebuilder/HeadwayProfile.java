@@ -2,9 +2,12 @@ package org.headwaymaps.tilebuilder;
 
 import com.onthegomap.planetiler.FeatureCollector;
 import com.onthegomap.planetiler.Planetiler;
+import com.onthegomap.planetiler.VectorTile;
+import com.onthegomap.planetiler.geo.GeometryException;
 import com.onthegomap.planetiler.reader.SourceFeature;
 import com.onthegomap.planetiler.util.ZoomFunction;
 import com.onthegomap.planetiler.util.Parse;
+import java.util.List;
 import org.openmaptiles.OpenMapTilesProfile;
 import org.openmaptiles.generated.OpenMapTilesSchema.Transportation;
 
@@ -23,9 +26,23 @@ public class HeadwayProfile extends OpenMapTilesProfile {
    */
   private static final int NEIGHBOR_BUFFER_PIXELS = 32;
 
+  /**
+   * Layers left out of the output even though another layer needs them while processing, as transportation_name needs
+   * transportation.
+   */
+  private final List<String> excludedLayers;
+
   public HeadwayProfile(Planetiler runner) {
     super(runner);
     registerHandler(new Roundabouts());
+    registerHandler(new RoadSurfaces());
+    excludedLayers = runner.config().arguments().getList("exclude_layers", "Exclude certain layers", List.of());
+  }
+
+  @Override
+  public List<VectorTile.Feature> postProcessLayerFeatures(String layer, int zoom, List<VectorTile.Feature> items)
+    throws GeometryException {
+    return excludedLayers.contains(layer) ? List.of() : super.postProcessLayerFeatures(layer, zoom, items);
   }
 
   @Override
