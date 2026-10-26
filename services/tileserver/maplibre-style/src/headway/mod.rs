@@ -7,7 +7,7 @@ fn water() -> Color {
 }
 
 fn land() -> Color {
-    rgb!(241, 239, 231)
+    hex!(0xF9F8F3)
 }
 
 fn halo() -> Color {

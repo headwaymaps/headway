@@ -5,7 +5,7 @@
     {
       "id": "background",
       "paint": {
-        "background-color": "rgb(241,239,231)"
+        "background-color": "#f9f8f3"
       },
       "type": "background"
     },
@@ -2949,7 +2949,7 @@
       ],
       "id": "pier",
       "paint": {
-        "fill-color": "rgb(241,239,231)"
+        "fill-color": "#f9f8f3"
       },
       "source": "streets",
       "source-layer": "transportation",
@@ -3045,7 +3045,7 @@
       },
       "minzoom": 13,
       "paint": {
-        "line-color": "rgb(247,245,241)",
+        "line-color": "#fbfbf8",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -3110,7 +3110,7 @@
       "maxzoom": 16,
       "minzoom": 13,
       "paint": {
-        "line-color": "rgb(247,245,241)",
+        "line-color": "#fbfbf8",
         "line-opacity": {
           "stops": [
             [
@@ -5709,7 +5709,7 @@
       "id": "road_roundabout_island",
       "minzoom": 12,
       "paint": {
-        "circle-color": "rgb(241,239,231)",
+        "circle-color": "#f9f8f3",
         "circle-pitch-alignment": "map",
         "circle-pitch-scale": "map",
         "circle-radius": [
