@@ -1,0 +1,22 @@
+# Serves the streets built by build-streets.sh alongside a regular build's tiles. Replace <out-dir> and <repo>.
+# Run: martin --config martin.yaml --listen-addresses 127.0.0.1:8098
+base_path: "/tileserver"
+pmtiles:
+  sources:
+    areamap-mlt:
+      path: <repo>/data/Seattle/Seattle.pmtiles
+      output_format: mlt
+    areamap-mvt:
+      path: <repo>/data/Seattle/Seattle.pmtiles
+      output_format: mvt
+    streets-mlt:
+      path: <out-dir>/streets.pmtiles
+      output_format: mlt
+mbtiles:
+  sources:
+    landcover: <repo>/data/Seattle/landcover.mbtiles
+    terrain: <repo>/data/Seattle/terrain.mbtiles
+sprites:
+  paths: ['<repo>/services/tileserver/assets/sprites']
+fonts:
+  paths: ['<repo>/services/tileserver/assets/fonts']

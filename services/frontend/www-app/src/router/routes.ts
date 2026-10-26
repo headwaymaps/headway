@@ -103,6 +103,10 @@ const routes: RouteRecordRaw[] = [
   ...(process.env.DEV
     ? [
         {
+          path: '/dev/street-qa',
+          component: () => import('pages/StreetQaPage.vue'),
+        },
+        {
           path: '/dev/shields',
           component: () => import('pages/ShieldQaPage.vue'),
         },

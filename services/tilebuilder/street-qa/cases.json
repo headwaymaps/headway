@@ -1,0 +1,159 @@
+{
+  "Boyer Ave E / 16th Ave E / E Lynn St": {
+    "verdict": "ok",
+    "note": "Better, but jagged spot here? http://localhost:9000/dev/street-cases.html#case=2&map=20.99/47.6395244/-122.3107704  tile seam?",
+    "updated": "2026-10-25T14:43:39.932Z",
+    "ready": false,
+    "claude": "That jag was a tile seam: neighboring tiles simplified the curb differently. Surfaces are no longer simplified (tiles ~1/3 bigger), so the seam is gone and curves are smoother."
+  },
+  "4th Ave & Bell St": {
+    "note": "Looks good!",
+    "updated": "2026-10-25T06:16:02.284Z",
+    "verdict": "ok",
+    "ready": false
+  },
+  "Alaskan Way at Marion": {
+    "note": "Still a weird cinch at http://localhost:9000/dev/street-cases.html#case=1&map=19.26/47.6036096/-122.3377793",
+    "updated": "2026-10-25T06:15:29.093Z",
+    "verdict": "ok",
+    "ready": false
+  },
+  "E Lake Washington Blvd split": {
+    "note": "weird jog in road. Good enough. ",
+    "updated": "2026-10-25T06:01:17.451Z",
+    "verdict": "ok",
+    "ready": false
+  },
+  "7th Ave crossing Denny into Wall St": {
+    "note": "The inner sidewalk here is inconsistent though. It should parrallel the curve of the road (should be a mostly uniform thickness)",
+    "updated": "2026-10-25T18:42:03.743Z",
+    "verdict": "bad",
+    "ready": false,
+    "claude": "Simplification is off, and the new thinning keeps neighboring tiles in agreement. The chop is now a single vertex sitting exactly on the tile edge: one tile rounds it to y=1371, the other to 1370, a 0.2m step visible only at z22. Each tile builds the street from input clipped at its own edges, so the two can land on neighboring grid points. A full fix means building streets independent of where tiles cut them, which is a bigger change. Vote 👍 to leave it, 👎 if you want that.",
+    "view": "22/47.61847181/-122.34372104"
+  },
+  "Denny Way at Terry / Boren": {
+    "note": "A little better, still not perfect. And now there's a sidewalk spiking into the intersection (or maybe it's a gap between the roads?",
+    "updated": "2026-10-25T17:53:16.678Z",
+    "verdict": "ok",
+    "ready": false,
+    "claude": "The spike was a corner fillet attached to the wrong road class and snapped separately, which left a sliver for the sidewalk to fill. Each level (ground, bridge, tunnel) is now drawn as a single street surface: gaps close per class, then the classes merge, corners are rounded, and the result is snapped once. That leaves no seams between classes. The north curb ripple from the width easing is also fixed.",
+    "view": "19.61/47.6185906/-122.3359944"
+  },
+  "Denny Way at Minor Ave": {
+    "verdict": "ok",
+    "note": "",
+    "updated": "2026-10-25T06:13:15.468Z",
+    "ready": false
+  },
+  "S Jackson St at 2nd Ave Ext S / 4th Ave S": {
+    "verdict": "ok",
+    "note": "divet in curb",
+    "updated": "2026-10-25T16:56:40.978Z",
+    "ready": false,
+    "view": "19.18/47.5991448/-122.3299815",
+    "claude": "The divot was a pointed fill from the same closing; dropping those fills smoothed this curb too."
+  },
+  "E James St tile seam": {
+    "verdict": "ok",
+    "note": "",
+    "updated": "2026-10-25T05:54:41.229Z"
+  },
+  "Aurora Ave N / SR 99 ramps": {
+    "note": "Not perfect, but... not bad given how complicated the geometry is.",
+    "updated": "2026-10-25T05:57:34.547Z",
+    "verdict": "ok"
+  },
+  "Sidewalks and cycle track downtown": {
+    "verdict": "ok",
+    "note": "",
+    "updated": "2026-10-25T05:57:50.283Z"
+  },
+  "Montlake Blvd NE short link": {
+    "note": "oh wait, it's fixed. Stale tiles I think.",
+    "updated": "2026-10-25T17:52:36.949Z",
+    "verdict": "ok",
+    "ready": false,
+    "view": "19.19/47.6541571/-122.3025348",
+    "claude": "Dropped the pointed fills that the 5 m closing left at Montlake's curb, so the pimples are gone."
+  },
+  "Sidewalk corner at 13th Ave E & E Republican St": {
+    "ready": false,
+    "claude": "Each sidewalk now fills from the curb out to its mapped line plus half its width, so it curves with the corner instead of butting out. Curbs are gone; sidewalks and crosswalks share one off-white.",
+    "updated": "2026-10-25T18:41:48.985Z",
+    "note": "sidewalk is curved, but radius should parallel curb radius. Here the sidewalk is too wide.",
+    "verdict": "bad",
+    "view": "19.17/47.6231974/-122.3168876"
+  },
+  "sidewalk not flush to street.": {
+    "views": null,
+    "reported": "",
+    "verdict": "ok",
+    "ready": false,
+    "updated": "2026-10-26T16:41:08.250Z",
+    "added": true,
+    "view": "19.75/47.6174144/-122.3319946",
+    "note": ""
+  },
+  "jagged edges along east interlaken": {
+    "added": true,
+    "view": "20.18/47.6390513/-122.3140461",
+    "reported": "I see jagged spots all over the place like this. Whats the cause? Is there a generic way to smooth them? Reconcile adjacent tile geometries?",
+    "verdict": "ok",
+    "ready": false,
+    "updated": "2026-10-25T16:05:12.412Z",
+    "claude": "Cause: tiles store coordinates on a ~0.2m grid, and closely spaced vertices along a curve rounded to neighboring grid points, leaving stair steps on curves everywhere (not tile seams). Fix: thin the outline by each vertex's neighbors before rounding, so tiles still agree with each other. Also makes tiles ~17% smaller.",
+    "note": ""
+  },
+  "inner sidewalk corner should be curved": {
+    "added": true,
+    "view": "21.99/47.60607762/-122.33272438",
+    "reported": "",
+    "verdict": "bad",
+    "ready": false,
+    "updated": "2026-10-25T16:57:47.206Z"
+  },
+  "minor vs. major curb radius": {
+    "added": true,
+    "view": "19/47.6188378/-122.3161872",
+    "reported": "The curb radius here is smooth, which is great, but it looks too wide. There should be wider curb radiuses for wide streets and narrower for narrow streets. Where they meet... I'm not sure.. somewhere in the middle? Or maybe just prefer the smaller curb radius. Smoothness is more important than radius if they are at odds, but the current situation is not ideal.",
+    "verdict": "ok",
+    "ready": false,
+    "updated": "2026-10-25T18:41:18.380Z",
+    "note": ""
+  },
+  "union & 25th": {
+    "added": true,
+    "view": "18.81/47.6129793/-122.3001811",
+    "reported": "missing curb radius",
+    "verdict": "bad",
+    "ready": false,
+    "updated": "2026-10-25T18:01:56.928Z"
+  },
+  "aurora north junction": {
+    "added": true,
+    "view": "20.24/47.622473/-122.3438437",
+    "reported": "gap in road",
+    "verdict": "bad",
+    "ready": false,
+    "updated": "2026-10-25T18:12:17.882Z"
+  },
+  "25th and union": {
+    "added": true,
+    "view": "20.99/47.6128941/-122.3001211",
+    "reported": "why is this crossing visible? I think it's an unmarked crossing which should not be visible.",
+    "verdict": "bad",
+    "ready": false,
+    "deleted": false,
+    "updated": "2026-10-25T18:16:03.034Z"
+  },
+  "17th ave @ Mercer": {
+    "added": true,
+    "view": "17.95/47.624117/-122.310096",
+    "reported": "Sidewalk seems wide here. Why is it so wide?",
+    "verdict": "bad",
+    "ready": false,
+    "deleted": false,
+    "updated": "2026-10-25T18:33:51.554Z"
+  }
+}

@@ -1,0 +1,784 @@
+diff --git a/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/HeadwayProfile.java b/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/HeadwayProfile.java
+index 64d75267..7b1b25df 100644
+--- a/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/HeadwayProfile.java
++++ b/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/HeadwayProfile.java
+@@ -4,10 +4,15 @@ import com.onthegomap.planetiler.FeatureCollector;
+ import com.onthegomap.planetiler.Planetiler;
+ import com.onthegomap.planetiler.VectorTile;
+ import com.onthegomap.planetiler.geo.GeometryException;
++import com.onthegomap.planetiler.geo.GeometryPipeline;
++import com.onthegomap.planetiler.geo.GeometryType;
+ import com.onthegomap.planetiler.reader.SourceFeature;
+ import com.onthegomap.planetiler.util.ZoomFunction;
+ import com.onthegomap.planetiler.util.Parse;
++import java.util.ArrayList;
+ import java.util.List;
++import java.util.Map;
++import org.locationtech.jts.densify.Densifier;
+ import org.openmaptiles.OpenMapTilesProfile;
+ import org.openmaptiles.generated.OpenMapTilesSchema.Transportation;
+ 
+@@ -23,16 +28,22 @@ public class HeadwayProfile extends OpenMapTilesProfile {
+    * that shape a street's width as the next tile does.
+    */
+   private static final int NEIGHBOR_BUFFER_PIXELS = 32;
++  /**
++   * The longest a street's segment runs at the zoom with surfaces, in pixels of 256, so that each segment near a tile's
++   * edge lies whole within both tiles' buffers, rather than cut short where the two would round it differently.
++   */
++  private static final double MAX_SEGMENT_PIXELS = NEIGHBOR_BUFFER_PIXELS / 2.0;
+ 
+   /**
+    * Layers left out of the output even though another layer needs them while processing, as transportation_name needs
+    * transportation.
+    */
+   private final List<String> excludedLayers;
++  private final Roundabouts roundabouts = new Roundabouts();
+ 
+   public HeadwayProfile(Planetiler runner) {
+     super(runner);
+-    registerHandler(new Roundabouts());
++    registerHandler(roundabouts);
+     registerHandler(new RoadSurfaces());
+     excludedLayers = runner.config().arguments().getList("exclude_layers", "Exclude certain layers", List.of());
+   }
+@@ -40,7 +51,20 @@ public class HeadwayProfile extends OpenMapTilesProfile {
+   @Override
+   public List<VectorTile.Feature> postProcessLayerFeatures(String layer, int zoom, List<VectorTile.Feature> items)
+     throws GeometryException {
+-    return excludedLayers.contains(layer) ? List.of() : super.postProcessLayerFeatures(layer, zoom, items);
++    if (excludedLayers.contains(layer)) {
++      return List.of();
++    }
++    if (zoom != RoadSurfaces.ZOOM || !Transportation.LAYER_NAME.equals(layer)) {
++      return super.postProcessLayerFeatures(layer, zoom, items);
++    }
++    List<VectorTile.Feature> streets = new ArrayList<>();
++    List<VectorTile.Feature> others = new ArrayList<>();
++    for (var item : items) {
++      (isStreet(item.tags()) && item.geometry().geomType() == GeometryType.LINE ? streets : others).add(item);
++    }
++    List<VectorTile.Feature> result = new ArrayList<>(super.postProcessLayerFeatures(layer, zoom, others));
++    result.addAll(roundabouts.postProcess(zoom, streets));
++    return result;
+   }
+ 
+   @Override
+@@ -52,6 +76,28 @@ public class HeadwayProfile extends OpenMapTilesProfile {
+     Roundabouts.tagJunctions(source, features);
+     tagFootways(source, features);
+     tagWidth(source, features);
++    reachNeighbors(features);
++  }
++
++  /** Whether RoadSurfaces draws a transportation feature with these tags as ground. */
++  static boolean isStreet(Map<String, Object> tags) {
++    return RoadSurfaces.width(tags) != null;
++  }
++
++  /**
++   * Gives each street, at the zoom with surfaces, the buffer that lets a tile see its neighbors' streets as they do, and
++   * vertices close enough together that both tiles see the same ones near their shared edge.
++   */
++  static void reachNeighbors(FeatureCollector features) {
++    for (var feature : features) {
++      if (!Transportation.LAYER_NAME.equals(feature.getLayer()) || !isStreet(feature.getAttrsAtZoom(RoadSurfaces.ZOOM))) {
++        continue;
++      }
++      var simplify = GeometryPipeline.defaultSimplify(feature);
++      feature.setBufferPixelOverrides(ZoomFunction.minZoom(RoadSurfaces.ZOOM, NEIGHBOR_BUFFER_PIXELS))
++        .transformScaledGeometryByZoom(zoom -> zoom < RoadSurfaces.ZOOM ? null :
++          simplify.apply(zoom).andThen(tiles -> Densifier.densify(tiles, MAX_SEGMENT_PIXELS / 256)));
++    }
+   }
+ 
+   /** Tags the transportation features of sidewalks and crossings with their footway, from z14. */
+@@ -77,8 +123,7 @@ public class HeadwayProfile extends OpenMapTilesProfile {
+     }
+     for (var feature : features) {
+       if (Transportation.LAYER_NAME.equals(feature.getLayer())) {
+-        feature.setAttrWithMinzoom(WIDTH, width, 14)
+-          .setBufferPixelOverrides(ZoomFunction.minZoom(14, NEIGHBOR_BUFFER_PIXELS));
++        feature.setAttrWithMinzoom(WIDTH, width, 14);
+       }
+     }
+   }
+diff --git a/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/RoadSurfaces.java b/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/RoadSurfaces.java
+index e264cfa9..543977ee 100644
+--- a/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/RoadSurfaces.java
++++ b/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/RoadSurfaces.java
+@@ -15,13 +15,17 @@ import java.util.stream.Collectors;
+ import org.locationtech.jts.algorithm.Orientation;
+ import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
+ import org.locationtech.jts.geom.Coordinate;
++import org.locationtech.jts.geom.CoordinateSequence;
+ import org.locationtech.jts.geom.Envelope;
+ import org.locationtech.jts.geom.Geometry;
++import org.locationtech.jts.geom.GeometryFactory;
+ import org.locationtech.jts.geom.LineString;
++import org.locationtech.jts.geom.LinearRing;
+ import org.locationtech.jts.geom.Location;
+ import org.locationtech.jts.geom.Polygon;
+ import org.locationtech.jts.geom.PrecisionModel;
+ import org.locationtech.jts.geom.util.GeometryFixer;
++import org.locationtech.jts.geom.util.GeometryTransformer;
+ import org.locationtech.jts.geom.util.PolygonExtracter;
+ import org.locationtech.jts.operation.buffer.BufferOp;
+ import org.locationtech.jts.operation.buffer.BufferParameters;
+@@ -30,7 +34,7 @@ import org.locationtech.jts.operation.distance.IndexedFacetDistance;
+ import org.locationtech.jts.densify.Densifier;
+ import org.locationtech.jts.operation.overlayng.OverlayNG;
+ import org.locationtech.jts.operation.overlayng.OverlayNGRobust;
+-import org.locationtech.jts.operation.union.UnaryUnionOp;
++import org.locationtech.jts.operation.overlayng.UnaryUnionNG;
+ import org.locationtech.jts.precision.GeometryPrecisionReducer;
+ import org.locationtech.jts.simplify.VWSimplifier;
+ import org.openmaptiles.generated.OpenMapTilesSchema.Transportation;
+@@ -59,10 +63,17 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+   private static final double CORNER_PER_WIDTH = 0.4;
+   /** How sharply a fill's edge can turn outward away from the streets before it's taken as a spike, in radians. */
+   private static final double MAX_FILL_TURN = Math.toRadians(30);
+-  /** Every sidewalk's width, since where and how wide they're mapped is too unreliable to draw. */
+-  private static final double SIDEWALK_METERS = 2;
++  /**
++   * The farthest a fill reaches that is judged whole, in tile units: well within how far each tile sees its neighbors'
++   * streets. A larger fill is kept as a closing, never dropped as a spike or added as a fillet.
++   */
++  private static final double MAX_JUDGED_UNITS = 16;
++  /** A sidewalk's width, unless mapped. */
++  private static final double SIDEWALK_METERS = 1.8;
+   /** How far a sidewalk can run from a curb and still be taken as that street's. */
+   private static final double MAX_SIDEWALK_OFFSET_METERS = 12;
++  /** How far a sidewalk's near edge can be set back from the curb and still be drawn flush with it. */
++  private static final double FLUSH_METERS = 0.5;
+   /** How far past the curb into the street a sidewalk's ground is first laid, so none is missed along the curb. */
+   private static final double INTO_STREET_METERS = 1;
+   /** How far past a sidewalk's reach its ground is first laid, before it's cut to the curb offset. */
+@@ -81,8 +92,15 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+   private static final double SAMPLE_METERS = 2;
+   /** The tile's own grid, 4096 to its 256 units, which surfaces are snapped to so that they overlay cleanly. */
+   private static final PrecisionModel TILE_GRID = new PrecisionModel(4096 / 256.0);
+-  private static final BufferParameters FLAT_ENDS =
+-    new BufferParameters(8, BufferParameters.CAP_FLAT, BufferParameters.JOIN_ROUND, BufferParameters.DEFAULT_MITRE_LIMIT);
++  /**
++   * The grid surfaces are worked out on, far finer than the tile's and the same in every tile, so that neighboring
++   * tiles work out the ground they share alike rather than each rounding it its own way.
++   */
++  private static final PrecisionModel WORKING_GRID = new PrecisionModel(4096);
++  private static final GeometryFactory WORKING_FACTORY = new GeometryFactory(WORKING_GRID);
++  private static final BufferParameters ROUND_ENDS = unsimplified(new BufferParameters());
++  private static final BufferParameters FLAT_ENDS = unsimplified(
++    new BufferParameters(8, BufferParameters.CAP_FLAT, BufferParameters.JOIN_ROUND, BufferParameters.DEFAULT_MITRE_LIMIT));
+ 
+   /** The level streets run at, each level's streets drawn as one surface. */
+   private enum Grade {
+@@ -220,8 +238,8 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+     Geometry widened() {
+       double[] halves = Arrays.stream(widths).map(width -> width / 2).toArray();
+       double widest = Arrays.stream(halves).max().orElseThrow();
+-      return new VariableBuffer(line, halves).getResult()
+-        .intersection(BufferOp.bufferOp(line, widest + 1, FLAT_ENDS));
++      return overlay(new VariableBuffer(line, halves).getResult(), buffer(line, widest + 1, FLAT_ENDS),
++        OverlayNG.INTERSECTION);
+     }
+ 
+     /** The first {@code length} of this from its end at {@code end}, widened as it is along there. */
+@@ -273,8 +291,8 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+     }
+   }
+ 
+-  /** A ground-level sidewalk's line, the curbs it runs beside, and its median offset from them. */
+-  private record Sidewalk(Geometry line, Curbs curbs, double offset) {
++  /** A ground-level sidewalk's line, the curbs it runs beside, its median offset from them and half its width. */
++  private record Sidewalk(Geometry line, Curbs curbs, double offset, double halfWidth) {
+ 
+     /**
+      * {@code item} as a sidewalk beside a street's curb, or null if it isn't one. It's taken to run beside
+@@ -298,15 +316,17 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+       if (offset > max) {
+         return null;
+       }
+-      return new Sidewalk(line, curbs, offset);
++      double width = tags.get(HeadwayProfile.WIDTH) instanceof Double mapped ? mapped : SIDEWALK_METERS;
++      return new Sidewalk(line, curbs, offset, width / 2 / metersPerUnit);
+     }
+ 
+     /**
+-     * The ground within a sidewalk's width of the curb, beside it: the curb offset outward, so the sidewalk's far edge
+-     * follows the curb around corners and runs straight past driveways.
++     * The ground within this sidewalk's reach of the curb, beside it: the curb offset outward, so the sidewalk's far
++     * edge follows the curb around corners and runs straight past driveways. Where the sidewalk is set back from the
++     * curb, the strip between is kept apart.
+      */
+-    Geometry surface(double metersPerUnit) {
+-      double reach = SIDEWALK_METERS / metersPerUnit;
++    Paving paving(double metersPerUnit) {
++      double reach = offset + halfWidth;
+       double into = INTO_STREET_METERS / metersPerUnit;
+       double past = reach + PAST_REACH_METERS / metersPerUnit;
+       List<Geometry> beside = new ArrayList<>();
+@@ -359,10 +379,19 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+       var near = area.getEnvelopeInternal();
+       near.expandBy(2 * reach);
+       var street = OverlayNGRobust.overlay(curbs.ground(), GeoUtils.JTS_FACTORY.toGeometry(near), OverlayNG.INTERSECTION);
+-      return OverlayNGRobust.overlay(street.buffer(reach), area, OverlayNG.INTERSECTION);
++      var paved = OverlayNGRobust.overlay(street.buffer(reach), area, OverlayNG.INTERSECTION);
++      double setback = offset - halfWidth;
++      if (setback <= FLUSH_METERS / metersPerUnit) {
++        return new Paving(paved, GeoUtils.JTS_FACTORY.createPolygon());
++      }
++      var strip = OverlayNGRobust.overlay(street.buffer(setback), area, OverlayNG.INTERSECTION);
++      return new Paving(OverlayNGRobust.overlay(paved, strip, OverlayNG.DIFFERENCE), strip);
+     }
+   }
+ 
++  /** A sidewalk's ground, and the strip between it and the curb where it's set back. */
++  private record Paving(Geometry surface, Geometry strip) {}
++
+   private static final Envelope CLIPPED = new Envelope(-CLIP_UNITS, 256 + CLIP_UNITS, -CLIP_UNITS, 256 + CLIP_UNITS);
+ 
+   @Override
+@@ -433,22 +462,20 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+       }
+       Map<Kind, Geometry> kinds = new HashMap<>();
+       for (var ofKind : widened.entrySet()) {
+-        var union = UnaryUnionOp.union(ofKind.getValue());
++        var union = union(ofKind.getValue());
+         double closing = ofKind.getKey().closingMeters() / metersPerUnit;
+-        var closed = union.buffer(closing).buffer(-closing);
++        var closed = buffer(buffer(union, closing), -closing);
+         var spikes = GeoUtils.JTS_FACTORY.buildGeometry(fills(union, closed).get(true));
+-        kinds.put(ofKind.getKey(), GeometryFixer.fix(
+-          OverlayNGRobust.overlay(closed, spikes, OverlayNG.DIFFERENCE).buffer(-opening).buffer(opening)));
++        kinds.put(ofKind.getKey(), buffer(buffer(overlay(closed, spikes, OverlayNG.DIFFERENCE), -opening), opening));
+       }
+-      var surface = OverlayNGRobust.union(kinds.values(), GeoUtils.JTS_FACTORY);
+-      smoothed.put(entry.getKey(), snapped(GeometryFixer.fix(roundCorners(surface, entry.getValue(), metersPerUnit))));
++      var surface = union(List.copyOf(kinds.values()));
++      smoothed.put(entry.getKey(), snapped(roundCorners(surface, entry.getValue(), metersPerUnit)));
+       if (entry.getKey() == Grade.GROUND) {
+         var streetKinds = kinds.entrySet().stream().filter(kind -> !kind.getKey().isService()).map(Map.Entry::getValue)
+           .toList();
+         if (!streetKinds.isEmpty()) {
+           var streetsOnly = entry.getValue().stream().filter(street -> !street.kind().isService()).toList();
+-          streetGround = snapped(GeometryFixer.fix(
+-            roundCorners(OverlayNGRobust.union(streetKinds, GeoUtils.JTS_FACTORY), streetsOnly, metersPerUnit)));
++          streetGround = snapped(roundCorners(union(streetKinds), streetsOnly, metersPerUnit));
+         }
+       }
+     }
+@@ -468,13 +495,16 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+     var streetCurbs = streetGround == null ? null : new Curbs(streetGround);
+     List<VectorTile.Feature> transportation = new ArrayList<>();
+     List<Geometry> sidewalks = new ArrayList<>();
++    List<Geometry> strips = new ArrayList<>();
+     for (var item : items) {
+       var sidewalk = allCurbs == null ? null : Sidewalk.of(item, streetCurbs, allCurbs, metersPerUnit);
+       if (sidewalk == null) {
+         transportation.add(item);
+         continue;
+       }
+-      sidewalks.add(sidewalk.surface(metersPerUnit));
++      var paving = sidewalk.paving(metersPerUnit);
++      sidewalks.add(paving.surface());
++      strips.add(paving.strip());
+       transportation.add(item.copyWithExtraAttrs(Map.of(BESIDE_STREET, 1)));
+     }
+     Map<String, List<VectorTile.Feature>> result = new HashMap<>(layers);
+@@ -487,7 +517,9 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+         beside = OverlayNGRobust.union(List.of(beside, streetGround), GeoUtils.JTS_FACTORY)
+           .buffer(rounding).buffer(-rounding);
+       }
+-      var sidewalk = OverlayNGRobust.overlay(beside, ground, OverlayNG.DIFFERENCE);
++      strips.add(ground);
++      var sidewalk = OverlayNGRobust.overlay(beside, OverlayNGRobust.union(strips, GeoUtils.JTS_FACTORY),
++        OverlayNG.DIFFERENCE);
+       sidewalk = polygonal(OverlayNGRobust.overlay(snapped(GeometryFixer.fix(sidewalk)), clip, OverlayNG.INTERSECTION));
+       if (!sidewalk.isEmpty()) {
+         sidewalk.normalize();
+@@ -517,14 +549,14 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+       double narrowest = vertex.getValue().stream().mapToDouble(Double::doubleValue).min().orElseThrow();
+       double widest = vertex.getValue().stream().mapToDouble(Double::doubleValue).max().orElseThrow();
+       double radius = Math.min(CORNER_METERS / metersPerUnit, CORNER_PER_WIDTH * narrowest);
+-      var junction = GeoUtils.JTS_FACTORY.createPoint(vertex.getKey()).buffer(widest / 2 + 2 * radius);
+-      var near = OverlayNGRobust.overlay(surface, junction.buffer(2 * radius), OverlayNG.INTERSECTION);
+-      var closed = near.buffer(radius).buffer(-radius);
+-      fills(near, OverlayNGRobust.overlay(closed, junction, OverlayNG.INTERSECTION)).get(false).stream()
++      var junction = buffer(GeoUtils.JTS_FACTORY.createPoint(vertex.getKey()), widest / 2 + 2 * radius);
++      var near = overlay(surface, buffer(junction, 2 * radius), OverlayNG.INTERSECTION);
++      var closed = buffer(buffer(near, radius), -radius);
++      fills(near, overlay(closed, junction, OverlayNG.INTERSECTION)).get(false).stream()
+         .filter(fillet -> fillet.getArea() <= radius * radius)
+         .forEach(filleted::add);
+     }
+-    return OverlayNGRobust.union(filleted, GeoUtils.JTS_FACTORY);
++    return union(filleted);
+   }
+ 
+ 
+@@ -534,8 +566,17 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+    */
+   private static Map<Boolean, List<Polygon>> fills(Geometry ground, Geometry closed) {
+     var toGround = new IndexedFacetDistance(ground);
+-    List<Polygon> pieces = PolygonExtracter.getPolygons(OverlayNGRobust.overlay(closed, ground, OverlayNG.DIFFERENCE));
+-    return pieces.stream().collect(Collectors.partitioningBy(piece -> isPointed(piece, toGround)));
++    List<Polygon> pieces = PolygonExtracter.getPolygons(overlay(closed, ground, OverlayNG.DIFFERENCE));
++    return pieces.stream().collect(Collectors.partitioningBy(piece -> isJudgedWhole(piece) && isPointed(piece, toGround)));
++  }
++
++  /**
++   * Whether {@code piece} is small enough that the tiles on either side of an edge it's near both see all of it, and so
++   * judge it alike.
++   */
++  private static boolean isJudgedWhole(Polygon piece) {
++    var bounds = piece.getEnvelopeInternal();
++    return Math.max(bounds.getWidth(), bounds.getHeight()) <= MAX_JUDGED_UNITS;
+   }
+ 
+   /** Whether {@code piece}'s edge turns sharply outward anywhere off the ground {@code toGround} measures to. */
+@@ -562,12 +603,74 @@ class RoadSurfaces implements ForwardingProfile.TilePostProcessor {
+    */
+   private static Geometry snapped(Geometry surface) {
+     try {
+-      return GeometryPrecisionReducer.reduce(VWSimplifier.simplify(surface, 1 / TILE_GRID.getScale()), TILE_GRID);
++      return GeometryPrecisionReducer.reduce(VWSimplifier.simplify(startingInside(
++        GeoUtils.JTS_FACTORY.createGeometry(surface)), 1 / TILE_GRID.getScale()), TILE_GRID);
+     } catch (IllegalArgumentException e) {
+       return surface;
+     }
+   }
+ 
++  /**
++   * {@code surface} with each ring starting at its vertex deepest inside the tile, since thinning keeps a ring's start,
++   * and a neighboring tile must thin a ring that crosses into it the same way along their edge.
++   */
++  private static Geometry startingInside(Geometry surface) {
++    return new GeometryTransformer() {
++      @Override
++      protected CoordinateSequence transformCoordinates(CoordinateSequence coords, Geometry parent) {
++        if (!(parent instanceof LinearRing) || coords.size() < 4) {
++          return coords;
++        }
++        int n = coords.size() - 1;
++        int start = 0;
++        for (int i = 1; i < n; i++) {
++          double deeper = depth(coords.getCoordinate(i)) - depth(coords.getCoordinate(start));
++          if (deeper > 0 || deeper == 0 && coords.getCoordinate(i).compareTo(coords.getCoordinate(start)) < 0) {
++            start = i;
++          }
++        }
++        Coordinate[] rotated = new Coordinate[n + 1];
++        for (int i = 0; i <= n; i++) {
++          rotated[i] = coords.getCoordinate((start + i) % n);
++        }
++        return factory.getCoordinateSequenceFactory().create(rotated);
++      }
++    }.transform(surface);
++  }
++
++  /** How far inside the tile {@code coordinate} lies from its nearest edge. */
++  private static double depth(Coordinate coordinate) {
++    return Math.min(Math.min(coordinate.x, 256 - coordinate.x), Math.min(coordinate.y, 256 - coordinate.y));
++  }
++
++  /** {@code geometry} grown by {@code distance}, or shrunk if it's negative, on the working grid. */
++  private static Geometry buffer(Geometry geometry, double distance) {
++    return buffer(geometry, distance, ROUND_ENDS);
++  }
++
++  /**
++   * {@code parameters}, buffering every vertex rather than first thinning the line by sweeping along it from its start,
++   * which lies where the tile's edge cut it, and differs between neighboring tiles.
++   */
++  private static BufferParameters unsimplified(BufferParameters parameters) {
++    parameters.setSimplifyFactor(0);
++    return parameters;
++  }
++
++  private static Geometry buffer(Geometry geometry, double distance, BufferParameters parameters) {
++    return BufferOp.bufferOp(WORKING_FACTORY.createGeometry(geometry), distance, parameters);
++  }
++
++  private static Geometry overlay(Geometry a, Geometry b, int operation) {
++    var overlay = new OverlayNG(a, b, WORKING_GRID, operation);
++    overlay.setStrictMode(true);
++    return overlay.getResult();
++  }
++
++  private static Geometry union(List<Geometry> geometries) {
++    return UnaryUnionNG.union(geometries, GeoUtils.JTS_FACTORY, WORKING_GRID);
++  }
++
+   /** The areas of {@code geometry}, without the slivers an overlay can leave behind as lines or points. */
+   private static Geometry polygonal(Geometry geometry) {
+     return geometry.getFactory().buildGeometry(PolygonExtracter.getPolygons(geometry));
+diff --git a/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/WidthRanges.java b/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/WidthRanges.java
+index 2221e93f..3fa40e4c 100644
+--- a/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/WidthRanges.java
++++ b/services/tilebuilder/src/main/java/org/headwaymaps/tilebuilder/WidthRanges.java
+@@ -50,6 +50,11 @@ class WidthRanges {
+   private static final double SAMPLE_METERS = 1;
+   /** How much a sampled width may vary, in meters, and still be one range. */
+   private static final double SAMPLE_TOLERANCE = 0.05;
++  /**
++   * How far from where a pair of oneways split from a line they're held to its width, in meters, easing back to their
++   * own beside each other over the last half. Short enough that the tiles on either side of an edge both see the split.
++   */
++  private static final double SPLIT_REACH_METERS = 60;
+   /** How closely two lines must run in opposite directions to be a pair of oneways, as the cosine of their angle. */
+   private static final double OPPOSING = -0.7;
+   /** How sharply a line may turn back where two pieces meet and still be joined, as the cosine of the turn. */
+@@ -59,12 +64,18 @@ class WidthRanges {
+ 
+   private static final double EARTH_CIRCUMFERENCE_METERS = 40_075_016.686;
+   private static final double TILE_UNITS = 256;
++  /** How many steps a tile unit's size in meters takes per doubling: about 1% each. */
++  private static final int SCALE_STEPS = 64;
+ 
+-  /** The size of a tile unit in meters, at the tile's middle. */
++  /**
++   * The size of a tile unit in meters, at the tile's middle, in steps of {@link #SCALE_STEPS} so that the tiles of a
++   * region agree on it and draw the same streets where they overlap.
++   */
+   static double metersPerUnit(TileCoord tile) {
+     double n = Math.pow(2, tile.z());
+     double latitude = Math.atan(Math.sinh(Math.PI * (1 - 2 * (tile.y() + 0.5) / n)));
+-    return EARTH_CIRCUMFERENCE_METERS * Math.cos(latitude) / n / TILE_UNITS;
++    double exact = EARTH_CIRCUMFERENCE_METERS * Math.cos(latitude) / n / TILE_UNITS;
++    return Math.pow(2, Math.round(Math.log(exact) / Math.log(2) * SCALE_STEPS) / (double) SCALE_STEPS);
+   }
+ 
+   static List<VectorTile.Feature> join(List<VectorTile.Feature> items, double metersPerUnit)
+@@ -270,8 +281,13 @@ class WidthRanges {
+     }
+   }
+ 
+-  /** A stretch of a oneway and its width. */
+-  private record Segment(Coordinate from, Coordinate to, double width) {
++  /** A stretch of a oneway, its width, and which way along it traffic runs. */
++  private record Segment(Coordinate from, Coordinate to, double width, int travelSign) {
++
++    double[] travelHeading() {
++      var heading = unit(from, to);
++      return new double[]{heading[0] * travelSign, heading[1] * travelSign};
++    }
+ 
+     double distance(Coordinate point) {
+       return new LineSegment(from, to).distance(point);
+@@ -321,14 +337,6 @@ class WidthRanges {
+       return widths.stream().mapToDouble(Double::doubleValue).toArray();
+     }
+ 
+-    /** The way traffic runs from one end of this chain to the other. */
+-    double[] travelHeading() {
+-      var coords = coords();
+-      var heading = unit(coords[0], coords[coords.length - 1]);
+-      int sign = pieces.getFirst().travelSign();
+-      return new double[]{heading[0] * sign, heading[1] * sign};
+-    }
+-
+     /** This chain's stretches, with each piece's width. */
+     List<Segment> segments() {
+       List<Segment> segments = new ArrayList<>();
+@@ -338,7 +346,7 @@ class WidthRanges {
+         }
+         var coords = piece.coords();
+         for (int i = 1; i < coords.length; i++) {
+-          segments.add(new Segment(coords[i - 1], coords[i], piece.width()));
++          segments.add(new Segment(coords[i - 1], coords[i], piece.width(), pieces.getFirst().travelSign()));
+         }
+       }
+       return segments;
+@@ -370,6 +378,10 @@ class WidthRanges {
+      * {@code ranges} widened where an opposing oneway of its class runs close, so that together they're as wide as
+      * both until a median opens between them. Near where the two split from a line, they're together no wider than it:
+      * neither is wider than its {@code plain} ranges or the line, less how far apart the two run.
++     *
++     * <p>Each stretch is sampled and judged from its own vertices, the oneways beside it and the splits within reach,
++     * never from how far along the chain it is, since a tile's edge cuts the chain short where neighboring tiles cut it
++     * differently.
+      */
+     List<Range> widenedBeside(List<Chain> oneways, List<Range> ranges, List<Range> plain, double metersPerUnit,
+       Map<Coordinate, List<Piece>> byEnd) {
+@@ -377,19 +389,18 @@ class WidthRanges {
+       var coords = coords();
+       var reach = new Envelope();
+       Arrays.stream(coords).forEach(reach::expandToInclude);
+-      var heading = travelHeading();
++      var startLine = splitFrom(coords[0], byEnd);
++      var endLine = splitFrom(coords[coords.length - 1], byEnd);
++      double widestSplit = Stream.of(startLine, endLine).filter(Objects::nonNull).mapToDouble(Piece::width).max()
++        .orElse(0);
+       List<Segment> partners = new ArrayList<>();
+       for (var other : oneways) {
+         if (other == this || !Objects.equals(other.pieces.getFirst().streetClass(), streetClass)) {
+           continue;
+         }
+-        var otherHeading = other.travelHeading();
+-        if (heading[0] * otherHeading[0] + heading[1] * otherHeading[1] >= OPPOSING) {
+-          continue;
+-        }
+         for (var segment : other.segments()) {
+           var near = new Envelope(reach);
+-          near.expandBy(segment.width() / metersPerUnit);
++          near.expandBy(Math.max(segment.width(), widestSplit) / metersPerUnit);
+           if (near.intersects(segment.from(), segment.to())) {
+             partners.add(segment);
+           }
+@@ -400,57 +411,93 @@ class WidthRanges {
+       }
+ 
+       double[] ownWidths = segmentWidths();
+-      var startLine = splitFrom(coords[0], byEnd);
+-      var endLine = splitFrom(coords[coords.length - 1], byEnd);
+-      double startSplit = startLine == null ? Double.NaN : startLine.width();
+-      double endSplit = endLine == null ? Double.NaN : endLine.width();
+       double length = pieces.stream().mapToDouble(Piece::length).sum();
+-      int samples = Math.max(1, (int) Math.ceil(length * metersPerUnit / SAMPLE_METERS));
+-      double[] widths = new double[samples + 1];
+-      boolean widened = false;
+-      int segment = 0;
++      int travelSign = pieces.getFirst().travelSign();
++      var bounds = new TreeSet<Double>();
++      for (var range : ranges) {
++        Stream.of(range.start(), range.end()).filter(at -> at >= 0 && at <= 1).forEach(bounds::add);
++      }
++      List<Double> alongs = new ArrayList<>();
++      List<Double> widths = new ArrayList<>();
++      List<Boolean> atBounds = new ArrayList<>();
++      List<Integer> vertices = new ArrayList<>();
++      List<Boolean> widenedSegments = new ArrayList<>();
+       double segmentStart = 0;
+-      for (int k = 0; k <= samples; k++) {
+-        double along = length * k / samples;
+-        while (segment + 2 < coords.length && segmentStart + coords[segment].distance(coords[segment + 1]) < along) {
+-          segmentStart += coords[segment].distance(coords[segment + 1]);
+-          segment++;
+-        }
++      for (int segment = 0; segment + 1 < coords.length; segment++) {
+         var from = coords[segment];
+         var to = coords[segment + 1];
+-        double t = from.distance(to) == 0 ? 0 : (along - segmentStart) / from.distance(to);
+-        var point = new Coordinate(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+-        double base = valueAt(ranges, length == 0 ? 0 : along / length);
+-        double split = Double.isNaN(startSplit) ? endSplit
+-          : Double.isNaN(endSplit) ? startSplit
+-          : startSplit + (endSplit - startSplit) * along / length;
+-        double width = base;
+-        double apart = Double.POSITIVE_INFINITY;
+-        for (var partner : partners) {
+-          double distance = partner.distance(point) * metersPerUnit;
+-          apart = Math.min(apart, distance);
+-          width = Math.max(width, ownWidths[segment] + partner.width() - distance);
++        double segmentLength = from.distance(to);
++        var own = new Segment(from, to, ownWidths[segment], travelSign).travelHeading();
++        var opposing = partners.stream().filter(partner -> {
++          var heading = partner.travelHeading();
++          return own[0] * heading[0] + own[1] * heading[1] < OPPOSING;
++        }).toList();
++        int samples = Math.max(1, (int) Math.ceil(segmentLength * metersPerUnit / SAMPLE_METERS));
++        boolean last = segment + 2 == coords.length;
++        var steps = new TreeSet<Double>();
++        for (int k = 0; k <= samples; k++) {
++          steps.add((double) k / samples);
++        }
++        if (!last) {
++          steps.remove(1.0);
+         }
+-        if (!Double.isNaN(split)) {
+-          // Each half's outer edge stays within the line's, even where the halves aren't yet side by side.
+-          boolean nearerStart = endLine == null || startLine != null && along < length / 2;
+-          double offset = nearerStart ? offsetFrom(startLine, coords[0], point)
+-            : offsetFrom(endLine, coords[coords.length - 1], point);
+-          apart = Math.max(apart, 2 * offset * metersPerUnit);
+-          width = Math.min(base, Math.max(valueAt(plain, length == 0 ? 0 : along / length), split - apart));
++        double fromShare = length == 0 ? 0 : segmentStart / length;
++        double toShare = length == 0 ? 0 : (segmentStart + segmentLength) / length;
++        var boundsHere = last ? bounds.subSet(fromShare, true, toShare, true) : bounds.subSet(fromShare, true, toShare, false);
++        for (double bound : boundsHere) {
++          steps.add(segmentLength == 0 ? 0 : (bound * length - segmentStart) / segmentLength);
+         }
+-        widths[k] = width;
+-        widened |= Math.abs(width - base) > SAMPLE_TOLERANCE;
++        vertices.add(widths.size());
++        boolean widenedHere = false;
++        for (double t : steps) {
++          double along = segmentStart + segmentLength * t;
++          var point = new Coordinate(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
++          double base = valueAt(ranges, length == 0 ? 0 : along / length);
++          double plainWidth = valueAt(plain, length == 0 ? 0 : along / length);
++          double beside = plainWidth;
++          double apart = Double.POSITIVE_INFINITY;
++          for (var partner : opposing) {
++            double distance = partner.distance(point) * metersPerUnit;
++            apart = Math.min(apart, distance);
++            beside = Math.max(beside, ownWidths[segment] + partner.width() - distance);
++          }
++          // Where the pair splits from a line, the hold below takes the place of tapering to it.
++          double width = startLine == null && endLine == null ? Math.max(base, beside) : beside;
++          double toStart = startLine == null ? Double.POSITIVE_INFINITY : point.distance(coords[0]) * metersPerUnit;
++          double toEnd = endLine == null ? Double.POSITIVE_INFINITY : point.distance(coords[coords.length - 1]) *
++            metersPerUnit;
++          double held = Math.clamp((SPLIT_REACH_METERS - Math.min(toStart, toEnd)) / (SPLIT_REACH_METERS / 2), 0, 1);
++          if (held > 0) {
++            // Each half's outer edge stays within the line's, even where the halves aren't yet side by side.
++            boolean nearerStart = toStart <= toEnd;
++            var line = nearerStart ? startLine : endLine;
++            double offset = offsetFrom(line, nearerStart ? coords[0] : coords[coords.length - 1], point);
++            apart = Math.max(apart, 2 * offset * metersPerUnit);
++            double lineWidth = startLine == null || endLine == null ? line.width()
++              : startLine.width() + (endLine.width() - startLine.width()) * toStart / (toStart + toEnd);
++            double withinLine = Math.min(base, Math.max(plainWidth, lineWidth - apart));
++            width = held * withinLine + (1 - held) * width;
++          }
++          alongs.add(along);
++          widths.add(Math.abs(width - base) > SAMPLE_TOLERANCE ? width : base);
++          atBounds.add(length != 0 && bounds.contains(along / length));
++          widenedHere |= Math.abs(width - base) > SAMPLE_TOLERANCE;
++        }
++        widenedSegments.add(widenedHere);
++        segmentStart += segmentLength;
+       }
+-      if (!widened) {
++      vertices.add(widths.size() - 1);
++      if (!widenedSegments.contains(true)) {
+         return ranges;
+       }
+ 
++      var sampled = widths.stream().mapToDouble(Double::doubleValue).toArray();
++      var shares = alongs.stream().mapToDouble(along -> length == 0 ? 0 : along / length).toArray();
+       // A renderer eases between knots, which can overshoot the line between them, so knot wherever it misses.
+-      var knots = new TreeSet<>(knots(widths));
++      var knots = new TreeSet<>(knots(sampled, vertices, widenedSegments, atBounds));
+       while (true) {
+-        var result = rangesThrough(knots, widths, ranges);
+-        int worst = worstMiss(result, widths);
++        var result = rangesThrough(knots, sampled, shares, atBounds, ranges);
++        int worst = worstMiss(result, sampled, shares);
+         if (worst < 0) {
+           return result;
+         }
+@@ -458,16 +505,19 @@ class WidthRanges {
+       }
+     }
+ 
+-    /** {@code ranges} past either end of the line, and one of no length at each knot of {@code widths} between. */
+-    private static List<Range> rangesThrough(SortedSet<Integer> knots, double[] widths, List<Range> ranges) {
+-      int samples = widths.length - 1;
++    /**
++     * {@code ranges} past either end of the line, and one of no length at each knot of {@code widths} between, at its
++     * share of the line.
++     */
++    private static List<Range> rangesThrough(SortedSet<Integer> knots, double[] widths, double[] shares,
++      List<Boolean> atBounds, List<Range> ranges) {
+       List<Range> result = new ArrayList<>();
+       ranges.stream().filter(range -> range.end() < 0).forEach(range -> add(result, range));
+       double previous = Double.NaN;
+       for (int k : knots) {
+         // Knots within the tolerance of the last are one range, so the width holds between them.
+-        double width = Math.abs(widths[k] - previous) < SAMPLE_TOLERANCE ? previous : widths[k];
+-        add(result, new Range((double) k / samples, (double) k / samples, width));
++        double width = !atBounds.get(k) && Math.abs(widths[k] - previous) < SAMPLE_TOLERANCE ? previous : widths[k];
++        add(result, new Range(shares[k], shares[k], width));
+         previous = width;
+       }
+       ranges.stream().filter(range -> range.start() > 1).forEach(range -> add(result, range));
+@@ -475,11 +525,11 @@ class WidthRanges {
+     }
+ 
+     /** The sample of {@code widths} that {@code ranges} eases furthest from, or -1 where none is beyond tolerance. */
+-    private static int worstMiss(List<Range> ranges, double[] widths) {
++    private static int worstMiss(List<Range> ranges, double[] widths, double[] shares) {
+       int worst = -1;
+       double worstMiss = SAMPLE_TOLERANCE;
+       for (int k = 0; k < widths.length; k++) {
+-        double miss = Math.abs(valueAt(ranges, (double) k / (widths.length - 1)) - widths[k]);
++        double miss = Math.abs(valueAt(ranges, shares[k]) - widths[k]);
+         if (miss > worstMiss) {
+           worstMiss = miss;
+           worst = k;
+@@ -488,10 +538,43 @@ class WidthRanges {
+       return worst;
+     }
+ 
+-    /** The fewest samples of {@code widths} that lines between them miss no sample by more than the tolerance. */
+-    private static List<Integer> knots(double[] widths) {
+-      var knots = new TreeSet<>(List.of(0, widths.length - 1));
+-      Deque<int[]> spans = new ArrayDeque<>(List.of(new int[]{0, widths.length - 1}));
++    /**
++     * The samples of {@code widths} to draw them through: along each widened stretch between the chain's
++     * {@code vertices}, the fewest that lines between them miss no sample by more than the tolerance; elsewhere, the
++     * samples {@code atBounds} of the ranges, so the line eases between them as it would unwidened. Each stretch is
++     * judged on its own, and a vertex kept only where the width changes beside a widened stretch.
++     */
++    private static List<Integer> knots(double[] widths, List<Integer> vertices, List<Boolean> widenedSegments,
++      List<Boolean> atBounds) {
++      var knots = new TreeSet<Integer>();
++      for (int i = 0; i + 1 < vertices.size(); i++) {
++        if (widenedSegments.get(i)) {
++          knots.addAll(knots(widths, vertices.get(i), vertices.get(i + 1)));
++        } else {
++          for (int k = vertices.get(i); k <= vertices.get(i + 1); k++) {
++            if (atBounds.get(k)) {
++              knots.add(k);
++            }
++          }
++        }
++      }
++      for (int i = 0; i < vertices.size(); i++) {
++        int vertex = vertices.get(i);
++        int before = vertices.get(Math.max(i - 1, 0));
++        int after = vertices.get(Math.min(i + 1, vertices.size() - 1));
++        boolean besideWidened = i > 0 && widenedSegments.get(i - 1) || i + 1 < vertices.size() && widenedSegments.get(i);
++        boolean flat = Arrays.stream(widths, before, after + 1).allMatch(width -> width == widths[vertex]);
++        if (!atBounds.get(vertex) && (!besideWidened || flat && i > 0 && i + 1 < vertices.size())) {
++          knots.remove(vertex);
++        }
++      }
++      return List.copyOf(knots);
++    }
++
++    /** The fewest samples of {@code widths} from {@code first} to {@code last} that lines between them miss none. */
++    private static List<Integer> knots(double[] widths, int first, int last) {
++      var knots = new TreeSet<>(List.of(first, last));
++      Deque<int[]> spans = new ArrayDeque<>(List.<int[]>of(new int[]{first, last}));
+       while (!spans.isEmpty()) {
+         var span = spans.pop();
+         int a = span[0];
+diff --git a/services/tilebuilder/src/test/java/org/headwaymaps/tilebuilder/WidthRangesTest.java b/services/tilebuilder/src/test/java/org/headwaymaps/tilebuilder/WidthRangesTest.java
+index 20b51168..aba6ff27 100644
+--- a/services/tilebuilder/src/test/java/org/headwaymaps/tilebuilder/WidthRangesTest.java
++++ b/services/tilebuilder/src/test/java/org/headwaymaps/tilebuilder/WidthRangesTest.java
+@@ -113,8 +113,8 @@ class WidthRangesTest {
+     // Where they run 4m apart, each spans 9m, so together they're 13m curb to curb.
+     assertEquals(
+       Set.of(
+-        "0.0,0.4854,9.0,0.4951,0.4951,8.381,0.5049,0.5049,7.6033,0.5146,0.5146,6.7625,0.5243,1.0,6.5",
+-        "0.0,0.4757,6.5,0.4854,0.4854,6.7625,0.4951,0.4951,7.6033,0.5049,0.5049,8.381,0.5146,1.0,9.0"),
++        "0.0,0.4864,9.0,0.4959,0.4959,8.321,0.5055,0.5055,7.5477,0.5151,0.5151,6.7149,0.5247,1.0,6.5",
++        "0.0,0.4753,6.5,0.4849,0.4849,6.7149,0.4945,0.4945,7.5477,0.5041,0.5041,8.321,0.5136,1.0,9.0"),
+       join(east, west).stream()
+         .map(feature -> feature.tags().get(WidthRanges.WIDTH_RANGES)).collect(Collectors.toSet()));
+   }
+@@ -130,8 +130,8 @@ class WidthRangesTest {
+       if (feature.tags().containsKey(Transportation.Fields.ONEWAY)) {
+         // Together as wide as the line where they split, each back to its own width once they're 10m apart.
+         assertTrue(Set.of(
+-          "0.0,0.0,16.5,0.001,0.001,16.1078,0.002,0.002,15.7157,0.0069,0.0069,13.7549,0.0186,0.0186,9.049,0.0225,0.0225,7.4804,0.0245,0.0245,6.6961,0.0255,1.0,6.5",
+-          "0.0,0.9745,6.5,0.9755,0.9755,6.6961,0.9775,0.9775,7.4804,0.9814,0.9814,9.049,0.9931,0.9931,13.7549,0.998,0.998,15.7157,0.999,0.999,16.1078,1.0,1.0,16.5").contains(ranges), ranges);
++          "0.0,0.0,16.5,0.001,0.001,16.1078,0.0029,0.0029,15.3235,0.0078,0.0078,13.3627,0.0081,0.0081,13.2641,0.0088,0.0088,12.9706,0.0196,0.0196,8.6569,0.0225,0.0225,7.4804,0.0245,0.0245,6.6961,0.0255,1.0,6.5",
++          "0.0,0.9745,6.5,0.9755,0.9755,6.6961,0.9775,0.9775,7.4804,0.9804,0.9804,8.6569,0.9912,0.9912,12.9706,0.9919,0.9919,13.2641,0.9922,0.9922,13.3627,0.9971,0.9971,15.3235,0.999,0.999,16.1078,1.0,1.0,16.5").contains(ranges), ranges);
+       } else {
+         assertEquals("0.0,1.0,16.5", ranges);
+       }
+@@ -171,8 +171,8 @@ class WidthRangesTest {
+     // Each half is as wide as the line at either end, and between them, together as wide as both lines blended.
+     assertEquals(
+       Set.of("0.0,1.0,13.0", "0.0,1.0,16.5",
+-        "0.0,0.0,13.0,0.027,0.027,12.6622,0.1081,0.1081,11.6486,0.3514,0.3514,8.6081,0.4324,0.4324,7.5946,0.4595,0.4595,7.2568,0.4865,0.4865,6.9189,0.5135,0.5135,7.0135,0.5405,0.5405,7.5405,0.5676,0.5676,8.0676,0.6486,0.6486,9.6486,0.8919,0.8919,14.3919,0.973,0.973,15.973,1.0,1.0,16.5",
+-        "0.0,0.0,16.5,0.027,0.027,15.973,0.1081,0.1081,14.3919,0.3514,0.3514,9.6486,0.4324,0.4324,8.0676,0.4595,0.4595,7.5405,0.4865,0.4865,7.0135,0.5135,0.5135,6.9189,0.5405,0.5405,7.2568,0.6216,0.6216,8.2703,0.8649,0.8649,11.3108,0.9459,0.9459,12.3243,0.973,0.973,12.6622,1.0,1.0,13.0"),
++        "0.0,0.0,13.0,0.0263,0.0263,12.6732,0.0526,0.0526,12.3463,0.1579,0.1579,11.0372,0.1763,0.1763,10.8086,0.1842,0.1842,10.7095,0.3947,0.3947,8.0773,0.4737,0.4737,7.0829,0.5,0.5,6.75,0.5263,0.5263,7.2592,0.5789,0.5789,8.2799,0.7632,0.7632,11.8678,0.7895,0.7895,12.3817,0.9211,0.9211,14.9544,0.9737,0.9737,15.9847,1.0,1.0,16.5",
++        "0.0,0.0,16.5,0.0263,0.0263,15.9847,0.0789,0.0789,14.9544,0.2105,0.2105,12.3817,0.2368,0.2368,11.8678,0.4211,0.4211,8.2799,0.4737,0.4737,7.2592,0.5,0.5,6.75,0.5263,0.5263,7.0829,0.6053,0.6053,8.0773,0.8158,0.8158,10.7095,0.8237,0.8237,10.8086,0.8421,0.8421,11.0372,0.9474,0.9474,12.3463,0.9737,0.9737,12.6732,1.0,1.0,13.0"),
+       joined.stream().map(feature -> feature.tags().get(WidthRanges.WIDTH_RANGES)).collect(Collectors.toSet()));
+   }
+ }
