@@ -27,30 +27,37 @@ fn minor_color() -> Stops<Color> {
     zoom![13.0 => hsl!(0, 0%, 86%), 20.0 => hsl!(0, 0%, 74%)]
 }
 
-const MINOR_WIDTH_BASE: f64 = 1.2;
-const MINOR_WIDTH: [(f64, f64); 3] = [(12.0, 1.0), (14.0, 2.5), (20.0, 18.0)];
-
-/// A minor road's width in pixels at `zoom`, as MapLibre interpolates it.
-fn minor_width(zoom: f64) -> f64 {
-    let zoom = zoom.clamp(MINOR_WIDTH[0].0, MINOR_WIDTH[MINOR_WIDTH.len() - 1].0);
-    let next = MINOR_WIDTH
-        .iter()
-        .position(|(z, _)| zoom <= *z)
-        .expect("zoom is clamped to the stops")
-        .max(1);
-    let ((z0, w0), (z1, w1)) = (MINOR_WIDTH[next - 1], MINOR_WIDTH[next]);
-    let t = (MINOR_WIDTH_BASE.powf(zoom - z0) - 1.0) / (MINOR_WIDTH_BASE.powf(z1 - z0) - 1.0);
-    w0 + t * (w1 - w0)
+const CROSSWALK_WIDTH: f64 = 3.0;
+/// Pedestrian paths, crosswalk stripes, and the sidewalks they join where streets are surfaces.
+fn walkway_color() -> Color {
+    hsl!(0, 0%, 96%)
 }
 
-/// A roundabout's radius, from its center to the middle of its ring, widened by `pad` times a
-/// minor road's width.
+/// A small roundabout is one lane around an island.
+const ROUNDABOUT_WIDTH: f64 = 4.5;
+
+/// A road's width in meters as mapped, or else `default`.
+fn mapped_width(default: impl Into<Expression>) -> Expression {
+    let default = default.into();
+    expr!([
+        "coalesce",
+        ["get", "width"],
+        [
+            "case",
+            ["==", ["get", "junction"], "roundabout"],
+            ROUNDABOUT_WIDTH,
+            default
+        ]
+    ])
+}
+
+/// A roundabout's radius, from its center to the middle of its ring, `pad` meters wider.
 fn roundabout_radius(pad: f64) -> Expression {
     let mut operands = vec![expr!(["exponential", 2.0]), expr!(["zoom"])];
-    for zoom in (12..=24).map(f64::from) {
+    for zoom in [14.0, 24.0] {
         // `radius` is in pixels of the z14 tile, which MapLibre draws 512 pixels across.
-        let tile_scale = 2.0 * (zoom - 14.0).exp2();
-        let pad = pad * minor_width(zoom);
+        let tile_scale = 2.0 * (zoom - 14.0_f64).exp2();
+        let pad = pad * Width::pixels_per_meter(zoom);
         operands.push(zoom.into());
         operands.push(expr!([
             "max",
@@ -67,7 +74,7 @@ fn above_ground() -> Filter {
 
 mod road;
 mod road_shield;
-use road::{Grade, Road, Roads};
+use road::{as_street, Grade, Road, Roads, Width, SURFACE_ZOOM};
 use road_shield::RoadShields;
 
 /// A published revision of the style, served side by side so older clients keep working.
@@ -93,6 +100,11 @@ pub fn style(version: Version) -> Style {
         );
         OpenMapTiles::new(omt_source)
     };
+    let streets_source = style.source(
+        "streets",
+        Source::vector("/streets-mlt").encoding(Encoding::Mlt),
+    );
+    let streets = streets_source.layer("transportation");
     let landcover_source = style.source("landcover", Source::vector("/landcover").maxzoom(8.0));
     let terrain_source = style.source("terrain", Source::raster("/terrain").maxzoom(6.0));
 
@@ -213,16 +225,33 @@ pub fn style(version: Version) -> Style {
         .width(zoom!(base: 1.2; 11 => 0.5, 20 => 6.0));
 
     let roads = Roads {
-        source: openmaptiles.transportation(),
+        source: &streets,
+        surfaces: streets_source.layer("street_surface"),
         roads: vec![
             Road::new("service_track")
                 .color(zoom![13.0 => hsl!(0, 0%, 92%), 20.0 => hsl!(0, 0%, 86%)])
-                .width(zoom!(base: 1.2; 13.0 => 0.0, 16.0 => 2.0, 20.0 => 7.5))
+                .width(Width::meters(
+                    [(13.0, 0.0), (15.0, 1.5)],
+                    mapped_width(expr!([
+                        "match",
+                        ["get", "service"],
+                        "driveway",
+                        3.5,
+                        "alley",
+                        4.5,
+                        "parking_aisle",
+                        6.0,
+                        4.0
+                    ])),
+                ))
                 .filter(Filter::class_in(["service", "track"]))
                 .minzoom(13.0),
             Road::new("ramp")
                 .color(zoom![12.0 => hsl!(0, 0%, 88%), 20.0 => hsl!(0, 0%, 74%)])
-                .width(zoom!(base: 1.2; 12.0 => 1.0, 14.0 => 2.5, 20.0 => 20.0))
+                .width(Width::meters(
+                    [(12.0, 1.0), (14.0, 2.5), (15.0, 4.0)],
+                    mapped_width(6.0),
+                ))
                 .filter(Filter::eq("ramp", 1).and_not_in(
                     "class",
                     ["pedestrian", "path", "track", "service", "motorway"],
@@ -230,30 +259,48 @@ pub fn style(version: Version) -> Style {
                 .minzoom(12.0),
             Road::new("minor")
                 .color(minor_color())
-                .width(zoom_with_base(MINOR_WIDTH_BASE, MINOR_WIDTH))
-                .filter(Filter::linestring().class("minor"))
+                .width(Width::meters(
+                    [(12.0, 1.0), (14.0, 2.5), (15.0, 4.0)],
+                    mapped_width(8.0),
+                ))
+                .filter(Filter::class("minor"))
                 .minzoom(12.0),
             Road::new("secondary_tertiary")
                 .color(zoom![12.0 => hsl!(0, 0%, 90%), 20.0 => hsl!(0, 0%, 74%)])
-                .width(zoom!(base: 1.2; 12.0 => 1.0, 13.0 => 2.5, 20.0 => 26.0))
+                .width(Width::meters(
+                    [(12.0, 1.0), (13.0, 2.5), (15.0, 6.0)],
+                    mapped_width(expr!(["match", ["get", "class"], "secondary", 12.0, 10.0])),
+                ))
                 .filter(Filter::class_in(["secondary", "tertiary"]))
                 .minzoom(12.0),
             Road::new("primary")
                 .color(zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 64%)])
-                .width(zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0))
+                .width(Width::meters(
+                    [(8.0, 1.0), (10.0, 2.0), (13.0, 4.5), (15.0, 8.0)],
+                    mapped_width(13.0),
+                ))
                 .minzoom(8.0),
             Road::new("trunk")
                 .color(zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 61%)])
-                .width(zoom!(base: 1.2; 6.0 => 1.0, 10.0 => 2.85, 13.0 => 4.5, 20.0 => 32.0))
+                .width(Width::meters(
+                    [(6.0, 1.0), (10.0, 2.85), (13.0, 4.5), (15.0, 8.0)],
+                    mapped_width(13.0),
+                ))
                 .minzoom(6.0),
             Road::new("motorway_ramp")
                 .color(zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)])
-                .width(zoom!(base: 1.2; 8.0 => 1.0, 13.0 => 4.5, 20.0 => 32.0))
+                .width(Width::meters(
+                    [(8.0, 1.0), (10.0, 2.0), (13.0, 3.0), (15.0, 5.0)],
+                    mapped_width(6.0),
+                ))
                 .filter(Filter::class("motorway").and_eq("ramp", 1))
                 .minzoom(8.0),
             Road::new("motorway")
                 .color(zoom![10.0 => hsl!(0, 0%, 68%), 20.0 => hsl!(0, 0%, 52%)])
-                .width(zoom!(base: 1.2; 5.0 => 1.0, 13.0 => 4.5, 20.0 => 36.0))
+                .width(Width::meters(
+                    [(5.0, 1.0), (10.0, 2.6), (13.0, 4.5), (15.0, 9.0)],
+                    mapped_width(11.0),
+                ))
                 .filter(Filter::class("motorway").and_ne("ramp", 1))
                 .minzoom(5.0)
                 .casing_minzoom(10.0),
@@ -268,7 +315,7 @@ pub fn style(version: Version) -> Style {
 
     roads.add_layers(&mut style, Grade::Tunnel);
     style
-        .line(openmaptiles.transportation(), "tunnel_path_pedestrian")
+        .line(&streets, "tunnel_path_pedestrian")
         .minzoom(13.0)
         .filter(Grade::Tunnel.filter().and(foot_path()))
         .color(hsl!(0, 0%, 98%))
@@ -276,50 +323,75 @@ pub fn style(version: Version) -> Style {
         .width(zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0));
     // Piers stand out over the water they're built on.
     style
-        .fill(openmaptiles.transportation(), "pier")
+        .fill(&streets, "pier")
         .filter(Filter::polygon().class("pier"))
         .color(land());
     // Plazas, footway areas, and platforms.
     style
-        .fill(openmaptiles.transportation(), "road_area_pattern")
+        .fill(&streets, "road_area_pattern")
         .filter(Filter::polygon().class_in(["pedestrian", "path"]))
         .pattern("pedestrian_polygon");
 
     let path_width = zoom!(base: 1.2; 13.0 => 0.75, 20.0 => 10.0);
+    let sidewalk_color = land().mix(&hsl!(0, 0%, 100%), 0.4);
+    // Where streets are surfaces, a sidewalk beside one is the ground from its curb outward.
+    style
+        .fill(
+            &streets_source.layer("sidewalk_surface"),
+            "road_sidewalk_surface",
+        )
+        .fade_in(SURFACE_ZOOM)
+        .color(walkway_color());
     // Unmarked crossings join the sidewalks beneath the streets, so each sidewalk runs on under the
     // street's edge instead of stopping short of it.
+    let sidewalk = Grade::Surface.filter().and(foot_path()).and(Filter::any([
+        Filter::eq("footway", "sidewalk"),
+        Filter::eq("crossing", "unmarked"),
+    ]));
     style
-        .line(openmaptiles.transportation(), "road_sidewalk")
+        .line(&streets, "road_sidewalk")
         .minzoom(13.0)
-        .filter(Grade::Surface.filter().and(foot_path()).and(Filter::any([
-            Filter::eq("footway", "sidewalk"),
-            Filter::eq("crossing", "unmarked"),
-        ])))
+        .filter(sidewalk.clone().and_not_has("beside_street"))
         .rounded()
-        .color(land().mix(&hsl!(0, 0%, 100%), 0.4))
+        .color(sidewalk_color)
         .width(path_width.clone());
+    style
+        .line(&streets, "road_sidewalk_beside_street")
+        .minzoom(13.0)
+        .filter(sidewalk.and_has("beside_street"))
+        .rounded()
+        .color(sidewalk_color)
+        .width(path_width.clone())
+        .fade_out(SURFACE_ZOOM);
     // Roundabouts are drawn as circles around their centers, since their rings are too coarse
     // to look round: a disk of road beneath the streets pouring into it, then the island on top.
-    let curb_color = minor_color().map(|color| color.darken(0.12));
+    let roundabout_road = as_street(&minor_color());
+    let roundabout_edge = as_street(&minor_color().map(|color| color.darken(0.12)));
     let roundabout = |style: &mut Style, id: &str, color: Property<Color>, radius: Expression| {
         style
-            .circle(openmaptiles.transportation(), id)
+            .circle(&streets, id)
             .minzoom(12.0)
             .filter(Filter::point().class("roundabout_center"))
             .flat()
             .color(color)
             .radius(radius)
             .stroke_width(1.0)
-            .stroke_color(curb_color.clone());
+            .stroke_color(roundabout_edge.clone());
     };
     roads.add_layers_with(&mut style, Grade::Surface, |style| {
-        let radius = roundabout_radius(0.5);
-        roundabout(style, "road_roundabout", minor_color().into(), radius);
+        // Padded half a meter past the ring's mapped lane, whose coarse edges they hide.
+        let radius = roundabout_radius(ROUNDABOUT_WIDTH / 2.0 + 0.5);
+        roundabout(
+            style,
+            "road_roundabout",
+            roundabout_road.clone().into(),
+            radius,
+        );
     });
-    let radius = roundabout_radius(-0.5);
+    let radius = roundabout_radius(-ROUNDABOUT_WIDTH / 2.0 - 0.5);
     roundabout(&mut style, "road_roundabout_island", land().into(), radius);
     style
-        .line(openmaptiles.transportation(), "road_path_pedestrian")
+        .line(&streets, "road_path_pedestrian")
         .minzoom(13.0)
         .filter(
             Grade::Surface
@@ -328,12 +400,12 @@ pub fn style(version: Version) -> Style {
                 .and_not_in("footway", ["sidewalk", "crossing"]),
         )
         .join_round()
-        .color(hsl!(0, 0%, 96%))
+        .color(walkway_color())
         .dasharray(vec![1.0, 0.7])
         .width(path_width);
     // Stripes across the walk, parallel to the street, where they're painted.
     style
-        .line(openmaptiles.transportation(), "road_crosswalk")
+        .line(&streets, "road_crosswalk")
         .minzoom(13.0)
         .filter(
             Grade::Surface
@@ -342,23 +414,20 @@ pub fn style(version: Version) -> Style {
                 .and_eq("footway", "crossing")
                 .and_ne("crossing", "unmarked"),
         )
-        .color(hsl!(0, 0%, 100%))
-        .dasharray(vec![0.2, 0.2])
-        .width(zoom!(base: 1.2; 13.0 => 1.0, 20.0 => 16.0));
+        .color(walkway_color())
+        .dasharray(vec![0.2, 0.3])
+        .width(Width::meters([(13.0, 1.0), (15.0, 4.0)], CROSSWALK_WIDTH).property());
 
     roads.add_layers(&mut style, Grade::Bridge);
     style
-        .line(
-            openmaptiles.transportation(),
-            "bridge_path_pedestrian_casing",
-        )
+        .line(&streets, "bridge_path_pedestrian_casing")
         .minzoom(13.0)
         .filter(Grade::Bridge.filter().and(foot_path()))
         .color(zoom![14.0 => hsl!(0, 0%, 88%), 20.0 => hsl!(0, 0%, 64%)])
         .dasharray(vec![1.0, 0.0])
         .width(zoom!(base: 1.2; 14.0 => 1.125, 20.0 => 18.0));
     style
-        .line(openmaptiles.transportation(), "bridge_path_pedestrian")
+        .line(&streets, "bridge_path_pedestrian")
         .minzoom(13.0)
         .filter(Grade::Bridge.filter().and(foot_path()))
         .color(hsl!(0, 0%, 96%))
@@ -399,20 +468,20 @@ pub fn style(version: Version) -> Style {
         .filter(Filter::eq("admin_level", 2));
 
     style
-        .symbol(openmaptiles.transportation(), "road_one_way_arrow")
+        .symbol(&streets, "road_one_way_arrow")
         .minzoom(15.0)
         .filter(Filter::eq("oneway", 1).and_ne("junction", "roundabout"))
         .icon_image("arrow")
         .placement(Placement::Line);
     style
-        .symbol(openmaptiles.transportation(), "road_one_way_arrow_opposite")
+        .symbol(&streets, "road_one_way_arrow_opposite")
         .minzoom(15.0)
         .filter(Filter::eq("oneway", -1))
         .icon_image("arrow")
         .placement(Placement::Line)
         .icon_rotate(180.0);
     style
-        .line(openmaptiles.transportation(), "route_ferry")
+        .line(&streets, "route_ferry")
         .filter(Filter::linestring().class("ferry"))
         .rounded()
         .color(hex!(0x9999dd))

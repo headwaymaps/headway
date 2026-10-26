@@ -4,21 +4,36 @@ Headway road hierarchy
 Surface-road rules in the generated Headway style.
 Lightness ranges are `(at first stop .. at z20)` as fractions; for example,
 `0.60 .. 0.40` means `hsl(0, 0%, 60%) .. hsl(0, 0%, 40%)`.
-Widths use the same range notation.
 
-Casing padding is per side: `fill width + (2 × padding) = casing width`.
+Zoomed out, roads are drawn at cartographic pixel widths. From z16 they are
+drawn true to scale, at the width mapped in OSM (`width`), else the class
+default below. Scale is exact at the 45th parallel; a style can't see latitude,
+so elsewhere roads are off by up to a fifth between the 33rd and 55th
+parallels.
 
-Class / rule           min_zoom  fill width    fill lightness    casing padding  casing lightness
----------------------  --------  ------------  ----------------  ------------  ----------------
-motorway                     5   1.0 .. 36     0.68 .. 0.52      0.2 .. 2       0.60 .. 0.40
-trunk                        6  1.0 .. 32     0.68 .. 0.61      0.7 .. 2       0.62 .. 0.49
-primary                      8  1.0 .. 32     0.68 .. 0.64      0.7 .. 2       0.67 .. 0.52
-motorway link / ramp         8  1.0 .. 32     0.68 .. 0.52      0.37 .. 1.5    0.64 .. 0.40
-secondary / tertiary        12  1.0 .. 26     0.90 .. 0.74      0.38 .. 2      0.82 .. 0.64
-minor / residential         12  1.0 .. 18     0.86 .. 0.74      0.56 .. 1      0.86 .. 0.64
-other link / ramp           12  1.0 .. 20     0.88 .. 0.74      0.56 .. 1.75   0.86 .. 0.64
-path / pedestrian           13  0.75 .. 10     0.96 .. 0.96*     --             --
-service / track             13     0 .. 7.5    0.84 .. 0.74      0.38 .. 1.75   0.88 .. 0.64
+Casing padding is per side: `fill width + (2 × padding) = casing width`. Once
+true to scale the casing is the curb: 1px per side.
+
+Class / rule           min_zoom  default width  fill lightness    casing padding  casing lightness
+---------------------  --------  -------------  ----------------  ------------  ----------------
+motorway                     5  11 m           0.68 .. 0.52      0.2 .. 1       0.60 .. 0.40
+trunk                        6  13 m           0.68 .. 0.61      0.7 .. 1       0.62 .. 0.49
+primary                      8  13 m           0.68 .. 0.64      0.7 .. 1       0.67 .. 0.52
+motorway link / ramp         8   6 m           0.68 .. 0.52      0.37 .. 1      0.64 .. 0.40
+secondary / tertiary        12  12 / 10 m      0.90 .. 0.74      0.38 .. 1      0.82 .. 0.64
+minor / residential         12   8 m           0.86 .. 0.74      0.56 .. 1      0.86 .. 0.64
+other link / ramp           12   6 m           0.88 .. 0.74      0.56 .. 1      0.86 .. 0.64
+service / track             13   4 m *         0.84 .. 0.74      0.38 .. 1      0.88 .. 0.64
+path / pedestrian           13  0.75 .. 10 px  0.96 .. 0.96**    --             --
+
+\* driveway 3.5 m, alley 4.5 m, parking aisle 6 m.
+
+Headway's tile additions
+------------------------
+
+Headway's tiles add to the OpenMapTiles transportation layer, from z14:
+
+- `width`, as mapped.
 
 Trunk and primary at low zoom
 -----------------------------
@@ -42,17 +57,18 @@ Notes:
   lightened the same way. Motorway tunnel casings additionally use a dash
   pattern.
 - Paths carry no surface casing; only the bridge variant has one.
-- *Paths use the shared neutral hue and a dash pattern.
+- **Paths use the shared neutral hue and a dash pattern.
 - Solid road and tunnel lines use `line-cap: round`. Only `line-join` smooths
   vertices within a feature, so the cap is what covers the seam where two
   features abut; `butt` leaves a notch at every one of them. The cost is that a
   round cap overhangs half a width past a tunnel portal, which the lighter
   tunnel color shows as a bulb. That is accepted: the seams are everywhere and
   the portals are not.
-- Bridges are the exception and stay on `butt`. Bridge casings are the only
+- Bridge casings are the exception and stay on `butt`. They are the only
   casings drawn above the surface fills, so a round cap there puts a dark blob
   on the road at each end of the bridge instead of hiding under the fill drawn
-  after it.
+  after it. Bridge fills are round like the rest, so neighboring bridge
+  features of different widths or directions don't leave notches.
 - Dashed lines keep the `butt` default: paths, rail hatching and the dashed
   tunnel casings. Dash lengths are multiples of the line width and a round cap
   adds half a width at each end, which would close gaps of 0.25 to 0.75 widths

@@ -12,6 +12,7 @@ pub enum Operator {
     Coalesce,
     Concat,
     Divide,
+    Equal,
     Get,
     Has,
     GreaterEqual,
@@ -39,6 +40,7 @@ impl Operator {
             Operator::Coalesce => "coalesce",
             Operator::Concat => "concat",
             Operator::Divide => "/",
+            Operator::Equal => "==",
             Operator::Get => "get",
             Operator::Has => "has",
             Operator::GreaterEqual => ">=",
@@ -87,6 +89,7 @@ macro_rules! expr {
     (@call "coalesce" [$($operand:tt),*]) => { $crate::expr!(@op Coalesce [$($operand),*]) };
     (@call "concat" [$($operand:tt),*]) => { $crate::expr!(@op Concat [$($operand),*]) };
     (@call "/" [$($operand:tt),*]) => { $crate::expr!(@op Divide [$($operand),*]) };
+    (@call "==" [$($operand:tt),*]) => { $crate::expr!(@op Equal [$($operand),*]) };
     (@call "get" [$($operand:tt),*]) => { $crate::expr!(@op Get [$($operand),*]) };
     (@call "has" [$($operand:tt),*]) => { $crate::expr!(@op Has [$($operand),*]) };
     (@call ">=" [$($operand:tt),*]) => { $crate::expr!(@op GreaterEqual [$($operand),*]) };

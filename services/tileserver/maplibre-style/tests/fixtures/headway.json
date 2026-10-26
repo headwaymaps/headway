@@ -429,6 +429,11 @@
         "all",
         [
           "==",
+          "$type",
+          "LineString"
+        ],
+        [
+          "==",
           "brunnel",
           "tunnel"
         ],
@@ -448,6 +453,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -457,8 +463,12 @@
               "hsl(0,0%,90%)"
             ],
             [
-              20,
-              "hsl(0,0%,87%)"
+              14,
+              "hsl(0,0%,89.571%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -466,31 +476,129 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              13,
+              15.5,
               1
             ],
             [
               16,
-              3.2
-            ],
-            [
-              20,
-              9.25
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          1,
+          15,
+          2.65,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "service"
+                    ],
+                    "driveway",
+                    3.5,
+                    "alley",
+                    4.5,
+                    "parking_aisle",
+                    6,
+                    4
+                  ]
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "service"
+                    ],
+                    "driveway",
+                    3.5,
+                    "alley",
+                    4.5,
+                    "parking_aisle",
+                    6,
+                    4
+                  ]
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -520,6 +628,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -529,8 +638,12 @@
               "hsl(0,0%,88%)"
             ],
             [
-              20,
-              "hsl(0,0%,81%)"
+              14,
+              "hsl(0,0%,86.25%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -538,25 +651,94 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              14,
-              3.75
-            ],
-            [
-              20,
-              23
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          14,
+          3.75,
+          15,
+          5.4,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -565,13 +747,13 @@
         "all",
         [
           "==",
-          "brunnel",
-          "tunnel"
+          "$type",
+          "LineString"
         ],
         [
           "==",
-          "$type",
-          "LineString"
+          "brunnel",
+          "tunnel"
         ],
         [
           "==",
@@ -588,6 +770,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -597,8 +780,12 @@
               "hsl(0,0%,87%)"
             ],
             [
-              20,
-              "hsl(0,0%,81%)"
+              14,
+              "hsl(0,0%,86.143%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -606,31 +793,105 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              14,
-              3.75
-            ],
-            [
-              20,
-              20.8
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          14,
+          3.75,
+          15,
+          5.4,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  8
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  8
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -652,6 +913,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -661,8 +923,12 @@
               "hsl(0,0%,89%)"
             ],
             [
-              20,
-              "hsl(0,0%,81%)"
+              14,
+              "hsl(0,0%,87%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -670,31 +936,123 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              3.75
-            ],
-            [
-              20,
-              29.6
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          13,
+          3.75,
+          15,
+          7.6,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "secondary",
+                    12,
+                    10
+                  ]
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "secondary",
+                    12,
+                    10
+                  ]
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -715,6 +1073,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -724,8 +1083,12 @@
               "hsl(0,0%,78%)"
             ],
             [
-              20,
-              "hsl(0,0%,76%)"
+              14,
+              "hsl(0,0%,77.2%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -733,31 +1096,107 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.1,
+          10,
+          3.2,
+          13,
+          5.95,
+          15,
+          9.8,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -778,6 +1217,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -787,8 +1227,12 @@
               "hsl(0,0%,78%)"
             ],
             [
-              20,
-              "hsl(0,0%,74.5%)"
+              14,
+              "hsl(0,0%,76.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -796,35 +1240,107 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              6,
-              2.1
+              15.5,
+              1
             ],
             [
-              10,
-              4.135
-            ],
-            [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          2.1,
+          10,
+          4.135,
+          13,
+          5.95,
+          15,
+          9.8,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -850,6 +1366,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -859,8 +1376,12 @@
               "hsl(0,0%,78%)"
             ],
             [
-              20,
-              "hsl(0,0%,70%)"
+              14,
+              "hsl(0,0%,74.8%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -868,31 +1389,107 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.1,
+          10,
+          3.2,
+          13,
+          4.3,
+          15,
+          6.5,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -918,6 +1515,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 10,
       "paint": {
         "line-color": {
@@ -927,8 +1525,12 @@
               "hsl(0,0%,78%)"
             ],
             [
-              20,
-              "hsl(0,0%,70%)"
+              14,
+              "hsl(0,0%,74.8%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,76%)"
             ]
           ]
         },
@@ -936,31 +1538,134 @@
           0.5,
           0.25
         ],
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              5,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              40.6
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          2.1,
+          10,
+          3.86,
+          13,
+          5.95,
+          15,
+          10.9,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  11
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  11
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
+        "==",
+        "brunnel",
+        "tunnel"
+      ],
+      "id": "tunnel_surface",
+      "minzoom": 15.5,
+      "paint": {
+        "fill-color": "hsl(197,4%,82%)",
+        "fill-opacity": {
+          "stops": [
+            [
+              15.5,
+              0
+            ],
+            [
+              16,
+              1
+            ]
+          ]
+        }
+      },
+      "source": "streets",
+      "source-layer": "street_surface",
+      "type": "fill"
+    },
+    {
+      "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -982,6 +1687,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -991,36 +1697,130 @@
               "hsl(0,0%,96%)"
             ],
             [
-              20,
-              "hsl(0,0%,93%)"
-            ]
-          ]
-        },
-        "line-width": {
-          "base": 1.2,
-          "stops": [
-            [
-              13,
-              0
+              14,
+              "hsl(0,0%,95.571%)"
             ],
             [
               16,
-              2
-            ],
-            [
-              20,
-              7.5
+              "hsl(197,4%,82%)"
             ]
           ]
-        }
+        },
+        "line-opacity": {
+          "stops": [
+            [
+              15.5,
+              1
+            ],
+            [
+              16,
+              0
+            ]
+          ]
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0,
+          15,
+          1.5,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  "driveway",
+                  3.5,
+                  "alley",
+                  4.5,
+                  "parking_aisle",
+                  6,
+                  4
+                ]
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  "driveway",
+                  3.5,
+                  "alley",
+                  4.5,
+                  "parking_aisle",
+                  6,
+                  4
+                ]
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1050,6 +1850,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -1059,30 +1860,95 @@
               "hsl(0,0%,94%)"
             ],
             [
-              20,
-              "hsl(0,0%,87%)"
+              14,
+              "hsl(0,0%,92.25%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,82%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              14,
-              2.5
-            ],
-            [
-              20,
-              20
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          14,
+          2.5,
+          15,
+          4,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -1091,13 +1957,13 @@
         "all",
         [
           "==",
-          "brunnel",
-          "tunnel"
+          "$type",
+          "LineString"
         ],
         [
           "==",
-          "$type",
-          "LineString"
+          "brunnel",
+          "tunnel"
         ],
         [
           "==",
@@ -1114,6 +1980,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -1123,36 +1990,106 @@
               "hsl(0,0%,93%)"
             ],
             [
-              20,
-              "hsl(0,0%,87%)"
+              14,
+              "hsl(0,0%,92.143%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,82%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              14,
-              2.5
-            ],
-            [
-              20,
-              18
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          14,
+          2.5,
+          15,
+          4,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                8
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                8
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1174,6 +2111,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -1183,36 +2121,124 @@
               "hsl(0,0%,95%)"
             ],
             [
-              20,
-              "hsl(0,0%,87%)"
+              14,
+              "hsl(0,0%,93%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,82%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              13,
-              2.5
-            ],
-            [
-              20,
-              26
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          13,
+          2.5,
+          15,
+          6,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "secondary",
+                  12,
+                  10
+                ]
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "secondary",
+                  12,
+                  10
+                ]
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1233,6 +2259,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 8,
       "paint": {
         "line-color": {
@@ -1242,36 +2269,108 @@
               "hsl(0,0%,84%)"
             ],
             [
-              20,
-              "hsl(0,0%,82%)"
+              14,
+              "hsl(0,0%,83.2%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,82%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          10,
+          2,
+          13,
+          4.5,
+          15,
+          8,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1292,6 +2391,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 6,
       "paint": {
         "line-color": {
@@ -1301,40 +2401,108 @@
               "hsl(0,0%,84%)"
             ],
             [
-              20,
-              "hsl(0,0%,80.5%)"
+              14,
+              "hsl(0,0%,82.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,82%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              6,
+              15.5,
               1
             ],
             [
-              10,
-              2.85
-            ],
-            [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1,
+          10,
+          2.85,
+          13,
+          4.5,
+          15,
+          8,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1360,6 +2528,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 8,
       "paint": {
         "line-color": {
@@ -1369,36 +2538,108 @@
               "hsl(0,0%,84%)"
             ],
             [
-              20,
-              "hsl(0,0%,76%)"
+              14,
+              "hsl(0,0%,80.8%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,82%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          10,
+          2,
+          13,
+          3,
+          15,
+          5,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1424,6 +2665,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 5,
       "paint": {
         "line-color": {
@@ -1433,36 +2675,108 @@
               "hsl(0,0%,84%)"
             ],
             [
-              20,
-              "hsl(0,0%,76%)"
+              14,
+              "hsl(0,0%,80.8%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,82%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              5,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              36
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          1,
+          10,
+          2.6,
+          13,
+          4.5,
+          15,
+          9,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                11
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                11
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1505,13 +2819,18 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -1564,7 +2883,7 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -1610,7 +2929,7 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -1632,7 +2951,7 @@
       "paint": {
         "fill-color": "rgb(241,239,231)"
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "fill"
     },
@@ -1655,8 +2974,30 @@
       "paint": {
         "fill-pattern": "pedestrian_polygon"
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
+      "type": "fill"
+    },
+    {
+      "id": "road_sidewalk_surface",
+      "minzoom": 15.5,
+      "paint": {
+        "fill-color": "hsl(0,0%,96%)",
+        "fill-opacity": {
+          "stops": [
+            [
+              15.5,
+              0
+            ],
+            [
+              16,
+              1
+            ]
+          ]
+        }
+      },
+      "source": "streets",
+      "source-layer": "sidewalk_surface",
       "type": "fill"
     },
     {
@@ -1691,6 +3032,10 @@
             "crossing",
             "unmarked"
           ]
+        ],
+        [
+          "!has",
+          "beside_street"
         ]
       ],
       "id": "road_sidewalk",
@@ -1715,13 +3060,95 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "!in",
+          "brunnel",
+          "bridge",
+          "tunnel"
+        ],
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
+        [
+          "in",
+          "class",
+          "path",
+          "pedestrian"
+        ],
+        [
+          "any",
+          [
+            "==",
+            "footway",
+            "sidewalk"
+          ],
+          [
+            "==",
+            "crossing",
+            "unmarked"
+          ]
+        ],
+        [
+          "has",
+          "beside_street"
+        ]
+      ],
+      "id": "road_sidewalk_beside_street",
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "maxzoom": 16,
+      "minzoom": 13,
+      "paint": {
+        "line-color": "rgb(247,245,241)",
+        "line-opacity": {
+          "stops": [
+            [
+              15.5,
+              1
+            ],
+            [
+              16,
+              0
+            ]
+          ]
+        },
+        "line-width": {
+          "base": 1.2,
+          "stops": [
+            [
+              13,
+              0.75
+            ],
+            [
+              20,
+              10
+            ]
+          ]
+        }
+      },
+      "source": "streets",
+      "source-layer": "transportation",
+      "type": "line"
+    },
+    {
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -1744,6 +3171,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -1753,36 +3181,138 @@
               "hsl(0,0%,80%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,79.143%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              13,
+              15.5,
               1
             ],
             [
               16,
-              3.2
-            ],
-            [
-              20,
-              9.25
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          1,
+          15,
+          2.65,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "service"
+                    ],
+                    "driveway",
+                    3.5,
+                    "alley",
+                    4.5,
+                    "parking_aisle",
+                    6,
+                    4
+                  ]
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "service"
+                    ],
+                    "driveway",
+                    3.5,
+                    "alley",
+                    4.5,
+                    "parking_aisle",
+                    6,
+                    4
+                  ]
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -1813,6 +3343,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -1822,30 +3353,103 @@
               "hsl(0,0%,76%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,72.5%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              14,
-              3.75
-            ],
-            [
-              20,
-              23
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          14,
+          3.75,
+          15,
+          5.4,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -1853,15 +3457,15 @@
       "filter": [
         "all",
         [
+          "==",
+          "$type",
+          "LineString"
+        ],
+        [
           "!in",
           "brunnel",
           "bridge",
           "tunnel"
-        ],
-        [
-          "==",
-          "$type",
-          "LineString"
         ],
         [
           "==",
@@ -1878,6 +3482,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -1887,36 +3492,114 @@
               "hsl(0,0%,74%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,72.286%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              14,
-              3.75
-            ],
-            [
-              20,
-              20.8
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          14,
+          3.75,
+          15,
+          5.4,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  8
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  8
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -1939,6 +3622,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -1948,36 +3632,132 @@
               "hsl(0,0%,78%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,74%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              3.75
-            ],
-            [
-              20,
-              29.6
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          13,
+          3.75,
+          15,
+          7.6,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "secondary",
+                    12,
+                    10
+                  ]
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "secondary",
+                    12,
+                    10
+                  ]
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -1999,6 +3779,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -2008,36 +3789,116 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,52%)"
+              14,
+              "hsl(0,0%,54.4%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.1,
+          10,
+          3.2,
+          13,
+          5.95,
+          15,
+          9.8,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2059,6 +3920,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -2068,40 +3930,116 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,49%)"
+              14,
+              "hsl(0,0%,53.2%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              6,
-              2.1
+              15.5,
+              1
             ],
             [
-              10,
-              4.135
-            ],
-            [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          2.1,
+          10,
+          4.135,
+          13,
+          5.95,
+          15,
+          9.8,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2128,6 +4066,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -2137,36 +4076,116 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,40%)"
+              14,
+              "hsl(0,0%,49.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.1,
+          10,
+          3.2,
+          13,
+          4.3,
+          15,
+          6.5,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2193,6 +4212,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 10,
       "paint": {
         "line-color": {
@@ -2202,30 +4222,105 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,40%)"
+              14,
+              "hsl(0,0%,49.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              5,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              40.6
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          2.1,
+          10,
+          3.86,
+          13,
+          5.95,
+          15,
+          10.9,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  11
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  11
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -2253,8 +4348,12 @@
               "hsl(0,0%,86%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,84.286%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
@@ -2268,40 +4367,6 @@
           ],
           [
             "zoom"
-          ],
-          12,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                0.5
-              ],
-              0.5
-            ]
-          ],
-          13,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                1
-              ],
-              0.840909
-            ]
           ],
           14,
           [
@@ -2317,160 +4382,7 @@
                 ],
                 2
               ],
-              1.25
-            ]
-          ],
-          15,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                4
-              ],
-              2.03047
-            ]
-          ],
-          16,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                8
-              ],
-              2.967033
-            ]
-          ],
-          17,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                16
-              ],
-              4.090909
-            ]
-          ],
-          18,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                32
-              ],
-              5.43956
-            ]
-          ],
-          19,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                64
-              ],
-              7.057942
-            ]
-          ],
-          20,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                128
-              ],
-              9
-            ]
-          ],
-          21,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                256
-              ],
-              9
-            ]
-          ],
-          22,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                512
-              ],
-              9
-            ]
-          ],
-          23,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                1024
-              ],
-              9
+              0.814074
             ]
           ],
           24,
@@ -2487,7 +4399,7 @@
                 ],
                 2048
               ],
-              9
+              833.611768
             ]
           ]
         ],
@@ -2498,20 +4410,57 @@
               "hsl(0,0%,74%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,72.286%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
         "circle-stroke-width": 1
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "circle"
     },
     {
       "filter": [
+        "!in",
+        "brunnel",
+        "bridge",
+        "tunnel"
+      ],
+      "id": "road_surface",
+      "minzoom": 15.5,
+      "paint": {
+        "fill-color": "hsl(197,4%,64%)",
+        "fill-opacity": {
+          "stops": [
+            [
+              15.5,
+              0
+            ],
+            [
+              16,
+              1
+            ]
+          ]
+        }
+      },
+      "source": "streets",
+      "source-layer": "street_surface",
+      "type": "fill"
+    },
+    {
+      "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2534,6 +4483,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -2543,36 +4493,130 @@
               "hsl(0,0%,92%)"
             ],
             [
-              20,
-              "hsl(0,0%,86%)"
-            ]
-          ]
-        },
-        "line-width": {
-          "base": 1.2,
-          "stops": [
-            [
-              13,
-              0
+              14,
+              "hsl(0,0%,91.143%)"
             ],
             [
               16,
-              2
-            ],
-            [
-              20,
-              7.5
+              "hsl(197,4%,64%)"
             ]
           ]
-        }
+        },
+        "line-opacity": {
+          "stops": [
+            [
+              15.5,
+              1
+            ],
+            [
+              16,
+              0
+            ]
+          ]
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0,
+          15,
+          1.5,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  "driveway",
+                  3.5,
+                  "alley",
+                  4.5,
+                  "parking_aisle",
+                  6,
+                  4
+                ]
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  "driveway",
+                  3.5,
+                  "alley",
+                  4.5,
+                  "parking_aisle",
+                  6,
+                  4
+                ]
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2603,6 +4647,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -2612,30 +4657,95 @@
               "hsl(0,0%,88%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,84.5%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              14,
-              2.5
-            ],
-            [
-              20,
-              20
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          14,
+          2.5,
+          15,
+          4,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -2643,15 +4753,15 @@
       "filter": [
         "all",
         [
+          "==",
+          "$type",
+          "LineString"
+        ],
+        [
           "!in",
           "brunnel",
           "bridge",
           "tunnel"
-        ],
-        [
-          "==",
-          "$type",
-          "LineString"
         ],
         [
           "==",
@@ -2668,6 +4778,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -2677,36 +4788,106 @@
               "hsl(0,0%,86%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,84.286%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              14,
-              2.5
-            ],
-            [
-              20,
-              18
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          14,
+          2.5,
+          15,
+          4,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                8
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                8
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2729,6 +4910,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -2738,36 +4920,124 @@
               "hsl(0,0%,90%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,86%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              13,
-              2.5
-            ],
-            [
-              20,
-              26
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          13,
+          2.5,
+          15,
+          6,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "secondary",
+                  12,
+                  10
+                ]
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "secondary",
+                  12,
+                  10
+                ]
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2789,6 +5059,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 8,
       "paint": {
         "line-color": {
@@ -2798,36 +5069,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,64%)"
+              14,
+              "hsl(0,0%,66.4%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          10,
+          2,
+          13,
+          4.5,
+          15,
+          8,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2849,6 +5192,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 6,
       "paint": {
         "line-color": {
@@ -2858,40 +5202,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,61%)"
+              14,
+              "hsl(0,0%,65.2%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              6,
+              15.5,
               1
             ],
             [
-              10,
-              2.85
-            ],
-            [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1,
+          10,
+          2.85,
+          13,
+          4.5,
+          15,
+          8,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2918,6 +5330,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 8,
       "paint": {
         "line-color": {
@@ -2927,36 +5340,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,52%)"
+              14,
+              "hsl(0,0%,61.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          10,
+          2,
+          13,
+          3,
+          15,
+          5,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -2983,6 +5468,7 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 5,
       "paint": {
         "line-color": {
@@ -2992,36 +5478,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,52%)"
+              14,
+              "hsl(0,0%,61.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              5,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              36
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          1,
+          10,
+          2.6,
+          13,
+          4.5,
+          15,
+          9,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                11
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                11
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -3065,13 +5623,18 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "!in",
           "brunnel",
@@ -3125,7 +5688,7 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -3158,40 +5721,6 @@
           [
             "zoom"
           ],
-          12,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                0.5
-              ],
-              -0.5
-            ]
-          ],
-          13,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                1
-              ],
-              -0.840909
-            ]
-          ],
           14,
           [
             "max",
@@ -3206,160 +5735,7 @@
                 ],
                 2
               ],
-              -1.25
-            ]
-          ],
-          15,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                4
-              ],
-              -2.03047
-            ]
-          ],
-          16,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                8
-              ],
-              -2.967033
-            ]
-          ],
-          17,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                16
-              ],
-              -4.090909
-            ]
-          ],
-          18,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                32
-              ],
-              -5.43956
-            ]
-          ],
-          19,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                64
-              ],
-              -7.057942
-            ]
-          ],
-          20,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                128
-              ],
-              -9
-            ]
-          ],
-          21,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                256
-              ],
-              -9
-            ]
-          ],
-          22,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                512
-              ],
-              -9
-            ]
-          ],
-          23,
-          [
-            "max",
-            0,
-            [
-              "+",
-              [
-                "*",
-                [
-                  "get",
-                  "radius"
-                ],
-                1024
-              ],
-              -9
+              -0.814074
             ]
           ],
           24,
@@ -3376,7 +5752,7 @@
                 ],
                 2048
               ],
-              -9
+              -833.611768
             ]
           ]
         ],
@@ -3387,14 +5763,18 @@
               "hsl(0,0%,74%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,72.286%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
         "circle-stroke-width": 1
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "circle"
     },
@@ -3450,7 +5830,7 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -3488,32 +5868,50 @@
       "id": "road_crosswalk",
       "minzoom": 13,
       "paint": {
-        "line-color": "hsl(0,0%,100%)",
+        "line-color": "hsl(0,0%,96%)",
         "line-dasharray": [
           0.2,
-          0.2
+          0.3
         ],
-        "line-width": {
-          "base": 1.2,
-          "stops": [
-            [
-              13,
-              1
-            ],
-            [
-              20,
-              16
-            ]
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          1,
+          15,
+          4,
+          16,
+          [
+            "*",
+            3,
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            3,
+            303.131552
           ]
-        }
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -3535,6 +5933,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -3544,36 +5943,138 @@
               "hsl(0,0%,80%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,79.143%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              13,
+              15.5,
               1
             ],
             [
               16,
-              3.2
-            ],
-            [
-              20,
-              9.25
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          1,
+          15,
+          2.65,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "service"
+                    ],
+                    "driveway",
+                    3.5,
+                    "alley",
+                    4.5,
+                    "parking_aisle",
+                    6,
+                    4
+                  ]
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "service"
+                    ],
+                    "driveway",
+                    3.5,
+                    "alley",
+                    4.5,
+                    "parking_aisle",
+                    6,
+                    4
+                  ]
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -3603,6 +6104,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -3612,30 +6114,103 @@
               "hsl(0,0%,76%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,72.5%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              14,
-              3.75
-            ],
-            [
-              20,
-              23
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          14,
+          3.75,
+          15,
+          5.4,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -3644,13 +6219,13 @@
         "all",
         [
           "==",
-          "brunnel",
-          "bridge"
+          "$type",
+          "LineString"
         ],
         [
           "==",
-          "$type",
-          "LineString"
+          "brunnel",
+          "bridge"
         ],
         [
           "==",
@@ -3667,6 +6242,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -3676,36 +6252,114 @@
               "hsl(0,0%,74%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,72.286%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              14,
-              3.75
-            ],
-            [
-              20,
-              20.8
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          14,
+          3.75,
+          15,
+          5.4,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  8
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  8
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -3727,6 +6381,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -3736,36 +6391,132 @@
               "hsl(0,0%,78%)"
             ],
             [
-              20,
-              "hsl(0,0%,62%)"
+              14,
+              "hsl(0,0%,74%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              3.75
-            ],
-            [
-              20,
-              29.6
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.1,
+          13,
+          3.75,
+          15,
+          7.6,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "secondary",
+                    12,
+                    10
+                  ]
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "class"
+                    ],
+                    "secondary",
+                    12,
+                    10
+                  ]
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -3786,6 +6537,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -3795,36 +6547,116 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,52%)"
+              14,
+              "hsl(0,0%,54.4%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.1,
+          10,
+          3.2,
+          13,
+          5.95,
+          15,
+          9.8,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -3845,6 +6677,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -3854,40 +6687,116 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,49%)"
+              14,
+              "hsl(0,0%,53.2%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              6,
-              2.1
+              15.5,
+              1
             ],
             [
-              10,
-              4.135
-            ],
-            [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          2.1,
+          10,
+          4.135,
+          13,
+          5.95,
+          15,
+          9.8,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  13
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -3913,6 +6822,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -3922,36 +6832,116 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,40%)"
+              14,
+              "hsl(0,0%,49.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              36.2
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.1,
+          10,
+          3.2,
+          13,
+          4.3,
+          15,
+          6.5,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  6
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -3977,6 +6967,7 @@
         "line-cap": "butt",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 10,
       "paint": {
         "line-color": {
@@ -3986,36 +6977,143 @@
               "hsl(0,0%,56%)"
             ],
             [
-              20,
-              "hsl(0,0%,40%)"
+              14,
+              "hsl(0,0%,49.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,52%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              5,
-              2.1
+              15.5,
+              1
             ],
             [
-              13,
-              5.95
-            ],
-            [
-              20,
-              40.6
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          2.1,
+          10,
+          3.86,
+          13,
+          5.95,
+          15,
+          10.9,
+          16,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  11
+                ]
+              ],
+              1.184108
+            ],
+            2
+          ],
+          24,
+          [
+            "+",
+            [
+              "*",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "width"
+                ],
+                [
+                  "case",
+                  [
+                    "==",
+                    [
+                      "get",
+                      "junction"
+                    ],
+                    "roundabout"
+                  ],
+                  4.5,
+                  11
+                ]
+              ],
+              303.131552
+            ],
+            2
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
+        "==",
+        "brunnel",
+        "bridge"
+      ],
+      "id": "bridge_surface",
+      "minzoom": 15.5,
+      "paint": {
+        "fill-color": "hsl(197,4%,64%)",
+        "fill-opacity": {
+          "stops": [
+            [
+              15.5,
+              0
+            ],
+            [
+              16,
+              1
+            ]
+          ]
+        }
+      },
+      "source": "streets",
+      "source-layer": "street_surface",
+      "type": "fill"
+    },
+    {
+      "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4034,9 +7132,10 @@
       ],
       "id": "bridge_service_track",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 13,
       "paint": {
         "line-color": {
@@ -4046,36 +7145,130 @@
               "hsl(0,0%,92%)"
             ],
             [
-              20,
-              "hsl(0,0%,86%)"
-            ]
-          ]
-        },
-        "line-width": {
-          "base": 1.2,
-          "stops": [
-            [
-              13,
-              0
+              14,
+              "hsl(0,0%,91.143%)"
             ],
             [
               16,
-              2
-            ],
-            [
-              20,
-              7.5
+              "hsl(197,4%,64%)"
             ]
           ]
-        }
+        },
+        "line-opacity": {
+          "stops": [
+            [
+              15.5,
+              1
+            ],
+            [
+              16,
+              0
+            ]
+          ]
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0,
+          15,
+          1.5,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  "driveway",
+                  3.5,
+                  "alley",
+                  4.5,
+                  "parking_aisle",
+                  6,
+                  4
+                ]
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "service"
+                  ],
+                  "driveway",
+                  3.5,
+                  "alley",
+                  4.5,
+                  "parking_aisle",
+                  6,
+                  4
+                ]
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4102,9 +7295,10 @@
       ],
       "id": "bridge_ramp",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -4114,30 +7308,95 @@
               "hsl(0,0%,88%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,84.5%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              14,
-              2.5
-            ],
-            [
-              20,
-              20
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          14,
+          2.5,
+          15,
+          4,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -4146,13 +7405,13 @@
         "all",
         [
           "==",
-          "brunnel",
-          "bridge"
+          "$type",
+          "LineString"
         ],
         [
           "==",
-          "$type",
-          "LineString"
+          "brunnel",
+          "bridge"
         ],
         [
           "==",
@@ -4166,9 +7425,10 @@
       ],
       "id": "bridge_minor",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -4178,36 +7438,106 @@
               "hsl(0,0%,86%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,84.286%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              14,
-              2.5
-            ],
-            [
-              20,
-              18
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          14,
+          2.5,
+          15,
+          4,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                8
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                8
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4226,9 +7556,10 @@
       ],
       "id": "bridge_secondary_tertiary",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 12,
       "paint": {
         "line-color": {
@@ -4238,36 +7569,124 @@
               "hsl(0,0%,90%)"
             ],
             [
-              20,
-              "hsl(0,0%,74%)"
+              14,
+              "hsl(0,0%,86%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              12,
+              15.5,
               1
             ],
             [
-              13,
-              2.5
-            ],
-            [
-              20,
-              26
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          13,
+          2.5,
+          15,
+          6,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "secondary",
+                  12,
+                  10
+                ]
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                [
+                  "match",
+                  [
+                    "get",
+                    "class"
+                  ],
+                  "secondary",
+                  12,
+                  10
+                ]
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4285,9 +7704,10 @@
       ],
       "id": "bridge_primary",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 8,
       "paint": {
         "line-color": {
@@ -4297,36 +7717,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,64%)"
+              14,
+              "hsl(0,0%,66.4%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          10,
+          2,
+          13,
+          4.5,
+          15,
+          8,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4344,9 +7836,10 @@
       ],
       "id": "bridge_trunk",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 6,
       "paint": {
         "line-color": {
@@ -4356,40 +7849,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,61%)"
+              14,
+              "hsl(0,0%,65.2%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              6,
+              15.5,
               1
             ],
             [
-              10,
-              2.85
-            ],
-            [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1,
+          10,
+          2.85,
+          13,
+          4.5,
+          15,
+          8,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                13
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4412,9 +7973,10 @@
       ],
       "id": "bridge_motorway_ramp",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 8,
       "paint": {
         "line-color": {
@@ -4424,36 +7986,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,52%)"
+              14,
+              "hsl(0,0%,61.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              8,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              32
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1,
+          10,
+          2,
+          13,
+          3,
+          15,
+          5,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                6
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4476,9 +8110,10 @@
       ],
       "id": "bridge_motorway",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
+      "maxzoom": 16,
       "minzoom": 5,
       "paint": {
         "line-color": {
@@ -4488,36 +8123,108 @@
               "hsl(0,0%,68%)"
             ],
             [
-              20,
-              "hsl(0,0%,52%)"
+              14,
+              "hsl(0,0%,61.6%)"
+            ],
+            [
+              16,
+              "hsl(197,4%,64%)"
             ]
           ]
         },
-        "line-width": {
-          "base": 1.2,
+        "line-opacity": {
           "stops": [
             [
-              5,
+              15.5,
               1
             ],
             [
-              13,
-              4.5
-            ],
-            [
-              20,
-              36
+              16,
+              0
             ]
           ]
-        }
+        },
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            2
+          ],
+          [
+            "zoom"
+          ],
+          5,
+          1,
+          10,
+          2.6,
+          13,
+          4.5,
+          15,
+          9,
+          16,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                11
+              ]
+            ],
+            1.184108
+          ],
+          24,
+          [
+            "*",
+            [
+              "coalesce",
+              [
+                "get",
+                "width"
+              ],
+              [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "junction"
+                  ],
+                  "roundabout"
+                ],
+                4.5,
+                11
+              ]
+            ],
+            303.131552
+          ]
+        ]
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4536,7 +8243,7 @@
       ],
       "id": "bridge_rail",
       "layout": {
-        "line-cap": "butt",
+        "line-cap": "round",
         "line-join": "round"
       },
       "minzoom": 0,
@@ -4560,13 +8267,18 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
     {
       "filter": [
         "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
         [
           "==",
           "brunnel",
@@ -4619,7 +8331,7 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -4676,7 +8388,7 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -4722,7 +8434,7 @@
           ]
         }
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -4912,7 +8624,7 @@
         "symbol-placement": "line"
       },
       "minzoom": 15,
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "symbol"
     },
@@ -4929,7 +8641,7 @@
         "symbol-placement": "line"
       },
       "minzoom": 15,
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "symbol"
     },
@@ -4973,7 +8685,7 @@
         },
         "line-width": 2
       },
-      "source": "openmaptiles",
+      "source": "streets",
       "source-layer": "transportation",
       "type": "line"
     },
@@ -6737,6 +10449,11 @@
       "encoding": "mlt",
       "type": "vector",
       "url": "/areamap-mlt"
+    },
+    "streets": {
+      "encoding": "mlt",
+      "type": "vector",
+      "url": "/streets-mlt"
     },
     "terrain": {
       "maxzoom": 6,

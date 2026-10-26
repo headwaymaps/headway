@@ -95,7 +95,7 @@ async function loadMap(): Promise<MaplibreMap> {
       antialias: true,
     },
     transformRequest: (url, resourceType) => {
-      if (resourceType === 'Tile' && url.includes('areamap')) {
+      if (resourceType === 'Tile' && /areamap|streets/.test(url)) {
         return {
           url,
           headers: { Accept: 'application/vnd.maplibre-tile' },

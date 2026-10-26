@@ -32,6 +32,35 @@ impl<T> Stops<T> {
     }
 }
 
+impl Stops<Color> {
+    /// These colors until zoom `from`, then blending into `target` by zoom `to`.
+    pub fn blend_into(&self, from: f64, to: f64, target: Color) -> Stops<Color> {
+        assert!(self.base.is_none(), "blending needs linear stops");
+        let mut stops: Vec<(f64, Color)> = self
+            .stops
+            .iter()
+            .filter(|(zoom, _)| *zoom < from)
+            .cloned()
+            .collect();
+        stops.push((from, self.at(from)));
+        stops.push((to, target));
+        Stops { base: None, stops }
+    }
+
+    fn at(&self, zoom: f64) -> Color {
+        let after = self.stops.iter().position(|(stop, _)| *stop >= zoom);
+        match after {
+            None => self.stops.last().expect("stops").1,
+            Some(0) => self.stops[0].1,
+            Some(i) => {
+                let (low, low_color) = &self.stops[i - 1];
+                let (high, high_color) = &self.stops[i];
+                low_color.mix(high_color, (zoom - low) / (high - low))
+            }
+        }
+    }
+}
+
 impl<T: Serialize> Stops<T> {
     fn into_json(self) -> Stops<Json> {
         self.map(|value| serde_json::to_value(value).expect("stop values serialize"))
