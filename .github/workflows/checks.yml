@@ -51,6 +51,8 @@ jobs:
       DAGGER_NO_NAG: 1
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Install Dagger
         uses: dagger/dagger-for-github@v8.4.1
         with:
@@ -113,6 +115,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Install Dagger
         uses: dagger/dagger-for-github@v8.4.1
         with:
@@ -171,6 +175,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -185,6 +191,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -207,6 +215,8 @@ jobs:
     needs: [build_data, build_images]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: Download data artifacts
@@ -243,6 +253,8 @@ jobs:
     needs: [build_data, build_images]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22

@@ -17,6 +17,8 @@ jobs:
       DAGGER_NO_NAG: 1
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Install Dagger
         uses: dagger/dagger-for-github@v8.4.1
         with:
