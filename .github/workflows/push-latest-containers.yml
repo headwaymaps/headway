@@ -17,7 +17,7 @@ jobs:
     env:
       DAGGER_NO_NAG: 1
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Install Dagger
@@ -25,13 +25,13 @@ jobs:
         with:
           version: "latest"
       - name: Install otel-cli
-        uses: ./.github/actions/install-otel-cli
+        uses: $/.github/actions/install-otel-cli
       - name: Pick Rust cache month
         id: rust-cache
         run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
       # Read-only: checks.yml saves this cache from main.
       - name: Restore Rust build caches
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@v6.1.0
         with:
           path: ~/rust-caches.tar.zst
           key: dagger-rust-zst-${{ steps.rust-cache.outputs.month }}-${{ github.run_id }}-${{ github.run_attempt }}
