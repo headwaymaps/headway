@@ -109,7 +109,7 @@ case "$COMMAND" in
         }
 
         add_latest valhalla      "${HEADWAY_AREA}-valhalla"      .tar.zst
-        add_latest elasticsearch "${HEADWAY_AREA}-elasticsearch" .tar.zst
+        add_latest elasticsearch "${HEADWAY_AREA}-elasticsearch" .erofs.zst
         add_latest placeholder   "${HEADWAY_AREA}-placeholder"   .tar.zst
         add_latest pmtiles       "${HEADWAY_AREA}"               .pmtiles
         add_latest osm           "${HEADWAY_AREA}"               .osm.pbf
@@ -220,6 +220,10 @@ case "$COMMAND" in
         if [ -z "$path" ]; then
             [ "$OPTIONAL" -eq 1 ] && exit 0
             echo "Error: missing ${COMMAND} in ${MANIFEST}; run bin/artifacts --pin ${CONFIG_DIR} on the build machine" >&2
+            exit 1
+        fi
+        if [ "$COMMAND" = elasticsearch ] && [[ "$path" != *.erofs.zst ]]; then
+            echo "Error: ${path} isn't an EROFS index image; rebuild with bin/build ${CONFIG_DIR}" >&2
             exit 1
         fi
         printf '%s\n' "$path"

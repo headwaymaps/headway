@@ -97,7 +97,7 @@ spec:
                   }
                 }
             - name: PLACEHOLDER_ARTIFACT_URL
-              value: "https://data.example.com/dev/seattle-latest/Seattle-placeholder-2026-08-20-f5e32801.tar.zst"
+              value: "https://data.example.com/dev/seattle-latest/Seattle-placeholder-2026-10-31-00126e45.tar.zst"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_placeholder.sh" ]
           resources:
             limits:
@@ -141,7 +141,7 @@ spec:
       volumes:
         - name: placeholder-volume
           persistentVolumeClaim:
-            claimName: placeholder-seattle-latest-dev-2026-08-20-70d1b581
+            claimName: placeholder-seattle-latest-dev-2026-10-31-e7ee76d6
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:

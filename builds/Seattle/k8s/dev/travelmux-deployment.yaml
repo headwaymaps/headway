@@ -21,7 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: TRAVELMUX_ELEVATION_ARTIFACT_URL
-              value: "https://data.example.com/dev/seattle-latest/transit/Seattle-elevation-tifs-2026-09-17-d0fa2426.tar.zst"
+              value: "https://data.example.com/dev/seattle-latest/transit/Seattle-elevation-tifs-2026-10-31-9b561834.tar.zst"
           resources:
             limits:
               memory: 512Mi

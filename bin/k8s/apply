@@ -105,11 +105,8 @@ function restart_rotated() {
         "${ROTATED_ZONES[@]/#/deployment/opentripplanner-}"
 }
 
-# Elasticsearch is left out: its image is pinned, and a second pod can't open
-# the volume the running one holds.
 function restart_all() {
     kubectl get deployments -n "$NAMESPACE" -o name \
-        | grep -vx deployment.apps/pelias-elasticsearch \
         | xargs kubectl rollout restart -n "$NAMESPACE"
 }
 

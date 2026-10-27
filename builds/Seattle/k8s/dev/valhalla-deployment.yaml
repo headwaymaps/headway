@@ -21,7 +21,7 @@ spec:
               mountPath: /data
           env:
             - name: VALHALLA_ARTIFACT_URL
-              value: "https://data.example.com/dev/seattle-latest/Seattle-valhalla-2026-08-19-cf37274b.tar.zst"
+              value: "https://data.example.com/dev/seattle-latest/Seattle-valhalla-2026-10-31-efaf0b37.tar.zst"
           resources:
             limits:
               memory: 512Mi
@@ -44,4 +44,4 @@ spec:
       volumes:
         - name: valhalla-volume
           persistentVolumeClaim:
-            claimName: valhalla-seattle-latest-dev-2026-08-19-446e7af3
+            claimName: valhalla-seattle-latest-dev-2026-10-31-79bfd5e5

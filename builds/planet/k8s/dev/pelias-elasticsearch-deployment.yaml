@@ -4,14 +4,6 @@ metadata:
   name: pelias-elasticsearch
 spec:
   replicas: 1
-  # Keep the old pod serving until the new one is ready. Elasticsearch locks
-  # its data dir, so this relies on every change to this pod getting a fresh
-  # volume - see ELASTICSEARCH_VOLUME_VERSION in bin/k8s/generate.
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -24,7 +16,10 @@ spec:
       volumes:
         - name: elasticsearch-volume
           persistentVolumeClaim:
-            claimName: elasticsearch-maps-earth-planet-v1-261019-0-14-0-2026-10-24-e8e05a36-a0a7918d
+            claimName: elasticsearch-maps-earth-planet-v1-261019-0-14-0-2026-10-30-b04df42a
+        # Elasticsearch's writes, layered over the read-only index image.
+        - name: elasticsearch-scratch
+          emptyDir: {}
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
@@ -39,7 +34,7 @@ spec:
           imagePullPolicy: Always
           volumeMounts:
             - name: elasticsearch-volume
-              mountPath: /usr/share/elasticsearch/data
+              mountPath: /index
             - name: config-volume
               mountPath: /config
           env:
@@ -63,7 +58,8 @@ spec:
                       "index": {
                         "refresh_interval": "10s",
                         "number_of_replicas": "0",
-                        "number_of_shards": "5"
+                        "number_of_shards": "5",
+                        "codec": "best_compression"
                       }
                     }
                   },
@@ -109,7 +105,7 @@ spec:
                   }
                 }
             - name: ELASTICSEARCH_ARTIFACT_URL
-              value: "https://data.example.com/0.14.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-elasticsearch-2026-10-24-a35ed6f1.tar.zst"
+              value: "https://data.example.com/0.14.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-elasticsearch-2026-10-30-9da15ae0.erofs.zst"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
           resources:
             limits:
@@ -118,10 +114,17 @@ spec:
               memory: 200Mi
       containers:
         - name: main
-          image: pelias/elasticsearch:8.12.2-beta
+          image: ghcr.io/headwaymaps/pelias-elasticsearch:maps-earth-dev
+          imagePullPolicy: Always
+          # to mount the index image
+          securityContext:
+            privileged: true
           volumeMounts:
             - name: elasticsearch-volume
-              mountPath: /usr/share/elasticsearch/data
+              mountPath: /index
+              readOnly: true
+            - name: elasticsearch-scratch
+              mountPath: /scratch
             - name: config-volume
               mountPath: /config
           ports:
