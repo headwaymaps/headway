@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -35,7 +37,10 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	// +optional
 	gtfsSecrets *dagger.Secret,
 	// +optional
-	maxConcurrentZones int) (*dagger.Directory, error) {
+	maxConcurrentZones int,
+	// Builds every zone, plus the elevation shared between them, when empty.
+	// +optional
+	zones []string) (*dagger.Directory, error) {
 	ctx, span := startStep(ctx, "transit")
 	defer span.End()
 
@@ -54,6 +59,13 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	}
 	if err := lintTransitZoneNames(zoneFiles); err != nil {
 		return nil, err
+	}
+	allZones := len(zones) == 0
+	if !allZones {
+		zoneFiles, err = selectTransitZones(zoneFiles, zones)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	type zoneResult struct {
@@ -164,7 +176,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		artifacts = append(artifacts, result.gtfs, result.graph)
 		elevations = elevations.WithDirectory("./", result.elevations)
 	}
-	artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
+	if allZones {
+		artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
+	}
 
 	if err := buildAll(ctx, artifacts); err != nil {
 		return nil, err
@@ -197,6 +211,22 @@ func lintTransitZoneNames(zoneFiles []transitZoneFile) error {
 		}
 	}
 	return nil
+}
+
+func selectTransitZones(zoneFiles []transitZoneFile, zones []string) ([]transitZoneFile, error) {
+	var selected []transitZoneFile
+	for _, zone := range zones {
+		i := slices.IndexFunc(zoneFiles, func(f transitZoneFile) bool { return f.name == zone })
+		if i < 0 {
+			names := make([]string, len(zoneFiles))
+			for j, f := range zoneFiles {
+				names[j] = f.name
+			}
+			return nil, fmt.Errorf("unknown transit zone %q, expected one of %s", zone, strings.Join(names, ", "))
+		}
+		selected = append(selected, zoneFiles[i])
+	}
+	return selected, nil
 }
 
 func transitZoneFiles(ctx context.Context, transitConfigDir *dagger.Directory) ([]transitZoneFile, error) {

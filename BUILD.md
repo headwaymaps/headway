@@ -108,7 +108,7 @@ To run that tool yourself instead, see [TRANSIT_ZONER.md](./TRANSIT_ZONER.md).
 3. Build the transit artifacts and restart the stack:
 
    ```sh
-   bin/build builds/Amsterdam --transit-only
+   bin/build builds/Amsterdam otp-graphs
    bin/reset-services builds/Amsterdam
    ```
 

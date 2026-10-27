@@ -9,10 +9,18 @@ cd "$APP_ROOT"
 
 function usage() {
     cat <<EOS
-$0 must specify build config directory
+usage: $0 <build-config-dir> [artifact...]
+
+Builds every artifact, or only those named by their artifacts.json key:
+    osm pmtiles valhalla elasticsearch placeholder terrain landcover
+    otp-graphs gtfs elevation    (all transit zones)
+    otp-graphs.<zone>            (one zone's graph and GTFS)
+
 e.g.
     $0 builds/planet
-    $0 builds/Seattle --transit-only
+    $0 builds/planet pmtiles
+    $0 builds/Seattle otp-graphs
+    $0 builds/planet otp-graphs.london
 EOS
 }
 
@@ -31,16 +39,15 @@ shift
 
 set -o nounset
 
-TRANSIT_ONLY=0
-while [ "$#" -gt 0 ]; do
-    case "$1" in
-        --transit-only) TRANSIT_ONLY=1 ;;
-        *)
-            echo "Error: unknown option $1" >&2
-            exit 1
-            ;;
+ONLY=("$@")
+
+# Everything but terrain and landcover is built from the area's PBF.
+NEEDS_PBF=$([ ${#ONLY[@]} -eq 0 ] && echo 1 || echo 0)
+for artifact in "${ONLY[@]+"${ONLY[@]}"}"; do
+    case "$artifact" in
+        terrain | landcover) ;;
+        *) NEEDS_PBF=1 ;;
     esac
-    shift
 done
 
 if [ ! -d "$CONFIG_DIR" ]; then
@@ -71,7 +78,7 @@ trace_start "$HEADWAY_AREA"
 trap 'exit_code=$?; bin/revert-fetch-urls; trace_finish; [ $exit_code -ne 0 ] || next_steps' EXIT
 bin/update-fetch-urls
 
-if [ "$TRANSIT_ONLY" -eq 0 ] && [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
+if [ "$NEEDS_PBF" -eq 1 ] && [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
     status "Running ${CONFIG_DIR}/prebuild.sh"
     traced prebuild "${CONFIG_DIR}/prebuild.sh"
 fi
@@ -95,12 +102,12 @@ if [ -d "$TRANSIT_CONFIG_DIR" ]; then
     fi
 fi
 
-USE_TRANSIT_ONLY_CMD=""
-if [ "$TRANSIT_ONLY" -eq 1 ]; then
-    USE_TRANSIT_ONLY_CMD="| transit-only"
+USE_ONLY_FLAG=""
+if [ ${#ONLY[@]} -gt 0 ]; then
+    USE_ONLY_FLAG="--only=$(IFS=,; echo "${ONLY[*]}")"
 fi
-status "Building artifacts into data/${HEADWAY_AREA}"
-traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_TRANSIT_ONLY_CMD} | build | export 'data/${HEADWAY_AREA}'"
+status "Building ${ONLY[*]:-all artifacts} into data/${HEADWAY_AREA}"
+traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
 
 status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"

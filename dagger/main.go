@@ -32,7 +32,6 @@ type Headway struct {
 	TransitConfigDir          *dagger.Directory
 	GTFSSecrets               *dagger.Secret
 	MaxConcurrentTransitZones int
-	BuildTransitOnly          bool
 	// The repository root.
 	RepoDir       *dagger.Directory
 	IsPlanetBuild bool
@@ -256,13 +255,6 @@ func (h *Headway) WithArea(
 	return h
 }
 
-// Makes Build export only transit artifacts. Requires WithArea to have a
-// transit directory.
-func (h *Headway) TransitOnly() *Headway {
-	h.BuildTransitOnly = true
-	return h
-}
-
 func (h *Headway) ServicesDir() *dagger.Directory {
 	if h.RepoDir == nil {
 		panic("Headway.RepoDir was nil - did you start with `new`?")
@@ -289,24 +281,29 @@ func getEnvWithDefault(envVariable, defaultValue string) string {
 // cheap - every expensive step underneath keeps its own cache entry.
 //
 // +cache="never"
-func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
-	if h.BuildTransitOnly && h.TransitConfigDir == nil {
-		return nil, fmt.Errorf("transit-only requires --transit-dir")
+func (h *Headway) Build(ctx context.Context,
+	// artifacts.json keys to build, e.g. "pmtiles" or "otp-graphs.london".
+	// Builds everything when empty.
+	// +optional
+	only []string) (*dagger.Directory, error) {
+	selection, err := h.parseBuildSelection(only)
+	if err != nil {
+		return nil, err
 	}
 
 	var mapOutput, transitOutput *dagger.Directory
 	group, groupCtx := errgroup.WithContext(ctx)
-	if !h.BuildTransitOnly {
+	if len(selection.mapKeys) > 0 {
 		group.Go(func() error {
 			var err error
-			mapOutput, err = h.buildAllExceptTransit(groupCtx)
+			mapOutput, err = h.buildMapArtifacts(groupCtx, selection.mapKeys)
 			return err
 		})
 	}
-	if h.TransitConfigDir != nil {
+	if selection.transit {
 		group.Go(func() error {
 			var err error
-			transitOutput, err = h.BuildTransit(groupCtx, h.TransitConfigDir, h.GTFSSecrets, h.MaxConcurrentTransitZones)
+			transitOutput, err = h.BuildTransit(groupCtx, h.TransitConfigDir, h.GTFSSecrets, h.MaxConcurrentTransitZones, selection.transitZones)
 			return err
 		})
 	}
@@ -324,53 +321,117 @@ func (h *Headway) Build(ctx context.Context) (*dagger.Directory, error) {
 	return output, nil
 }
 
-func (h *Headway) buildAllExceptTransit(ctx context.Context) (*dagger.Directory, error) {
+// The artifacts.json keys built outside of transit.
+var mapArtifactKeys = []string{"osm", "pmtiles", "valhalla", "elasticsearch", "placeholder", "terrain", "landcover"}
 
+// The keys built by BuildTransit. A zone's graph and GTFS can also be picked
+// individually, e.g. "otp-graphs.london".
+var transitArtifactKeys = []string{"otp-graphs", "gtfs", "elevation"}
+
+type buildSelection struct {
+	mapKeys []string
+	transit bool
+	// Every zone when empty.
+	transitZones []string
+}
+
+func (h *Headway) parseBuildSelection(only []string) (*buildSelection, error) {
+	if len(only) == 0 {
+		return &buildSelection{mapKeys: mapArtifactKeys, transit: h.TransitConfigDir != nil}, nil
+	}
+
+	selection := &buildSelection{}
+	allZones := false
+	for _, key := range only {
+		kind, zone, hasZone := strings.Cut(key, ".")
+		switch {
+		case slices.Contains(mapArtifactKeys, key):
+			if !slices.Contains(selection.mapKeys, key) {
+				selection.mapKeys = append(selection.mapKeys, key)
+			}
+		case slices.Contains(transitArtifactKeys, key):
+			selection.transit = true
+			allZones = true
+		case hasZone && (kind == "otp-graphs" || kind == "gtfs"):
+			selection.transit = true
+			if !slices.Contains(selection.transitZones, zone) {
+				selection.transitZones = append(selection.transitZones, zone)
+			}
+		default:
+			valid := append(slices.Clone(mapArtifactKeys), transitArtifactKeys...)
+			return nil, fmt.Errorf("unknown artifact %q, expected one of %s, or otp-graphs.<zone>", key, strings.Join(valid, ", "))
+		}
+	}
+	if allZones {
+		selection.transitZones = nil
+	}
+	if selection.transit && h.TransitConfigDir == nil {
+		return nil, fmt.Errorf("transit artifacts require --transit-dir")
+	}
+	return selection, nil
+}
+
+// buildMapArtifacts builds the selected non-transit artifacts. Artifacts that
+// come out of the same step - terrain and landcover, elasticsearch and
+// placeholder - are built together.
+func (h *Headway) buildMapArtifacts(ctx context.Context, keys []string) (*dagger.Directory, error) {
 	if h.Area == "" {
 		return nil, fmt.Errorf("Area is required")
+	}
+
+	selected := func(candidates ...string) bool {
+		return slices.ContainsFunc(candidates, func(key string) bool { return slices.Contains(keys, key) })
 	}
 
 	// Each of these does some of its work eagerly - pulling an image, resolving
 	// a commit, generating config - before the artifact it describes is ever
 	// built, so time them apart from the build itself.
-	stepCtx, span := startStep(ctx, "pmtiles-prepare")
-	pmtiles, err := h.Pmtiles(stepCtx, "mvt")
-	span.End()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build pmtiles: %w", err)
+	var artifacts []*Artifact
+	if selected("osm") {
+		artifacts = append(artifacts, FileArtifact(h.Area, "osm.pbf", h.OSMExport.File))
 	}
 
-	stepCtx, span = startStep(ctx, "terrain-prepare")
-	terrain, err := h.TileserverTerrain(stepCtx)
-	span.End()
-	if err != nil {
-		return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
+	if selected("pmtiles") {
+		stepCtx, span := startStep(ctx, "pmtiles-prepare")
+		pmtiles, err := h.Pmtiles(stepCtx, "mvt")
+		span.End()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build pmtiles: %w", err)
+		}
+		artifacts = append(artifacts, FileArtifact(h.Area, "pmtiles", pmtiles))
 	}
 
-	stepCtx, span = startStep(ctx, "valhalla-prepare")
-	valhalla := h.ValhallaTiles(stepCtx)
-	span.End()
+	if selected("terrain", "landcover") {
+		stepCtx, span := startStep(ctx, "terrain-prepare")
+		terrain, err := h.TileserverTerrain(stepCtx)
+		span.End()
+		if err != nil {
+			return nil, fmt.Errorf("failed to download tileserver terrain: %w", err)
+		}
+		artifacts = append(artifacts,
+			FileArtifact("terrain", "mbtiles", terrain.File("terrain.mbtiles")),
+			FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")))
+	}
 
-	stepCtx, span = startStep(ctx, "pelias-config")
-	pelias := h.Pelias(stepCtx)
-	span.End()
+	if selected("valhalla") {
+		stepCtx, span := startStep(ctx, "valhalla-prepare")
+		artifacts = append(artifacts, h.ValhallaTiles(stepCtx).Compress())
+		span.End()
+	}
 
-	stepCtx, span = startStep(ctx, "elasticsearch-prepare")
-	elasticSearch := pelias.ElasticsearchData(stepCtx)
-	span.End()
+	var pelias *Pelias
+	if selected("elasticsearch", "placeholder") {
+		stepCtx, span := startStep(ctx, "pelias-config")
+		pelias = h.Pelias(stepCtx)
+		span.End()
 
-	stepCtx, span = startStep(ctx, "placeholder-prepare")
-	placeholder := pelias.PreparePlaceholder(stepCtx)
-	span.End()
+		stepCtx, span = startStep(ctx, "elasticsearch-prepare")
+		artifacts = append(artifacts, pelias.ElasticsearchData(stepCtx).Compress())
+		span.End()
 
-	artifacts := []*Artifact{
-		FileArtifact(h.Area, "osm.pbf", h.OSMExport.File),
-		FileArtifact(h.Area, "pmtiles", pmtiles),
-		valhalla.Compress(),
-		elasticSearch.Compress(),
-		placeholder.Compress(),
-		FileArtifact("terrain", "mbtiles", terrain.File("terrain.mbtiles")),
-		FileArtifact("landcover", "mbtiles", terrain.File("landcover.mbtiles")),
+		stepCtx, span = startStep(ctx, "placeholder-prepare")
+		artifacts = append(artifacts, pelias.PreparePlaceholder(stepCtx).Compress())
+		span.End()
 	}
 
 	if err := buildAll(ctx, artifacts); err != nil {
@@ -381,14 +442,17 @@ func (h *Headway) buildAllExceptTransit(ctx context.Context) (*dagger.Directory,
 	defer span.End()
 	output := dag.Directory()
 	for _, artifact := range artifacts {
+		var err error
 		output, err = artifact.AddTo(hashCtx, output)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Not content addressed: the deploy scripts read this back by name.
-	output = output.WithFile(h.Area+".pelias.json", pelias.Config)
+	if pelias != nil {
+		// Not content addressed: the deploy scripts read this back by name.
+		output = output.WithFile(h.Area+".pelias.json", pelias.Config)
+	}
 
 	return output, nil
 }
