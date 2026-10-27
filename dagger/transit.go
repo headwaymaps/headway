@@ -391,9 +391,32 @@ func (t *TransitZone) MergedElevation(ctx context.Context) *dagger.File {
 		File("/elevation.tif")
 }
 
+// Our fork of OTP: upstream dev-2.x plus our routing fixes that haven't been released yet.
+const (
+	otpRepo   = "https://github.com/headwaymaps/OpenTripPlanner.git"
+	otpCommit = "fe7d08e1e7e2b74b92f7b3e29ed1c84d6aade1eb"
+)
+
+func otpJar() *dagger.File {
+	return dag.Container().From("maven:3.9.11-eclipse-temurin-25").
+		WithMountedDirectory("/src", dag.Git(otpRepo).Commit(otpCommit).Tree()).
+		WithMountedCache("/root/.m2", dag.CacheVolume("maven-m2")).
+		WithWorkdir("/src").
+		WithExec([]string{"mvn", "--batch-mode", "--quiet", "-Dmaven.test.skip", "-P", "prettierSkip,checkstyleSkip", "--projects", "otp-shaded", "--also-make", "package"}).
+		WithExec([]string{"sh", "-c", "cp $(ls otp-shaded/target/otp-shaded-*.jar | grep -v sources) /otp.jar"}).
+		File("/otp.jar")
+}
+
+// Mirrors the layout of upstream's published image: same JRE, entrypoint, and data directory.
 func otpBaseContainer(ctx context.Context) *dagger.Container {
 	return dag.Container().
-		From("opentripplanner/opentripplanner:2.10.0")
+		From("eclipse-temurin:25-jre").
+		WithFile("/app/otp.jar", otpJar()).
+		WithDirectory("/var/opentripplanner", dag.Directory()).
+		WithNewFile("/docker-entrypoint.sh",
+			"#!/bin/sh\nexec java $JAVA_OPTS -jar /app/otp.jar /var/opentripplanner/ \"$@\"\n",
+			dagger.ContainerWithNewFileOpts{Permissions: 0755}).
+		WithEntrypoint([]string{"/docker-entrypoint.sh"})
 }
 
 func (h *Headway) OtpServeContainer(ctx context.Context) *dagger.Container {
