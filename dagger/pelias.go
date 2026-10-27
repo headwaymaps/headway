@@ -351,7 +351,26 @@ func (p *Pelias) ElasticsearchData(ctx context.Context) *Artifact {
 		WithExec([]string{"cp", "-r", "/data-cache", "/export"}, dagger.ContainerWithExecOpts{UseEntrypoint: false}).
 		Directory("/export")
 
-	return DirectoryArtifact(p.Headway.Area+"-elasticsearch", directory)
+	return FileArtifact(p.Headway.Area+"-elasticsearch", "erofs", elasticsearchImage(directory))
+}
+
+// elasticsearchImage packs the index into the compressed read-only filesystem
+// that start_elastic.sh serves it from.
+func elasticsearchImage(index *dagger.Directory) *dagger.File {
+	const image = "/elasticsearch.erofs"
+	return WithAptPackages(dag.Container().From("debian:trixie-slim"), "erofs-utils").
+		WithMountedDirectory("/index", index).
+		WithExec([]string{"mkfs.erofs", "--quiet",
+			// 64K clusters compress noticeably better than the 4K default
+			// without slowing queries.
+			"-zlz4hc", "-C65536",
+			// elasticsearch's uid in its image
+			"--force-uid=1000", "--force-gid=1000",
+			// Elasticsearch recreates its lock files, and one inherited from the
+			// image fails its lock check once overlayfs copies it up.
+			`--exclude-regex=\.lock$`,
+			image, "/index"}).
+		File(image)
 }
 
 func (h *Headway) PeliasInitContainer(ctx context.Context) *dagger.Container {
@@ -361,4 +380,14 @@ func (h *Headway) PeliasInitContainer(ctx context.Context) *dagger.Container {
 		WithFile("/app/", h.ServiceDir("pelias").File("init_elastic.sh")).
 		WithFile("/app/", h.ServiceDir("pelias").File("init_placeholder.sh")).
 		WithDefaultArgs([]string{"echo", "run a specific command"})
+}
+
+// PeliasElasticsearchContainer serves the index image installed by init_elastic.sh.
+// Mounting it needs the container to run privileged.
+func (h *Headway) PeliasElasticsearchContainer(ctx context.Context) *dagger.Container {
+	return dag.Container().From(peliasElasticsearchImage).
+		WithUser("root").
+		WithFile("/app/", h.ServiceDir("pelias").File("start_elastic.sh")).
+		WithEntrypoint([]string{"/bin/tini", "--", "/bin/bash", "/app/start_elastic.sh"},
+			dagger.ContainerWithEntrypointOpts{KeepDefaultArgs: true})
 }

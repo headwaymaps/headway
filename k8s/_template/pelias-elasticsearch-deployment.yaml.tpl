@@ -4,14 +4,6 @@ metadata:
   name: pelias-elasticsearch
 spec:
   replicas: 1
-  # Keep the old pod serving until the new one is ready. Elasticsearch locks
-  # its data dir, so this relies on every change to this pod getting a fresh
-  # volume - see ELASTICSEARCH_VOLUME_VERSION in bin/k8s/generate.
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -25,6 +17,9 @@ spec:
         - name: elasticsearch-volume
           persistentVolumeClaim:
             claimName: elasticsearch-${HEADWAY_AREA_TAG_SAFE}-${HEADWAY_DATA_TAG_SAFE}-${ELASTICSEARCH_VOLUME_VERSION}
+        # Elasticsearch's writes, layered over the read-only index image.
+        - name: elasticsearch-scratch
+          emptyDir: {}
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
@@ -39,7 +34,7 @@ spec:
           imagePullPolicy: Always
           volumeMounts:
             - name: elasticsearch-volume
-              mountPath: /usr/share/elasticsearch/data
+              mountPath: /index
             - name: config-volume
               mountPath: /config
           env:
@@ -55,10 +50,17 @@ spec:
               memory: 200Mi
       containers:
         - name: main
-          image: pelias/elasticsearch:8.12.2-beta
+          image: ghcr.io/headwaymaps/pelias-elasticsearch:${HEADWAY_CONTAINER_TAG}
+          imagePullPolicy: Always
+          # to mount the index image
+          securityContext:
+            privileged: true
           volumeMounts:
             - name: elasticsearch-volume
-              mountPath: /usr/share/elasticsearch/data
+              mountPath: /index
+              readOnly: true
+            - name: elasticsearch-scratch
+              mountPath: /scratch
             - name: config-volume
               mountPath: /config
           ports:

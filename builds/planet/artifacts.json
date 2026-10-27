@@ -1,5 +1,5 @@
 {
-  "elasticsearch": "maps-earth-planet-v1.261019-elasticsearch-2026-10-24-a35ed6f1.tar.zst",
+  "elasticsearch": "maps-earth-planet-v1.261019-elasticsearch-2026-10-30-9da15ae0.erofs.zst",
   "elevation": "transit/maps-earth-planet-v1.261019-elevation-tifs-2026-10-30-48e12a71.tar.zst",
   "gtfs": {
     "london": "transit/maps-earth-planet-v1.261019-london-gtfs-2026-10-30-550324d5.tar.zst",
@@ -16,7 +16,7 @@
     "puget-sound": "transit/maps-earth-planet-v1.261019-puget-sound-graph-2026-10-30-bb6bfd94.obj.zst",
     "sf-bay-area": "transit/maps-earth-planet-v1.261019-sf-bay-area-graph-2026-10-30-d6b0b22c.obj.zst"
   },
-  "placeholder": "maps-earth-planet-v1.261019-placeholder-2026-10-24-15dcb169.tar.zst",
+  "placeholder": "maps-earth-planet-v1.261019-placeholder-2026-10-30-13d0e85a.tar.zst",
   "pmtiles": "maps-earth-planet-v1.261019-2026-10-27-d7a90e6a.pmtiles",
   "shared": {
     "landcover": "landcover-2026-10-24-af6aa17e.mbtiles",

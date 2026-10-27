@@ -130,7 +130,7 @@ services:
     command: [ "/bin/bash", "/app/init_elastic.sh" ]
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"
-      - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
+      - "pelias_elasticsearch_data:/index"
   pelias-placeholder-init:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
@@ -178,12 +178,16 @@ services:
       pelias-placeholder-init:
         condition: service_completed_successfully
   pelias-elasticsearch:
-    image: pelias/elasticsearch:8.12.2-beta
+    image: ghcr.io/headwaymaps/pelias-elasticsearch:latest
     restart: always
+    # to mount the index image
+    privileged: true
     networks:
       - pelias_backend
     volumes:
-      - "pelias_elasticsearch_data:/usr/share/elasticsearch/data"
+      - "pelias_elasticsearch_data:/index:ro"
+    tmpfs:
+      - /scratch
     ulimits:
       memlock:
         soft: -1
@@ -191,7 +195,6 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    cap_add: [ "IPC_LOCK" ]
     depends_on:
       pelias-elasticsearch-init:
         condition: service_completed_successfully
