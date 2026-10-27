@@ -85,7 +85,7 @@ function build_image() {
 
   if [ "$PUBLISH" = true ]; then
     echo "Publishing ${container}: ${addresses}"
-    traced "$container" dagger --progress=plain -c "publish-multi --container=\$(${build_function}) --addresses=${addresses}"
+    traced "$container" dagger --progress=plain -c "publish-multi --container=\$(${build_function}) --addresses=${addresses} --revision-label=$(git describe --always --dirty --abbrev=40 --exclude='*')"
   else
     # Export to the first tag and `docker tag` the rest, which keeps all tags
     # pointing at the same image id locally.
