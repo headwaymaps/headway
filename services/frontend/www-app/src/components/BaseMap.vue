@@ -206,8 +206,7 @@ export default defineComponent({
   components: { MapDebugPanel },
   data: function (): {
     debugEnabled: boolean;
-    flyToOptions?: FlyToOptions | undefined;
-    boundsToFit?: LngLatBoundsLike | undefined;
+    pendingCameraMove?: () => void;
     markers: Map<string, SimpleMarker>;
     layers: string[];
     loaded: boolean;
@@ -217,8 +216,7 @@ export default defineComponent({
   } {
     return {
       debugEnabled,
-      flyToOptions: undefined,
-      boundsToFit: undefined,
+      pendingCameraMove: undefined,
       markers: new Map(),
       layers: [],
       loaded: false,
@@ -290,14 +288,8 @@ export default defineComponent({
 
     map.on('load', () => {
       this.loaded = true;
-      if (this.flyToOptions) {
-        this.flyTo(this.flyToOptions.center!, this.flyToOptions);
-        this.flyToOptions = undefined;
-      }
-      if (this.boundsToFit) {
-        this.fitBounds(this.boundsToFit);
-        this.boundsToFit = undefined;
-      }
+      this.pendingCameraMove?.();
+      this.pendingCameraMove = undefined;
     });
     map.on('click', (event: MapMouseEvent) => {
       this.touchHandlers.get('click')?.forEach((value) => value(event));
@@ -632,28 +624,32 @@ export default defineComponent({
       map.panBy([point.x - anchorX, point.y - anchorY], { animate: false });
     },
     flyTo: function (location: LngLatLike, options: FlyToOptions = {}): void {
-      if (this.loaded) {
-        options['center'] = location;
-        options['maxDuration'] = MAX_FLIGHT_DURATION_MS;
-        map?.flyTo(options, { flying: true });
-      } else {
-        this.$data.flyToOptions = options;
-      }
+      this.moveCamera(() =>
+        map?.flyTo({
+          ...options,
+          center: location,
+          maxDuration: MAX_FLIGHT_DURATION_MS,
+        }),
+      );
     },
     fitBounds: function (
       bounds: LngLatBoundsLike,
       options: FitBoundsOptions = {},
     ): void {
-      const defaultOptions = {
-        padding: Math.min(window.innerWidth, window.innerHeight) / 8,
-      };
-      options = { ...defaultOptions, ...(options || {}) };
-
+      this.moveCamera(() =>
+        map?.fitBounds(bounds, {
+          padding: Math.min(window.innerWidth, window.innerHeight) / 8,
+          ...options,
+          maxDuration: MAX_FLIGHT_DURATION_MS,
+        }),
+      );
+    },
+    /// Moves now, or once the map has loaded; only the latest move before then is kept.
+    moveCamera(move: () => void): void {
       if (this.loaded) {
-        options.maxDuration = MAX_FLIGHT_DURATION_MS;
-        map?.fitBounds(bounds, options);
+        move();
       } else {
-        this.$data.boundsToFit = bounds;
+        this.pendingCameraMove = move;
       }
     },
 
