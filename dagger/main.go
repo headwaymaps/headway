@@ -980,7 +980,8 @@ func WithAptPackages(container *dagger.Container, packages ...string) *dagger.Co
 }
 
 // Publish a container to multiple registry addresses in a single Dagger
-// session, so every tag points at the same image digest.
+// session, so every tag points at the same image digest, labeled with the git
+// revision it was built from.
 //
 // Pushing is a side effect we always want to actually happen - a cache hit here
 // would silently skip the push and hand back refs for tags that were never
@@ -991,7 +992,9 @@ func (h *Headway) PublishMulti(
 	ctx context.Context,
 	container *dagger.Container,
 	addresses []string,
+	revisionLabel string,
 ) ([]string, error) {
+	container = container.WithLabel("org.opencontainers.image.revision", revisionLabel)
 	out := make([]string, 0, len(addresses))
 	for _, addr := range addresses {
 		ref, err := container.Publish(ctx, addr)
