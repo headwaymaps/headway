@@ -26,6 +26,7 @@ macro_rules! kinds {
 
 kinds!(
     Background => "background",
+    Circle => "circle",
     Raster => "raster",
     Fill => "fill",
     FillExtrusion => "fill-extrusion",
@@ -317,6 +318,30 @@ impl Layer<'_, FillExtrusion> {
 
     pub fn rounded_corner_distance(self, meters: f64) -> Self {
         self.layout("fill-extrusion-rounded-corner-distance", meters)
+    }
+}
+
+impl Layer<'_, Circle> {
+    pub fn color(self, color: impl Into<Property<Color>>) -> Self {
+        self.paint("circle-color", color)
+    }
+
+    pub fn radius(self, radius: impl Into<Property<f64>>) -> Self {
+        self.paint("circle-radius", radius)
+    }
+
+    pub fn stroke_color(self, color: impl Into<Property<Color>>) -> Self {
+        self.paint("circle-stroke-color", color)
+    }
+
+    pub fn stroke_width(self, width: impl Into<Property<f64>>) -> Self {
+        self.paint("circle-stroke-width", width)
+    }
+
+    /// Lies flat on the map, and scales with it, when the map is pitched.
+    pub fn flat(self) -> Self {
+        self.paint("circle-pitch-alignment", "map")
+            .paint("circle-pitch-scale", "map")
     }
 }
 

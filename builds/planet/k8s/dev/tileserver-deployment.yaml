@@ -29,7 +29,7 @@ spec:
             - name: LANDCOVER_ARTIFACT_DEST
               value: /data/tiles/landcover.mbtiles
             - name: AREAMAP_ARTIFACT_SOURCE
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-2026-10-24-ff5644ac.pmtiles"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-2026-10-27-d7a90e6a.pmtiles"
             - name: AREAMAP_ARTIFACT_DEST
               value: /data/tiles/areamap.pmtiles
           resources:
@@ -71,4 +71,4 @@ spec:
       volumes:
         - name: tileserver-volume
           persistentVolumeClaim:
-            claimName: tileserver-maps-earth-planet-v1-261019-0-13-0-2026-10-24-1c8bbe92
+            claimName: tileserver-maps-earth-planet-v1-261019-0-13-0-2026-10-27-58740f76

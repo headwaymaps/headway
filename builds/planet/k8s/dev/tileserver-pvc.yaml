@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: tileserver-maps-earth-planet-v1-261019-0-13-0-2026-10-24-1c8bbe92
+  name: tileserver-maps-earth-planet-v1-261019-0-13-0-2026-10-27-58740f76
   labels:
     app.kubernetes.io/part-of: headway
 spec:

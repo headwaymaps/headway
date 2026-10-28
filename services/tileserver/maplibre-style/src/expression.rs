@@ -6,6 +6,7 @@ use serde_json::{json, Value as Json};
 /// An operation in a MapLibre expression.
 #[derive(Clone, Copy, Debug)]
 pub enum Operator {
+    Add,
     All,
     Case,
     Coalesce,
@@ -14,21 +15,25 @@ pub enum Operator {
     Get,
     Has,
     GreaterEqual,
+    Interpolate,
     Length,
     Let,
     LessEqual,
     Literal,
     Match,
+    Max,
     Min,
     Multiply,
     NotEqual,
     ToString,
     Var,
+    Zoom,
 }
 
 impl Operator {
     fn name(self) -> &'static str {
         match self {
+            Operator::Add => "+",
             Operator::All => "all",
             Operator::Case => "case",
             Operator::Coalesce => "coalesce",
@@ -37,16 +42,19 @@ impl Operator {
             Operator::Get => "get",
             Operator::Has => "has",
             Operator::GreaterEqual => ">=",
+            Operator::Interpolate => "interpolate",
             Operator::Length => "length",
             Operator::Let => "let",
             Operator::LessEqual => "<=",
             Operator::Literal => "literal",
             Operator::Match => "match",
+            Operator::Max => "max",
             Operator::Min => "min",
             Operator::Multiply => "*",
             Operator::NotEqual => "!=",
             Operator::ToString => "to-string",
             Operator::Var => "var",
+            Operator::Zoom => "zoom",
         }
     }
 }
@@ -73,6 +81,7 @@ macro_rules! expr {
     (@array []) => {
         $crate::Expression::array([])
     };
+    (@call "+" [$($operand:tt),*]) => { $crate::expr!(@op Add [$($operand),*]) };
     (@call "all" [$($operand:tt),*]) => { $crate::expr!(@op All [$($operand),*]) };
     (@call "case" [$($operand:tt),*]) => { $crate::expr!(@op Case [$($operand),*]) };
     (@call "coalesce" [$($operand:tt),*]) => { $crate::expr!(@op Coalesce [$($operand),*]) };
@@ -81,16 +90,19 @@ macro_rules! expr {
     (@call "get" [$($operand:tt),*]) => { $crate::expr!(@op Get [$($operand),*]) };
     (@call "has" [$($operand:tt),*]) => { $crate::expr!(@op Has [$($operand),*]) };
     (@call ">=" [$($operand:tt),*]) => { $crate::expr!(@op GreaterEqual [$($operand),*]) };
+    (@call "interpolate" [$($operand:tt),*]) => { $crate::expr!(@op Interpolate [$($operand),*]) };
     (@call "length" [$($operand:tt),*]) => { $crate::expr!(@op Length [$($operand),*]) };
     (@call "let" [$($operand:tt),*]) => { $crate::expr!(@op Let [$($operand),*]) };
     (@call "<=" [$($operand:tt),*]) => { $crate::expr!(@op LessEqual [$($operand),*]) };
     (@call "literal" [$($operand:tt),*]) => { $crate::expr!(@op Literal [$($operand),*]) };
     (@call "match" [$($operand:tt),*]) => { $crate::expr!(@op Match [$($operand),*]) };
+    (@call "max" [$($operand:tt),*]) => { $crate::expr!(@op Max [$($operand),*]) };
     (@call "min" [$($operand:tt),*]) => { $crate::expr!(@op Min [$($operand),*]) };
     (@call "*" [$($operand:tt),*]) => { $crate::expr!(@op Multiply [$($operand),*]) };
     (@call "!=" [$($operand:tt),*]) => { $crate::expr!(@op NotEqual [$($operand),*]) };
     (@call "to-string" [$($operand:tt),*]) => { $crate::expr!(@op ToString [$($operand),*]) };
     (@call "var" [$($operand:tt),*]) => { $crate::expr!(@op Var [$($operand),*]) };
+    (@call "zoom" [$($operand:tt),*]) => { $crate::expr!(@op Zoom [$($operand),*]) };
     (@call $first:tt [$($rest:tt),*]) => {
         $crate::Expression::array([$crate::expr!(@operand $first) $(, $crate::expr!(@operand $rest))*])
     };
