@@ -1,6 +1,44 @@
-/// Whether the app was opened with `?debug`, which turns on developer tooling like the map HUD.
-///
-/// Read once, at load, so it survives in-app navigation without every route having to carry it.
-export const debugEnabled = new URLSearchParams(window.location.search).has(
-  'debug',
+import { ref, shallowRef, watch } from 'vue';
+import type { Point } from 'maplibre-gl';
+
+const STORAGE_KEY = 'debug.enabled';
+
+/// Whether developer tooling like the map HUD is on. `?debug` turns it on and `?debug=0` off, and
+/// either is remembered, so it stays as set across pages and reloads.
+export const debugEnabled = ref(initiallyEnabled());
+
+function initiallyEnabled(): boolean {
+  const param = new URLSearchParams(window.location.search).get('debug');
+  if (param !== null) return param !== '0';
+  return window.localStorage.getItem(STORAGE_KEY) === 'true';
+}
+
+const ROUTE_SCORING_KEY = 'debug.routeScoring';
+
+/// Whether hovering a Valhalla route on the directions page shows how Valhalla scored it.
+export const routeScoringEnabled = ref(
+  window.localStorage.getItem(ROUTE_SCORING_KEY) === 'true',
+);
+
+watch(routeScoringEnabled, (enabled) =>
+  window.localStorage.setItem(ROUTE_SCORING_KEY, String(enabled)),
+);
+
+/// A page's own debug details about the map at a pixel, shown beside the map's tags.
+export const hoverDetails = shallowRef<
+  ((point: Point) => HTMLElement | undefined) | null
+>(null);
+
+watch(
+  debugEnabled,
+  (enabled) => {
+    window.localStorage.setItem(STORAGE_KEY, String(enabled));
+    // Otherwise the page's own `?debug` would turn it back on at the next reload.
+    const url = new URL(window.location.href);
+    if (!enabled && url.searchParams.has('debug')) {
+      url.searchParams.delete('debug');
+      window.history.replaceState(window.history.state, '', url);
+    }
+  },
+  { immediate: true },
 );

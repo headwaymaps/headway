@@ -12,6 +12,16 @@
     />
   </div>
   <div class="bottom-card">
+    <trip-corpus
+      v-if="debugEnabled"
+      :from="fromPlace?.point"
+      :to="toPlace?.point"
+      @select="selectCorpusTrip"
+    />
+    <route-scoring
+      v-if="debugEnabled && routeScoringEnabled"
+      :trip="activeTrip as Trip"
+    />
     <transit-unsupported-notice
       v-if="error?.errorCode == TripFetchErrorCode.UnsupportedTransitArea"
       :to-place="toPlace"
@@ -67,10 +77,13 @@
 <script lang="ts">
 import { getBaseMap, type BaseMapInterface } from 'src/components/BaseMap.vue';
 import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
-import Place, { PlaceStorage } from 'src/models/Place';
+import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
+import TripCorpus from 'src/components/TripCorpus.vue';
+import RouteScoring from 'src/components/RouteScoring.vue';
+import { debugEnabled, routeScoringEnabled } from 'src/utils/debug';
 import TransitUnsupportedNotice from 'src/components/TransitUnsupportedNotice.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
@@ -84,13 +97,19 @@ import VehicleOverlay from 'src/models/VehicleOverlay';
 import Prefs from 'src/utils/Prefs';
 import { GradeShades } from 'src/utils/grade';
 import Markers, { showSteepClimbBadges } from 'src/utils/Markers';
-import { useRoute } from 'vue-router';
+import { useRoute, type LocationQueryRaw } from 'vue-router';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 import { LngLat } from 'maplibre-gl';
 
 export default defineComponent({
   name: 'AlternatesPage',
-  components: { TripListItem, TripSearch, TransitUnsupportedNotice },
+  components: {
+    TripListItem,
+    TripSearch,
+    TripCorpus,
+    RouteScoring,
+    TransitUnsupportedNotice,
+  },
   props: {
     mode: {
       type: String as () => TravelMode,
@@ -140,6 +159,10 @@ export default defineComponent({
       TravelMode: TravelMode,
       TripFetchErrorCode: TripFetchErrorCode,
     };
+  },
+  computed: {
+    debugEnabled: () => debugEnabled.value,
+    routeScoringEnabled: () => routeScoringEnabled.value,
   },
   watch: {
     mode: async function (): Promise<void> {
@@ -222,6 +245,12 @@ export default defineComponent({
       this.toPlace = place;
       this.rewriteUrl();
     },
+    async selectCorpusTrip(from: LngLat, to: LngLat) {
+      [this.fromPlace, this.toPlace] = await Promise.all(
+        [from, to].map((p) => PlaceStorage.fetchFromId(PlaceId.location(p))),
+      );
+      await this.rewriteUrl();
+    },
     showTripSteps(trip: Trip) {
       const index = this.$data.trips.indexOf(trip);
       if (index !== -1 && this.to && this.from) {
@@ -253,7 +282,9 @@ export default defineComponent({
 
       const path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
 
-      const query = this.transitQuery.searchQuery();
+      const query: LocationQueryRaw = this.transitQuery.searchQuery();
+      // Keeps a debugging session's links shareable with the tools still on.
+      if (debugEnabled.value) query.debug = null;
       this.$router.push({ path, query });
       await this.updateTrips();
     },
