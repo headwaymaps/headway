@@ -4,10 +4,14 @@ metadata:
   name: pelias-elasticsearch
 spec:
   replicas: 1
-  # Elasticsearch takes an exclusive node.lock on its data dir, so the old pod
-  # must fully stop before the new one starts.
+  # Keep the old pod serving until the new one is ready. Elasticsearch locks
+  # its data dir, so this relies on every change to this pod getting a fresh
+  # volume - see ELASTICSEARCH_VOLUME_VERSION in bin/k8s/generate.
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -20,7 +24,7 @@ spec:
       volumes:
         - name: elasticsearch-volume
           persistentVolumeClaim:
-            claimName: elasticsearch-maps-earth-planet-v1-261005-0-13-0-2026-10-14-08757527
+            claimName: elasticsearch-maps-earth-planet-v1-261019-0-13-0-2026-10-24-e8e05a36-6def0970
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
@@ -105,7 +109,7 @@ spec:
                   }
                 }
             - name: ELASTICSEARCH_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261005/maps-earth-planet-v1.261005-elasticsearch-2026-10-14-9ec07780.tar.zst"
+              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-elasticsearch-2026-10-24-a35ed6f1.tar.zst"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
           resources:
             limits:
