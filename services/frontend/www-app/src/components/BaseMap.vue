@@ -64,6 +64,7 @@ import Place, { PlaceId } from 'src/models/Place';
 import TripLayerId from 'src/models/TripLayerId';
 import env from 'src/utils/env';
 import WrapperControl from 'src/ui/WrapperControl';
+import DebugControl from 'src/ui/DebugControl';
 import LocationControl from 'src/ui/LocationControl';
 import MapDebugPanel from 'src/components/MapDebugPanel.vue';
 import { debugEnabled } from 'src/utils/debug';
@@ -226,7 +227,6 @@ export default defineComponent({
   name: 'BaseMap',
   components: { MapDebugPanel },
   data: function (): {
-    debugEnabled: boolean;
     pendingCameraMove?: () => void;
     markers: Map<string, SimpleMarker>;
     layers: string[];
@@ -242,7 +242,6 @@ export default defineComponent({
     } | null;
   } {
     return {
-      debugEnabled,
       pendingCameraMove: undefined,
       markers: new Map(),
       layers: [],
@@ -252,6 +251,9 @@ export default defineComponent({
       touchHandlerIdx: 0,
       contextMenu: null,
     };
+  },
+  computed: {
+    debugEnabled: () => debugEnabled.value,
   },
   mounted: async function () {
     const map = await loadMap();
@@ -313,6 +315,9 @@ export default defineComponent({
     wrapperControl.pushChild(scaleControl);
     wrapperControl.pushChild(geolocate);
     map.addControl(wrapperControl, 'bottom-right');
+    if (process.env.DEV) {
+      map.addControl(new DebugControl(), 'bottom-left');
+    }
 
     map.on('load', () => {
       this.loaded = true;
@@ -326,6 +331,8 @@ export default defineComponent({
       clearAllTimeouts();
       mapTouchTimeouts.push(
         setTimeout(() => {
+          // A page that claimed the mousedown, e.g. to drag something, owns the gesture.
+          if (event.defaultPrevented) return;
           this.touchHandlers.get('longpress')?.forEach((value) => value(event));
         }, 700),
       );
@@ -771,6 +778,15 @@ export default defineComponent({
   height: 4px;
   border: solid black 1.5px;
   border-top: none;
+}
+
+.headway-ctrl-debug {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .headway-ctrl-wrapper {
