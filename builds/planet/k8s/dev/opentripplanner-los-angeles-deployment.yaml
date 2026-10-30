@@ -30,7 +30,7 @@ spec:
               readOnly: true
           env:
             - name: OTP_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/transit/maps-earth-planet-v1.261019-los-angeles-graph-2026-10-23-0db44675.obj.zst"
+              value: "https://data.example.com/0.14.0/maps-earth-planet-v1.261019/transit/maps-earth-planet-v1.261019-los-angeles-graph-2026-10-30-53e97907.obj.zst"
           resources:
             limits:
               memory: 128Mi
@@ -79,4 +79,4 @@ spec:
             optional: false
         - name: opentripplanner-volume
           persistentVolumeClaim:
-            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-261019-0-13-0-2026-10-23-a5ee468e
+            claimName: opentripplanner-los-angeles-maps-earth-planet-v1-261019-0-14-0-2026-10-30-2b51fa27

@@ -24,7 +24,7 @@ spec:
       volumes:
         - name: elasticsearch-volume
           persistentVolumeClaim:
-            claimName: elasticsearch-maps-earth-planet-v1-261019-0-13-0-2026-10-24-e8e05a36-6def0970
+            claimName: elasticsearch-maps-earth-planet-v1-261019-0-14-0-2026-10-24-e8e05a36-06aee004
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
@@ -109,7 +109,7 @@ spec:
                   }
                 }
             - name: ELASTICSEARCH_ARTIFACT_URL
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-elasticsearch-2026-10-24-a35ed6f1.tar.zst"
+              value: "https://data.example.com/0.14.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-elasticsearch-2026-10-24-a35ed6f1.tar.zst"
           command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
           resources:
             limits:
