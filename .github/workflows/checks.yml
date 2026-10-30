@@ -24,6 +24,7 @@ jobs:
       - build_images
       - www_checks
       - rust_checks
+      - k8s_checks
       - integration_tests
       - browser_tests
     runs-on: ubuntu-latest
@@ -34,6 +35,7 @@ jobs:
           echo "build_images:       ${{ needs.build_images.result }}"
           echo "www_checks:         ${{ needs.www_checks.result }}"
           echo "rust_checks:        ${{ needs.rust_checks.result }}"
+          echo "k8s_checks:         ${{ needs.k8s_checks.result }}"
           echo "integration_tests:  ${{ needs.integration_tests.result }}"
           echo "browser_tests:      ${{ needs.browser_tests.result }}"
       # Anything that isn't a success fails this job, skipped included: a check
@@ -210,6 +212,25 @@ jobs:
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-targets
       - run: cargo build --workspace --release --all-features
+  k8s_checks:
+    name: K8s config checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Copy .bin-env
+        run: cp .bin-env-example .bin-env
+      - name: Regenerate k8s config
+        run: bin/k8s/regenerate-all
+      - name: Check k8s config is up to date
+        run: |
+          if [ -n "$(git status --porcelain -- builds)" ]; then
+            git status --short -- builds
+            git diff -- builds
+            echo "::error::k8s config out of date. Run bin/k8s/regenerate-all"
+            exit 1
+          fi
   integration_tests:
     name: Integration Tests
     runs-on: ubuntu-latest
