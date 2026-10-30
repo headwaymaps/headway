@@ -1,4 +1,5 @@
 use crate::otp::gtfs_graphql;
+use geo::{Distance, Haversine, LineString};
 
 /// Elevation along a route, sampled at even intervals.
 #[derive(Debug, Clone, PartialEq)]
@@ -30,7 +31,7 @@ impl SteepSection {
 }
 
 impl ElevationProfile {
-    const SAMPLE_METERS: f64 = 10.0;
+    pub const SAMPLE_METERS: f64 = 10.0;
     /// Averaging elevations over this distance keeps a noisy DEM pixel from reading as a hill.
     const SMOOTHING_METERS: f64 = 30.0;
     pub const STEEP_GRADE: f64 = 0.05;
@@ -66,6 +67,24 @@ impl ElevationProfile {
                 points.push((distance, elevation));
             }
             step_start += step_distance;
+        }
+        Self::resample(&points)
+    }
+
+    /// `elevations` measured at each point of `line`.
+    pub fn along(line: &LineString, elevations: &[i16]) -> Option<Self> {
+        let mut points: Vec<(f64, f64)> = Vec::with_capacity(elevations.len());
+        let mut distance = 0.0;
+        let mut previous = None;
+        for (point, &elevation) in line.points().zip(elevations) {
+            if let Some(previous) = previous {
+                distance += Haversine.distance(previous, point);
+            }
+            previous = Some(point);
+            if points.last().is_some_and(|(last, _)| distance <= *last) {
+                continue;
+            }
+            points.push((distance, f64::from(elevation)));
         }
         Self::resample(&points)
     }
@@ -215,6 +234,17 @@ mod tests {
     /// A profile through `(distance, elevation)` corners, joined by straight lines.
     fn profile(corners: &[(f64, f64)]) -> ElevationProfile {
         ElevationProfile::resample(corners).unwrap()
+    }
+
+    #[test]
+    fn profile_along_a_line_is_measured_between_its_points() {
+        // ~111 m per 0.001° of latitude
+        let line = geo::wkt!(LINESTRING(0. 0., 0. 0.001, 0. 0.001, 0. 0.002));
+        let profile = ElevationProfile::along(&line, &[0, 10, 10, 10]).unwrap();
+        let (end, elevation) = profile.smoothed_points().last().unwrap();
+        assert_relative_eq!(end, 220.0, epsilon = 10.0);
+        assert_relative_eq!(elevation, 10.0, epsilon = 1e-9);
+        assert_eq!(profile.steep_sections().len(), 1);
     }
 
     fn step(distance: f64, profile: &[(f64, f64)]) -> gtfs_graphql::Step {

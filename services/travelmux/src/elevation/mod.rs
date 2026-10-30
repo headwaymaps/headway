@@ -132,7 +132,7 @@ impl Dem {
         let tif_id = TiffId::for_point(point);
 
         match self.geotiff(tif_id)?.read_pixel_at_location(coordinate) {
-            RasterValue::NoData => todo!("NoData"),
+            RasterValue::NoData => Err("no elevation data at this location".into()),
             RasterValue::U8(_) => todo!("U8"),
             RasterValue::U16(_) => todo!("U16"),
             RasterValue::U32(_) => todo!("U32"),

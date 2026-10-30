@@ -48,6 +48,7 @@ mod tests {
     use super::osrm_api;
     use super::PlanResponseOk;
     use super::*;
+    use crate::elevation::ElevationService;
     use crate::otp::gtfs_graphql::plan_result_from_fixture;
     use crate::valhalla::valhalla_api;
     use crate::{DistanceUnit, TravelMode};
@@ -132,8 +133,12 @@ mod tests {
             serde_json::from_reader(BufReader::new(stubbed_response)).unwrap();
 
         let valhalla_response_result = valhalla_api::ValhallaRouteResponseResult::Ok(valhalla);
-        let plan_response =
-            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response_result).unwrap();
+        let plan_response = PlanResponseOk::from_valhalla(
+            TravelMode::Walk,
+            valhalla_response_result,
+            &ElevationService::new("tests/fixtures/low_res_elevation_tifs".into()),
+        )
+        .unwrap();
 
         let directions_response = DirectionsResponseOk::from(plan_response);
         assert_eq!(directions_response.routes.len(), 3);

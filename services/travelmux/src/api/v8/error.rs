@@ -4,6 +4,7 @@ use serde::Serialize;
 use std::fmt;
 
 use super::Itinerary;
+use crate::elevation::ElevationService;
 use crate::error::{ErrorType, ERROR_CODE_HEADER};
 use crate::otp::gtfs_graphql;
 use crate::valhalla::valhalla_api;
@@ -183,16 +184,17 @@ impl PlanResponseOk {
     pub fn from_valhalla(
         mode: TravelMode,
         valhalla: valhalla_api::ValhallaRouteResponseResult,
+        dem: &ElevationService,
     ) -> Result<PlanResponseOk, PlanResponseErr> {
         let valhalla = match valhalla {
             valhalla_api::ValhallaRouteResponseResult::Ok(valhalla) => valhalla,
             valhalla_api::ValhallaRouteResponseResult::Err(err) => return Err(err.into()),
         };
 
-        let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
+        let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode, dem)];
         if let Some(alternates) = &valhalla.alternates {
             for alternate in alternates {
-                itineraries.push(Itinerary::from_valhalla(&alternate.trip, mode));
+                itineraries.push(Itinerary::from_valhalla(&alternate.trip, mode, dem));
             }
         }
 
