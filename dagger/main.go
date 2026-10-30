@@ -667,14 +667,16 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 /**
  * Valhalla
  */
-// Upstream publishes `latest` from master, so it moves whenever they merge.
-// Pinned by digest to keep tile builds reproducible: this is the master build
-// from 2026-09-08, which is 23 commits ahead of the 3.8.3 release.
-const valhallaImage = "ghcr.io/valhalla/valhalla@sha256:65f43014947d013f25f0e1bdf3c4096a190a50f2dbbedd6a66cabd4f9538a2c5"
+// Our fork of Valhalla: upstream master from 2026-09-08 plus our bicycle costing changes that
+// haven't been released yet.
+const (
+	valhallaRepo   = "https://github.com/headwaymaps/valhalla.git"
+	valhallaCommit = "42ccf3c13164f1b337ab4cdca132e291957c77b2"
+)
 
 func valhallaBaseContainer() *dagger.Container {
-	return dag.Container().
-		From(valhallaImage).
+	return dag.Git(valhallaRepo).Commit(valhallaCommit).Tree().
+		DockerBuild(dagger.DirectoryDockerBuildOpts{Dockerfile: "docker/Dockerfile"}).
 		WithExec([]string{"useradd", "-s", "/usr/sbin/nologin", "valhalla"}).
 		WithUser("valhalla").
 		WithWorkdir("/tiles")
