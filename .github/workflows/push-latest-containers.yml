@@ -14,6 +14,9 @@ jobs:
   build-latest:
     name: Push latest images to ghcr.io
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     env:
       DAGGER_NO_NAG: 1
     steps:
