@@ -21,9 +21,16 @@
 # A bump in the DATA tag pretty much always implies a bump in the CONTAINER
 # tag, but not necessarily vice-versa.
 
-export HEADWAY_DATA_TAG=0.13.0
+export HEADWAY_DATA_TAG=0.14.0
 
 # # Schema change Log
+#
+# ## DATA v0.14.0, CONTAINER v0.15.0
+#
+# BREAKING DATA/CONTAINER: OTP is now built from our fork (dev-2.x after 2.10.0,
+# plus unreleased routing fixes). Its graph serialization id differs from
+# 2.10.0's, so every zone's graph has to be rebuilt. The GTFS GraphQL API only
+# gained fields and enum values.
 #
 # ## DATA v0.13.0, CONTAINER v0.14.0
 #

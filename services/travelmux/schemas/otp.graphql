@@ -243,6 +243,15 @@ type ArrivalDepartureTime {
   arrival: OffsetDateTime
   "Departure time as an ISO-8601-formatted datetime."
   departure: OffsetDateTime
+  """
+  If set to `true`, indicates that the scheduled arrival and departure times for a stop are strictly
+  adhered to and not approximated. If the vehicle is early it will wait until the scheduled departure
+  time before departing.
+    
+  If set to `false`, then times are approximated. If the vehicle is early it might not wait until the
+  scheduled departure time before departing.
+  """
+  timePoint: Boolean!
 }
 
 "Bike park represents a location where bicycles can be parked."
@@ -3000,7 +3009,7 @@ type Trip implements Node {
   routeShortName: String
   "Hash code of the trip. This value is stable and not dependent on the trip id."
   semanticHash: String!
-  serviceId: String
+  serviceId: String @deprecated(reason : "This field always returns null. GTFS's service-id is being phased out as an internal OTP concept, see [GitHub issue](https://github.com/opentripplanner/OpenTripPlanner/issues/7972).\nThis field is subject for removal in September 2028. If you want this field to stay, please notify the OTP community.")
   shapeId: String
   "List of stops this trip passes through"
   stops: [Stop!]!
@@ -3066,6 +3075,8 @@ type TripOnServiceDate {
   stopCalls: [StopCall!]!
   "This trip on service date is an instance of this trip."
   trip: Trip
+  "ID of the vehicle serving this trip, if provided by the real-time feed, in the format FeedId:VehicleId."
+  vehicleId: String
 }
 
 """
@@ -3880,7 +3891,7 @@ enum PlanAccessMode {
   CAR
   """
   Getting dropped off by a car to a location that is accessible with a car.
-  Note, this can include walking after the drop-off.
+  Note, this can include walking before being picked up and/or after the drop-off.
   """
   CAR_DROP_OFF
   """
@@ -3910,6 +3921,11 @@ enum PlanAccessMode {
   scooter.
   """
   SCOOTER_RENTAL
+  """
+  Getting dropped off by a taxi at a location that is accessible with a car. Note, this can
+  include walking before being picked up and/or after the drop-off.
+  """
+  TAXI
   "Walking to a stop."
   WALK
 }
@@ -3965,6 +3981,11 @@ enum PlanDirectMode {
   """
   SCOOTER_RENTAL
   """
+  Traveling by taxi from the origin to the destination. Note, this can include walking before
+  the pickup or after the drop-off.
+  """
+  TAXI
+  """
   Walking from the origin to the destination. Note, this can include walking
   when it's needed to walk the bicycle.
   """
@@ -3994,7 +4015,7 @@ enum PlanEgressMode {
   CAR
   """
   Getting picked up by a car from a location that is accessible with a car.
-  Note, this can include walking before the pickup.
+  Note, this can include walking before the pickup and/or after being dropped off.
   """
   CAR_PICKUP
   """
@@ -4019,6 +4040,11 @@ enum PlanEgressMode {
   scooter.
   """
   SCOOTER_RENTAL
+  """
+  Getting picked up by a taxi from a location that is accessible with a car. Note, this can
+  include walking before the pickup and/or after being dropped off.
+  """
+  TAXI
   "Walking from a stop to the destination."
   WALK
 }

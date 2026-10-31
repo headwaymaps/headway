@@ -112,7 +112,7 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
 # on a volume that already has data, would serve the old build forever.
 function volume_version() {
     local names date hash
-    names=$(printf '%s\n' "$@" | sed 's#.*/##' | sort)
+    names=$(printf '%s\n' "$@" | sed 's#.*/##' | LC_ALL=C sort)
 
     date=$(grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' <<< "$names" | sort | tail -1)
     if [ -z "$date" ]; then

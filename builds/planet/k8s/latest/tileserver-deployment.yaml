@@ -21,15 +21,15 @@ spec:
               mountPath: /data
           env:
             - name: TERRAIN_ARTIFACT_SOURCE
-              value: "https://data.example.com/0.13.0/terrain-2026-10-24-d961012b.mbtiles"
+              value: "https://data.example.com/0.14.0/terrain-2026-10-24-d961012b.mbtiles"
             - name: TERRAIN_ARTIFACT_DEST
               value: /data/tiles/terrain.mbtiles
             - name: LANDCOVER_ARTIFACT_SOURCE
-              value: "https://data.example.com/0.13.0/landcover-2026-10-24-af6aa17e.mbtiles"
+              value: "https://data.example.com/0.14.0/landcover-2026-10-24-af6aa17e.mbtiles"
             - name: LANDCOVER_ARTIFACT_DEST
               value: /data/tiles/landcover.mbtiles
             - name: AREAMAP_ARTIFACT_SOURCE
-              value: "https://data.example.com/0.13.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-2026-10-27-d7a90e6a.pmtiles"
+              value: "https://data.example.com/0.14.0/maps-earth-planet-v1.261019/maps-earth-planet-v1.261019-2026-10-27-d7a90e6a.pmtiles"
             - name: AREAMAP_ARTIFACT_DEST
               value: /data/tiles/areamap.pmtiles
           resources:
@@ -71,4 +71,4 @@ spec:
       volumes:
         - name: tileserver-volume
           persistentVolumeClaim:
-            claimName: tileserver-maps-earth-planet-v1-261019-0-13-0-2026-10-27-58740f76
+            claimName: tileserver-maps-earth-planet-v1-261019-0-14-0-2026-10-27-58740f76

@@ -24,7 +24,7 @@ spec:
       volumes:
         - name: elasticsearch-volume
           persistentVolumeClaim:
-            claimName: elasticsearch-seattle-latest-dev-2026-08-20-1d0d2bbf-d4999466
+            claimName: elasticsearch-seattle-latest-dev-2026-08-20-1d0d2bbf-ba4bbeb0
         - name: config-volume
           ephemeral:
             volumeClaimTemplate:
@@ -63,7 +63,8 @@ spec:
                       "index": {
                         "refresh_interval": "10s",
                         "number_of_replicas": "0",
-                        "number_of_shards": "5"
+                        "number_of_shards": "5",
+                        "codec": "best_compression"
                       }
                     }
                   },
