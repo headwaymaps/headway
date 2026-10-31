@@ -2,8 +2,7 @@ use geo::Point;
 use url::Url;
 
 use super::valhalla_api::{
-    BicycleCostingOptions, CostingOptions, ModeCosting, RouteLocation, SnapToAnyRoad,
-    ValhallaRouteQuery,
+    Costing, CostingOptions, RouteLocation, SnapToAnyRoad, ValhallaRouteQuery,
 };
 use crate::{DistanceUnit, Result};
 
@@ -21,7 +20,7 @@ impl ValhallaRouter {
         &self,
         source: Point,
         destination: Point,
-        mode: ModeCosting,
+        costing: Costing,
         num_itineraries: u32,
         distance_units: DistanceUnit,
     ) -> Result<Url> {
@@ -31,17 +30,16 @@ impl ValhallaRouter {
         // beside the street. Snapping to it routes them along the sidewalk to the nearest
         // crossing and back, where a real rider would just set off from (or stop at) the curb.
         // Letting Valhalla pick any road nearby by cost picks the street instead.
-        let (snap, costing_options) = match mode {
-            ModeCosting::Bicycle => (
+        let mode = costing.mode();
+        let (snap, costing_options) = match costing {
+            Costing::Bicycle(bicycle) => (
                 Some(SnapToAnyRoad {
                     radius: 15,
                     rank_candidates: false,
                 }),
-                Some(CostingOptions {
-                    bicycle: BicycleCostingOptions::TUNED,
-                }),
+                Some(CostingOptions { bicycle }),
             ),
-            ModeCosting::Auto | ModeCosting::Pedestrian => (None, None),
+            Costing::Auto | Costing::Pedestrian => (None, None),
         };
         let location = |point: Point| RouteLocation {
             lon_lat: point.into(),
@@ -70,15 +68,20 @@ impl ValhallaRouter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::valhalla::valhalla_api::{BicycleCostingOptions, ModeCosting};
     use serde_json::{json, Value};
 
     fn requested(mode: ModeCosting) -> Value {
+        requested_costing(mode.into())
+    }
+
+    fn requested_costing(costing: Costing) -> Value {
         let router = ValhallaRouter::new("http://valhalla:8002".parse().unwrap());
         let url = router
             .plan_url(
                 Point::new(-122.3, 47.6),
                 Point::new(-122.4, 47.7),
-                mode,
+                costing,
                 1,
                 DistanceUnit::Kilometers,
             )
@@ -92,10 +95,13 @@ mod tests {
     }
 
     #[test]
-    fn bike_routes_use_the_tuned_costing() {
-        let options = &requested(ModeCosting::Bicycle)["costing_options"]["bicycle"];
-        assert_eq!(options["use_roads"], json!(0.1));
-        assert_eq!(options["road_class_factors"][0], json!(20.0));
+    fn bike_routes_send_their_costing() {
+        let faster = requested_costing(Costing::Bicycle(BicycleCostingOptions::FASTER));
+        assert_eq!(faster["costing"], json!("bicycle"));
+        assert_eq!(
+            faster["costing_options"]["bicycle"]["use_hills"],
+            json!(1.0)
+        );
         assert_eq!(
             requested(ModeCosting::Pedestrian)["costing_options"],
             Value::Null

@@ -1181,20 +1181,83 @@ async fn valhalla_plan(
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
 
-    let mode = match primary_mode {
+    let costing = match primary_mode {
         TravelMode::Transit => unreachable!("handled above"),
-        TravelMode::Bicycle => valhalla_api::ModeCosting::Bicycle,
-        TravelMode::Car => valhalla_api::ModeCosting::Auto,
-        TravelMode::Walk => valhalla_api::ModeCosting::Pedestrian,
+        TravelMode::Bicycle => return valhalla_bike_plans(query, app_state).await,
+        TravelMode::Car => valhalla_api::Costing::Auto,
+        TravelMode::Walk => valhalla_api::Costing::Pedestrian,
     };
+    valhalla_route(
+        query,
+        app_state,
+        primary_mode,
+        costing,
+        query.num_itineraries,
+    )
+    .await
+}
 
+/// Plan a bike trip once per [`BikeRoutePreference`], and offer the results that differ, like
+/// [`bike_plans`] does with OTP.
+async fn valhalla_bike_plans(
+    query: &Query<PlanQuery>,
+    app_state: &Data<AppState>,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let plans = join_all(BikeRoutePreference::ALL.map(|preference| async move {
+        let options = match preference {
+            BikeRoutePreference::Quieter => valhalla_api::BicycleCostingOptions::COMFIER,
+            BikeRoutePreference::Faster => valhalla_api::BicycleCostingOptions::FASTER,
+        };
+        // Each preference gives its own best route, as OTP's do, rather than alternates.
+        let plan = valhalla_route(
+            query,
+            app_state,
+            &TravelMode::Bicycle,
+            valhalla_api::Costing::Bicycle(options),
+            0,
+        )
+        .await;
+        (preference, plan)
+    }))
+    .await;
+
+    let mut planned = vec![];
+    let mut last_error = None;
+    for (preference, plan) in plans {
+        match plan {
+            Ok(response) => planned.extend(
+                response
+                    .itineraries
+                    .into_iter()
+                    .map(|itinerary| (preference, itinerary)),
+            ),
+            Err(e) => {
+                log::warn!("Valhalla failed to plan a {preference:?} bike route: {e}");
+                last_error = Some(e);
+            }
+        }
+    }
+
+    match last_error {
+        Some(e) if planned.is_empty() => Err(e),
+        _ => Ok(PlanResponseOk::from_bike_routes(planned)),
+    }
+}
+
+async fn valhalla_route(
+    query: &Query<PlanQuery>,
+    app_state: &Data<AppState>,
+    primary_mode: &TravelMode,
+    costing: valhalla_api::Costing,
+    alternates: u32,
+) -> Result<PlanResponseOk, PlanResponseErr> {
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
     let router_url = app_state.valhalla_router()?.plan_url(
         query.from_place,
         query.to_place,
-        mode,
-        query.num_itineraries,
+        costing,
+        alternates,
         query.instruction_units(),
     )?;
     let valhalla_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
@@ -1790,7 +1853,7 @@ mod tests {
                 .plan_url(
                     query.from_place,
                     query.to_place,
-                    valhalla_api::ModeCosting::Pedestrian,
+                    valhalla_api::Costing::Pedestrian,
                     query.num_itineraries,
                     query.instruction_units(),
                 )
