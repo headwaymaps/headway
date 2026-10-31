@@ -251,6 +251,8 @@ export type TravelmuxPlanRequest = {
   /// Only affects the prose of an instruction ("Continue for 2 miles.") - every distance in the
   /// response is in meters.
   preferredDistanceUnits: string;
+  /// "true" to also get Valhalla's bike and walk routes where OTP plans them.
+  compareRouters?: string;
 };
 
 export enum TravelmuxMode {
@@ -276,13 +278,6 @@ export enum TransitVehicleMode {
   Transit = 'TRANSIT',
 }
 
-export interface ElevationResponse {
-  sampledGeometry: string;
-  elevation: number[];
-  totalClimbMeters: number;
-  totalFallMeters: number;
-}
-
 /// v8 writes every point as a `[lon, lat]` pair, in requests as well as responses.
 function lonLatPair(point: LngLatLike): LonLatPair {
   const { lng, lat } = LngLat.convert(point);
@@ -290,23 +285,6 @@ function lonLatPair(point: LngLatLike): LonLatPair {
 }
 
 export class TravelmuxClient {
-  public static async fetchElevation(
-    path: string,
-  ): Promise<Result<ElevationResponse, Error>> {
-    const params = new URLSearchParams({ path });
-    const response = await fetch(`/travelmux/v8/elevation?${params}`);
-
-    if (response.ok) {
-      const elevationData: ElevationResponse = await response.json();
-      return Ok(elevationData);
-    } else {
-      const error = new Error(
-        `Failed to fetch elevation: ${response.statusText}`,
-      );
-      return Err(error);
-    }
-  }
-
   /// Where the vehicles near each requested pattern's boarding stop are right now.
   ///
   /// `from`/`to` are the endpoints of the plan the patterns came from: pattern codes only mean
@@ -366,6 +344,7 @@ export class TravelmuxClient {
     modes: TravelmuxMode[],
     numItineraries: number,
     preferredDistanceUnits: DistanceUnits,
+    compareRouters: boolean,
     time?: string,
     date?: string,
     arriveBy?: boolean,
@@ -377,6 +356,9 @@ export class TravelmuxClient {
       mode: modes.join(','),
       preferredDistanceUnits,
     };
+    if (compareRouters) {
+      params.compareRouters = 'true';
+    }
     if (vias.length > 0) {
       params.viaPlaces = vias.map((via) => `${via.lng},${via.lat}`).join(';');
     }

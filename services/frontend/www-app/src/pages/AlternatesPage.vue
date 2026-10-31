@@ -196,6 +196,9 @@ export default defineComponent({
     mode: async function (): Promise<void> {
       await this.updateTrips();
     },
+    debugEnabled: async function (): Promise<void> {
+      await this.updateTrips();
+    },
   },
   unmounted: function () {
     this.stopVehicleOverlay();
@@ -443,6 +446,7 @@ export default defineComponent({
         this.mode,
         Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
         { ...this.transitQuery.params, vias },
+        debugEnabled.value,
       );
       if (seq !== this.editSeq) return;
       if (!result.ok) {
@@ -522,6 +526,7 @@ export default defineComponent({
           this.mode,
           Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
           this.transitQuery.params,
+          debugEnabled.value,
         ).finally(() => {
           this.isLoading = false;
         });

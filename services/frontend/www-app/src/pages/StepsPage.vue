@@ -40,6 +40,7 @@ import VehicleOverlay from 'src/models/VehicleOverlay';
 import Markers, { showSteepClimbBadges } from 'src/utils/Markers';
 import { useRoute } from 'vue-router';
 import TransitQuery from 'src/models/TransitQuery';
+import { debugEnabled } from 'src/utils/debug';
 
 export default defineComponent({
   name: 'StepsPage',
@@ -175,6 +176,7 @@ export default defineComponent({
           this.mode,
           this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers,
           this.transitQuery.params,
+          debugEnabled.value,
         );
         if (!result.ok) {
           console.error('fetchBestTrips.error', result.error);

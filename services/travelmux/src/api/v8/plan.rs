@@ -64,6 +64,10 @@ pub struct PlanQuery {
     /// When true, `date_time` describes the desired arrival time rather than departure time.
     #[serde(default)]
     arrive_by: bool,
+
+    /// Also offer Valhalla's bike and walk routes where OTP plans them, to compare the two.
+    #[serde(default)]
+    compare_routers: bool,
 }
 
 impl PlanQuery {
@@ -1143,7 +1147,7 @@ pub async fn _get_plan(
     match primary_mode {
         TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
         TravelMode::Car => valhalla_plan(&query, &app_state, primary_mode).await,
-        TravelMode::Bicycle | TravelMode::Walk => {
+        TravelMode::Bicycle | TravelMode::Walk if query.compare_routers => {
             let (otp, valhalla) = join(
                 otp_plan(&query, req, &app_state, primary_mode),
                 valhalla_plan(&query, &app_state, primary_mode),
@@ -1152,17 +1156,7 @@ pub async fn _get_plan(
             let otp = match otp {
                 Ok(otp) => otp,
                 Err(e) => {
-                    match ErrorType::try_from(e.error.error_code) {
-                        Ok(ErrorType::NoCoverageForArea) => {
-                            log::debug!("No OTP coverage for route");
-                        }
-                        other => {
-                            debug_assert!(other.is_ok(), "unexpected error code: {e:?}");
-                            // Valhalla covers everywhere, so don't surface this error to the user.
-                            // Likely we just don't support this area.
-                            log::error!("OTP failed to plan {primary_mode:?} route: {e}");
-                        }
-                    }
+                    log_otp_fallback(&e, primary_mode);
                     return valhalla;
                 }
             };
@@ -1173,6 +1167,29 @@ pub async fn _get_plan(
                     Ok(otp)
                 }
             }
+        }
+        TravelMode::Bicycle | TravelMode::Walk => {
+            match otp_plan(&query, req, &app_state, primary_mode).await {
+                Ok(otp) => Ok(otp),
+                Err(e) => {
+                    log_otp_fallback(&e, primary_mode);
+                    valhalla_plan(&query, &app_state, primary_mode).await
+                }
+            }
+        }
+    }
+}
+
+/// Valhalla covers everywhere, so an OTP failure falls back to it rather than reaching the user.
+fn log_otp_fallback(e: &PlanResponseErr, primary_mode: &TravelMode) {
+    match ErrorType::try_from(e.error.error_code) {
+        Ok(ErrorType::NoCoverageForArea) => {
+            log::debug!("No OTP coverage for route");
+        }
+        other => {
+            debug_assert!(other.is_ok(), "unexpected error code: {e:?}");
+            // Likely we just don't support this area.
+            log::error!("OTP failed to plan {primary_mode:?} route: {e}");
         }
     }
 }
