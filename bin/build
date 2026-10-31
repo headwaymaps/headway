@@ -102,12 +102,20 @@ if [ -d "$TRANSIT_CONFIG_DIR" ]; then
     fi
 fi
 
+# Prepared once by bin/build-valhalla-elevation. A planet build needs it; a
+# regional build downloads its own when it's missing.
+VALHALLA_ELEVATION_DIR="${HEADWAY_VALHALLA_ELEVATION_DIR:-data/valhalla-elevation}"
+USE_VALHALLA_ELEVATION=""
+if [ -d "$VALHALLA_ELEVATION_DIR" ]; then
+    USE_VALHALLA_ELEVATION="--valhalla-elevation ${VALHALLA_ELEVATION_DIR}"
+fi
+
 USE_ONLY_FLAG=""
 if [ ${#ONLY[@]} -gt 0 ]; then
     USE_ONLY_FLAG="--only=$(IFS=,; echo "${ONLY[*]}")"
 fi
 status "Building ${ONLY[*]:-all artifacts} into data/${HEADWAY_AREA}"
-traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
+traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_VALHALLA_ELEVATION} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
 
 status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"

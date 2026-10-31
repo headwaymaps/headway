@@ -1,0 +1,15 @@
+#!/bin/bash -e
+
+# Downloads the elevation tiles over the planet's land, about 132GB, for planet
+# Valhalla builds to read grades from. A one-off: bin/build finds the result in
+# data/valhalla-elevation (or $HEADWAY_VALHALLA_ELEVATION_DIR) from then on.
+#
+# Dagger holds a copy while exporting it, so allow for twice that much disk.
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+cd "$APP_ROOT"
+
+OUTPUT_DIR="${1:-${HEADWAY_VALHALLA_ELEVATION_DIR:-data/valhalla-elevation}}"
+
+echo "==> Downloading land elevation tiles into ${OUTPUT_DIR}" >&2
+dagger --progress=plain -c "valhalla-land-elevation | export '${OUTPUT_DIR}'"

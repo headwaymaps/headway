@@ -36,6 +36,8 @@ type Headway struct {
 	RepoDir       *dagger.Directory
 	IsPlanetBuild bool
 	Countries     string
+	// Elevation tiles for Valhalla, as ValhallaLandElevation prepares them.
+	ValhallaElevation *dagger.Directory
 }
 
 // An Artifact is a build output together with the name it gets published
@@ -239,6 +241,11 @@ func (h *Headway) WithArea(
 
 	// +optional
 	maxConcurrentTransitZones int,
+
+	// Elevation tiles for Valhalla, as ValhallaLandElevation prepares them.
+	// Required for a planet build; a regional build downloads its own.
+	// +optional
+	valhallaElevation *dagger.Directory,
 ) *Headway {
 	h.IsPlanetBuild = countries == "ALL"
 	h.Countries = countries
@@ -246,6 +253,7 @@ func (h *Headway) WithArea(
 	h.TransitConfigDir = transitDir
 	h.GTFSSecrets = gtfsSecrets
 	h.MaxConcurrentTransitZones = maxConcurrentTransitZones
+	h.ValhallaElevation = valhallaElevation
 	if localPbf == nil {
 		h.OSMExport = h.DownloadPBF(area)
 	} else {
@@ -682,14 +690,19 @@ func valhallaBaseContainer() *dagger.Container {
 		WithWorkdir("/tiles")
 }
 
+// Where the tile build reads elevation from: outside /tiles, which becomes the
+// artifact.
+const valhallaElevationDir = "/elevation"
+
 func valhallaBuildContainer() *dagger.Container {
 	return valhallaBaseContainer().
-		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite > valhalla.json"}).
+		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite --additional-data-elevation " + valhallaElevationDir + " > valhalla.json"}).
 		// valhalla_build_timezones leaves its mktemp scratch copy of the output behind.
 		WithExec([]string{"sh", "-c", "export TMPDIR=$(mktemp -d) && valhalla_build_timezones > /tiles/timezones.sqlite && rm -r $TMPDIR"})
 }
 
-// Builds Valhalla routing tiles
+// Builds Valhalla routing tiles, with each road's grade from the elevation
+// tiles.
 func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 	if h.OSMExport == nil || h.OSMExport.File == nil {
 		panic("Headway.OSMExport.File must be set to build Valhalla tiles")
@@ -697,9 +710,26 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 
 	container := valhallaBuildContainer().
 		WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
+		WithMountedDirectory(valhallaElevationDir, h.valhallaElevation(ctx)).
 		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 
 	return DirectoryArtifact(h.Area+"-valhalla", container.Directory("/tiles"))
+}
+
+// The prepared elevation tiles, or the area's own when it's small enough to
+// download them as part of the build.
+func (h *Headway) valhallaElevation(ctx context.Context) *dagger.Directory {
+	if h.ValhallaElevation != nil {
+		return h.ValhallaElevation
+	}
+	if h.IsPlanetBuild {
+		panic("a planet build needs --valhalla-elevation, from valhalla-land-elevation")
+	}
+	bbox, err := h.BBox(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get bounding box: %w", err))
+	}
+	return elevationHgts(bbox)
 }
 
 func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
@@ -708,6 +738,26 @@ func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
 		WithExec([]string{"sh", "-c", "valhalla_export_edges -c valhalla.json > /tiles/polylines.0sv"})
 
 	return container.File("/tiles/polylines.0sv")
+}
+
+// Natural Earth's land, and the islands too small for it, which decide the
+// elevation tiles worth having.
+const naturalEarthGeojson = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/"
+
+// Downloads the elevation tiles over land for the whole planet, about 25,500
+// gzipped tiles and 132GB. Only the routing graph needs them, and roads are on
+// land; the oceans' tiles would be another 70GB of sea floor.
+//
+// A one-off: the source data doesn't change. Export the result and pass it to
+// planet builds as --valhalla-elevation.
+func (h *Headway) ValhallaLandElevation(ctx context.Context) *dagger.Directory {
+	script := dag.Git(valhallaRepo).Commit(valhallaCommit).Tree().File("scripts/valhalla_build_elevation")
+	return slimContainer("python3", "python3-shapely", "ca-certificates").
+		WithFile("/land/land.geojson", downloadFile(naturalEarthGeojson+"ne_10m_land.geojson")).
+		WithFile("/land/minor_islands.geojson", downloadFile(naturalEarthGeojson+"ne_10m_minor_islands.geojson")).
+		WithFile("/valhalla_build_elevation", script).
+		WithExec([]string{"python3", "/valhalla_build_elevation", "--from-geojson", "/land", "--outdir", "/elevation", "--parallelism", "32", "-v"}).
+		Directory("/elevation")
 }
 
 func (h *Headway) ValhallaInitContainer(ctx context.Context) *dagger.Container {
@@ -756,16 +806,20 @@ func (h *Headway) Elevations(ctx context.Context) *dagger.Directory {
 	return elevations(ctx, bbox, h)
 }
 
-func elevations(ctx context.Context, bbox *Bbox, headway *Headway) *dagger.Directory {
-	elevationHgts := valhallaBaseContainer().
+// The gzipped elevation tiles covering bbox, laid out the way Valhalla reads
+// them.
+func elevationHgts(bbox *Bbox) *dagger.Directory {
+	return valhallaBaseContainer().
 		WithExec([]string{"valhalla_build_elevation", "--outdir", "elevation-hgts", "--from-bbox=" + bbox.CommaSeparated()}).
 		Directory("/tiles/elevation-hgts")
+}
 
+func elevations(ctx context.Context, bbox *Bbox, headway *Headway) *dagger.Directory {
 	// Convert elevation HGT files to TIF format
 	demScript := headway.ServiceDir("otp").File("dem-hgt-to-tif")
 	container := slimContainer("gdal-bin").
 		WithMountedFile("/dem-hgt-to-tif", demScript).
-		WithMountedDirectory("/elevation-hgts", elevationHgts).
+		WithMountedDirectory("/elevation-hgts", elevationHgts(bbox)).
 		WithExec([]string{"/dem-hgt-to-tif", "/elevation-hgts", "/elevation-tifs"})
 
 	return container.Directory("/elevation-tifs")
