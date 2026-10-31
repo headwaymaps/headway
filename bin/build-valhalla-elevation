@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Downloads the elevation tiles over the planet's land, about 132GB, for planet
+# Downloads the elevation tiles over the planet's land, about 60GB, for planet
 # Valhalla builds to read grades from. A one-off: bin/build finds the result in
 # data/valhalla-elevation (or $HEADWAY_VALHALLA_ELEVATION_DIR) from then on.
 #

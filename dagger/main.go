@@ -679,7 +679,7 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 // haven't been released yet.
 const (
 	valhallaRepo   = "https://github.com/headwaymaps/valhalla.git"
-	valhallaCommit = "42ccf3c13164f1b337ab4cdca132e291957c77b2"
+	valhallaCommit = "e0ce93a51328b5da7e48a7e9b11329b0195c581b"
 )
 
 func valhallaBaseContainer() *dagger.Container {
@@ -745,18 +745,19 @@ func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
 const naturalEarthGeojson = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/"
 
 // Downloads the elevation tiles over land for the whole planet, about 25,500
-// gzipped tiles and 132GB. Only the routing graph needs them, and roads are on
-// land; the oceans' tiles would be another 70GB of sea floor.
+// tiles, recompressing each as it arrives to about 60GB (132GB as served).
+// Only the routing graph needs them, and roads are on land; the oceans' tiles
+// would be another 70GB of sea floor.
 //
 // A one-off: the source data doesn't change. Export the result and pass it to
 // planet builds as --valhalla-elevation.
 func (h *Headway) ValhallaLandElevation(ctx context.Context) *dagger.Directory {
 	script := dag.Git(valhallaRepo).Commit(valhallaCommit).Tree().File("scripts/valhalla_build_elevation")
-	return slimContainer("python3", "python3-shapely", "ca-certificates").
+	return slimContainer("python3", "python3-shapely", "python3-numpy", "python3-zstandard", "ca-certificates").
 		WithFile("/land/land.geojson", downloadFile(naturalEarthGeojson+"ne_10m_land.geojson")).
 		WithFile("/land/minor_islands.geojson", downloadFile(naturalEarthGeojson+"ne_10m_minor_islands.geojson")).
 		WithFile("/valhalla_build_elevation", script).
-		WithExec([]string{"python3", "/valhalla_build_elevation", "--from-geojson", "/land", "--outdir", "/elevation", "--parallelism", "32", "-v"}).
+		WithExec([]string{"python3", "/valhalla_build_elevation", "--from-geojson", "/land", "--outdir", "/elevation", "--dzst", "-v"}).
 		Directory("/elevation")
 }
 
