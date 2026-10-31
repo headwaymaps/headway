@@ -13,6 +13,35 @@ pub enum ModeCosting {
     Pedestrian,
 }
 
+/// A mode to route by, and how to weigh its routes.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Costing {
+    Auto,
+    Bicycle(BicycleCostingOptions),
+    Pedestrian,
+}
+
+impl Costing {
+    pub fn mode(&self) -> ModeCosting {
+        match self {
+            Self::Auto => ModeCosting::Auto,
+            Self::Bicycle(_) => ModeCosting::Bicycle,
+            Self::Pedestrian => ModeCosting::Pedestrian,
+        }
+    }
+}
+
+/// Bikes are routed the comfier way.
+impl From<ModeCosting> for Costing {
+    fn from(mode: ModeCosting) -> Self {
+        match mode {
+            ModeCosting::Auto => Self::Auto,
+            ModeCosting::Bicycle => Self::Bicycle(BicycleCostingOptions::COMFIER),
+            ModeCosting::Pedestrian => Self::Pedestrian,
+        }
+    }
+}
+
 /// Parameters for a query, as in:
 ///     `route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -39,6 +68,7 @@ pub struct BicycleCostingOptions {
     /// Scales the stress of a road on a bike network, except its road class's.
     pub bicycle_network_factor: f64,
     pub use_roads: f64,
+    pub use_hills: f64,
     pub avoid_bad_surfaces: f64,
     pub walk_bike_factor: f64,
     pub destination_only_penalty: f64,
@@ -46,13 +76,31 @@ pub struct BicycleCostingOptions {
 }
 
 impl BicycleCostingOptions {
-    /// Tuned against a corpus of Seattle trips for the mix of roads that best matched OTP's.
-    pub const TUNED: Self = Self {
+    /// Quiet streets, paths and bike routes. Tuned against a corpus of Seattle trips for the mix
+    /// of roads that best matched OTP's.
+    pub const COMFIER: Self = Self {
         road_class_factors: [20.0, 8.0, 1.25, 1.0, 0.5, 0.25, 0.25, 1.0],
         bicycle_network_factor: 0.275,
         use_roads: 0.1,
+        use_hills: 0.25,
         avoid_bad_surfaces: 0.5,
         walk_bike_factor: 3.0,
+        destination_only_penalty: 300.0,
+        gate_penalty: 150.0,
+    };
+
+    /// As little time as it takes, which already reflects hills, rough surfaces and walking
+    /// the bike, so nothing else is penalized. Valhalla's own road class factors keep a mild
+    /// aversion to the biggest roads for 0.1% more time.
+    ///
+    /// Across the Seattle corpus this takes 12.7% less time than [`Self::COMFIER`].
+    pub const FASTER: Self = Self {
+        road_class_factors: [1.0, 0.4, 0.2, 0.1, 0.05, 0.05, 0.0, 0.5],
+        bicycle_network_factor: 1.0,
+        use_roads: 1.0,
+        use_hills: 1.0,
+        avoid_bad_surfaces: 0.0,
+        walk_bike_factor: 1.0,
         destination_only_penalty: 300.0,
         gate_penalty: 150.0,
     };

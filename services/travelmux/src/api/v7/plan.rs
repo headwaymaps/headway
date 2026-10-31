@@ -844,7 +844,7 @@ async fn valhalla_plan(
         query.from_place,
         &[],
         query.to_place,
-        mode,
+        mode.into(),
         query.num_itineraries,
         query.instruction_units(),
     )?;
@@ -1087,7 +1087,7 @@ mod tests {
                     query.from_place,
                     &[],
                     query.to_place,
-                    valhalla_api::ModeCosting::Pedestrian,
+                    valhalla_api::ModeCosting::Pedestrian.into(),
                     query.num_itineraries,
                     query.instruction_units(),
                 )
