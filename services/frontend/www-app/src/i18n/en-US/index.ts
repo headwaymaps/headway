@@ -66,6 +66,10 @@ export default {
   punctuation_route_preference_seperator: ' · ',
   route_preference_quieter: 'Comfier',
   route_preference_faster: 'Faster',
+  route_edit_waypoint_$n: 'Waypoint {n}',
+  route_edit_remove_waypoint: 'Remove waypoint',
+  route_edit_drag_route: 'Drag to change route',
+  route_edit_remove_via: 'Click to remove',
   steep_section_$length_$street_$steepest:
     '{length} on {street}, steepest {steepest}',
   steep_section_$length_$steepest: '{length}, steepest {steepest}',

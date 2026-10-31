@@ -236,6 +236,8 @@ export type TripEnd = 'from' | 'to';
 export type TravelmuxPlanRequest = {
   fromPlace: string;
   toPlace: string;
+  /// `lon,lat;lon,lat` - places the trip must pass through, in order.
+  viaPlaces?: string;
   // It'd be nice to typecheck this as numeric, but it would require some
   // additional type juggling elsewhere
   //numItineraries?: number,
@@ -360,6 +362,7 @@ export class TravelmuxClient {
   public static async fetchPlans(
     from: LngLat,
     to: LngLat,
+    vias: LngLat[],
     modes: TravelmuxMode[],
     numItineraries: number,
     preferredDistanceUnits: DistanceUnits,
@@ -374,6 +377,9 @@ export class TravelmuxClient {
       mode: modes.join(','),
       preferredDistanceUnits,
     };
+    if (vias.length > 0) {
+      params.viaPlaces = vias.map((via) => `${via.lng},${via.lat}`).join(';');
+    }
 
     // travelmux plans from "now" unless we name a departure (or arrival) time. The time the user
     // picked is a wall clock time where they're traveling, not necessarily where they are, so we

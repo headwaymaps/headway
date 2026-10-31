@@ -6,6 +6,7 @@ import {
 } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
 import { Result } from 'src/utils/Result';
+import type { TransitQueryParams } from 'src/models/TransitQuery';
 import {
   TravelmuxMode,
   TravelmuxClient,
@@ -553,10 +554,13 @@ export async function fetchBestTrips(
   to: LngLat,
   mode: TravelMode,
   distanceUnits: DistanceUnits,
-  departureTime?: string,
-  departureDate?: string,
-  arriveBy?: boolean,
-  transitWithBicycle?: boolean,
+  {
+    searchTime,
+    searchDate,
+    arriveBy,
+    transitWithBicycle,
+    vias,
+  }: TransitQueryParams,
 ): Promise<Result<Trip[], TripFetchError>> {
   const modes = [mode];
   if (mode == TravelMode.Transit && transitWithBicycle) {
@@ -578,11 +582,12 @@ export async function fetchBestTrips(
   return await TravelmuxClient.fetchPlans(
     from,
     to,
+    vias ?? [],
     travelmuxModes,
     5,
     distanceUnits,
-    departureTime,
-    departureDate,
+    searchTime,
+    searchDate,
     arriveBy,
   );
 }

@@ -174,10 +174,7 @@ export default defineComponent({
           this.toPlace.point,
           this.mode,
           this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers,
-          this.transitQuery.params.searchTime,
-          this.transitQuery.params.searchDate,
-          this.transitQuery.params.arriveBy,
-          this.transitQuery.params.transitWithBicycle,
+          this.transitQuery.params,
         );
         if (!result.ok) {
           console.error('fetchBestTrips.error', result.error);

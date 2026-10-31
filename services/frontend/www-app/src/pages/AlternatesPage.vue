@@ -5,6 +5,8 @@
       :to-place="toPlace"
       :current-mode="mode"
       :initial-search="transitQuery.params"
+      :vias="vias"
+      :did-remove-via="(index: number) => removeVia(index)"
       :did-select-from-place="searchBoxDidSelectFromPlace"
       :did-select-to-place="searchBoxDidSelectToPlace"
       :did-swap-places="clickedSwap"
@@ -75,7 +77,12 @@
   </div>
 </template>
 <script lang="ts">
-import { getBaseMap, type BaseMapInterface } from 'src/components/BaseMap.vue';
+import {
+  baseMapPromise,
+  getBaseMap,
+  map as rawMap,
+  type BaseMapInterface,
+} from 'src/components/BaseMap.vue';
 import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
 import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
@@ -99,7 +106,12 @@ import { GradeShades } from 'src/utils/grade';
 import Markers, { showSteepClimbBadges } from 'src/utils/Markers';
 import { useRoute, type LocationQueryRaw } from 'vue-router';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
-import { LngLat } from 'maplibre-gl';
+import { LngLat, Marker, Popup } from 'maplibre-gl';
+import type { MapMouseEvent, Point } from 'maplibre-gl';
+import { debounce } from 'lodash';
+
+/// How near, in pixels, a press has to land to a route to drag it.
+const ROUTE_GRAB_PIXELS = 5;
 
 export default defineComponent({
   name: 'AlternatesPage',
@@ -137,6 +149,19 @@ export default defineComponent({
       toPlace,
       fromPlace,
       transitQuery,
+      viaMarkers: [] as Marker[],
+      editSeq: 0,
+      /// Says what dragging or clicking what's under the mouse will do.
+      editTooltip: new Popup({
+        closeButton: false,
+        closeOnClick: false,
+        className: 'route-edit-tooltip',
+        offset: 14,
+      }),
+      /// Whether a route or via is being dragged, which the tooltip would only get in the way of.
+      dragging: false,
+      /// Replans as a via is dragged, once it's paused for a moment.
+      replanSoon: debounce((replan: () => void) => replan(), 250),
     };
   },
   data(): {
@@ -161,6 +186,9 @@ export default defineComponent({
     };
   },
   computed: {
+    vias(): LngLat[] {
+      return this.transitQuery.params.vias ?? [];
+    },
     debugEnabled: () => debugEnabled.value,
     routeScoringEnabled: () => routeScoringEnabled.value,
   },
@@ -172,8 +200,18 @@ export default defineComponent({
   unmounted: function () {
     this.stopVehicleOverlay();
     showSteepClimbBadges([]);
+    this.replanSoon.cancel();
+    rawMap?.off('mousedown', this.startViaDrag);
+    rawMap?.off('mousemove', this.hoverRoute);
+    rawMap?.getCanvas().removeEventListener('mouseleave', this.hideTooltip);
+    this.hideTooltip();
+    for (const marker of this.viaMarkers) marker.remove();
   },
   mounted: async function () {
+    await baseMapPromise;
+    rawMap!.on('mousedown', this.startViaDrag);
+    rawMap!.on('mousemove', this.hoverRoute);
+    rawMap!.getCanvas().addEventListener('mouseleave', this.hideTooltip);
     if (this.to != '_') {
       this.toPlace = await PlaceStorage.fetchFromSerializedId(
         this.to as string,
@@ -239,17 +277,186 @@ export default defineComponent({
     },
     searchBoxDidSelectFromPlace(place?: Place) {
       this.fromPlace = place;
+      this.forgetVias();
       this.rewriteUrl();
     },
     searchBoxDidSelectToPlace(place?: Place) {
       this.toPlace = place;
+      this.forgetVias();
       this.rewriteUrl();
     },
     async selectCorpusTrip(from: LngLat, to: LngLat) {
       [this.fromPlace, this.toPlace] = await Promise.all(
         [from, to].map((p) => PlaceStorage.fetchFromId(PlaceId.location(p))),
       );
+      this.forgetVias();
       await this.rewriteUrl();
+    },
+    /// Vias belong to the trip they were dragged on.
+    forgetVias() {
+      this.transitQuery = new TransitQuery({
+        ...this.transitQuery.params,
+        vias: undefined,
+      });
+    },
+    /// The route lines on the map, which can be dragged to add a via.
+    routeLayerIds(): string[] {
+      return this.trips.flatMap((trip, tripIdx) =>
+        trip.legs.flatMap((_, legIdx) =>
+          [
+            TripLayerId.selectedLeg(tripIdx, legIdx),
+            TripLayerId.unselectedLeg(tripIdx, legIdx),
+          ]
+            .map((id) => id.toString())
+            .filter((id) => rawMap?.getLayer(id)),
+        ),
+      );
+    },
+    /// Whether a route can be grabbed at `point`.
+    isNearRoute({ x, y }: Point): boolean {
+      const r = ROUTE_GRAB_PIXELS;
+      return (
+        rawMap!.queryRenderedFeatures(
+          [
+            [x - r, y - r],
+            [x + r, y + r],
+          ],
+          { layers: this.routeLayerIds() },
+        ).length > 0
+      );
+    },
+    showTooltip(at: LngLat, text: string) {
+      this.editTooltip.setLngLat(at).setText(text).addTo(rawMap!);
+    },
+    hideTooltip() {
+      this.editTooltip.remove();
+    },
+    hoverRoute(e: MapMouseEvent) {
+      if (this.dragging) return;
+      // A via's marker has its own tooltip.
+      if (isOnMarker(e)) return;
+      if (this.isNearRoute(e.point)) {
+        this.showTooltip(e.lngLat, this.$t('route_edit_drag_route'));
+      } else {
+        this.hideTooltip();
+      }
+    },
+    /// Dragging any route adds a via where it's let go, between the stops it detours least from.
+    startViaDrag(e: MapMouseEvent) {
+      const map = rawMap!;
+      const from = this.fromPlace?.point;
+      const to = this.toPlace?.point;
+      if (!from || !to) return;
+      // A via's own marker drags that via.
+      if (isOnMarker(e)) return;
+      if (!this.isNearRoute(e.point)) return;
+      e.preventDefault();
+      this.dragging = true;
+      this.hideTooltip();
+      const r = ROUTE_GRAB_PIXELS;
+
+      const marker = Markers.via(false).setLngLat(e.lngLat).addTo(map);
+      marker.getElement().style.pointerEvents = 'none';
+      const before = this.vias;
+      const vias = ({ lngLat }: MapMouseEvent) =>
+        withVia(from, to, before, lngLat);
+      const follow = (move: MapMouseEvent) => {
+        marker.setLngLat(move.lngLat);
+        this.previewVias(vias(move));
+      };
+      map.on('mousemove', follow);
+      map.once('mouseup', (up: MapMouseEvent) => {
+        this.dragging = false;
+        map.off('mousemove', follow);
+        marker.remove();
+        if (up.point.dist(e.point) >= r) this.setVias(vias(up));
+        else this.replanSoon.cancel();
+      });
+    },
+    removeVia(index: number) {
+      this.setVias(this.vias.filter((_, i) => i !== index));
+    },
+    previewVias(vias: LngLat[]) {
+      this.replanSoon(() => this.replan(vias));
+    },
+    setVias(vias: LngLat[]) {
+      this.replanSoon.cancel();
+      this.transitQuery = new TransitQuery({
+        ...this.transitQuery.params,
+        vias,
+      });
+      this.$router.replace({ query: this.urlQuery() });
+      this.drawViaMarkers();
+      void this.replan(vias);
+    },
+    drawViaMarkers() {
+      for (const marker of this.viaMarkers) marker.remove();
+      this.viaMarkers = this.vias.map((via, i) => {
+        const marker = Markers.via(true).setLngLat(via).addTo(rawMap!);
+        const moved = () =>
+          this.vias.map((v, j) => (j === i ? marker.getLngLat() : v));
+        // A drag ends in a click too, which shouldn't also remove the via.
+        let dragged = false;
+        marker.on('dragstart', () => {
+          dragged = true;
+          this.dragging = true;
+          this.hideTooltip();
+        });
+        marker.on('drag', () => this.previewVias(moved()));
+        marker.on('dragend', () => {
+          this.dragging = false;
+          this.setVias(moved());
+        });
+        const element = marker.getElement();
+        element.addEventListener('mousedown', () => (dragged = false));
+        element.addEventListener('mouseenter', () => {
+          if (!this.dragging) {
+            this.showTooltip(
+              marker.getLngLat(),
+              this.$t('route_edit_remove_via'),
+            );
+          }
+        });
+        element.addEventListener('mouseleave', this.hideTooltip);
+        element.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (dragged) {
+            dragged = false;
+            return;
+          }
+          this.hideTooltip();
+          this.removeVia(i);
+        });
+        return marker;
+      });
+    },
+    /// Replaces the trips with ones through `vias`, keeping the map's view as it is.
+    async replan(vias: LngLat[]) {
+      const map = getBaseMap();
+      if (!map || !this.fromPlace || !this.toPlace) return;
+      const from = this.fromPlace.point;
+      const to = this.toPlace.point;
+      const seq = ++this.editSeq;
+      const result = await fetchBestTrips(
+        from,
+        to,
+        this.mode,
+        Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
+        { ...this.transitQuery.params, vias },
+      );
+      if (seq !== this.editSeq) return;
+      if (!result.ok) {
+        this.error = result.error;
+        return;
+      }
+      this.error = undefined;
+      const trips = result.value;
+      if (trips.length === 0) return;
+      map.removeAllLayers();
+      map.removeMarkersExcept(['source_marker', 'destination_marker']);
+      this.trips = trips;
+      this.renderTrips(0, false);
+      this.startVehicleOverlay(map, from, to, trips, trips[0]!);
     },
     showTripSteps(trip: Trip) {
       const index = this.$data.trips.indexOf(trip);
@@ -282,11 +489,14 @@ export default defineComponent({
 
       const path = `/directions/${this.mode}/${toEncoded}/${fromEncoded}`;
 
+      this.$router.push({ path, query: this.urlQuery() });
+      await this.updateTrips();
+    },
+    urlQuery(): LocationQueryRaw {
       const query: LocationQueryRaw = this.transitQuery.searchQuery();
       // Keeps a debugging session's links shareable with the tools still on.
       if (debugEnabled.value) query.debug = null;
-      this.$router.push({ path, query });
-      await this.updateTrips();
+      return query;
     },
     async updateTrips(): Promise<void> {
       const map = getBaseMap();
@@ -298,6 +508,7 @@ export default defineComponent({
       map.removeAllLayers();
       map.removeAllMarkers();
       this.stopVehicleOverlay();
+      this.drawViaMarkers();
 
       if (this.fromPlace && this.toPlace) {
         this.isLoading = true;
@@ -310,10 +521,7 @@ export default defineComponent({
           this.toPlace.point,
           this.mode,
           Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
-          this.transitQuery.params.searchTime,
-          this.transitQuery.params.searchDate,
-          this.transitQuery.params.arriveBy,
-          this.transitQuery.params.transitWithBicycle,
+          this.transitQuery.params,
         ).finally(() => {
           this.isLoading = false;
         });
@@ -354,7 +562,7 @@ export default defineComponent({
         );
       }
     },
-    renderTrips(selectedIdx: number) {
+    renderTrips(selectedIdx: number, refit = true) {
       console.assert(this.trips.length > 0);
       const map = getBaseMap();
       if (!map) {
@@ -508,16 +716,49 @@ export default defineComponent({
           );
         }
       }
-      getBaseMap()?.fitBounds(selectedTrip.bounds);
+      if (refit) getBaseMap()?.fitBounds(selectedTrip.bounds);
 
       this.vehicleOverlay?.selectTrip(selectedTrip);
     },
   },
 });
+
+function isOnMarker(e: MapMouseEvent): boolean {
+  return !!(e.originalEvent.target as Element).closest('.maplibregl-marker');
+}
+
+/// `vias` with `via` added where it lengthens the straight path through them least.
+function withVia(
+  from: LngLat,
+  to: LngLat,
+  vias: LngLat[],
+  via: LngLat,
+): LngLat[] {
+  const stops = [from, ...vias, to];
+  const detours = stops
+    .slice(1)
+    .map(
+      (next, i) =>
+        stops[i]!.distanceTo(via) +
+        via.distanceTo(next) -
+        stops[i]!.distanceTo(next),
+    );
+  const index = detours.indexOf(Math.min(...detours));
+  return [...vias.slice(0, index), via, ...vias.slice(index)];
+}
 </script>
 
 <style lang="scss">
 .search-error {
   padding: 16px;
+}
+
+.route-edit-tooltip {
+  pointer-events: none;
+
+  .maplibregl-popup-content {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
 }
 </style>

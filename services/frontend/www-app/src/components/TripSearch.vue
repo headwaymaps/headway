@@ -18,7 +18,26 @@
         @click="didClickFromGps"
       />
     </div>
-    <div style="margin-top: 16px; display: flex">
+    <div v-if="vias.length > 0" class="trip-search-vias">
+      <div v-for="(_, index) in vias" :key="index" class="trip-search-via">
+        <svg class="trip-search-via-dot" height="18" width="18">
+          <circle cx="9" cy="9" r="6" stroke-width="3" fill="white" />
+        </svg>
+        <span class="trip-search-via-label">
+          {{ $t('route_edit_waypoint_$n', { n: index + 1 }) }}
+        </span>
+        <q-btn
+          size="10px"
+          flat
+          round
+          color="dark"
+          icon="close"
+          :aria-label="$t('route_edit_remove_waypoint')"
+          @click="didRemoveVia(index)"
+        />
+      </div>
+    </div>
+    <div :style="{ marginTop: vias.length > 0 ? 0 : '16px', display: 'flex' }">
       <search-box
         :hint="$t('search.to')"
         :style="{ flex: 1 }"
@@ -119,6 +138,15 @@ export default defineComponent({
       default: undefined,
     },
     currentMode: { type: String as () => TravelMode, required: true },
+    /// Places the route was dragged through, in order.
+    vias: {
+      type: Array as PropType<LngLat[]>,
+      default: () => [],
+    },
+    didRemoveVia: {
+      type: Function as PropType<(index: number) => void>,
+      default: () => {},
+    },
     didSelectFromPlace: {
       type: Function as PropType<(newValue?: Place) => void>,
       required: true,
@@ -254,3 +282,52 @@ function timeToInput(date: Date) {
   );
 }
 </script>
+
+<style lang="scss" scoped>
+// Palette.activeRoute, matching the route and its waypoints on the map.
+$route-color: #1296ff;
+$dot-center: 9px;
+
+// A dashed stretch of route running from "from", through each waypoint, to "to".
+.trip-search-vias {
+  position: relative;
+  padding: 8px 0;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: $dot-center - 2px;
+    width: 4px;
+    top: 0;
+    bottom: 0;
+    // Each tile is a dash with half a gap either side, centered so the line ends alike at
+    // "from" and "to".
+    background: linear-gradient(
+        to bottom,
+        transparent 2px,
+        $route-color 2px 8px,
+        transparent 8px
+      )
+      center / 4px 10px repeat-y;
+  }
+}
+
+.trip-search-via {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trip-search-via-dot {
+  position: relative;
+  flex-shrink: 0;
+
+  circle {
+    stroke: $route-color;
+  }
+}
+
+.trip-search-via-label {
+  flex: 1;
+}
+</style>

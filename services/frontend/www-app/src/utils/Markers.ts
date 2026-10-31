@@ -5,6 +5,7 @@ import { getBaseMap } from 'src/components/BaseMap.vue';
 import type { TripLeg } from 'src/models/Trip';
 import type { SteepSection } from 'src/services/TravelmuxClient';
 import { describeGrade, gradeColor } from 'src/utils/grade';
+import { Palette } from 'src/utils/palette';
 import './SteepClimbBadge.scss';
 
 const Markers = {
@@ -29,6 +30,15 @@ const Markers = {
     element.innerHTML =
       '<svg display="block" height="20" width="20"><circle cx="10" cy="10" r="7" stroke="#111" stroke-width="2" fill="white" /></svg>';
     return new Marker({ element });
+  },
+  /// A place the traveler dragged their route through, which they can drag again.
+  via: (draggable: boolean): Marker => {
+    const element = document.createElement('div');
+    element.innerHTML = `<svg display="block" height="18" width="18"><circle cx="9" cy="9" r="6" stroke="${Palette.activeRoute}" stroke-width="3" fill="white" /></svg>`;
+    element.style.cursor = 'grab';
+    // Above the route's other markers, like steep climb badges, so it can always be grabbed.
+    element.style.zIndex = '1';
+    return new Marker({ element, draggable });
   },
   elevationScrubber: (): Marker => {
     const element = document.createElement('div');
