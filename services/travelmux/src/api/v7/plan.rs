@@ -70,6 +70,7 @@ impl<'a> From<(&'a PlanQuery, Option<chrono_tz::Tz>)> for gtfs_graphql::PlanPara
         Self {
             from: query.from_place,
             to: query.to_place,
+            via: &[],
             modes: query.mode.as_slice(),
             num_itineraries: query.num_itineraries,
             date_time: query.date_time,
@@ -116,8 +117,9 @@ impl Itinerary {
             geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
         );
 
+        let stops = valhalla.stops();
         debug_assert!(
-            valhalla.locations.len() == valhalla.legs.len() + 1,
+            stops.len() == valhalla.legs.len() + 1,
             "assuming each leg has a start and end location"
         );
 
@@ -126,7 +128,7 @@ impl Itinerary {
         let legs = valhalla
             .legs
             .iter()
-            .zip(valhalla.locations.windows(2))
+            .zip(stops.windows(2))
             .map(|(v_leg, locations)| {
                 let leg = Leg::from_valhalla(
                     v_leg,
@@ -840,6 +842,7 @@ async fn valhalla_plan(
     // units matter to the request. We convert its distances to meters on the way out.
     let router_url = app_state.valhalla_router().plan_url(
         query.from_place,
+        &[],
         query.to_place,
         mode,
         query.num_itineraries,
@@ -1082,6 +1085,7 @@ mod tests {
             let url = router
                 .plan_url(
                     query.from_place,
+                    &[],
                     query.to_place,
                     valhalla_api::ModeCosting::Pedestrian,
                     query.num_itineraries,

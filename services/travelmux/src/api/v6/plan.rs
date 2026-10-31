@@ -68,6 +68,7 @@ impl<'a> From<(&'a PlanQuery, Option<Tz>)> for gtfs_graphql::PlanParams<'a> {
         Self {
             from: query.from_place,
             to: query.to_place,
+            via: &[],
             modes: query.mode.as_slice(),
             num_itineraries: query.num_itineraries,
             date_time: query.date.as_deref().and_then(|date| {
@@ -134,8 +135,9 @@ impl Itinerary {
 
         let start_time = SystemTime::now();
         let end_time = start_time + Duration::from_millis((valhalla.summary.time * 1000.0) as u64);
+        let stops = valhalla.stops();
         debug_assert!(
-            valhalla.locations.len() == valhalla.legs.len() + 1,
+            stops.len() == valhalla.legs.len() + 1,
             "assuming each leg has a start and end location"
         );
 
@@ -143,7 +145,7 @@ impl Itinerary {
         let legs = valhalla
             .legs
             .iter()
-            .zip(valhalla.locations.windows(2))
+            .zip(stops.windows(2))
             .map(|(v_leg, locations)| {
                 let leg_start_time = start_time;
                 let leg_end_time =
@@ -752,6 +754,7 @@ async fn valhalla_plan(
     // route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}
     let router_url = app_state.valhalla_router().plan_url(
         query.from_place,
+        &[],
         query.to_place,
         mode,
         query.num_itineraries,

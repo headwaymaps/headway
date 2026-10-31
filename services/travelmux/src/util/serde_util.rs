@@ -37,35 +37,47 @@ pub fn deserialize_point_from_lon_lat<'de, D>(deserializer: D) -> Result<Point, 
 where
     D: Deserializer<'de>,
 {
-    use serde::de::Error;
-
     let s: String = Deserialize::deserialize(deserializer)?;
+    parse_lon_lat(&s).map_err(serde::de::Error::custom)
+}
+
+/// `<lon>,<lat>;<lon>,<lat>;...`, for a list of points carried in a query string.
+pub fn deserialize_points_from_lon_lats<'de, D>(deserializer: D) -> Result<Vec<Point>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    s.split(';')
+        .map(parse_lon_lat)
+        .collect::<Result<_, _>>()
+        .map_err(serde::de::Error::custom)
+}
+
+fn parse_lon_lat(s: &str) -> Result<Point, String> {
     use std::str::FromStr;
     let mut iter = s.split(',').map(str::trim).map(f64::from_str);
 
     let Some(lon_res) = iter.next() else {
-        return Err(D::Error::custom("missing lon"));
+        return Err("missing lon".to_string());
     };
-    let lon = lon_res.map_err(|e| D::Error::custom(format!("invalid lon: {e}")))?;
+    let lon = lon_res.map_err(|e| format!("invalid lon: {e}"))?;
 
     let Some(lat_res) = iter.next() else {
-        return Err(D::Error::custom("missing lat"));
+        return Err("missing lat".to_string());
     };
-    let lat = lat_res.map_err(|e| D::Error::custom(format!("invalid lat: {e}")))?;
+    let lat = lat_res.map_err(|e| format!("invalid lat: {e}"))?;
 
     if let Some(next) = iter.next() {
-        return Err(D::Error::custom(format!(
-            "found an extra param in lon,lat,???: {next:?}"
-        )));
+        return Err(format!("found an extra param in lon,lat,???: {next:?}"));
     }
 
     // A client that sent v7's `lat,lon` lands here whenever its longitude is outside a
     // latitude's range, which is most of the populated world. Worth a clear error rather than
     // planning a trip somewhere the caller didn't ask about.
     if !(-90.0..=90.0).contains(&lat) {
-        return Err(D::Error::custom(format!(
+        return Err(format!(
             "latitude {lat} is out of range - v8 writes points as lon,lat"
-        )));
+        ));
     }
 
     Ok(Point::new(lon, lat))

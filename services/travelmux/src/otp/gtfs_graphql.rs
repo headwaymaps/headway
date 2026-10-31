@@ -35,6 +35,8 @@ use crate::TravelMode;
 pub struct PlanParams<'a> {
     pub from: Point,
     pub to: Point,
+    /// Places the trip must pass through on its way, in order.
+    pub via: &'a [Point],
     /// The requested travel modes. The first is the "primary" mode; a following `Bicycle` with a
     /// primary of `Transit` means bike+transit.
     pub modes: &'a [TravelMode],
@@ -163,6 +165,7 @@ struct PlanVariables {
     date_time: Option<PlanDateTimeInput>,
     modes: Option<PlanModesInput>,
     preferences: Option<PlanPreferencesInput>,
+    via: Option<Vec<PlanViaLocationInput>>,
 }
 
 #[derive(cynic::InputObject, Debug)]
@@ -203,6 +206,17 @@ struct PlanTransitModesInput {
     access: Option<Vec<PlanAccessMode>>,
     egress: Option<Vec<PlanEgressMode>>,
     transfer: Option<Vec<PlanTransferMode>>,
+}
+
+/// `@oneOf`: exactly one of these may be given, which the Rust enum enforces for us.
+#[derive(cynic::InputObject, Debug)]
+enum PlanViaLocationInput {
+    Visit(PlanVisitViaLocationInput),
+}
+
+#[derive(cynic::InputObject, Debug)]
+struct PlanVisitViaLocationInput {
+    coordinate: PlanCoordinateInput,
 }
 
 #[derive(cynic::InputObject, Debug)]
@@ -367,16 +381,30 @@ impl PlanParams<'_> {
             date_time: self.date_time_input(),
             modes: Some(self.modes_input()),
             preferences: self.preferences_input(),
+            via: (!self.via.is_empty()).then(|| {
+                self.via
+                    .iter()
+                    .map(|point| {
+                        PlanViaLocationInput::Visit(PlanVisitViaLocationInput {
+                            coordinate: coordinate(*point),
+                        })
+                    })
+                    .collect()
+            }),
         })
     }
 }
 
 fn location(point: Point) -> PlanLabeledLocationInput {
     PlanLabeledLocationInput {
-        location: PlanLocationInput::Coordinate(PlanCoordinateInput {
-            latitude: point.y(),
-            longitude: point.x(),
-        }),
+        location: PlanLocationInput::Coordinate(coordinate(point)),
+    }
+}
+
+fn coordinate(point: Point) -> PlanCoordinateInput {
+    PlanCoordinateInput {
+        latitude: point.y(),
+        longitude: point.x(),
     }
 }
 
@@ -468,8 +496,55 @@ pub async fn plan_connection(
     endpoint: &Url,
     params: &PlanParams<'_>,
 ) -> crate::Result<PlanResult> {
+    if params.is_direct() && !params.via.is_empty() {
+        return plan_direct_via(client, endpoint, params).await;
+    }
+    query_plan_connection(client, endpoint, params).await
+}
+
+async fn query_plan_connection(
+    client: &reqwest::Client,
+    endpoint: &Url,
+    params: &PlanParams<'_>,
+) -> crate::Result<PlanResult> {
     let data: PlanConnectionQuery = post_graphql(client, endpoint, params.build_query()).await?;
     Ok(data.into_result())
+}
+
+/// OTP only passes through a via-location on a transit search, so a walk, bike, or drive with
+/// stops along the way is planned from stop to stop and the pieces joined.
+async fn plan_direct_via(
+    client: &reqwest::Client,
+    endpoint: &Url,
+    params: &PlanParams<'_>,
+) -> crate::Result<PlanResult> {
+    let stops: Vec<Point> = std::iter::once(params.from)
+        .chain(params.via.iter().copied())
+        .chain(std::iter::once(params.to))
+        .collect();
+    let pieces = futures::future::join_all(stops.windows(2).map(|ends| {
+        let params = PlanParams {
+            from: ends[0],
+            to: ends[1],
+            via: &[],
+            ..params.clone()
+        };
+        async move { query_plan_connection(client, endpoint, &params).await }
+    }))
+    .await;
+
+    let mut trips = Vec::with_capacity(pieces.len());
+    for piece in pieces {
+        let mut piece = piece?;
+        if piece.itineraries.is_empty() {
+            return Ok(piece);
+        }
+        trips.push(piece.itineraries.swap_remove(0));
+    }
+    Ok(PlanResult {
+        itineraries: vec![Itinerary::joined(trips)],
+        routing_errors: vec![],
+    })
 }
 
 /// Execute a `planConnection` query and map the result into the legacy [`otp_api::PlanResponse`].
@@ -494,7 +569,8 @@ struct PlanConnectionQuery {
         first: $first,
         dateTime: $date_time,
         modes: $modes,
-        preferences: $preferences
+        preferences: $preferences,
+        via: $via
     )]
     plan_connection: Option<PlanConnection>,
 }
@@ -529,6 +605,53 @@ pub struct Itinerary {
     pub legs: Vec<Option<Leg>>,
 }
 
+impl Itinerary {
+    /// One trip through each of `trips` in turn, each leaving as the one before arrives. A leg
+    /// carrying on in the same mode as the one before is joined to it.
+    fn joined(trips: Vec<Itinerary>) -> Itinerary {
+        let mut trips = trips.into_iter();
+        let mut joined = trips.next().expect("a trip to join");
+        for mut trip in trips {
+            let arrival = joined
+                .legs
+                .iter()
+                .flatten()
+                .last()
+                .map(|leg| leg.end.scheduled_time);
+            let departure = trip
+                .legs
+                .iter()
+                .flatten()
+                .next()
+                .map(|leg| leg.start.scheduled_time);
+            if let (Some(arrival), Some(departure)) = (arrival, departure) {
+                trip.shift(arrival - departure);
+            }
+            joined.end = trip.end;
+            joined.duration = Some(joined.duration.unwrap_or(0) + trip.duration.unwrap_or(0));
+            joined.walk_distance =
+                Some(joined.walk_distance.unwrap_or(0.0) + trip.walk_distance.unwrap_or(0.0));
+            for leg in trip.legs.into_iter().flatten() {
+                match joined.legs.last_mut() {
+                    Some(Some(last)) if last.mode == leg.mode && !leg.is_transit() => {
+                        last.extend(leg)
+                    }
+                    _ => joined.legs.push(Some(leg)),
+                }
+            }
+        }
+        joined
+    }
+
+    fn shift(&mut self, by: chrono::TimeDelta) {
+        self.start = self.start.map(|start| start + by);
+        self.end = self.end.map(|end| end + by);
+        for leg in self.legs.iter_mut().flatten() {
+            leg.shift(by);
+        }
+    }
+}
+
 #[derive(cynic::QueryFragment, Debug)]
 pub struct Leg {
     pub mode: Option<Mode>,
@@ -552,6 +675,44 @@ pub struct Leg {
 }
 
 impl Leg {
+    fn shift(&mut self, by: chrono::TimeDelta) {
+        for time in [&mut self.start, &mut self.end] {
+            time.shift(by);
+        }
+        for place in [&mut self.from, &mut self.to] {
+            for time in [&mut place.arrival, &mut place.departure]
+                .into_iter()
+                .flatten()
+            {
+                time.shift(by);
+            }
+        }
+    }
+
+    /// Carries on along `next`, which starts where this leg ends.
+    fn extend(&mut self, next: Leg) {
+        self.distance = Some(self.distance.unwrap_or(0.0) + next.distance.unwrap_or(0.0));
+        self.duration = Some(self.duration.unwrap_or(0.0) + next.duration.unwrap_or(0.0));
+        self.end = next.end;
+        self.to = next.to;
+        self.leg_geometry = Geometry::joined(self.leg_geometry.take(), next.leg_geometry);
+
+        let mut next_steps = next.steps.unwrap_or_default();
+        // The next leg's first step departs from where this one ended, which is just a turn
+        // along the way now.
+        if let Some(Some(first)) = next_steps.first_mut() {
+            if first.relative_direction == Some(RelativeDirection::Depart) {
+                first.relative_direction = Some(RelativeDirection::Continue);
+            }
+        }
+        self.steps
+            .get_or_insert_with(Vec::new)
+            .append(&mut next_steps);
+        if let Some(mut alerts) = next.alerts {
+            self.alerts.get_or_insert_with(Vec::new).append(&mut alerts);
+        }
+    }
+
     /// Whether this is a transit leg, as opposed to a walk/bike/car access leg.
     pub fn is_transit(&self) -> bool {
         self.transit_leg.unwrap_or(!matches!(
@@ -568,6 +729,13 @@ pub struct LegTime {
 }
 
 impl LegTime {
+    fn shift(&mut self, by: chrono::TimeDelta) {
+        self.scheduled_time += by;
+        if let Some(estimate) = &mut self.estimated {
+            estimate.time += by;
+        }
+    }
+
     /// The realtime-estimated instant if available, otherwise the scheduled one.
     pub fn best_estimate(&self) -> DateTime<FixedOffset> {
         self.estimated
@@ -600,6 +768,36 @@ pub struct Geometry {
     /// Encoded polyline, 1e-5 scale, (lat, lon)
     pub points: Option<String>,
     pub length: Option<i32>,
+}
+
+impl Geometry {
+    const PRECISION: u32 = 5;
+
+    /// `first`'s line continuing along `second`'s, which starts where it ends.
+    fn joined(first: Option<Geometry>, second: Option<Geometry>) -> Option<Geometry> {
+        let decode = |geometry: Option<Geometry>| {
+            geometry
+                .and_then(|geometry| geometry.points)
+                .and_then(|points| polyline::decode_polyline(&points, Self::PRECISION).ok())
+        };
+        let (first, second) = match (decode(first), decode(second)) {
+            (Some(first), Some(second)) => (first, second),
+            (Some(only), None) | (None, Some(only)) => (only, geo::LineString::new(vec![])),
+            (None, None) => return None,
+        };
+        let mut coords = first.0;
+        let joint = coords.last().copied();
+        coords.extend(
+            second
+                .0
+                .into_iter()
+                .skip_while(|coord| Some(*coord) == joint),
+        );
+        Some(Geometry {
+            length: i32::try_from(coords.len()).ok(),
+            points: polyline::encode_coordinates(coords, Self::PRECISION).ok(),
+        })
+    }
 }
 
 #[derive(cynic::QueryFragment, Debug)]
@@ -1545,6 +1743,7 @@ mod tests {
         PlanParams {
             from: Point::new(-122.3, 47.5),
             to: Point::new(-122.3, 47.6),
+            via: &[],
             modes,
             num_itineraries: 5,
             date_time: None,
@@ -1587,6 +1786,102 @@ mod tests {
         assert_eq!(vars["first"], 1);
         assert_eq!(vars["modes"]["directOnly"], true);
         assert_eq!(vars["modes"]["direct"][0], "WALK");
+    }
+
+    #[test]
+    fn via_request_body_visits_each_place_in_order() {
+        let via = [Point::new(-122.31, 47.55), Point::new(-122.32, 47.57)];
+        let vars = variables(&PlanParams {
+            via: &via,
+            ..params(&[TravelMode::Transit])
+        });
+        assert_eq!(vars["via"][0]["visit"]["coordinate"]["latitude"], 47.55);
+        assert_eq!(vars["via"][1]["visit"]["coordinate"]["longitude"], -122.32);
+    }
+
+    #[test]
+    fn request_body_without_via_omits_it() {
+        let vars = variables(&params(&[TravelMode::Transit]));
+        assert_eq!(vars["via"], serde_json::Value::Null);
+    }
+
+    /// A one-leg walk from `from` to `to`, leaving at minute `depart` past 10am.
+    fn walk(depart: i64, minutes: i64, from: (f64, f64), to: (f64, f64)) -> Itinerary {
+        let at = |minute: i64| {
+            (DateTime::parse_from_rfc3339("2024-05-17T10:00:00-07:00").unwrap()
+                + chrono::TimeDelta::minutes(minute))
+            .to_rfc3339()
+        };
+        let place = |(lon, lat): (f64, f64)| json!({ "name": null, "lat": lat, "lon": lon, "arrival": null, "departure": null });
+        let points = polyline::encode_coordinates(
+            [
+                geo::coord!(x: from.0, y: from.1),
+                geo::coord!(x: to.0, y: to.1),
+            ],
+            5,
+        )
+        .unwrap();
+        serde_json::from_value(json!({
+            "start": at(depart), "end": at(depart + minutes),
+            "duration": minutes * 60, "walkDistance": 100.0,
+            "legs": [ {
+                "mode": "WALK", "transitLeg": false, "distance": 100.0, "duration": (minutes * 60) as f64,
+                "tripOnServiceDate": null, "trip": null, "headsign": null,
+                "start": { "scheduledTime": at(depart), "estimated": null },
+                "end": { "scheduledTime": at(depart + minutes), "estimated": null },
+                "from": place(from), "to": place(to),
+                "legGeometry": { "points": points, "length": 2 },
+                "route": null, "agency": null,
+                "steps": [ {
+                    "distance": 100.0, "relativeDirection": "DEPART", "absoluteDirection": "NORTH",
+                    "streetName": "1st Ave", "lat": from.1, "lon": from.0,
+                    "area": false, "bogusName": false, "stayOn": false, "exit": null,
+                    "elevationProfile": []
+                } ],
+                "alerts": []
+            } ]
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn joined_walks_continue_as_one_leg() {
+        let (a, b, c) = ((-122.30, 47.50), (-122.30, 47.51), (-122.31, 47.52));
+        // Both stretches were planned to leave at the same time.
+        let joined = Itinerary::joined(vec![walk(0, 5, a, b), walk(0, 7, b, c)]);
+
+        assert_eq!(joined.duration, Some(12 * 60));
+        assert_eq!(joined.walk_distance, Some(200.0));
+        assert_eq!(joined.legs.len(), 1);
+        let leg = joined.legs[0].as_ref().unwrap();
+        assert_eq!(leg.distance, Some(200.0));
+        assert_eq!(leg.duration, Some(12.0 * 60.0));
+        assert_eq!(leg.to.lat, c.1);
+        assert_eq!(
+            leg.end.scheduled_time,
+            DateTime::parse_from_rfc3339("2024-05-17T10:12:00-07:00").unwrap()
+        );
+        assert_eq!(joined.end, Some(leg.end.scheduled_time));
+
+        let geometry = leg.leg_geometry.as_ref().unwrap();
+        let line = polyline::decode_polyline(geometry.points.as_ref().unwrap(), 5).unwrap();
+        assert_eq!(line.0.len(), 3, "the shared point appears once");
+        assert_eq!(geometry.length, Some(3));
+
+        let directions: Vec<_> = leg
+            .steps
+            .iter()
+            .flatten()
+            .flatten()
+            .map(|step| step.relative_direction)
+            .collect();
+        assert_eq!(
+            directions,
+            [
+                Some(RelativeDirection::Depart),
+                Some(RelativeDirection::Continue)
+            ]
+        );
     }
 
     #[test]

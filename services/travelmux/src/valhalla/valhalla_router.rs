@@ -2,7 +2,7 @@ use geo::Point;
 use url::Url;
 
 use super::valhalla_api::{
-    BicycleCostingOptions, CostingOptions, ModeCosting, RouteLocation, SnapToAnyRoad,
+    BicycleCostingOptions, CostingOptions, LocationType, ModeCosting, RouteLocation, SnapToAnyRoad,
     ValhallaRouteQuery,
 };
 use crate::{DistanceUnit, Result};
@@ -20,6 +20,7 @@ impl ValhallaRouter {
     pub fn plan_url(
         &self,
         source: Point,
+        via: &[Point],
         destination: Point,
         mode: ModeCosting,
         num_itineraries: u32,
@@ -43,13 +44,22 @@ impl ValhallaRouter {
             ),
             ModeCosting::Auto | ModeCosting::Pedestrian => (None, None),
         };
-        let location = |point: Point| RouteLocation {
+        let endpoint = |point: Point| RouteLocation {
             lon_lat: point.into(),
+            r#type: LocationType::Break,
             snap: snap.clone(),
         };
+        let through = |point: &Point| RouteLocation {
+            lon_lat: (*point).into(),
+            r#type: LocationType::Through,
+            snap: None,
+        };
+        let mut locations = vec![endpoint(source)];
+        locations.extend(via.iter().map(through));
+        locations.push(endpoint(destination));
 
         let query = ValhallaRouteQuery {
-            locations: vec![location(source), location(destination)],
+            locations,
             costing: mode,
             alternates: num_itineraries,
             // NOTE: these units get embedded in the localized turn-by-turn direction strings
@@ -76,6 +86,7 @@ mod tests {
         let url = router
             .plan_url(
                 Point::new(-122.3, 47.6),
+                &[Point::new(-122.35, 47.65)],
                 Point::new(-122.4, 47.7),
                 mode,
                 1,
@@ -106,8 +117,9 @@ mod tests {
         assert_eq!(
             requested_locations(ModeCosting::Bicycle),
             json!([
-                { "lon": -122.3, "lat": 47.6, "radius": 15, "rank_candidates": false },
-                { "lon": -122.4, "lat": 47.7, "radius": 15, "rank_candidates": false },
+                { "lon": -122.3, "lat": 47.6, "type": "break", "radius": 15, "rank_candidates": false },
+                { "lon": -122.35, "lat": 47.65, "type": "through" },
+                { "lon": -122.4, "lat": 47.7, "type": "break", "radius": 15, "rank_candidates": false },
             ])
         );
     }
@@ -116,7 +128,11 @@ mod tests {
     fn walking_routes_start_and_end_on_the_nearest_road() {
         assert_eq!(
             requested_locations(ModeCosting::Pedestrian),
-            json!([{ "lon": -122.3, "lat": 47.6 }, { "lon": -122.4, "lat": 47.7 }])
+            json!([
+                { "lon": -122.3, "lat": 47.6, "type": "break" },
+                { "lon": -122.35, "lat": 47.65, "type": "through" },
+                { "lon": -122.4, "lat": 47.7, "type": "break" },
+            ])
         );
     }
 }

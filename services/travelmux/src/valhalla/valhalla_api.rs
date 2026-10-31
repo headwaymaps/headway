@@ -58,14 +58,24 @@ impl BicycleCostingOptions {
     };
 }
 
-/// A place to route from or to.
+/// A place to route from, through, or to.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RouteLocation {
     #[serde(flatten)]
     pub lon_lat: LonLat,
+    pub r#type: LocationType,
     /// Absent to start or end on the road nearest the place.
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub snap: Option<SnapToAnyRoad>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LocationType {
+    /// Where a trip starts or ends.
+    Break,
+    /// A place the trip passes on its way, without stopping.
+    Through,
 }
 
 /// Lets a route start or end on any road within `radius` meters, rather than only the nearest.
@@ -102,13 +112,31 @@ pub enum ValhallaRouteResponseResult {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Trip {
-    pub locations: Vec<LonLat>,
+    pub locations: Vec<TripLocation>,
     pub summary: Summary,
     pub units: DistanceUnit, // legs: Vec<Leg>
     pub legs: Vec<Leg>,
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+impl Trip {
+    /// Where each leg starts or ends, leaving out the places the trip only passes through.
+    pub fn stops(&self) -> Vec<LonLat> {
+        self.locations
+            .iter()
+            .filter(|location| location.r#type == LocationType::Break)
+            .map(|location| location.lon_lat)
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TripLocation {
+    #[serde(flatten)]
+    pub lon_lat: LonLat,
+    pub r#type: LocationType,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
