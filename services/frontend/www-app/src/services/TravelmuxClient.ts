@@ -249,6 +249,8 @@ export type TravelmuxPlanRequest = {
   /// Only affects the prose of an instruction ("Continue for 2 miles.") - every distance in the
   /// response is in meters.
   preferredDistanceUnits: string;
+  /// "true" to also get Valhalla's bike and walk routes where OTP plans them.
+  compareRouters?: string;
 };
 
 export enum TravelmuxMode {
@@ -339,6 +341,7 @@ export class TravelmuxClient {
     modes: TravelmuxMode[],
     numItineraries: number,
     preferredDistanceUnits: DistanceUnits,
+    compareRouters: boolean,
     time?: string,
     date?: string,
     arriveBy?: boolean,
@@ -351,6 +354,9 @@ export class TravelmuxClient {
       mode: modes.join(','),
       preferredDistanceUnits,
     };
+    if (compareRouters) {
+      params.compareRouters = 'true';
+    }
 
     // travelmux plans from "now" unless we name a departure (or arrival) time. The time the user
     // picked is a wall clock time where they're traveling, not necessarily where they are, so we

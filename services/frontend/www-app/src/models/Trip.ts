@@ -557,6 +557,8 @@ export async function fetchBestTrips(
   departureDate?: string,
   arriveBy?: boolean,
   transitWithBicycle?: boolean,
+  /// Also offer Valhalla's bike and walk routes where OTP plans them.
+  compareRouters = false,
 ): Promise<Result<Trip[], TripFetchError>> {
   const modes = [mode];
   if (mode == TravelMode.Transit && transitWithBicycle) {
@@ -581,6 +583,7 @@ export async function fetchBestTrips(
     travelmuxModes,
     5,
     distanceUnits,
+    compareRouters,
     departureTime,
     departureDate,
     arriveBy,

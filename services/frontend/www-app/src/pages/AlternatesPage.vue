@@ -162,6 +162,9 @@ export default defineComponent({
     mode: async function (): Promise<void> {
       await this.updateTrips();
     },
+    debugEnabled: async function (): Promise<void> {
+      await this.updateTrips();
+    },
   },
   unmounted: function () {
     this.stopVehicleOverlay();
@@ -303,6 +306,7 @@ export default defineComponent({
           this.transitQuery.params.searchDate,
           this.transitQuery.params.arriveBy,
           this.transitQuery.params.transitWithBicycle,
+          debugEnabled.value,
         ).finally(() => {
           this.isLoading = false;
         });
