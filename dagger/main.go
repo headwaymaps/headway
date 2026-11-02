@@ -680,9 +680,9 @@ func valhallaBaseContainer() *dagger.Container {
 		WithWorkdir("/tiles")
 }
 
-func valhallaBuildContainer() *dagger.Container {
+func valhallaBuildContainer(configFlags ...string) *dagger.Container {
 	return valhallaBaseContainer().
-		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite > valhalla.json"}).
+		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite " + strings.Join(configFlags, " ") + " > valhalla.json"}).
 		// valhalla_build_timezones leaves its mktemp scratch copy of the output behind.
 		WithExec([]string{"sh", "-c", "export TMPDIR=$(mktemp -d) && valhalla_build_timezones > /tiles/timezones.sqlite && rm -r $TMPDIR"})
 }
@@ -693,8 +693,20 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 		panic("Headway.OSMExport.File must be set to build Valhalla tiles")
 	}
 
-	container := valhallaBuildContainer().
-		WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
+	var container *dagger.Container
+	if h.IsPlanetBuild {
+		// Each road's country decides which side it drives on.
+		container = valhallaBuildContainer().
+			WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
+			WithExec([]string{"valhalla_build_admins", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
+	} else {
+		// An area's extract is clipped short of its country's boundary, which
+		// leaves no admins to build, and without them every road would drive on
+		// the left. Roads drive on the right unless tagged otherwise.
+		container = valhallaBuildContainer("--mjolnir-data-processing-use-admin-db", "False").
+			WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File)
+	}
+	container = container.
 		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 
 	return DirectoryArtifact(h.Area+"-valhalla", container.Directory("/tiles"))
