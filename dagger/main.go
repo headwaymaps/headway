@@ -749,16 +749,20 @@ const naturalEarthGeojson = "https://raw.githubusercontent.com/nvkelso/natural-e
 // Only the routing graph needs them, and roads are on land; the oceans' tiles
 // would be another 70GB of sea floor.
 //
-// A one-off: the source data doesn't change. Export the result and pass it to
+// A one-off: the source data doesn't change. Unpack the result and pass it to
 // planet builds as --valhalla-elevation.
-func (h *Headway) ValhallaLandElevation(ctx context.Context) *dagger.Directory {
+//
+// One tar file, since exporting the tiles as a directory stalls.
+func (h *Headway) ValhallaLandElevation(ctx context.Context) *dagger.File {
+	const archive = "/elevation.tar"
 	script := dag.Git(valhallaRepo).Commit(valhallaCommit).Tree().File("scripts/valhalla_build_elevation")
 	return slimContainer("python3", "python3-shapely", "python3-numpy", "python3-zstandard", "ca-certificates").
 		WithFile("/land/land.geojson", downloadFile(naturalEarthGeojson+"ne_10m_land.geojson")).
 		WithFile("/land/minor_islands.geojson", downloadFile(naturalEarthGeojson+"ne_10m_minor_islands.geojson")).
 		WithFile("/valhalla_build_elevation", script).
 		WithExec([]string{"python3", "/valhalla_build_elevation", "--from-geojson", "/land", "--outdir", "/elevation", "--dzst", "-v"}).
-		Directory("/elevation")
+		WithExec([]string{"tar", "-C", "/elevation", "-cf", archive, "."}).
+		File(archive)
 }
 
 func (h *Headway) ValhallaInitContainer(ctx context.Context) *dagger.Container {

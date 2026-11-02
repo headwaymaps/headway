@@ -4,12 +4,19 @@
 # Valhalla builds to read grades from. A one-off: bin/build finds the result in
 # data/valhalla-elevation (or $HEADWAY_VALHALLA_ELEVATION_DIR) from then on.
 #
-# Dagger holds a copy while exporting it, so allow for twice that much disk.
+# Dagger and the exported archive each hold a copy while unpacking, so allow
+# for about four times that much disk.
 
 APP_ROOT=$(git rev-parse --show-toplevel)
 cd "$APP_ROOT"
 
 OUTPUT_DIR="${1:-${HEADWAY_VALHALLA_ELEVATION_DIR:-data/valhalla-elevation}}"
+ARCHIVE="${OUTPUT_DIR}.tar"
 
-echo "==> Downloading land elevation tiles into ${OUTPUT_DIR}" >&2
-dagger --progress=plain -c "valhalla-land-elevation | export '${OUTPUT_DIR}'"
+echo "==> Downloading land elevation tiles into ${ARCHIVE}" >&2
+dagger --progress=plain -c "valhalla-land-elevation | export '${ARCHIVE}'"
+
+echo "==> Unpacking into ${OUTPUT_DIR}" >&2
+mkdir -p "$OUTPUT_DIR"
+tar -C "$OUTPUT_DIR" -xf "$ARCHIVE"
+rm "$ARCHIVE"
