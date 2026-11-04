@@ -102,12 +102,17 @@ if [ -d "$TRANSIT_CONFIG_DIR" ]; then
     fi
 fi
 
+USE_DRIVING_SIDE_FLAG=""
+if [ -n "${HEADWAY_DRIVING_SIDE:-}" ]; then
+    USE_DRIVING_SIDE_FLAG="--driving-side=${HEADWAY_DRIVING_SIDE}"
+fi
+
 USE_ONLY_FLAG=""
 if [ ${#ONLY[@]} -gt 0 ]; then
     USE_ONLY_FLAG="--only=$(IFS=,; echo "${ONLY[*]}")"
 fi
 status "Building ${ONLY[*]:-all artifacts} into data/${HEADWAY_AREA}"
-traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
+traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_DRIVING_SIDE_FLAG} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
 
 status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"

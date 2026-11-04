@@ -36,6 +36,24 @@ type Headway struct {
 	RepoDir       *dagger.Directory
 	IsPlanetBuild bool
 	Countries     string
+	// Which side an extract's roads drive on. A planet build takes each road's
+	// side from its country instead.
+	DrivingSide DrivingSide
+}
+
+type DrivingSide string
+
+const (
+	Right DrivingSide = "RIGHT"
+	Left  DrivingSide = "LEFT"
+)
+
+// The value of Valhalla's data_processing.default_drive_on_right.
+func (s DrivingSide) valhallaDriveOnRight() string {
+	if s == Left {
+		return "False"
+	}
+	return "True"
 }
 
 // An Artifact is a build output together with the name it gets published
@@ -239,9 +257,14 @@ func (h *Headway) WithArea(
 
 	// +optional
 	maxConcurrentTransitZones int,
+
+	// Which side the extract's roads drive on.
+	// +default="RIGHT"
+	drivingSide DrivingSide,
 ) *Headway {
 	h.IsPlanetBuild = countries == "ALL"
 	h.Countries = countries
+	h.DrivingSide = drivingSide
 	h.Area = area
 	h.TransitConfigDir = transitDir
 	h.GTFSSecrets = gtfsSecrets
@@ -703,9 +726,12 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 			WithExec([]string{"valhalla_build_admins", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 	} else {
 		// An area's extract is clipped short of its country's boundary, which
-		// leaves no admins to build, and without them every road would drive on
-		// the left. Roads drive on the right unless tagged otherwise.
-		container = valhallaBuildContainer("--mjolnir-data-processing-use-admin-db", "False").
+		// leaves no admins to build. Roads drive on the build's side unless
+		// tagged otherwise.
+		container = valhallaBuildContainer(
+			"--mjolnir-data-processing-use-admin-db", "False",
+			"--mjolnir-data-processing-default-drive-on-right", h.DrivingSide.valhallaDriveOnRight(),
+		).
 			WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File)
 	}
 	container = container.
