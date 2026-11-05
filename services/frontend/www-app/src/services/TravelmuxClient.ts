@@ -23,9 +23,14 @@ export interface TravelmuxItinerary {
   legs: TravelmuxLeg[];
   /// Which cycling objectives this route is the best answer to. Absent for every other mode.
   routePreferences?: BikeRoutePreference[];
+  /// Every router that planned this route, the one whose directions these are first. Absent from
+  /// travelmux servers that predate it.
+  routers?: TravelmuxRouter[];
 }
 
 export type BikeRoutePreference = 'quieter' | 'faster';
+
+export type TravelmuxRouter = 'otp' | 'valhalla';
 
 export interface TravelmuxLeg {
   mode: TravelmuxMode;
@@ -170,7 +175,7 @@ export interface TravelmuxTrack {
 export interface NonTransitLeg {
   maneuvers: [TravelmuxManeuver];
   substantialStreetNames?: string[];
-  /// Only for legs OTP planned.
+  /// Absent where travelmux has no elevation data.
   elevation?: LegElevation;
 }
 

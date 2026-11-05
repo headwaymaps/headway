@@ -17,11 +17,65 @@ pub enum ModeCosting {
 ///     `route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ValhallaRouteQuery {
-    pub locations: Vec<LonLat>,
+    pub locations: Vec<RouteLocation>,
     pub costing: ModeCosting,
     pub alternates: u32,
     pub units: DistanceUnit,
     pub elevation_interval: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub costing_options: Option<CostingOptions>,
+}
+
+/// Overrides of Valhalla's costing defaults, keyed by costing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CostingOptions {
+    pub bicycle: BicycleCostingOptions,
+}
+
+/// Bicycle costing knobs, some of which only our Valhalla fork has.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BicycleCostingOptions {
+    /// How much each road class, motorway through service/other, stresses a rider.
+    pub road_class_factors: [f64; 8],
+    /// Scales the stress of a road on a bike network, except its road class's.
+    pub bicycle_network_factor: f64,
+    pub use_roads: f64,
+    pub avoid_bad_surfaces: f64,
+    pub walk_bike_factor: f64,
+    pub destination_only_penalty: f64,
+    pub gate_penalty: f64,
+}
+
+impl BicycleCostingOptions {
+    /// Tuned against a corpus of Seattle trips for the mix of roads that best matched OTP's.
+    pub const TUNED: Self = Self {
+        road_class_factors: [20.0, 8.0, 1.25, 1.0, 0.5, 0.25, 0.25, 1.0],
+        bicycle_network_factor: 0.275,
+        use_roads: 0.1,
+        avoid_bad_surfaces: 0.5,
+        walk_bike_factor: 3.0,
+        destination_only_penalty: 300.0,
+        gate_penalty: 150.0,
+    };
+}
+
+/// A place to route from or to.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RouteLocation {
+    #[serde(flatten)]
+    pub lon_lat: LonLat,
+    /// Absent to start or end on the road nearest the place.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub snap: Option<SnapToAnyRoad>,
+}
+
+/// Lets a route start or end on any road within `radius` meters, rather than only the nearest.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SnapToAnyRoad {
+    pub radius: u32,
+    /// False to choose among the roads within `radius` by route cost alone, rather than
+    /// favoring the nearest.
+    pub rank_candidates: bool,
 }
 
 impl ModeCosting {
