@@ -156,11 +156,6 @@ TILESERVER_VOLUME_VERSION=$(volume_version "$AREAMAP_ARTIFACT_URL" "$TERRAIN_ART
 VALHALLA_VOLUME_VERSION=$(volume_version "$VALHALLA_ARTIFACT_URL")
 PLACEHOLDER_VOLUME_VERSION=$(volume_version "$PLACEHOLDER_ARTIFACT_URL")
 ELASTICSEARCH_VOLUME_VERSION=$(volume_version "$ELASTICSEARCH_ARTIFACT_URL")
-# Elasticsearch locks its data dir, so a new pod can only run alongside the old
-# one on a volume of its own. Any change to the pod gets one.
-ELASTICSEARCH_VOLUME_VERSION="${ELASTICSEARCH_VOLUME_VERSION}-$(
-    envsubst < k8s/_template/pelias-elasticsearch-deployment.yaml.tpl | shasum | cut -c1-8
-)"
 
 export ELEVATION_ARTIFACT_URL=""
 elevation_path=$(bin/artifacts --optional elevation "$CONFIG_DIR")
