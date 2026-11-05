@@ -1,0 +1,34 @@
+#!/bin/bash -e
+
+# Run on the data host: mirrors the third party files that builds download, so
+# they don't depend on their upstreams.
+
+APP_ROOT=$(git rev-parse --show-toplevel)
+source "$APP_ROOT/.bin-env"
+
+: "${BUILD_FIXTURES_DIR:?set BUILD_FIXTURES_DIR in .bin-env}"
+
+FIXTURES=(
+  https://github.com/acalcutt/osm-lakelines/releases/download/latest/lake_centerline.shp.zip
+  https://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip
+  https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip
+)
+
+mkdir -p "$BUILD_FIXTURES_DIR"
+for url in "${FIXTURES[@]}"; do
+  output="${BUILD_FIXTURES_DIR}/$(basename "$url")"
+  if_newer=()
+  if [ -f "$output" ]; then
+    if_newer=(--time-cond "$output")
+  fi
+  echo "==> Downloading ${url}" >&2
+  status=$(curl --fail --location --show-error --silent --remote-time "${if_newer[@]+"${if_newer[@]}"}" \
+    -A headway/1.0 -o "${output}.partial" -w '%{http_code}' "$url")
+  if [ "$status" = 304 ]; then
+    echo "    Unchanged" >&2
+    rm -f "${output}.partial"
+    continue
+  fi
+  # A build reading the old file during a refresh never sees half of the new one.
+  mv "${output}.partial" "$output"
+done
