@@ -26,6 +26,7 @@ impl ValhallaRouter {
 
         let query = ValhallaRouteQuery {
             locations: vec![source.into(), destination.into()],
+            elevation_interval: mode.elevation_interval(),
             costing: mode,
             alternates: num_itineraries,
             // NOTE: these units get embedded in the localized turn-by-turn direction strings

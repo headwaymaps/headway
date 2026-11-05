@@ -1,6 +1,4 @@
-use crate::elevation::ElevationService;
 use crate::{otp::PreparedOtpCluster, valhalla::ValhallaRouter};
-use std::path::PathBuf;
 use url::Url;
 
 /// Note this is *not* `Send`: the OTP coverage areas it holds are `Rc`-backed, so each server
@@ -9,18 +7,15 @@ use url::Url;
 pub struct AppState {
     otp_cluster: PreparedOtpCluster,
     valhalla_router: ValhallaRouter,
-    elevation: ElevationService,
 }
 
 impl AppState {
-    pub fn new(valhalla_endpoint: Url, tif_dir: PathBuf, otp_cluster: PreparedOtpCluster) -> Self {
+    pub fn new(valhalla_endpoint: Url, otp_cluster: PreparedOtpCluster) -> Self {
         log::debug!("new AppState with valhalla_endpoint: {valhalla_endpoint:?}");
         let valhalla_router = ValhallaRouter::new(valhalla_endpoint);
-        debug_assert!(std::fs::exists(&tif_dir).unwrap());
         Self {
             valhalla_router,
             otp_cluster,
-            elevation: ElevationService::new(tif_dir),
         }
     }
 
@@ -30,9 +25,5 @@ impl AppState {
 
     pub fn valhalla_router(&self) -> &ValhallaRouter {
         &self.valhalla_router
-    }
-
-    pub fn elevation(&self) -> &ElevationService {
-        &self.elevation
     }
 }

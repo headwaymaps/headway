@@ -1,0 +1,69 @@
+#!/bin/bash -e
+
+# Collects the elevation tiles covering a bbox from a local directory or else a URL. A 404 is
+# fine: not every tile exists.
+#
+# usage: fetch-elevation-tiles <local-dir> <tiles-url> <output-dir> <west> <south> <east> <north>
+
+set -o pipefail
+
+LOCAL_DIR=$1
+TILES_URL=$2
+OUTPUT_DIR=$3
+WEST=${4:?}
+SOUTH=${5:?}
+EAST=${6:?}
+NORTH=${7:?}
+
+function tiles_in_bbox() {
+    awk -v west="$WEST" -v south="$SOUTH" -v east="$EAST" -v north="$NORTH" '
+        function floor(x) { return x < int(x) ? int(x) - 1 : int(x) }
+        function abs(x) { return x < 0 ? -x : x }
+        BEGIN {
+            for (lat = floor(south); lat <= floor(north); lat++) {
+                for (lng = floor(west); lng <= floor(east); lng++) {
+                    ns = sprintf("%s%02d", lat >= 0 ? "N" : "S", abs(lat))
+                    ew = sprintf("%s%03d", lng >= 0 ? "E" : "W", abs(lng))
+                    printf "%s/%s%s.hgt.dzst\n", ns, ns, ew
+                }
+            }
+        }
+    '
+}
+
+function fetch_tile() {
+    local tile=$1
+    local output="${OUTPUT_DIR:?}/${tile:?}"
+    mkdir -p "$(dirname "$output")"
+
+    if [ -f "${LOCAL_DIR}/${tile}" ]; then
+        cp "${LOCAL_DIR}/${tile}" "$output"
+        return
+    fi
+
+    local status
+    status=$(curl --silent --show-error --retry 5 --retry-connrefused --max-time 300 \
+        -o "${output}.partial" -w '%{http_code}' "${TILES_URL}/${tile}") || return 1
+    case "$status" in
+        200)
+            mv "${output}.partial" "$output"
+            ;;
+        404)
+            rm -f "${output:?}.partial"
+            ;;
+        *)
+            echo "HTTP ${status} for ${TILES_URL}/${tile}" >&2
+            return 1
+            ;;
+    esac
+}
+
+export LOCAL_DIR TILES_URL OUTPUT_DIR
+export -f fetch_tile
+tiles_in_bbox | xargs -P 8 -n 1 bash -c 'fetch_tile "$0"'
+
+# Every tile being missing means the wrong URL, not an ocean.
+if ! find "$OUTPUT_DIR" -name '*.hgt.dzst' | grep -q .; then
+    echo "No elevation tiles found in ${LOCAL_DIR} or at ${TILES_URL}" >&2
+    exit 1
+fi

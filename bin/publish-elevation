@@ -1,0 +1,46 @@
+#!/bin/bash -e
+
+function usage() {
+  cat << EOF
+Copy elevation tiles to asset host, for builds to download
+usage: $0 [ --host remote.host.com ]
+examples:
+    # Copy to asset root on this host
+    $0
+    # Copy to asset root on remote host
+    $0 --host data.maps.internal
+EOF
+}
+
+HOST=""
+if [ "$#" -eq 2 ] && [ "$1" = "--host" ]; then
+    HOST=$2
+elif [ "$#" -ne 0 ]; then
+    usage
+    exit 1
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+
+INPUT_DIR="data/elevation"
+OUTPUT_DIR="/srv/www/data.maps.earth/build_fixtures/elevation"
+
+if [ ! -d "$INPUT_DIR" ]; then
+  echo "No elevation tiles at ${INPUT_DIR}"
+  echo "Run bin/build-elevation"
+  exit 1
+fi
+
+if [ -z "$HOST" ]; then
+  mkdir -p "$OUTPUT_DIR"
+  destination="$OUTPUT_DIR"
+else
+  ssh "$HOST" mkdir -p "$OUTPUT_DIR"
+  destination="${HOST}:${OUTPUT_DIR}"
+fi
+
+echo "${INPUT_DIR} -> ${destination}"
+# rsync, so re-runs skip anything already copied.
+rsync -a --partial --progress "${INPUT_DIR}/" "${destination}/"
+
+echo "Publishing complete."

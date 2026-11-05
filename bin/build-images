@@ -161,7 +161,6 @@ function build_image_tags() {
     build "pelias-elasticsearch" "pelias-elasticsearch-container"       "pelias-elasticsearch"
     build "tileserver"      "tileserver-serve-container"                "tileserver"
     build "tileserver-init" "tileserver-init-container"                 "tileserver-init"
-    build "travelmux-init"  "travelmux-init-container"                  "travelmux-init"
     build "travelmux"       "travelmux-serve-container"                 "travelmux"
     build "valhalla-init"   "valhalla-init-container"                   "valhalla-init"
     build "valhalla"        "valhalla-serve-container"                  "valhalla"

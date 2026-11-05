@@ -12,34 +12,13 @@ spec:
       labels:
         app: travelmux
     spec:
-      initContainers:
-        - name: init
-          image: ghcr.io/headwaymaps/travelmux-init:maps-earth-dev
-          imagePullPolicy: Always
-          volumeMounts:
-            - name: travelmux-volume
-              mountPath: /data
-          env:
-            - name: TRAVELMUX_ELEVATION_ARTIFACT_URL
-              value: "https://data.example.com/dev/seattle-latest/transit/Seattle-elevation-tifs-2026-10-31-9b561834.tar.zst"
-          resources:
-            limits:
-              memory: 512Mi
-            requests:
-              memory: 64Mi
       containers:
         - name: main
           image: ghcr.io/headwaymaps/travelmux:maps-earth-dev
           imagePullPolicy: Always
           args: ["http://valhalla:8002","Seattle=http://opentripplanner-seattle:8000"]
-          env:
-            - name: ELEVATION_TIFS_DIR
-              value: /data/elevation-tifs
           ports:
             - containerPort: 8000
-          volumeMounts:
-            - name: travelmux-volume
-              mountPath: /data
           resources:
             limits:
               memory: 1Gi
@@ -59,12 +38,3 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 10
-      volumes:
-        - name: travelmux-volume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 1Gi

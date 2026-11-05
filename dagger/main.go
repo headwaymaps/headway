@@ -39,6 +39,10 @@ type Headway struct {
 	// Which side an extract's roads drive on. A planet build takes each road's
 	// side from its country instead.
 	DrivingSide DrivingSide
+	// Elevation tiles to use rather than download, as bin/build-elevation writes them.
+	Elevation *dagger.Directory
+	// Where bin/refresh-hosted-fixtures and bin/publish-elevation publish to.
+	BuildFixturesUrl string
 }
 
 type DrivingSide string
@@ -261,6 +265,14 @@ func (h *Headway) WithArea(
 	// Which side the extract's roads drive on.
 	// +default="RIGHT"
 	drivingSide DrivingSide,
+
+	// Elevation tiles to use rather than download, as bin/build-elevation writes them.
+	// +optional
+	elevation *dagger.Directory,
+
+	// Where bin/refresh-hosted-fixtures and bin/publish-elevation publish to.
+	// +default="https://data.maps.earth/build_fixtures"
+	buildFixturesUrl string,
 ) *Headway {
 	h.IsPlanetBuild = countries == "ALL"
 	h.Countries = countries
@@ -269,6 +281,8 @@ func (h *Headway) WithArea(
 	h.TransitConfigDir = transitDir
 	h.GTFSSecrets = gtfsSecrets
 	h.MaxConcurrentTransitZones = maxConcurrentTransitZones
+	h.Elevation = elevation
+	h.BuildFixturesUrl = buildFixturesUrl
 	if localPbf == nil {
 		h.OSMExport = h.DownloadPBF(area)
 	} else {
@@ -349,7 +363,7 @@ var mapArtifactKeys = []string{"osm", "pmtiles", "valhalla", "elasticsearch", "p
 
 // The keys built by BuildTransit. A zone's graph and GTFS can also be picked
 // individually, e.g. "otp-graphs.london".
-var transitArtifactKeys = []string{"otp-graphs", "gtfs", "elevation"}
+var transitArtifactKeys = []string{"otp-graphs", "gtfs"}
 
 type buildSelection struct {
 	mapKeys []string
@@ -648,9 +662,8 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 	// The script prints a JVM-style size like "12345M", with a trailing newline.
 	memoryBudget = strings.TrimSpace(memoryBudget)
 
-	fixturesRoot := getEnvWithDefault("HEADWAY_BUILD_FIXTURES_URL", "https://data.maps.earth/build_fixtures")
 	for _, source := range []string{"lake_centerline.shp.zip", "natural_earth_vector.sqlite.zip", "water-polygons-split-3857.zip"} {
-		container = container.WithMountedFile("/data/sources/"+source, downloadFile(fixturesRoot+"/"+source))
+		container = container.WithMountedFile("/data/sources/"+source, downloadFile(h.BuildFixturesUrl+"/"+source))
 	}
 
 	container = container.
@@ -691,7 +704,7 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 // hasn't merged yet.
 const (
 	valhallaRepo   = "https://github.com/headwaymaps/valhalla.git"
-	valhallaCommit = "227e9bae4412aa70757a63ffeff39fb1ccab61f5"
+	valhallaCommit = "a6276e65f7eedeb591f20a76215858146b816e73"
 )
 
 func valhallaBaseContainer() *dagger.Container {
@@ -702,14 +715,18 @@ func valhallaBaseContainer() *dagger.Container {
 		WithWorkdir("/tiles")
 }
 
+// Where the tile build reads elevation from: outside /tiles, which becomes the
+// artifact.
+const valhallaElevationDir = "/elevation"
+
 func valhallaBuildContainer(configFlags ...string) *dagger.Container {
 	return valhallaBaseContainer().
-		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite " + strings.Join(configFlags, " ") + " > valhalla.json"}).
+		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite --additional-data-elevation " + valhallaElevationDir + " " + strings.Join(configFlags, " ") + " > valhalla.json"}).
 		// valhalla_build_timezones leaves its mktemp scratch copy of the output behind.
 		WithExec([]string{"sh", "-c", "export TMPDIR=$(mktemp -d) && valhalla_build_timezones > /tiles/timezones.sqlite && rm -r $TMPDIR"})
 }
 
-// Builds Valhalla routing tiles
+// Builds Valhalla routing tiles, with elevation along each road.
 func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 	if h.OSMExport == nil || h.OSMExport.File == nil {
 		panic("Headway.OSMExport.File must be set to build Valhalla tiles")
@@ -732,9 +749,25 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 			WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File)
 	}
 	container = container.
+		WithMountedDirectory(valhallaElevationDir, h.valhallaElevation(ctx)).
 		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 
 	return DirectoryArtifact(h.Area+"-valhalla", container.Directory("/tiles"))
+}
+
+// The elevation tiles for the area's Valhalla build.
+func (h *Headway) valhallaElevation(ctx context.Context) *dagger.Directory {
+	if h.IsPlanetBuild {
+		if h.Elevation == nil {
+			panic("a planet build needs data/elevation, from bin/build-elevation")
+		}
+		return h.Elevation
+	}
+	bbox, err := h.BBox(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to get bounding box: %w", err))
+	}
+	return h.elevationTiles(bbox)
 }
 
 func (h *Headway) ValhallaPolylines(ctx context.Context) *dagger.File {
@@ -791,17 +824,42 @@ func (h *Headway) Elevations(ctx context.Context) *dagger.Directory {
 	return elevations(ctx, bbox, h)
 }
 
-func elevations(ctx context.Context, bbox *Bbox, headway *Headway) *dagger.Directory {
-	elevationHgts := valhallaBaseContainer().
-		WithExec([]string{"valhalla_build_elevation", "--outdir", "elevation-hgts", "--from-bbox=" + bbox.CommaSeparated()}).
-		Directory("/tiles/elevation-hgts")
+// Downloads the whole planet's elevation tiles from Skadi for bin/build-elevation.
+//
+// One tar file, since exporting the tiles as a directory stalls.
+func (h *Headway) PlanetElevation(ctx context.Context) *dagger.File {
+	const archive = "/elevation.tar"
+	script := dag.Git(valhallaRepo).Commit(valhallaCommit).Tree().File("scripts/valhalla_build_elevation")
+	return slimContainer("python3", "python3-numpy", "python3-zstandard", "ca-certificates").
+		WithFile("/valhalla_build_elevation", script).
+		WithExec([]string{"python3", "/valhalla_build_elevation", "--from-bbox=-180,-90,180,90", "--outdir", "/elevation", "--dzst", "-v"}).
+		WithExec([]string{"tar", "-C", "/elevation", "-cf", archive, "."}).
+		File(archive)
+}
 
-	// Convert elevation HGT files to TIF format
+// The elevation tiles covering bbox, from h.Elevation or else the data host.
+func (h *Headway) elevationTiles(bbox *Bbox) *dagger.Directory {
+	const outputDir = "/elevation-tiles"
+	const localDir = "/local-elevation"
+	local := h.Elevation
+	if local == nil {
+		local = dag.Directory()
+	}
+	fetch := append([]string{"/fetch-elevation-tiles", localDir, h.BuildFixturesUrl + "/elevation", outputDir}, strings.Fields(bbox.SpaceSeparated())...)
+	return slimContainer("curl", "ca-certificates").
+		WithFile("/fetch-elevation-tiles", h.ServiceDir("valhalla").File("fetch-elevation-tiles"), dagger.ContainerWithFileOpts{Permissions: 0755}).
+		WithMountedDirectory(localDir, local).
+		WithExec(fetch).
+		Directory(outputDir)
+}
+
+func elevations(ctx context.Context, bbox *Bbox, headway *Headway) *dagger.Directory {
+	// Convert elevation tiles to TIF format
 	demScript := headway.ServiceDir("otp").File("dem-hgt-to-tif")
-	container := slimContainer("gdal-bin").
+	container := slimContainer("gdal-bin", "python3", "python3-numpy", "zstd").
 		WithMountedFile("/dem-hgt-to-tif", demScript).
-		WithMountedDirectory("/elevation-hgts", elevationHgts).
-		WithExec([]string{"/dem-hgt-to-tif", "/elevation-hgts", "/elevation-tifs"})
+		WithMountedDirectory("/elevation-tiles", headway.elevationTiles(bbox)).
+		WithExec([]string{"/dem-hgt-to-tif", "/elevation-tiles", "/elevation-tifs"})
 
 	return container.Directory("/elevation-tifs")
 }
@@ -853,12 +911,6 @@ func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container
 		WithDefaultArgs([]string{"http://valhalla:8002"})
 
 	return container
-}
-
-func (h *Headway) TravelmuxInitContainer(ctx context.Context) *dagger.Container {
-	return downloadContainer().
-		WithFile("/app/init.sh", h.ServiceDir("travelmux").File("init.sh"), dagger.ContainerWithFileOpts{Permissions: 0755}).
-		WithDefaultArgs([]string{"/app/init.sh"})
 }
 
 func (h *Headway) TransitZonerServer(ctx context.Context) *dagger.File {
