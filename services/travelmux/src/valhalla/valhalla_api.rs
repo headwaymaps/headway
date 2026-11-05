@@ -21,7 +21,21 @@ pub struct ValhallaRouteQuery {
     pub costing: ModeCosting,
     pub alternates: u32,
     pub units: DistanceUnit,
+    pub elevation_interval: f64,
 }
+
+impl ModeCosting {
+    /// How far apart Valhalla should report a leg's elevation, where a rider would care. Zero asks
+    /// for none.
+    pub fn elevation_interval(&self) -> f64 {
+        match self {
+            Self::Auto => 0.0,
+            Self::Bicycle | Self::Pedestrian => ELEVATION_INTERVAL_METERS,
+        }
+    }
+}
+
+pub const ELEVATION_INTERVAL_METERS: f64 = 10.0;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RouteResponseError {
@@ -86,6 +100,8 @@ pub struct Leg {
     pub summary: Summary,
     pub maneuvers: Vec<Maneuver>,
     pub shape: String,
+    /// One every [`ELEVATION_INTERVAL_METERS`], in feet if the trip's units are miles, else meters.
+    pub elevation: Option<Vec<f64>>,
     // pub steps: Vec<Step>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,

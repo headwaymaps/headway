@@ -13,7 +13,7 @@ usage: $0 <build-config-dir> [artifact...]
 
 Builds every artifact, or only those named by their artifacts.json key:
     osm pmtiles valhalla elasticsearch placeholder terrain landcover
-    otp-graphs gtfs elevation    (all transit zones)
+    otp-graphs gtfs              (all transit zones)
     otp-graphs.<zone>            (one zone's graph and GTFS)
 
 e.g.
@@ -107,12 +107,23 @@ if [ -n "${HEADWAY_DRIVING_SIDE:-}" ]; then
     USE_DRIVING_SIDE_FLAG="--driving-side=${HEADWAY_DRIVING_SIDE}"
 fi
 
+# Tiles from bin/build-elevation are used rather than downloaded.
+USE_ELEVATION_FLAG=""
+if [ -d data/elevation ]; then
+    USE_ELEVATION_FLAG="--elevation data/elevation"
+fi
+
+USE_BUILD_FIXTURES_FLAG=""
+if [ -n "${HEADWAY_BUILD_FIXTURES_URL:-}" ]; then
+    USE_BUILD_FIXTURES_FLAG="--build-fixtures-url=${HEADWAY_BUILD_FIXTURES_URL}"
+fi
+
 USE_ONLY_FLAG=""
 if [ ${#ONLY[@]} -gt 0 ]; then
     USE_ONLY_FLAG="--only=$(IFS=,; echo "${ONLY[*]}")"
 fi
 status "Building ${ONLY[*]:-all artifacts} into data/${HEADWAY_AREA}"
-traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_DRIVING_SIDE_FLAG} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
+traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_DRIVING_SIDE_FLAG} ${USE_ELEVATION_FLAG} ${USE_BUILD_FIXTURES_FLAG} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
 
 status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"

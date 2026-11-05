@@ -127,12 +127,8 @@ run_jq_test "v8 car route" \
 run_jq_test "v8 bike route" \
     "$(build_v8_route_url BICYCLE)" \
     '.itineraries' \
-    '.itineraries | length > 0'
-
-run_jq_test "v8 elevation" \
-    "${HEADWAY_PUBLIC_URL}/travelmux/v8/elevation?path=${ELEVATION_PATH}" \
-    '.elevation | length > 0' \
-    '.elevation | any(. > 0)'
+    '.itineraries | length > 0' \
+    '.itineraries[0].legs[0].nonTransitLeg.elevation.profile | any(.[1] > 0)'
 
 if [ "${HEADWAY_ENABLE_TRANSIT_ROUTING:-0}" != 0 ]; then
     transit_url="$(build_v8_route_url TRANSIT "$START_LAT" "$START_LNG" "$TRANSIT_END_LAT" "$TRANSIT_END_LNG")"
