@@ -18,7 +18,6 @@ env_logger = "0.11.0"
 futures = "0.3.34"
 geo = { workspace = true }
 geojson = "0.24.0"
-georaster = "0.2.0"
 log = { workspace = true }
 polyline = "0.11.0"
 reqwest = { version = "0.13.4", features = ["json", "stream"] }

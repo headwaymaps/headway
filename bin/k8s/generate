@@ -157,12 +157,6 @@ VALHALLA_VOLUME_VERSION=$(volume_version "$VALHALLA_ARTIFACT_URL")
 PLACEHOLDER_VOLUME_VERSION=$(volume_version "$PLACEHOLDER_ARTIFACT_URL")
 ELASTICSEARCH_VOLUME_VERSION=$(volume_version "$ELASTICSEARCH_ARTIFACT_URL")
 
-export ELEVATION_ARTIFACT_URL=""
-elevation_path=$(bin/artifacts --optional elevation "$CONFIG_DIR")
-if [ -n "$elevation_path" ]; then
-    ELEVATION_ARTIFACT_URL="${HEADWAY_K8S_TEMPLATE_ARTIFACT_ROOT}/${AREA_PREFIX}/${elevation_path}"
-fi
-
 function generate_transit() {
   local otp_endpoints=()
   local otp_endpoint_name zone_name line
