@@ -36,6 +36,24 @@ type Headway struct {
 	RepoDir       *dagger.Directory
 	IsPlanetBuild bool
 	Countries     string
+	// Which side an extract's roads drive on. A planet build takes each road's
+	// side from its country instead.
+	DrivingSide DrivingSide
+}
+
+type DrivingSide string
+
+const (
+	Right DrivingSide = "RIGHT"
+	Left  DrivingSide = "LEFT"
+)
+
+// The value of Valhalla's data_processing.default_drive_on_right.
+func (s DrivingSide) valhallaDriveOnRight() string {
+	if s == Left {
+		return "False"
+	}
+	return "True"
 }
 
 // An Artifact is a build output together with the name it gets published
@@ -239,9 +257,14 @@ func (h *Headway) WithArea(
 
 	// +optional
 	maxConcurrentTransitZones int,
+
+	// Which side the extract's roads drive on.
+	// +default="RIGHT"
+	drivingSide DrivingSide,
 ) *Headway {
 	h.IsPlanetBuild = countries == "ALL"
 	h.Countries = countries
+	h.DrivingSide = drivingSide
 	h.Area = area
 	h.TransitConfigDir = transitDir
 	h.GTFSSecrets = gtfsSecrets
@@ -667,22 +690,24 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 /**
  * Valhalla
  */
-// Upstream publishes `latest` from master, so it moves whenever they merge.
-// Pinned by digest to keep tile builds reproducible: this is the master build
-// from 2026-09-08, which is 23 commits ahead of the 3.8.3 release.
-const valhallaImage = "ghcr.io/valhalla/valhalla@sha256:65f43014947d013f25f0e1bdf3c4096a190a50f2dbbedd6a66cabd4f9538a2c5"
+// Our fork's `headway` branch: upstream master plus our changes that upstream
+// hasn't merged yet.
+const (
+	valhallaRepo   = "https://github.com/headwaymaps/valhalla.git"
+	valhallaCommit = "227e9bae4412aa70757a63ffeff39fb1ccab61f5"
+)
 
 func valhallaBaseContainer() *dagger.Container {
-	return dag.Container().
-		From(valhallaImage).
+	return dag.Git(valhallaRepo).Commit(valhallaCommit).Tree().
+		DockerBuild(dagger.DirectoryDockerBuildOpts{Dockerfile: "docker/Dockerfile"}).
 		WithExec([]string{"useradd", "-s", "/usr/sbin/nologin", "valhalla"}).
 		WithUser("valhalla").
 		WithWorkdir("/tiles")
 }
 
-func valhallaBuildContainer() *dagger.Container {
+func valhallaBuildContainer(configFlags ...string) *dagger.Container {
 	return valhallaBaseContainer().
-		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite > valhalla.json"}).
+		WithExec([]string{"sh", "-c", "valhalla_build_config --mjolnir-tile-dir /tiles --mjolnir-timezone /tiles/timezones.sqlite --mjolnir-admin /tiles/admins.sqlite " + strings.Join(configFlags, " ") + " > valhalla.json"}).
 		// valhalla_build_timezones leaves its mktemp scratch copy of the output behind.
 		WithExec([]string{"sh", "-c", "export TMPDIR=$(mktemp -d) && valhalla_build_timezones > /tiles/timezones.sqlite && rm -r $TMPDIR"})
 }
@@ -693,8 +718,23 @@ func (h *Headway) ValhallaTiles(ctx context.Context) *Artifact {
 		panic("Headway.OSMExport.File must be set to build Valhalla tiles")
 	}
 
-	container := valhallaBuildContainer().
-		WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
+	var container *dagger.Container
+	if h.IsPlanetBuild {
+		// Each road's country decides which side it drives on.
+		container = valhallaBuildContainer().
+			WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File).
+			WithExec([]string{"valhalla_build_admins", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
+	} else {
+		// An area's extract is clipped short of its country's boundary, which
+		// leaves no admins to build. Roads drive on the build's side unless
+		// tagged otherwise.
+		container = valhallaBuildContainer(
+			"--mjolnir-data-processing-use-admin-db", "False",
+			"--mjolnir-data-processing-default-drive-on-right", h.DrivingSide.valhallaDriveOnRight(),
+		).
+			WithMountedFile("/data/osm/data.osm.pbf", h.OSMExport.File)
+	}
+	container = container.
 		WithExec([]string{"valhalla_build_tiles", "-c", "valhalla.json", "/data/osm/data.osm.pbf"})
 
 	return DirectoryArtifact(h.Area+"-valhalla", container.Directory("/tiles"))
