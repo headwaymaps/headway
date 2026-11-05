@@ -625,15 +625,12 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 	// The script prints a JVM-style size like "12345M", with a trailing newline.
 	memoryBudget = strings.TrimSpace(memoryBudget)
 
-	fixturesUrl := getEnvWithDefault("HEADWAY_PLANETILER_FIXTURES_URL", "https://data.maps.earth/planetiler_fixtures/sources.tar")
-
-	sources := downloadContainer().
-		WithExec([]string{"mkdir", "-p", "/data/sources"}).
-		WithExec([]string{"bash", "-o", "pipefail", "-c", `wget -nv -U headway/1.0 -O - "$0" | tar -x --directory /data/sources`, fixturesUrl}).
-		Directory("/data/sources")
+	fixturesRoot := getEnvWithDefault("HEADWAY_BUILD_FIXTURES_URL", "https://data.maps.earth/build_fixtures")
+	for _, source := range []string{"lake_centerline.shp.zip", "natural_earth_vector.sqlite.zip", "water-polygons-split-3857.zip"} {
+		container = container.WithMountedFile("/data/sources/"+source, downloadFile(fixturesRoot+"/"+source))
+	}
 
 	container = container.
-		WithMountedDirectory("/data/sources", sources).
 		WithMountedFile("/data/data.osm.pbf", h.OSMExport.File)
 
 	output := "/data/output.pmtiles"
