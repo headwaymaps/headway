@@ -66,6 +66,12 @@ else
     contact_link_text_json="\"$HEADWAY_CONTACT_LINK_TEXT\""
 fi
 
+if [[ -z "$HEADWAY_TRIP_CORPUS_URL" ]]; then
+    trip_corpus_url_json="null"
+else
+    trip_corpus_url_json="\"$HEADWAY_TRIP_CORPUS_URL\""
+fi
+
 cat << EOS
 {
     "maxBounds": $bbox_json,
@@ -74,7 +80,8 @@ cat << EOS
     "aboutUrl": $about_url_json,
     "aboutLinkText": $about_link_text_json,
     "contactUrl": $contact_url_json,
-    "contactLinkText": $contact_link_text_json
+    "contactLinkText": $contact_link_text_json,
+    "tripCorpusUrl": $trip_corpus_url_json
 }
 EOS
 

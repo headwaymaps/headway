@@ -12,6 +12,13 @@
     />
   </div>
   <div class="bottom-card">
+    <trip-corpus
+      v-if="tripCorpusUrl"
+      :url="tripCorpusUrl"
+      :from="fromPlace?.point"
+      :to="toPlace?.point"
+      @select="selectCorpusTrip"
+    />
     <route-comparison-card
       v-if="comparison"
       :trips="trips as Trip[]"
@@ -86,11 +93,13 @@ import {
   type BaseMapInterface,
 } from 'src/components/BaseMap.vue';
 import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
-import Place, { PlaceStorage } from 'src/models/Place';
+import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import RouteComparisonCard from 'src/components/RouteComparisonCard.vue';
+import TripCorpus from 'src/components/TripCorpus.vue';
+import Config from 'src/utils/Config';
 import RouteComparison from 'src/models/RouteComparison';
 import TransitUnsupportedNotice from 'src/components/TransitUnsupportedNotice.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
@@ -115,6 +124,7 @@ export default defineComponent({
     TripListItem,
     TripSearch,
     RouteComparisonCard,
+    TripCorpus,
     TransitUnsupportedNotice,
   },
   props: {
@@ -171,6 +181,9 @@ export default defineComponent({
     };
   },
   computed: {
+    tripCorpusUrl(): string | undefined {
+      return Config.tripCorpusUrl;
+    },
     /// How the routes of several OTP routers covering the trip differ.
     comparison(): RouteComparison | undefined {
       const trips = this.trips as Trip[];
@@ -286,6 +299,13 @@ export default defineComponent({
     searchDidChange(newValue: TransitQueryParams) {
       this.transitQuery = new TransitQuery(newValue);
       this.rewriteUrl();
+    },
+
+    async selectCorpusTrip(from: LngLat, to: LngLat) {
+      [this.fromPlace, this.toPlace] = await Promise.all(
+        [from, to].map((p) => PlaceStorage.fetchFromId(PlaceId.location(p))),
+      );
+      await this.rewriteUrl();
     },
 
     rewriteUrl: async function () {
