@@ -1,0 +1,125 @@
+# Compares routes across OTP versions. See README.md.
+x-otp-main-build: &otp-main-build
+  context: .
+  dockerfile: otp.Dockerfile
+  args:
+    OTP_COMMIT: 7542ea8c98d5e742e0f97dcee2f687d71d92cda8
+x-otp-safety-build: &otp-safety-build
+  context: .
+  dockerfile: otp.Dockerfile
+  args:
+    OTP_COMMIT: 129cbfa9f7c9e28bc780b23a0766fb41db35c951
+
+x-graph-build: &graph-build
+  entrypoint:
+    - bash
+    - -c
+    - |
+      [ -f /graph/graph.obj ] && exit 0
+      cp /inputs/* /graph/ && java -Xmx8G -jar /otp.jar --build --save /graph
+
+# Matches k8s/_template/opentripplanner-ZONE-deployment.yaml.tpl.
+x-otp-serve: &otp-serve
+  restart: unless-stopped
+  entrypoint: [java, -Xmx7G, -jar, /otp.jar, --load, /graph]
+  mem_limit: 7.25g
+  mem_reservation: 500m
+  healthcheck:
+    test: [CMD, bash, -c, "</dev/tcp/localhost/8080"]
+    interval: 5s
+    retries: 60
+
+services:
+  # main and the duration fix differ only at routing time. The safety fix sets its factors while
+  # building the graph.
+  graph-shared:
+    <<: *graph-build
+    build: *otp-main-build
+    image: otp-compare-otp:main
+    volumes:
+      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - graph-shared:/graph
+  graph-safety:
+    <<: *graph-build
+    build: *otp-safety-build
+    image: otp-compare-otp:safety
+    depends_on:
+      graph-shared:
+        condition: service_completed_successfully
+    volumes:
+      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - graph-safety:/graph
+
+  otp-main:
+    <<: *otp-serve
+    build: *otp-main-build
+    image: otp-compare-otp:main
+    depends_on:
+      graph-safety:
+        condition: service_completed_successfully
+    volumes:
+      - graph-shared:/graph:ro
+  otp-duration:
+    <<: *otp-serve
+    build:
+      context: .
+      dockerfile: otp.Dockerfile
+      args:
+        OTP_COMMIT: b91bc5478e4e92b0df4f39c68ddc547e46bc00d2
+    image: otp-compare-otp:duration
+    depends_on:
+      graph-safety:
+        condition: service_completed_successfully
+    volumes:
+      - graph-shared:/graph:ro
+  otp-safety:
+    <<: *otp-serve
+    build: *otp-safety-build
+    image: otp-compare-otp:safety
+    depends_on:
+      graph-safety:
+        condition: service_completed_successfully
+    volumes:
+      - graph-safety:/graph:ro
+
+  travelmux:
+    build:
+      context: ../..
+      dockerfile: contrib/otp-compare/travelmux.Dockerfile
+    restart: unless-stopped
+    command:
+      - no-valhalla
+      - main@7542ea8=http://otp-main:8080
+      - roundabout duration fix=http://otp-duration:8080
+      - roundabout safety fix=http://otp-safety:8080
+    environment:
+      RUST_LOG: info
+      ELEVATION_TIFS_DIR: /inputs
+    depends_on:
+      otp-main:
+        condition: service_healthy
+      otp-duration:
+        condition: service_healthy
+      otp-safety:
+        condition: service_healthy
+    volumes:
+      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: contrib/otp-compare/frontend.Dockerfile
+      args:
+        ROUTER_LINKS: >-
+          {"main@7542ea8": "https://github.com/headwaymaps/OpenTripPlanner/commit/7542ea8c98d5e742e0f97dcee2f687d71d92cda8",
+          "roundabout duration fix": "https://github.com/headwaymaps/OpenTripPlanner/commit/b91bc5478e4e92b0df4f39c68ddc547e46bc00d2",
+          "roundabout safety fix": "https://github.com/headwaymaps/OpenTripPlanner/commit/129cbfa9f7c9e28bc780b23a0766fb41db35c951"}
+    restart: unless-stopped
+    depends_on:
+      - travelmux
+    ports:
+      - 127.0.0.1:${OTP_COMPARE_PORT:-8080}:8080
+
+volumes:
+  graph-shared:
+  graph-safety:

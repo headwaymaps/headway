@@ -1,0 +1,7 @@
+*
+!Cargo.toml
+!Cargo.lock
+!services/travelmux
+!services/gtfs/transit-zoner/Cargo.toml
+!services/gtfs/gtfout/Cargo.toml
+!services/tileserver/maplibre-style/Cargo.toml

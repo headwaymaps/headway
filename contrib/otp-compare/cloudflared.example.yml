@@ -1,0 +1,7 @@
+# cloudflared tunnel route dns <tunnel> dev.seattle.maps.earth
+tunnel: <tunnel>
+credentials-file: /path/to/<tunnel>.json
+ingress:
+  - hostname: dev.seattle.maps.earth
+    service: http://localhost:8080
+  - service: http_status:404
