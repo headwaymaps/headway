@@ -8,6 +8,7 @@ RUN mkdir -p dist/spa/static && \
     HEADWAY_ENABLE_TRANSIT_ROUTING=1 \
     HEADWAY_BBOX="-122.462 47.394 -122.005 47.831" \
     HEADWAY_TRIP_CORPUS_URL=/corpus.json \
+    HEADWAY_DEBUG_ENABLED=1 \
     HEADWAY_ROUTER_LINKS="$ROUTER_LINKS" \
     bash /generate_config.sh > dist/spa/static/headway-config.json
 

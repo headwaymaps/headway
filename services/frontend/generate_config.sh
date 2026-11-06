@@ -28,6 +28,12 @@ else
     bbox_json="null"
 fi
 
+if [[ "$HEADWAY_DEBUG_ENABLED" == 1 ]]; then
+    debug_enabled_json="true"
+else
+    debug_enabled_json="false"
+fi
+
 # JSON object of OTP router name to link
 router_links_json="${HEADWAY_ROUTER_LINKS:-null}"
 
@@ -76,6 +82,7 @@ cat << EOS
 {
     "maxBounds": $bbox_json,
     "routerLinks": $router_links_json,
+    "debugEnabled": $debug_enabled_json,
     "transitRoutingEnabled": $transit_routing_enabled_json,
     "aboutUrl": $about_url_json,
     "aboutLinkText": $about_link_text_json,

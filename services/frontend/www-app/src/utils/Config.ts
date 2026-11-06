@@ -7,6 +7,7 @@ export default class Config {
   contactUrl?: string;
   contactLinkText?: string;
   tripCorpusUrl?: string;
+  debugEnabled = false;
 
   static shared: Config = new Config();
 
@@ -37,6 +38,10 @@ export default class Config {
 
   public static get contactLinkText(): string | undefined {
     return Config.shared.contactLinkText;
+  }
+
+  public static get debugEnabled(): boolean {
+    return Config.shared.debugEnabled;
   }
 
   public static get tripCorpusUrl(): string | undefined {

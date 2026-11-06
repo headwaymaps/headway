@@ -66,7 +66,10 @@ export default defineComponent({
     comparing: Boolean,
   },
   setup(props) {
-    return { ...useLegElevation(props.trip.legs[0]!), debugEnabled };
+    return {
+      ...useLegElevation(props.trip.legs[0]!),
+      debugEnabled: debugEnabled(),
+    };
   },
   watch: {
     active(isActive: boolean) {

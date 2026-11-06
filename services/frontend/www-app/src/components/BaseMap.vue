@@ -242,7 +242,7 @@ export default defineComponent({
     } | null;
   } {
     return {
-      debugEnabled,
+      debugEnabled: debugEnabled(),
       pendingCameraMove: undefined,
       markers: new Map(),
       layers: [],
