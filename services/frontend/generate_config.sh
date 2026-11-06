@@ -28,6 +28,9 @@ else
     bbox_json="null"
 fi
 
+# JSON object of OTP router name to link
+router_links_json="${HEADWAY_ROUTER_LINKS:-null}"
+
 if [ -z "$HEADWAY_ENABLE_TRANSIT_ROUTING" ]; then
     usage
     exit 1
@@ -66,6 +69,7 @@ fi
 cat << EOS
 {
     "maxBounds": $bbox_json,
+    "routerLinks": $router_links_json,
     "transitRoutingEnabled": $transit_routing_enabled_json,
     "aboutUrl": $about_url_json,
     "aboutLinkText": $about_link_text_json,

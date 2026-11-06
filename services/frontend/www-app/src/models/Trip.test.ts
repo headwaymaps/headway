@@ -39,6 +39,7 @@ function leg(mode: TravelmuxMode, distanceMeters: number): TravelmuxLeg {
 function trip(legs: TravelmuxLeg[]): Trip {
   const itinerary: TravelmuxItinerary = {
     mode: TravelmuxMode.Transit,
+    source: 'OTP',
     startTime: '2024-05-17T12:35:01-07:00',
     endTime: '2024-05-17T13:05:01-07:00',
     durationSeconds: 1800,

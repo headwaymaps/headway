@@ -1,6 +1,7 @@
 export default class Config {
   transitRoutingEnabled = false;
   maxBounds: [number, number, number, number] | null = null;
+  routerLinks?: Record<string, string>;
   aboutUrl?: string;
   aboutLinkText?: string;
   contactUrl?: string;
@@ -14,6 +15,11 @@ export default class Config {
 
   public static get maxBounds(): [number, number, number, number] | null {
     return Config.shared.maxBounds;
+  }
+
+  /// Where to read about each OTP router, by name.
+  public static get routerLinks(): Record<string, string> | undefined {
+    return Config.shared.routerLinks;
   }
 
   public static get aboutUrl(): string | undefined {

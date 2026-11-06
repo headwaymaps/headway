@@ -23,7 +23,17 @@ export interface TravelmuxItinerary {
   legs: TravelmuxLeg[];
   /// Which cycling objectives this route is the best answer to. Absent for every other mode.
   routePreferences?: BikeRoutePreference[];
+  /// Which router planned this, for debugging: `Valhalla`, `OTP` or `OTP-<flavor>`.
+  source: string;
+  /// What each compared OTP version planned along exactly this route.
+  routerPlans?: TravelmuxRouterPlan[];
 }
+
+export type TravelmuxRouterPlan = {
+  router: string;
+  durationSeconds: number;
+  routePreferences?: BikeRoutePreference[];
+};
 
 export type BikeRoutePreference = 'quieter' | 'faster';
 

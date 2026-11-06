@@ -12,6 +12,14 @@
     />
   </div>
   <div class="bottom-card">
+    <route-comparison-card
+      v-if="comparison"
+      :trips="trips as Trip[]"
+      :comparison="comparison"
+      :fitting-differences="fittingDifferences"
+      @select="(tripIdx: number) => clickTrip(trips[tripIdx] as Trip)"
+      @toggle-fit="toggleFit"
+    />
     <transit-unsupported-notice
       v-if="error?.errorCode == TripFetchErrorCode.UnsupportedTransitArea"
       :to-place="toPlace"
@@ -42,10 +50,17 @@
         :duration-formatted="trip.durationFormatted"
         :distance-formatted="trip.distanceFormatted"
       >
+        <span
+          v-if="comparison"
+          class="route-letter"
+          :style="{ background: comparison.routes[trips.indexOf(trip)]?.color }"
+          >{{ comparison.routes[trips.indexOf(trip)]?.letter }}</span
+        >
         <component
           :is="componentForMode(trip.mode)"
           :trip="trip"
           :active="trip === activeTrip"
+          :comparing="!!comparison"
         />
         <q-item-label>
           <q-btn
@@ -65,12 +80,18 @@
   </div>
 </template>
 <script lang="ts">
-import { getBaseMap, type BaseMapInterface } from 'src/components/BaseMap.vue';
+import {
+  getBaseMap,
+  map as rawMap,
+  type BaseMapInterface,
+} from 'src/components/BaseMap.vue';
 import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
+import RouteComparisonCard from 'src/components/RouteComparisonCard.vue';
+import RouteComparison from 'src/models/RouteComparison';
 import TransitUnsupportedNotice from 'src/components/TransitUnsupportedNotice.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
@@ -90,7 +111,12 @@ import { LngLat } from 'maplibre-gl';
 
 export default defineComponent({
   name: 'AlternatesPage',
-  components: { TripListItem, TripSearch, TransitUnsupportedNotice },
+  components: {
+    TripListItem,
+    TripSearch,
+    RouteComparisonCard,
+    TransitUnsupportedNotice,
+  },
   props: {
     mode: {
       type: String as () => TravelMode,
@@ -126,6 +152,8 @@ export default defineComponent({
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
+    /// Keeps stepping through trips on the routes' differences rather than the whole trips.
+    fittingDifferences: boolean;
     vehicleOverlay?: VehicleOverlay;
     TravelMode: typeof TravelMode;
     TripFetchErrorCode: typeof TripFetchErrorCode;
@@ -136,10 +164,28 @@ export default defineComponent({
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
+      fittingDifferences: true,
       vehicleOverlay: undefined,
       TravelMode: TravelMode,
       TripFetchErrorCode: TripFetchErrorCode,
     };
+  },
+  computed: {
+    /// How the routes of several OTP routers covering the trip differ.
+    comparison(): RouteComparison | undefined {
+      const trips = this.trips as Trip[];
+      const routers = new Set(
+        trips
+          .flatMap((trip) => trip.raw.routerPlans ?? [])
+          .map((plan) => plan.router),
+      );
+      if (routers.size < 2) return undefined;
+      return new RouteComparison(
+        trips.map((trip) =>
+          trip.legs.flatMap((leg) => leg.geometry.coordinates),
+        ),
+      );
+    },
   },
   watch: {
     mode: async function (): Promise<void> {
@@ -323,6 +369,18 @@ export default defineComponent({
         );
       }
     },
+    fitTrip(trip: Trip) {
+      const differences =
+        this.fittingDifferences && this.comparison?.differenceBounds;
+      getBaseMap()?.fitBounds(
+        differences || trip.bounds,
+        differences ? { maxZoom: 17 } : undefined,
+      );
+    },
+    toggleFit() {
+      this.fittingDifferences = !this.fittingDifferences;
+      if (this.activeTrip) this.fitTrip(this.activeTrip as Trip);
+    },
     renderTrips(selectedIdx: number) {
       console.assert(this.trips.length > 0);
       const map = getBaseMap();
@@ -338,7 +396,7 @@ export default defineComponent({
       }
       this.$data.trips = trips;
       this.activeTrip = selectedTrip;
-      showSteepClimbBadges(selectedTrip.legs);
+      showSteepClimbBadges(this.comparison ? [] : selectedTrip.legs);
 
       for (let tripIdx = 0; tripIdx < trips.length; tripIdx++) {
         const trip = trips[tripIdx]!;
@@ -477,7 +535,8 @@ export default defineComponent({
           );
         }
       }
-      getBaseMap()?.fitBounds(selectedTrip.bounds);
+      if (rawMap) this.comparison?.draw(map, rawMap, selectedIdx);
+      this.fitTrip(selectedTrip);
 
       this.vehicleOverlay?.selectTrip(selectedTrip);
     },

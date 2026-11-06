@@ -3,7 +3,13 @@
     <q-item-label v-if="trip.viaRoadsFormatted">
       {{ $t('via_$place', { place: trip.viaRoadsFormatted }) }}
     </q-item-label>
-    <div v-if="trip.raw.routePreferences?.length" class="route-preferences">
+    <q-item-label v-if="debugEnabled" caption>
+      {{ trip.raw.source }}
+    </q-item-label>
+    <div
+      v-if="trip.raw.routePreferences?.length && !comparing"
+      class="route-preferences"
+    >
       <q-badge
         v-for="preference in trip.raw.routePreferences"
         :key="preference"
@@ -42,6 +48,7 @@ import Trip from 'src/models/Trip';
 import ElevationChart from './ElevationChart.vue';
 import ElevationTotals from './ElevationTotals.vue';
 import { useLegElevation } from 'src/composables/useLegElevation';
+import { debugEnabled } from 'src/utils/debug';
 
 export default defineComponent({
   name: 'SingleModeListItem',
@@ -55,9 +62,11 @@ export default defineComponent({
       required: true,
     },
     active: Boolean,
+    /// The comparison card shows each router's route preferences instead.
+    comparing: Boolean,
   },
   setup(props) {
-    return useLegElevation(props.trip.legs[0]!);
+    return { ...useLegElevation(props.trip.legs[0]!), debugEnabled };
   },
   watch: {
     active(isActive: boolean) {
