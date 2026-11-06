@@ -15,6 +15,7 @@ use crate::api::AppState;
 use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
+use crate::otp::PreparedOTPRouter;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
@@ -109,6 +110,23 @@ pub struct Itinerary {
     /// Which cycling objectives this route is the best answer to. Empty for every other mode.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub(crate) route_preferences: Vec<BikeRoutePreference>,
+
+    /// Which router planned this, for debugging: `Valhalla` or `OTP-<router name>`.
+    pub(crate) source: String,
+
+    /// What each OTP router covering the trip planned along exactly this route.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub(crate) router_plans: Vec<RouterPlan>,
+}
+
+/// One OTP router's plan for a route, whose time can differ from another router's on the same
+/// streets.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RouterPlan {
+    router: String,
+    duration_seconds: f64,
+    route_preferences: Vec<BikeRoutePreference>,
 }
 
 impl Itinerary {
@@ -162,6 +180,8 @@ impl Itinerary {
             bounds,
             legs,
             route_preferences: vec![],
+            source: "Valhalla".to_string(),
+            router_plans: vec![],
         }
     }
 
@@ -207,6 +227,8 @@ impl Itinerary {
             bounds: itinerary_bounds,
             legs,
             route_preferences: vec![],
+            source: "OTP".to_string(),
+            router_plans: vec![],
         })
     }
 }
@@ -1045,20 +1067,24 @@ pub async fn get_plan(
 
 pub async fn _get_plan(
     query: web::Query<PlanQuery>,
-    req: HttpRequest,
+    _req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
     let Some(primary_mode) = query.mode.first() else {
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
+    if !app_state.has_valhalla() {
+        return otp_plan(&query, &app_state, primary_mode).await;
+    }
+
     // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
     // the "primary" mode appears first.
     match primary_mode {
-        TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
+        TravelMode::Transit => otp_plan(&query, &app_state, primary_mode).await,
         other => {
             if primary_mode == &TravelMode::Bicycle || primary_mode == &TravelMode::Walk {
-                match otp_plan(&query, req, &app_state, primary_mode).await {
+                match otp_plan(&query, &app_state, primary_mode).await {
                     Ok(otp_response) => {
                         // Prefer OTP response when available - anecdotally, it tends to be higher quality than Valhalla routes for
                         // walking and cycling.
@@ -1107,7 +1133,7 @@ async fn valhalla_plan(
 
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
-    let router_url = app_state.valhalla_router().plan_url(
+    let router_url = app_state.valhalla_router()?.plan_url(
         query.from_place,
         query.to_place,
         mode,
@@ -1141,30 +1167,65 @@ async fn valhalla_plan(
     PlanResponseOk::from_valhalla(*primary_mode, valhalla_route_response)
 }
 
+/// Plan the trip on every OTP router covering it.
 async fn otp_plan(
     query: &web::Query<PlanQuery>,
-    _req: HttpRequest,
     app_state: &web::Data<AppState>,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
-    let (endpoint, timezone) = {
-        let otp_cluster = app_state.otp_cluster();
-        let Some(router) = otp_cluster.find_router(query.from_place, query.to_place) else {
-            let uncovered_places = [
-                (TripEnd::From, query.from_place),
-                (TripEnd::To, query.to_place),
-            ]
-            .into_iter()
-            .filter(|(_, place)| !otp_cluster.covers(place))
-            .map(|(end, _)| end)
-            .collect();
-            return Err(PlanResponseErr::no_transit_coverage(
-                otp_cluster.area_names(),
-                uncovered_places,
-            ));
-        };
-        (router.endpoint().clone(), router.timezone())
+    let otp_cluster = app_state.otp_cluster();
+    let routers: Vec<_> = otp_cluster
+        .find_routers(query.from_place, query.to_place)
+        .collect();
+    if routers.is_empty() {
+        let uncovered_places = [
+            (TripEnd::From, query.from_place),
+            (TripEnd::To, query.to_place),
+        ]
+        .into_iter()
+        .filter(|(_, place)| !otp_cluster.covers(place))
+        .map(|(end, _)| end)
+        .collect();
+        return Err(PlanResponseErr::no_transit_coverage(
+            otp_cluster.area_names(),
+            uncovered_places,
+        ));
+    }
+
+    let plans = join_all(routers.into_iter().map(|router| async move {
+        (
+            router.name(),
+            otp_router_plan(query, router, primary_mode).await,
+        )
+    }))
+    .await;
+
+    let mut merged = PlanResponseOk {
+        itineraries: vec![],
     };
+    let mut last_error = None;
+    for (router, plan) in plans {
+        match plan {
+            Ok(plan) => merged.merge_router(router, plan),
+            Err(e) => {
+                log::error!("OTP router {router} failed to plan: {e}");
+                last_error = Some(e);
+            }
+        }
+    }
+    match last_error {
+        Some(e) if merged.itineraries.is_empty() => Err(e),
+        _ => Ok(merged),
+    }
+}
+
+async fn otp_router_plan(
+    query: &web::Query<PlanQuery>,
+    router: &PreparedOTPRouter,
+    primary_mode: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let endpoint = router.endpoint().clone();
+    let timezone = router.timezone();
     log::debug!("found matching router. Querying OTP GraphQL at: {endpoint}");
 
     let params = gtfs_graphql::PlanParams::from((&**query, timezone));
@@ -1254,6 +1315,33 @@ impl PlanResponseOk {
         }
         PlanResponseOk { itineraries: kept }
     }
+
+    /// Adds `plan`'s routes, crediting `router` on any itinerary it shares exactly with another router.
+    ///
+    /// The routers route over the same streets, so a shared route has identical geometry.
+    fn merge_router(&mut self, router: &str, plan: PlanResponseOk) {
+        for mut itinerary in plan.itineraries {
+            let router_plan = RouterPlan {
+                router: router.to_string(),
+                duration_seconds: itinerary.duration_seconds,
+                route_preferences: itinerary.route_preferences.clone(),
+            };
+            let geometry = itinerary.combined_geometry();
+            match self
+                .itineraries
+                .iter_mut()
+                .filter(|kept| !kept.router_plans.iter().any(|plan| plan.router == router))
+                .find(|kept| kept.combined_geometry() == geometry)
+            {
+                Some(kept) => kept.router_plans.push(router_plan),
+                None => {
+                    itinerary.source = format!("OTP-{router}");
+                    itinerary.router_plans.push(router_plan);
+                    self.itineraries.push(itinerary);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1275,6 +1363,49 @@ mod tests {
         let valhalla: valhalla_api::RouteResponse =
             serde_json::from_reader(BufReader::new(file)).unwrap();
         valhalla_api::ValhallaRouteResponseResult::Ok(valhalla)
+    }
+
+    #[test]
+    fn routers_share_only_identical_routes() {
+        let walk = PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response("pedestrian"))
+            .unwrap();
+        let mut quicker = walk.clone();
+        quicker.itineraries[0].duration_seconds -= 60.0;
+        let mut elsewhere = walk.clone();
+        elsewhere.itineraries[0].legs[0].geometry.0.pop();
+        let duration = walk.itineraries[0].duration_seconds;
+
+        let mut merged = PlanResponseOk {
+            itineraries: vec![],
+        };
+        merged.merge_router("Before", walk);
+        merged.merge_router("Quicker", quicker);
+        merged.merge_router("Elsewhere", elsewhere);
+
+        let plans = &merged.itineraries[0].router_plans;
+        let routers: Vec<_> = plans.iter().map(|plan| plan.router.as_str()).collect();
+        assert_eq!(routers, ["Before", "Quicker"]);
+        assert_eq!(plans[1].duration_seconds, duration - 60.0);
+        let elsewhere = merged.itineraries.last().unwrap();
+        assert_eq!(elsewhere.router_plans[0].router, "Elsewhere");
+    }
+
+    #[test]
+    fn one_router_keeps_itineraries_along_the_same_route() {
+        let mut departures =
+            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response("pedestrian"))
+                .unwrap();
+        departures
+            .itineraries
+            .push(departures.itineraries[0].clone());
+        let count = departures.itineraries.len();
+
+        let mut merged = PlanResponseOk {
+            itineraries: vec![],
+        };
+        merged.merge_router("Only", departures);
+
+        assert_eq!(merged.itineraries.len(), count);
     }
 
     fn otp_plan(name: &str) -> gtfs_graphql::PlanResult {

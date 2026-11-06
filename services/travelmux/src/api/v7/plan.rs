@@ -838,7 +838,7 @@ async fn valhalla_plan(
 
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
-    let router_url = app_state.valhalla_router().plan_url(
+    let router_url = app_state.valhalla_router()?.plan_url(
         query.from_place,
         query.to_place,
         mode,
@@ -881,7 +881,8 @@ async fn otp_plan(
     let (endpoint, timezone) = {
         let Some(router) = app_state
             .otp_cluster()
-            .find_router(query.from_place, query.to_place)
+            .find_routers(query.from_place, query.to_place)
+            .next()
         else {
             Err(
                 Error::user("Transit directions not available for this area.")

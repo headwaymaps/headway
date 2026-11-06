@@ -78,16 +78,20 @@ impl PreparedOtpCluster {
         self.routers.iter().any(|router| router.contains(point))
     }
 
-    /// Find the OTP instance whose coverage area contains both `source` and `destination`.
-    pub fn find_router(&self, source: Point, destination: Point) -> Option<&PreparedOTPRouter> {
-        for router in &self.routers {
+    /// The OTP instances whose coverage areas contain both `source` and `destination`.
+    pub fn find_routers(
+        &self,
+        source: Point,
+        destination: Point,
+    ) -> impl Iterator<Item = &PreparedOTPRouter> {
+        self.routers.iter().filter(move |router| {
             if !router.contains(&source) {
                 log::debug!(
                     "trip source isn't within router: ({} NOT WITHIN {})",
                     source.wkt_string(),
                     router.polygon().wkt_string()
                 );
-                continue;
+                return false;
             }
             if !router.contains(&destination) {
                 log::debug!(
@@ -95,11 +99,10 @@ impl PreparedOtpCluster {
                     destination.wkt_string(),
                     router.polygon().wkt_string()
                 );
-                continue;
+                return false;
             }
-            return Some(router);
-        }
-        None
+            true
+        })
     }
 }
 
@@ -113,7 +116,26 @@ mod test {
         let cluster = OtpCluster::default().prepare();
         let from = Point::new(0.0, 0.0);
         let to = Point::new(0.0, 0.0);
-        assert!(cluster.find_router(from, to).is_none());
+        assert!(cluster.find_routers(from, to).next().is_none());
+    }
+
+    #[test]
+    fn found_every_router_covering_the_trip() {
+        let mut cluster = OtpCluster::default();
+        for name in ["main", "fix"] {
+            let endpoint = Url::parse(&format!("http://{name}.example.com")).unwrap();
+            let polygon = wkt! { POLYGON((0.0 0.0, 40.0 0.0, 40.0 40.0, 0.0 40.0, 0.0 0.0)) };
+            cluster.push_router(OTPRouter::new(name.to_owned(), endpoint, polygon, None));
+        }
+        let cluster = cluster.prepare();
+
+        let from = Point::new(1.0, 1.0);
+        let to = Point::new(2.0, 2.0);
+        let names: Vec<_> = cluster
+            .find_routers(from, to)
+            .map(|router| router.name())
+            .collect();
+        assert_eq!(names, ["main", "fix"]);
     }
 
     #[test]
@@ -150,25 +172,27 @@ mod test {
 
         {
             let router = cluster
-                .find_router(p1_a, p1_b)
+                .find_routers(p1_a, p1_b)
+                .next()
                 .expect("should have found a result");
             assert_eq!(router.endpoint(), &endpoint_1);
         }
 
         {
             let router = cluster
-                .find_router(p2_a, p2_b)
+                .find_routers(p2_a, p2_b)
+                .next()
                 .expect("should have found a result");
             assert_eq!(router.endpoint(), &endpoint_2);
         }
 
         // neither point covered by a router
-        assert!(cluster.find_router(p3_a, p3_b).is_none());
+        assert!(cluster.find_routers(p3_a, p3_b).next().is_none());
 
         // one point covered by a router, one point not covered by any router
-        assert!(cluster.find_router(p1_a, p3_b).is_none());
+        assert!(cluster.find_routers(p1_a, p3_b).next().is_none());
 
         // both points covered by different routers
-        assert!(cluster.find_router(p1_a, p2_b).is_none());
+        assert!(cluster.find_routers(p1_a, p2_b).next().is_none());
     }
 }

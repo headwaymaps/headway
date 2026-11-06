@@ -750,7 +750,7 @@ async fn valhalla_plan(
     };
 
     // route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}
-    let router_url = app_state.valhalla_router().plan_url(
+    let router_url = app_state.valhalla_router()?.plan_url(
         query.from_place,
         query.to_place,
         mode,
@@ -804,7 +804,8 @@ async fn otp_plan(
     let (endpoint, timezone) = {
         let Some(router) = app_state
             .otp_cluster()
-            .find_router(query.from_place, query.to_place)
+            .find_routers(query.from_place, query.to_place)
+            .next()
         else {
             Err(
                 Error::user("Transit directions not available for this area.")

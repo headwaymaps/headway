@@ -1,5 +1,5 @@
 use crate::elevation::ElevationService;
-use crate::{otp::PreparedOtpCluster, valhalla::ValhallaRouter};
+use crate::{otp::PreparedOtpCluster, valhalla::ValhallaRouter, Error, Result};
 use std::path::PathBuf;
 use url::Url;
 
@@ -8,14 +8,19 @@ use url::Url;
 #[derive(Debug, Clone)]
 pub struct AppState {
     otp_cluster: PreparedOtpCluster,
-    valhalla_router: ValhallaRouter,
+    valhalla_router: Option<ValhallaRouter>,
     elevation: ElevationService,
 }
 
 impl AppState {
-    pub fn new(valhalla_endpoint: Url, tif_dir: PathBuf, otp_cluster: PreparedOtpCluster) -> Self {
+    /// Without a `valhalla_endpoint`, OTP plans every trip.
+    pub fn new(
+        valhalla_endpoint: Option<Url>,
+        tif_dir: PathBuf,
+        otp_cluster: PreparedOtpCluster,
+    ) -> Self {
         log::debug!("new AppState with valhalla_endpoint: {valhalla_endpoint:?}");
-        let valhalla_router = ValhallaRouter::new(valhalla_endpoint);
+        let valhalla_router = valhalla_endpoint.map(ValhallaRouter::new);
         debug_assert!(std::fs::exists(&tif_dir).unwrap());
         Self {
             valhalla_router,
@@ -28,8 +33,14 @@ impl AppState {
         &self.otp_cluster
     }
 
-    pub fn valhalla_router(&self) -> &ValhallaRouter {
-        &self.valhalla_router
+    pub fn has_valhalla(&self) -> bool {
+        self.valhalla_router.is_some()
+    }
+
+    pub fn valhalla_router(&self) -> Result<&ValhallaRouter> {
+        self.valhalla_router
+            .as_ref()
+            .ok_or_else(|| Error::server("no valhalla endpoint is configured"))
     }
 
     pub fn elevation(&self) -> &ElevationService {

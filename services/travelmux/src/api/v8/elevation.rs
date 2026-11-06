@@ -109,7 +109,7 @@ mod tests {
 
     fn build_test_app_state() -> AppState {
         AppState::new(
-            Url::parse("http://test:8002").unwrap(),
+            Some(Url::parse("http://test:8002").unwrap()),
             PathBuf::from("tests/fixtures/low_res_elevation_tifs"),
             OtpCluster::default().prepare(),
         )

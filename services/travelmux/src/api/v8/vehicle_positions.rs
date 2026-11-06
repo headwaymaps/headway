@@ -575,7 +575,8 @@ pub async fn post_vehicle_positions(
     let endpoint = {
         let Some(router) = app_state
             .otp_cluster()
-            .find_router(request.from_place, request.to_place)
+            .find_routers(request.from_place, request.to_place)
+            .next()
         else {
             Err(
                 Error::user("Transit directions not available for this area.")
