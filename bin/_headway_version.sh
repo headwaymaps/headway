@@ -21,9 +21,16 @@
 # A bump in the DATA tag pretty much always implies a bump in the CONTAINER
 # tag, but not necessarily vice-versa.
 
-export HEADWAY_DATA_TAG=0.14.0
+export HEADWAY_DATA_TAG=0.15.0
 
 # # Schema change Log
+#
+# ## DATA v0.15.0, CONTAINER v0.16.0
+#
+# BREAKING DATA/CONTAINER: OTP now includes the roundabout duration and safety
+# fixes. Its graph serialization id differs and the safety factors are set while
+# building, so every zone's graph has to be rebuilt. The GTFS GraphQL API is
+# unchanged apart from a removed deprecation and doc wording.
 #
 # ## DATA v0.14.0, CONTAINER v0.15.0
 #
