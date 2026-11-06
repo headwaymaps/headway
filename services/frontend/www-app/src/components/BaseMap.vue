@@ -12,6 +12,14 @@
       @click="contextMenu = null"
       >{{ $t('view_in_osm') }}</a
     >
+    <a
+      v-if="debugEnabled"
+      :href="contextMenu.streetViewUrl"
+      target="_blank"
+      rel="noopener"
+      @click="contextMenu = null"
+      >Google Street View</a
+    >
   </div>
   <MapDebugPanel v-if="debugEnabled && mapReady" :map="mapForDebug()" />
 </template>
@@ -226,7 +234,12 @@ export default defineComponent({
     mapReady: boolean;
     touchHandlers: Map<BaseMapEventType, Array<BaseMapEventHandler>>;
     touchHandlerIdx: number;
-    contextMenu: { x: number; y: number; osmUrl: string } | null;
+    contextMenu: {
+      x: number;
+      y: number;
+      osmUrl: string;
+      streetViewUrl: string;
+    } | null;
   } {
     return {
       debugEnabled,
@@ -333,6 +346,7 @@ export default defineComponent({
         x: event.originalEvent.clientX,
         y: event.originalEvent.clientY,
         osmUrl: `https://www.openstreetmap.org/?mlat=${lat.toFixed(6)}&mlon=${lng.toFixed(6)}#map=${zoom}/${lat.toFixed(6)}/${lng.toFixed(6)}`,
+        streetViewUrl: `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat.toFixed(6)},${lng.toFixed(6)}`,
       };
     });
     const closeContextMenu = () => (this.contextMenu = null);
@@ -720,8 +734,13 @@ export default defineComponent({
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 
   a {
+    display: block;
     color: inherit;
     text-decoration: none;
+  }
+
+  a + a {
+    margin-top: 6px;
   }
 }
 
