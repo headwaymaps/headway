@@ -116,11 +116,14 @@ export class PlaceStorage {
     return PlaceStorage.fetchFromId(id);
   }
 
-  public static async fetchFromId(id: PlaceId): Promise<Place> {
+  public static async fetchFromId(
+    id: PlaceId,
+    refresh = false,
+  ): Promise<Place> {
     const cacheKey = id.serialized();
     const cached = this.cache.get(cacheKey);
 
-    if (cached) {
+    if (cached && !refresh) {
       return cached;
     }
 

@@ -2,6 +2,16 @@ import { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/favorites',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: ':favoriteId?',
+        component: () => import('pages/FavoritesPage.vue'),
+      },
+    ],
+  },
+  {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     props: {

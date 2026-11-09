@@ -18,6 +18,15 @@
         dropdown-icon="menu"
       >
         <q-list>
+          <q-item
+            ><q-btn
+              dense
+              icon="star"
+              no-caps
+              flat
+              to="/favorites"
+              label="Favorites"
+          /></q-item>
           <q-item v-if="aboutUrl && aboutLinkText">
             <q-btn
               dense
