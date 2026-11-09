@@ -21,9 +21,14 @@
 # A bump in the DATA tag pretty much always implies a bump in the CONTAINER
 # tag, but not necessarily vice-versa.
 
-export HEADWAY_DATA_TAG=0.14.0
+export HEADWAY_DATA_TAG=0.15.0
 
 # # Schema change Log
+#
+# ## DATA v0.15.0, CONTAINER v0.16.0
+#
+# BREAKING DATA/CONTAINER: Updated OTP, which changed its graph serialization id,
+# so every zone's graph has to be rebuilt.
 #
 # ## DATA v0.14.0, CONTAINER v0.15.0
 #

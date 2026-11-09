@@ -465,7 +465,7 @@ type Cluster implements Node {
   "ID of the cluster"
   gtfsId: String! @deprecated(reason : "Not implemented")
   "Global object ID provided by Relay. This value can be used to refetch this object using **node** query."
-  id: ID! @deprecated(reason : "Not implemented")
+  id: ID!
   "Latitude of the center of this cluster (i.e. average latitude of stops in this cluster)"
   lat: Float! @deprecated(reason : "Not implemented")
   "Longitude of the center of this cluster (i.e. average longitude of stops in this cluster)"
@@ -4752,7 +4752,11 @@ input CarParkingPreferencesInput {
   unpreferredCost: Cost
 }
 
-"Preferences related to traveling on a car (excluding car travel on transit services such as taxi)."
+"""
+Preferences for street car legs. These can affect such legs in both direct and transit itineraries.
+They do not apply to flex services or to the transit taxi mode, which is different from the street
+taxi mode.
+"""
 input CarPreferencesInput {
   "Cost of boarding a vehicle with a car."
   boardCost: Cost
@@ -5208,10 +5212,7 @@ transit.
 input PlanStreetPreferencesInput {
   "Cycling related preferences."
   bicycle: BicyclePreferencesInput
-  """
-  Car related preferences. These are not used for car travel as part of transit, such as
-  taxi travel.
-  """
+  "Car related preferences."
   car: CarPreferencesInput
   "Scooter (kick or electrical) related preferences."
   scooter: ScooterPreferencesInput
