@@ -104,8 +104,8 @@ jobs:
           path: data/Bogota
           retention-days: 7
       # The build re-pins artifacts.json to the names it just built, so the
-      # committed manifest is stale for dated artifacts (otp graphs, gtfs,
-      # elevation). Downstream jobs need this copy, not the checked-out one.
+      # committed manifest is stale for dated artifacts (otp graphs, gtfs). Downstream
+      # jobs need this copy, not the checked-out one.
       - name: Upload artifact manifest
         uses: actions/upload-artifact@v7.0.2
         with:

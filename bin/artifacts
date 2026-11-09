@@ -11,7 +11,7 @@ Pin and look up build artifacts. This runs on the build machine: --pin reads
 data/<Area>, and the lookups serve both the local docker compose stack and
 bin/k8s/generate, so the manifest's shape is only known here.
 
-usage: $0 [--optional] <otp-graphs|otp-zones|elevation|pmtiles|valhalla|elasticsearch|placeholder|osm> <build-config-dir>
+usage: $0 [--optional] <otp-graphs|otp-zones|pmtiles|valhalla|elasticsearch|placeholder|osm> <build-config-dir>
        $0 [--optional] <terrain|landcover> <build-config-dir>
        $0 <files|shared-files> <build-config-dir>
        $0 --pin <build-config-dir>
@@ -159,11 +159,6 @@ case "$COMMAND" in
         add_by_zone otp-graphs graph .obj.zst
         add_by_zone gtfs gtfs .tar.zst
 
-        elevation=$(latest_match "$TRANSIT_DIR" "${HEADWAY_AREA}-elevation-tifs" .tar.zst)
-        if [ -n "$elevation" ]; then
-            manifest=$(jq --arg file "transit/$elevation" '.elevation = $file' <<< "$manifest")
-        fi
-
         jq -S . <<< "$manifest" > "$MANIFEST"
 
         echo "Wrote ${MANIFEST}:" >&2
@@ -208,7 +203,7 @@ case "$COMMAND" in
         [ -f "$MANIFEST" ] || exit 0
         jq -r '."otp-graphs" // {} | to_entries[] | .value' "$MANIFEST"
         ;;
-    elevation|pmtiles|valhalla|elasticsearch|placeholder|osm|terrain|landcover)
+    pmtiles|valhalla|elasticsearch|placeholder|osm|terrain|landcover)
         path=""
         if [ -f "$MANIFEST" ]; then
             case "$COMMAND" in

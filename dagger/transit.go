@@ -38,7 +38,7 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	gtfsSecrets *dagger.Secret,
 	// +optional
 	maxConcurrentZones int,
-	// Builds every zone, plus the elevation shared between them, when empty.
+	// Builds every zone when empty.
 	// +optional
 	zones []string) (*dagger.Directory, error) {
 	ctx, span := startStep(ctx, "transit")
@@ -52,7 +52,6 @@ func (h *Headway) BuildTransit(ctx context.Context,
 
 	output := dag.Directory()
 
-	elevations := dag.Directory()
 	zoneFiles, err := transitZoneFiles(ctx, transitConfigDir)
 	if err != nil {
 		return nil, err
@@ -69,13 +68,12 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	}
 
 	type zoneResult struct {
-		zone       *TransitZone
-		stem       string
-		zoneBBox   *Bbox
-		clipName   string
-		gtfs       *Artifact
-		graph      *Artifact
-		elevations *dagger.Directory
+		zone     *TransitZone
+		stem     string
+		zoneBBox *Bbox
+		clipName string
+		gtfs     *Artifact
+		graph    *Artifact
 	}
 	results := make([]zoneResult, len(zoneFiles))
 
@@ -128,10 +126,8 @@ func (h *Headway) BuildTransit(ctx context.Context,
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
-	elevationStem := fmt.Sprintf("%s-elevation-tifs", h.Area)
-
 	if len(results) == 0 {
-		return DirectoryArtifact(elevationStem, elevations).Compress().AddTo(ctx, output)
+		return output, nil
 	}
 
 	extracts := make([]osmiumExtract, len(results))
@@ -163,7 +159,6 @@ func (h *Headway) BuildTransit(ctx context.Context,
 			osmExport := &OSMExport{File: clippedOSM.File(result.clipName)}
 			graphStem := fmt.Sprintf("%s-graph", result.stem)
 			result.graph = FileArtifact(graphStem, "obj", result.zone.otpGraph(ctx, osmExport)).Compress()
-			result.elevations = result.zone.Elevations(ctx)
 			return nil
 		})
 	}
@@ -171,13 +166,9 @@ func (h *Headway) BuildTransit(ctx context.Context,
 		return nil, err
 	}
 
-	artifacts := make([]*Artifact, 0, 2*len(results)+1)
+	artifacts := make([]*Artifact, 0, 2*len(results))
 	for _, result := range results {
 		artifacts = append(artifacts, result.gtfs, result.graph)
-		elevations = elevations.WithDirectory("./", result.elevations)
-	}
-	if allZones {
-		artifacts = append(artifacts, DirectoryArtifact(elevationStem, elevations).Compress())
 	}
 
 	if err := buildAll(ctx, artifacts); err != nil {

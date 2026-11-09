@@ -2,8 +2,6 @@ use actix_web::{middleware::Logger, web, App, HttpServer};
 use url::Url;
 
 use std::env;
-use std::fs;
-use std::path::PathBuf;
 use travelmux::api::{self, AppState};
 use travelmux::otp::OtpCluster;
 use travelmux::{Result, ERROR_CODE_HEADER};
@@ -27,24 +25,6 @@ async fn main() -> Result<()> {
         panic!("Invalid valhalla endpoint: {valhalla_endpoint}")
     };
 
-    let elevation_dir = std::env::var("ELEVATION_TIFS_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("tests/fixtures/low_res_elevation_tifs"));
-    if elevation_dir.exists() {
-        let count = fs::read_dir(&elevation_dir)?
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| {
-                entry
-                    .path()
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("tif"))
-            })
-            .count();
-        log::info!("Elevation directory at {elevation_dir:?} has {count} tifs");
-    } else {
-        log::warn!("No elevation directory at {elevation_dir:?}");
-    }
     let mut otp_cluster = OtpCluster::default();
     for endpoint in endpoints {
         let Some((name, url)) = endpoint
@@ -77,23 +57,16 @@ async fn main() -> Result<()> {
 
     HttpServer::new(move || {
         // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
-        let app_state = AppState::new(
-            valhalla_endpoint.clone(),
-            elevation_dir.clone(),
-            otp_cluster.prepare(),
-        );
+        let app_state = AppState::new(valhalla_endpoint.clone(), otp_cluster.prepare());
         App::new()
             .wrap(Logger::new(&access_log_format))
             .app_data(web::Data::new(app_state))
             .service(api::v6::plan::get_plan)
             .service(api::v6::directions::get_directions)
-            .service(api::v6::elevation::get_elevation)
             .service(api::v7::plan::get_plan)
             .service(api::v7::directions::get_directions)
-            .service(api::v7::elevation::get_elevation)
             .service(api::v8::plan::get_plan)
             .service(api::v8::directions::get_directions)
-            .service(api::v8::elevation::get_elevation)
             .service(api::v8::vehicle_positions::post_vehicle_positions)
             .service(api::health::get_ready)
             .service(api::health::get_alive)

@@ -510,7 +510,7 @@ pub struct NonTransitLeg {
     /// The substantial road names along the route
     pub(crate) substantial_street_names: Vec<String>,
 
-    /// Only OTP gives us an elevation profile for the leg.
+    /// Only for walking and cycling.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) elevation: Option<LegElevation>,
 }
@@ -592,7 +592,7 @@ impl LegElevation {
 
     fn new(profile: ElevationProfile, leg_geometry: &LineString, maneuvers: &[Maneuver]) -> Self {
         let (total_climb_meters, total_fall_meters) = profile.climb_and_fall();
-        // The profile is measured along OTP's steps, which can disagree with the geometry's length.
+        // The profile is measured along the maneuvers, which can disagree with the geometry's length.
         let otp_meters: f64 = maneuvers
             .iter()
             .map(|maneuver| maneuver.distance_meters)
@@ -984,6 +984,28 @@ impl Leg {
         })
     }
 
+    fn valhalla_elevation(
+        valhalla: &valhalla_api::Leg,
+        units: DistanceUnit,
+    ) -> Option<ElevationProfile> {
+        let to_meters = match units {
+            DistanceUnit::Miles => METERS_PER_FOOT,
+            DistanceUnit::Meters | DistanceUnit::Kilometers => 1.0,
+        };
+        let points = valhalla
+            .elevation
+            .as_ref()?
+            .iter()
+            .enumerate()
+            .map(|(i, elevation)| {
+                (
+                    i as f64 * valhalla_api::ELEVATION_INTERVAL_METERS,
+                    elevation * to_meters,
+                )
+            });
+        ElevationProfile::from_points(points)
+    }
+
     fn from_valhalla(
         valhalla: &valhalla_api::Leg,
         travel_mode: TravelMode,
@@ -1009,7 +1031,9 @@ impl Leg {
             maneuvers.push(maneuver);
         }
 
-        let leg = NonTransitLeg::new(maneuvers, None);
+        let elevation = Self::valhalla_elevation(valhalla, units)
+            .map(|profile| LegElevation::new(profile, &geometry, &maneuvers));
+        let leg = NonTransitLeg::new(maneuvers, elevation);
         Self {
             start_time,
             end_time: start_time + seconds(valhalla.summary.time),
@@ -1232,6 +1256,7 @@ async fn bike_plans(
 
 /// How much time the faster route has to save before it's worth offering as a second option.
 const WORTHWHILE_TIME_SAVING_SECONDS: f64 = 60.0;
+const METERS_PER_FOOT: f64 = 0.3048;
 
 impl PlanResponseOk {
     /// The planned routes worth showing, in [`BikeRoutePreference::ALL`] order.
@@ -1465,6 +1490,33 @@ mod tests {
             steep_section(400.0, 450.0, 0.06),
         ];
         assert_eq!(annotated_grades(sections), vec![0.06]);
+    }
+
+    #[test]
+    fn valhalla_elevation_is_converted_from_the_trip_units() {
+        let valhalla_api::ValhallaRouteResponseResult::Ok(response) =
+            valhalla_response("pedestrian")
+        else {
+            panic!("expected a route");
+        };
+        let mut leg = response.trip.legs[0].clone();
+        leg.elevation = Some(vec![328.084; 11]);
+
+        let profile = Leg::valhalla_elevation(&leg, DistanceUnit::Miles).unwrap();
+        let points: Vec<_> = profile.smoothed_points().collect();
+        assert_eq!(points.len(), 11);
+        assert_relative_eq!(points[10].0, 100.0);
+        assert_relative_eq!(points[10].1, 100.0, epsilon = 0.001);
+    }
+
+    #[test]
+    fn valhalla_leg_without_elevation_has_no_profile() {
+        let plan = PlanResponseOk::from_valhalla(TravelMode::Car, valhalla_response("pedestrian"))
+            .unwrap();
+        let ModeLeg::NonTransit(leg) = &plan.itineraries[0].legs[0].mode_leg else {
+            panic!("expected a non-transit leg");
+        };
+        assert!(leg.elevation.is_none());
     }
 
     #[test]

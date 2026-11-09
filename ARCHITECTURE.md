@@ -31,7 +31,7 @@ Data sources:
 - [OpenStreetMap](https://www.openstreetmap.org) for tiles, routing, and search
 - [Who's On First](https://whosonfirst.org) and [OpenAddresses](https://openaddresses.io) for search
 - [Transitland Atlas](https://github.com/transitland/transitland-atlas) as the catalog of GTFS feeds. [gtfout](./services/gtfs/gtfout) measures and downloads those feeds for each transit zone.
-- elevation tiles, fetched by `valhalla_build_elevation`, for OTP and travelmux
+- elevation tiles from Skadi, fetched once by `bin/build-elevation` and then served from our data host, for building the Valhalla and OTP graphs
 
 ## Web frontend
 

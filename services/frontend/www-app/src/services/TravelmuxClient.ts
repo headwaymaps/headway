@@ -269,13 +269,6 @@ export enum TransitVehicleMode {
   Transit = 'TRANSIT',
 }
 
-export interface ElevationResponse {
-  sampledGeometry: string;
-  elevation: number[];
-  totalClimbMeters: number;
-  totalFallMeters: number;
-}
-
 /// v8 writes every point as a `[lon, lat]` pair, in requests as well as responses.
 function lonLatPair(point: LngLatLike): LonLatPair {
   const { lng, lat } = LngLat.convert(point);
@@ -283,49 +276,6 @@ function lonLatPair(point: LngLatLike): LonLatPair {
 }
 
 export class TravelmuxClient {
-  public static async fetchElevation(
-    path: string,
-  ): Promise<Result<ElevationResponse, Error>> {
-    const params = new URLSearchParams({ path });
-    const response = await fetch(`/travelmux/v8/elevation?${params}`);
-
-    if (response.ok) {
-      const elevationData: ElevationResponse = await response.json();
-      return Ok(elevationData);
-    } else {
-      const error = new Error(
-        `Failed to fetch elevation: ${response.statusText}`,
-      );
-      return Err(error);
-    }
-  }
-
-  /// OTP sends the leg's elevation along with it; for anything else we look it up.
-  public static async legElevation(
-    leg: TravelmuxLeg,
-  ): Promise<Result<LegElevation, Error>> {
-    const elevation = leg.nonTransitLeg?.elevation;
-    if (elevation) {
-      return Ok(elevation);
-    }
-    const result = await TravelmuxClient.fetchElevation(leg.geometry);
-    if (!result.ok) {
-      return result;
-    }
-    const {
-      elevation: elevations,
-      totalClimbMeters,
-      totalFallMeters,
-    } = result.value;
-    return Ok({
-      // Only the shape of the profile matters to the chart, not the true distance between samples.
-      profile: elevations.map((elevation, i) => [i, elevation]),
-      totalClimbMeters,
-      totalFallMeters,
-      steepSections: [],
-    });
-  }
-
   /// Where the vehicles near each requested pattern's boarding stop are right now.
   ///
   /// `from`/`to` are the endpoints of the plan the patterns came from: pattern codes only mean

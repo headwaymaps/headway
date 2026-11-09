@@ -1,8 +1,8 @@
 #!/bin/bash -ex
 
-HGT_DIR=$1
-if [ -z "$HGT_DIR" ]; then
-    echo "Missing param for input directory of .hgt files"
+TILES_DIR=$1
+if [ -z "$TILES_DIR" ]; then
+    echo "Missing param for input directory of .hgt.dzst files"
     exit 1
 fi
 
@@ -14,10 +14,20 @@ fi
 
 mkdir "$TIF_DIR"
 
-# Read each tile straight out of its gzip, and write it compressed: with a predictor, elevation
-# compresses about 4x, and travelmux and OTP both read it.
-find "$HGT_DIR" -type f -name '*.hgt.gz' | while read -r file; do
-    TIF_NAME="$(basename "$file" .hgt.gz).tif"
+# Undoes a .hgt.dzst's row delta, leaving HGT's big-endian heights.
+UNDO_ROW_DELTA='
+import sys
+import numpy as np
+deltas = np.frombuffer(sys.stdin.buffer.read(), dtype="<u2").reshape(3601, 3601)
+sys.stdout.buffer.write(np.cumsum(deltas, axis=1, dtype=np.uint16).astype(">u2").tobytes())
+'
+
+# Write each tile compressed: with a predictor, elevation compresses about 4x.
+HGT_DIR=$(mktemp -d)
+find "$TILES_DIR" -type f -name '*.hgt.dzst' | while read -r file; do
+    NAME="$(basename "$file" .hgt.dzst)"
+    zstd --decompress --quiet --stdout "$file" | python3 -c "$UNDO_ROW_DELTA" > "${HGT_DIR}/${NAME}.hgt"
     gdal_translate -co COMPRESS=DEFLATE -co PREDICTOR=2 -co TILED=YES \
-        "/vsigzip/${file}" "${TIF_DIR}/${TIF_NAME}"
+        "${HGT_DIR}/${NAME}.hgt" "${TIF_DIR}/${NAME}.tif"
+    rm "${HGT_DIR:?}/${NAME:?}.hgt"
 done
