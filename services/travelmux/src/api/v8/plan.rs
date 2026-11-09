@@ -1076,6 +1076,10 @@ pub async fn _get_plan(
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
+    if !app_state.has_valhalla() {
+        return otp_plan(&query, req, &app_state, primary_mode).await;
+    }
+
     // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
     // the "primary" mode appears first.
     match primary_mode {
@@ -1131,7 +1135,7 @@ async fn valhalla_plan(
 
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
-    let router_url = app_state.valhalla_router().plan_url(
+    let router_url = app_state.valhalla_router()?.plan_url(
         query.from_place,
         query.to_place,
         mode,
