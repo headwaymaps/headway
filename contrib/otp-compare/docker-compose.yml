@@ -1,0 +1,128 @@
+# Compares routes across OTP versions. See README.md.
+x-otp-main-build: &otp-main-build
+  context: .
+  dockerfile: otp.Dockerfile
+  args:
+    OTP_COMMIT: 7542ea8c98d5e742e0f97dcee2f687d71d92cda8
+x-otp-safety-build: &otp-safety-build
+  context: .
+  dockerfile: otp.Dockerfile
+  args:
+    OTP_COMMIT: 3c3f0d45b8b9f8b55544a7942bfff35b7fa30fd7
+
+x-graph-build: &graph-build
+  entrypoint:
+    - bash
+    - -c
+    - |
+      [ -f /graph/graph.obj ] && exit 0
+      cp /inputs/* /graph/ && java -Xmx8G -jar /otp.jar --build --save /graph
+
+# Matches k8s/_template/opentripplanner-ZONE-deployment.yaml.tpl.
+x-otp-serve: &otp-serve
+  restart: unless-stopped
+  entrypoint: [java, -Xmx7G, -jar, /otp.jar, --load, /graph]
+  mem_limit: 7.25g
+  mem_reservation: 500m
+  healthcheck:
+    test: [CMD, bash, -c, "</dev/tcp/localhost/8080"]
+    interval: 5s
+    retries: 60
+
+x-travelmux: &travelmux
+  build:
+    context: ../..
+    dockerfile: contrib/otp-compare/travelmux.Dockerfile
+  image: otp-compare-travelmux
+  restart: unless-stopped
+  environment:
+    RUST_LOG: info
+
+services:
+  # main and the duration fix differ only at routing time. The safety fix sets its factors while
+  # building the graph.
+  graph-shared:
+    <<: *graph-build
+    build: *otp-main-build
+    image: otp-compare-otp:main
+    volumes:
+      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - graph-shared:/graph
+  graph-safety:
+    <<: *graph-build
+    build: *otp-safety-build
+    image: otp-compare-otp:safety
+    depends_on:
+      graph-shared:
+        condition: service_completed_successfully
+    volumes:
+      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - graph-safety:/graph
+
+  otp-main:
+    <<: *otp-serve
+    build: *otp-main-build
+    image: otp-compare-otp:main
+    depends_on:
+      graph-safety:
+        condition: service_completed_successfully
+    volumes:
+      - graph-shared:/graph:ro
+  otp-duration:
+    <<: *otp-serve
+    build:
+      context: .
+      dockerfile: otp.Dockerfile
+      args:
+        OTP_COMMIT: e9c709adbba495ba1b41e2f293c2a7338852b194
+    image: otp-compare-otp:duration
+    depends_on:
+      graph-safety:
+        condition: service_completed_successfully
+    volumes:
+      - graph-shared:/graph:ro
+  otp-safety:
+    <<: *otp-serve
+    build: *otp-safety-build
+    image: otp-compare-otp:safety
+    depends_on:
+      graph-safety:
+        condition: service_completed_successfully
+    volumes:
+      - graph-safety:/graph:ro
+
+  # One travelmux per OTP, so each answers as it would alone. The frontend merges their routes.
+  travelmux-main:
+    <<: *travelmux
+    command: [no-valhalla, "Seattle=http://otp-main:8080"]
+    depends_on:
+      otp-main:
+        condition: service_healthy
+  travelmux-duration:
+    <<: *travelmux
+    command: [no-valhalla, "Seattle=http://otp-duration:8080"]
+    depends_on:
+      otp-duration:
+        condition: service_healthy
+  travelmux-safety:
+    <<: *travelmux
+    command: [no-valhalla, "Seattle=http://otp-safety:8080"]
+    depends_on:
+      otp-safety:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: contrib/otp-compare/frontend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - travelmux-main
+      - travelmux-duration
+      - travelmux-safety
+    ports:
+      - 127.0.0.1:${OTP_COMPARE_PORT:-8080}:8080
+
+volumes:
+  graph-shared:
+  graph-safety:
