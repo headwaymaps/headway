@@ -176,6 +176,8 @@ export default defineConfig((/* ctx */) => {
     build: {
       env: {
         HEADWAY_LOCAL_STYLE: String(LOCAL_STYLE_ENABLED),
+        // Set by contrib/otp-compare, for its page comparing several OTP builds.
+        HEADWAY_OTP_COMPARE: process.env.HEADWAY_OTP_COMPARE ?? '',
       },
       target: {
         browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],

@@ -13,6 +13,16 @@ enum LegPart {
   ON_OFF_STOPS = 'on_off_stops',
   /// Steep stretches of a walking or cycling leg, drawn over the leg in their shade's color.
   STEEP = 'steep',
+  /// What the compared routes share, drawn over the routes themselves.
+  COMPARED_COMMON = 'compared_common',
+  /// Where a compared route is alone.
+  COMPARED_SOLO = 'compared_solo',
+  /// Where a compared route overlaps only some of the others.
+  COMPARED_PARTLY_SHARED = 'compared_partly_shared',
+  /// Direction of travel, over the lines where nothing's offset.
+  COMPARED_CHEVRONS = 'compared_chevrons',
+  /// Direction of travel, over a route's offset line.
+  COMPARED_PARTLY_SHARED_CHEVRONS = 'compared_partly_shared_chevrons',
 }
 
 export default class TripLayerId {
@@ -67,6 +77,31 @@ export default class TripLayerId {
     gradeShade: GradeShade,
   ): TripLayerId {
     return new TripLayerId(tripIdx, legIdx, true, LegPart.STEEP, gradeShade);
+  }
+
+  static comparedCommon(): TripLayerId {
+    return new TripLayerId(0, 0, false, LegPart.COMPARED_COMMON);
+  }
+
+  static comparedSolo(tripIdx: number): TripLayerId {
+    return new TripLayerId(tripIdx, 0, false, LegPart.COMPARED_SOLO);
+  }
+
+  static comparedPartlyShared(tripIdx: number): TripLayerId {
+    return new TripLayerId(tripIdx, 0, false, LegPart.COMPARED_PARTLY_SHARED);
+  }
+
+  static comparedChevrons(): TripLayerId {
+    return new TripLayerId(0, 0, false, LegPart.COMPARED_CHEVRONS);
+  }
+
+  static comparedPartlySharedChevrons(tripIdx: number): TripLayerId {
+    return new TripLayerId(
+      tripIdx,
+      0,
+      false,
+      LegPart.COMPARED_PARTLY_SHARED_CHEVRONS,
+    );
   }
 
   static legStart(tripIdx: number, legIdx: number): TripLayerId {
