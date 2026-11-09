@@ -95,7 +95,8 @@ const HELP = [
     'SHORTEST_DURATION (Faster). Routes from different builds that are nearly identical are ' +
     'merged and share a letter, so two cells with the same letter may differ slightly. Each cell ' +
     'shows the duration that build gave its route.',
-  'On the map, each route gets its own color, with shared portions colored gray.',
+  'On the map, each route gets its own color, with shared portions colored gray. Pick a trip ' +
+    'from the corpus, or plan your own.',
 ];
 
 const COLUMN_HINTS: Partial<Record<Column, string>> = {

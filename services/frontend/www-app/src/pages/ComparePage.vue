@@ -13,6 +13,13 @@
     />
   </div>
   <div class="bottom-card">
+    <trip-corpus
+      v-if="config"
+      :url="config.corpus"
+      :from="fromPlace?.point"
+      :to="toPlace?.point"
+      @select="selectCorpusTrip"
+    />
     <route-comparison-card
       v-if="config && comparison"
       :routers="config.routers"
@@ -54,11 +61,13 @@
 import { getBaseMap, map as rawMap } from 'src/components/BaseMap.vue';
 import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import Place, { PlaceStorage } from 'src/models/Place';
+import { LngLat } from 'maplibre-gl';
+import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import RouteComparisonCard from 'src/components/RouteComparisonCard.vue';
+import TripCorpus from 'src/components/TripCorpus.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 import RouteComparison from 'src/models/RouteComparison';
@@ -75,12 +84,14 @@ import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 /// contrib/otp-compare's compare.json.
 type CompareConfig = {
   routers: ComparedRouter[];
+  /// Where the trip corpus is served.
+  corpus: string;
 };
 
 /// Compares the routes several OTP builds plan for a trip.
 export default defineComponent({
   name: 'ComparePage',
-  components: { TripListItem, TripSearch, RouteComparisonCard },
+  components: { TripListItem, TripSearch, RouteComparisonCard, TripCorpus },
   props: {
     mode: {
       type: String as () => TravelMode,
@@ -191,6 +202,23 @@ export default defineComponent({
     searchDidChange(newValue: TransitQueryParams) {
       this.transitQuery = new TransitQuery(newValue);
       this.rewriteUrl();
+    },
+    /// Routes between the bare points right away, then names them once the geocoder answers.
+    async selectCorpusTrip(from: LngLat, to: LngLat) {
+      [this.fromPlace, this.toPlace] = [from, to].map(Place.bareLocation);
+      const named = Promise.all(
+        [from, to].map((p) => PlaceStorage.fetchFromId(PlaceId.location(p))),
+      );
+      await this.rewriteUrl();
+      const [namedFrom, namedTo] = await named;
+      const unchanged = (place?: Place, named?: Place) =>
+        place?.serializedId() === named?.serializedId();
+      if (
+        unchanged(this.fromPlace, namedFrom) &&
+        unchanged(this.toPlace, namedTo)
+      ) {
+        [this.fromPlace, this.toPlace] = [namedFrom, namedTo];
+      }
     },
     async rewriteUrl() {
       if (!this.fromPlace && !this.toPlace) {
