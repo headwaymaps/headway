@@ -5,7 +5,8 @@ compares routes across the OTP versions in `docker-compose.yml`, with tiles and 
 maps.earth.
 
 Each version runs its own OTP and travelmux. `compare.json` tells the frontend where to find each
-travelmux and what to call it.
+travelmux and what to call it, and which of its routers to ask. main's travelmux also fronts
+Valhalla.
 
 `./inputs` holds the graph's inputs: an `*.osm.pbf`, an elevation `*.tif` and `*.gtfs.zip` feeds.
 Use `OTP_COMPARE_INPUTS` to look elsewhere.

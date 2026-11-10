@@ -3,6 +3,7 @@
     {
       "name": "main@7542ea8",
       "travelmux": "/travelmux/main",
+      "router": "otp",
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/7542ea8c98d5e742e0f97dcee2f687d71d92cda8"
     },
     {
@@ -14,6 +15,12 @@
       "name": "roundabout safety fix",
       "travelmux": "/travelmux/safety",
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/3c3f0d45b8b9f8b55544a7942bfff35b7fa30fd7"
+    },
+    {
+      "name": "Valhalla",
+      "travelmux": "/travelmux/main",
+      "router": "valhalla",
+      "link": "https://github.com/headwaymaps/valhalla"
     }
   ],
   "corpus": "/corpus.json"

@@ -60,6 +60,17 @@ pub struct PlanQuery {
     /// When true, `date_time` describes the desired arrival time rather than departure time.
     #[serde(default)]
     arrive_by: bool,
+
+    /// Plan with only this router, rather than whichever suits the trip.
+    router: Option<Router>,
+}
+
+/// A routing engine travelmux plans with.
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Router {
+    Otp,
+    Valhalla,
 }
 
 impl PlanQuery {
@@ -1075,6 +1086,17 @@ pub async fn _get_plan(
     let Some(primary_mode) = query.mode.first() else {
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
+
+    match query.router {
+        Some(Router::Otp) => return otp_plan(&query, req, &app_state, primary_mode).await,
+        Some(Router::Valhalla) if primary_mode == &TravelMode::Transit => {
+            return Err(PlanResponseErr::from(Error::user(
+                "valhalla doesn't plan transit",
+            )));
+        }
+        Some(Router::Valhalla) => return valhalla_plan(&query, &app_state, primary_mode).await,
+        None => {}
+    }
 
     if !app_state.has_valhalla() {
         return otp_plan(&query, req, &app_state, primary_mode).await;

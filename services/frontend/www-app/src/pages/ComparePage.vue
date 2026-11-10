@@ -272,6 +272,7 @@ export default defineComponent({
               params.searchDate,
               params.arriveBy,
               router.travelmux,
+              router.router,
             ),
           ),
         );

@@ -1,13 +1,18 @@
 import Trip from './Trip';
-import type { BikeRoutePreference } from 'src/services/TravelmuxClient';
+import type {
+  BikeRoutePreference,
+  TravelmuxRouter,
+} from 'src/services/TravelmuxClient';
 
-/// An OTP build to compare, as listed in the compare stack's compare.json.
+/// A router to compare, as listed in the compare stack's compare.json.
 export type ComparedRouter = {
   name: string;
   /// Where its travelmux is served, like `/travelmux/main`.
   travelmux: string;
   /// Where to read about it, like its commit.
   link: string;
+  /// Which of its travelmux's routers to plan with, if not whichever suits the trip.
+  router?: TravelmuxRouter;
 };
 
 /// One router's plan for a route, whose time can differ from another router's on the same streets.

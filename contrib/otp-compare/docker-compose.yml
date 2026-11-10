@@ -112,11 +112,14 @@ services:
       retries: 60
 
   # One travelmux per OTP, so each answers as it would alone. The frontend merges their routes.
+  # main's also fronts Valhalla, which the frontend asks for by name.
   travelmux-main:
     <<: *travelmux
-    command: [no-valhalla, "Seattle=http://otp-main:8080"]
+    command: ["http://valhalla:8002", "Seattle=http://otp-main:8080"]
     depends_on:
       otp-main:
+        condition: service_healthy
+      valhalla:
         condition: service_healthy
   travelmux-duration:
     <<: *travelmux
