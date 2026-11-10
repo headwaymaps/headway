@@ -15,7 +15,7 @@ use crate::api::{AppState, Router};
 use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
-use crate::otp::PreparedOtpCluster;
+use crate::otp::PreparedOTPRouter;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
@@ -1087,7 +1087,7 @@ async fn plan_with(
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     let mut plan = match router {
-        Router::Otp(otp_cluster) => otp_plan(query, otp_cluster, primary_mode).await,
+        Router::Otp(otp) => otp_plan(query, otp, primary_mode).await,
         Router::Valhalla(_) if primary_mode == &TravelMode::Transit => Err(PlanResponseErr::from(
             Error::user("valhalla doesn't plan transit"),
         )),
@@ -1134,16 +1134,27 @@ async fn plan_with_each(
     app_state: &AppState,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
-    let routers: Vec<(&str, &Router)> = query
+    let routers: Vec<(&str, Vec<&Router>)> = query
         .routers
         .iter()
-        .map(|slug| Ok((slug.as_str(), app_state.router(slug)?)))
+        .map(|slug| Ok((slug.as_str(), app_state.routers_named(slug)?)))
         .collect::<crate::Result<_>>()?;
-    let plans = join_all(
-        routers
+    let plans = join_all(routers.iter().map(|(slug, zones)| async move {
+        let Some(router) = zones
             .iter()
-            .map(|(slug, router)| plan_with(query, slug, router, primary_mode)),
-    )
+            .find(|router| router.covers(query.from_place, query.to_place))
+        else {
+            let otp_zones: Vec<_> = zones
+                .iter()
+                .filter_map(|router| match router {
+                    Router::Otp(otp) => Some(otp.as_ref()),
+                    Router::Valhalla(_) => None,
+                })
+                .collect();
+            return Err(no_transit_coverage(query, &otp_zones));
+        };
+        plan_with(query, slug, router, primary_mode).await
+    }))
     .await;
 
     let mut itineraries = vec![];
@@ -1169,24 +1180,25 @@ fn no_coverage(
     app_state: &AppState,
     primary_mode: &TravelMode,
 ) -> PlanResponseErr {
-    if primary_mode != &TravelMode::Transit {
-        return PlanResponseErr::from(
-            Error::user(format!("no router plans {primary_mode:?} trips"))
-                .error_type(ErrorType::NoCoverageForArea),
-        );
+    if primary_mode == &TravelMode::Transit {
+        return no_transit_coverage(query, &app_state.otp_routers().collect::<Vec<_>>());
     }
+    PlanResponseErr::from(
+        Error::user(format!("no router plans {primary_mode:?} trips"))
+            .error_type(ErrorType::NoCoverageForArea),
+    )
+}
+
+fn no_transit_coverage(query: &PlanQuery, otp_zones: &[&PreparedOTPRouter]) -> PlanResponseErr {
     let uncovered_places = [
         (TripEnd::From, query.from_place),
         (TripEnd::To, query.to_place),
     ]
     .into_iter()
-    .filter(|(_, place)| !app_state.otp_clusters().any(|otp| otp.covers(place)))
+    .filter(|(_, place)| !otp_zones.iter().any(|otp| otp.contains(place)))
     .map(|(end, _)| end)
     .collect();
-    let mut area_names: Vec<&str> = app_state
-        .otp_clusters()
-        .flat_map(|otp| otp.area_names())
-        .collect();
+    let mut area_names: Vec<&str> = otp_zones.iter().map(|otp| otp.name()).collect();
     area_names.sort();
     area_names.dedup();
     PlanResponseErr::no_transit_coverage(area_names, uncovered_places)
@@ -1307,36 +1319,20 @@ async fn valhalla_route(
 
 async fn otp_plan(
     query: &web::Query<PlanQuery>,
-    otp_cluster: &PreparedOtpCluster,
+    otp: &PreparedOTPRouter,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
-    let (endpoint, timezone) = {
-        let Some(router) = otp_cluster.find_router(query.from_place, query.to_place) else {
-            let uncovered_places = [
-                (TripEnd::From, query.from_place),
-                (TripEnd::To, query.to_place),
-            ]
-            .into_iter()
-            .filter(|(_, place)| !otp_cluster.covers(place))
-            .map(|(end, _)| end)
-            .collect();
-            return Err(PlanResponseErr::no_transit_coverage(
-                otp_cluster.area_names(),
-                uncovered_places,
-            ));
-        };
-        (router.endpoint().clone(), router.timezone())
-    };
+    let (endpoint, timezone) = (otp.endpoint(), otp.timezone());
     log::debug!("found matching router. Querying OTP GraphQL at: {endpoint}");
 
     let params = gtfs_graphql::PlanParams::from((&**query, timezone));
     let client = reqwest::Client::new();
 
     if primary_mode == &TravelMode::Bicycle && query.num_itineraries > 1 {
-        return bike_plans(&client, &endpoint, &params, query.instruction_units()).await;
+        return bike_plans(&client, endpoint, &params, query.instruction_units()).await;
     }
 
-    let plan = gtfs_graphql::plan_connection(&client, &endpoint, &params)
+    let plan = gtfs_graphql::plan_connection(&client, endpoint, &params)
         .await
         .map_err(|e| {
             log::error!("error while fetching plan from otp service: {e}");

@@ -3,7 +3,7 @@ use url::Url;
 
 use std::env;
 use travelmux::api::{self, AppState, Router};
-use travelmux::otp::OtpCluster;
+use travelmux::otp::{OTPRouter, OTPRouterClient};
 use travelmux::valhalla::ValhallaRouter;
 use travelmux::{Result, ERROR_CODE_HEADER};
 
@@ -14,7 +14,7 @@ const DEFAULT_VALHALLA_SLUG: &str = "valhalla";
 /// A router as given on the command line, before each worker prepares its own.
 #[derive(Clone)]
 enum RouterArg {
-    Otp(OtpCluster),
+    Otp(OTPRouter),
     Valhalla(Url),
 }
 
@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' https://valhalla.example.com. A trip goes to the first that suits its mode and covers it. Prefix an endpoint with <slug>@ for requests to name it; OTP endpoints sharing a slug are one router.")
+        panic!("No endpoints specified. Usage: {bin_name} 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' https://valhalla.example.com. A trip goes to the first that suits its mode and covers it. Prefix an endpoint with <slug>@ for requests to name it; OTP endpoints can share a slug.")
     }
 
     let mut routers: Vec<(String, RouterArg)> = vec![];
@@ -46,19 +46,18 @@ async fn main() -> Result<()> {
         {
             Some((area, url)) => {
                 let slug = slug.unwrap_or(DEFAULT_OTP_SLUG);
-                let index = match routers.iter().position(|(s, _)| s == slug) {
-                    Some(index) => index,
-                    None => {
-                        routers.push((slug.to_string(), RouterArg::Otp(OtpCluster::default())));
-                        routers.len() - 1
-                    }
-                };
-                let RouterArg::Otp(cluster) = &mut routers[index].1 else {
-                    panic!("{slug} names both a valhalla and an OTP endpoint");
-                };
+                assert!(
+                    routers
+                        .iter()
+                        .all(|(s, router)| s != slug || matches!(router, RouterArg::Otp(_))),
+                    "{slug} names both a valhalla and an OTP endpoint"
+                );
+                let url = Url::parse(url).unwrap_or_else(|_| panic!("Invalid OTP endpoint: {url}"));
                 // If we change this to be non-blocking, we'll
                 // want to update our readiness probe in health.rs
-                cluster.insert_endpoint(area, url).await?;
+                for zone in OTPRouterClient::new(url)?.fetch_all(area).await? {
+                    routers.push((slug.to_string(), RouterArg::Otp(zone)));
+                }
             }
             None => {
                 let slug = slug.unwrap_or(DEFAULT_VALHALLA_SLUG);
@@ -97,7 +96,7 @@ async fn main() -> Result<()> {
                 .iter()
                 .map(|(slug, router)| {
                     let router = match router {
-                        RouterArg::Otp(cluster) => Router::Otp(cluster.prepare()),
+                        RouterArg::Otp(otp) => Router::Otp(Box::new(otp.prepare())),
                         RouterArg::Valhalla(url) => {
                             Router::Valhalla(ValhallaRouter::new(url.clone()))
                         }
