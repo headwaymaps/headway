@@ -9,7 +9,7 @@ use travelmux::{Result, ERROR_CODE_HEADER};
 
 /// In place of the valhalla endpoint, has OTP plan every trip.
 const NO_VALHALLA: &str = "no-valhalla";
-/// Prefixes another Valhalla that requests can name, like `valhalla:mainline=http://valhalla-mainline:8002`.
+/// Prefixes another Valhalla that requests can name, like `valhalla:upstream=http://valhalla-upstream:8002`.
 const NAMED_VALHALLA_PREFIX: &str = "valhalla:";
 
 #[actix_web::main]
@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' ['{NAMED_VALHALLA_PREFIX}mainline=https://valhalla2.example.com']")
+        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' ['{NAMED_VALHALLA_PREFIX}upstream=https://valhalla2.example.com']")
     };
 
     let valhalla_endpoint = (valhalla_endpoint != NO_VALHALLA).then(|| {
