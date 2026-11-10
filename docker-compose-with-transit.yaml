@@ -75,7 +75,7 @@ services:
       - travel_frontend
       - otp_backend
       - valhalla_backend
-    command: ["http://valhalla:8002", "${HEADWAY_TRANSIT_ZONE_NAME:-}=http://opentripplanner:8000"]
+    command: ["${HEADWAY_TRANSIT_ZONE_NAME:-}=http://opentripplanner:8000", "http://valhalla:8002"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env

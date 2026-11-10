@@ -83,8 +83,6 @@ import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 
 /// contrib/otp-compare's compare.json.
 type CompareConfig = {
-  /// Where the travelmux fronting every router is served.
-  travelmux: string;
   routers: ComparedRouter[];
   /// Where the trip corpus is served.
   corpus: string;
@@ -263,35 +261,31 @@ export default defineComponent({
         const params = this.transitQuery.params;
         this.isLoading = true;
         const routers = this.config.routers;
-        const plans = await TravelmuxClient.fetchComparedPlans(
+        const result = await TravelmuxClient.fetchPlans(
           from.point,
           to.point,
           this.travelmuxModes(),
           5,
           Prefs.stored.distanceUnits(from, to),
-          routers.map(({ router }) => router),
-          this.config.travelmux,
           params.searchTime,
           params.searchDate,
           params.arriveBy,
+          { routers: routers.map(({ router }) => router).join(',') },
         );
         if (request !== this.latestRequest) return;
         this.isLoading = false;
-        if (!plans.ok) {
-          this.error = plans.error;
+        if (!result.ok) {
+          this.error = result.error;
           return;
         }
 
         const compared = new ComparedRoutes();
-        plans.value.forEach((result, i) => {
-          const router = routers[i]!.name;
-          if (result.ok) {
-            compared.add(router, result.value);
-          } else {
-            console.error(`${router} failed to plan`, result.error);
-            this.error = result.error;
-          }
-        });
+        for (const { name, router } of routers) {
+          compared.add(
+            name,
+            result.value.filter((trip) => trip.raw.router === router),
+          );
+        }
         this.routes = markRaw(compared.routes);
         if (this.routes.length > 0) {
           this.error = undefined;

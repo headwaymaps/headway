@@ -802,10 +802,7 @@ async fn otp_plan(
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     let (endpoint, timezone) = {
-        let Some(router) = app_state
-            .otp_cluster()
-            .find_router(query.from_place, query.to_place)
-        else {
+        let Some(router) = app_state.otp_router(query.from_place, query.to_place) else {
             Err(
                 Error::user("Transit directions not available for this area.")
                     .error_type(ErrorType::NoCoverageForArea),

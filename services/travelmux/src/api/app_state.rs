@@ -1,80 +1,116 @@
-use crate::{otp::PreparedOtpCluster, valhalla::ValhallaRouter, Error, Result};
-use url::Url;
+use crate::otp::{PreparedOTPRouter, PreparedOtpCluster};
+use crate::valhalla::ValhallaRouter;
+use crate::{Error, Result, TravelMode};
+use geo::Point;
 
 /// Note this is *not* `Send`: the OTP coverage areas it holds are `Rc`-backed, so each server
 /// worker builds its own from a shared [`crate::otp::OtpCluster`].
 #[derive(Debug, Clone)]
 pub struct AppState {
-    /// By slug, the first planning trips that don't name one.
-    otp_clusters: Vec<(String, PreparedOtpCluster)>,
-    /// By slug, the first planning trips that don't name one.
-    valhalla_routers: Vec<(String, ValhallaRouter)>,
+    /// By slug, in the order to try them for a trip that names none.
+    routers: Vec<(String, Router)>,
 }
 
-/// A router a request named by its slug.
-pub enum NamedRouter<'a> {
-    Otp(&'a PreparedOtpCluster),
-    Valhalla(&'a ValhallaRouter),
+#[derive(Debug, Clone)]
+pub enum Router {
+    Otp(PreparedOtpCluster),
+    Valhalla(ValhallaRouter),
+}
+
+impl Router {
+    /// Whether to offer this router a trip that doesn't name one.
+    fn suits(&self, mode: TravelMode, from: Point, to: Point) -> bool {
+        match self {
+            Router::Otp(cluster) => {
+                mode != TravelMode::Car && cluster.find_router(from, to).is_some()
+            }
+            Router::Valhalla(_) => mode != TravelMode::Transit,
+        }
+    }
 }
 
 impl AppState {
-    /// Without any `valhalla_endpoints`, OTP plans every trip.
-    pub fn new(
-        otp_clusters: Vec<(String, PreparedOtpCluster)>,
-        valhalla_endpoints: Vec<(String, Url)>,
-    ) -> Self {
-        log::debug!("new AppState with valhalla_endpoints: {valhalla_endpoints:?}");
-        assert!(!otp_clusters.is_empty(), "an AppState needs an OTP cluster");
-        let valhalla_routers = valhalla_endpoints
-            .into_iter()
-            .map(|(slug, url)| (slug, ValhallaRouter::new(url)))
-            .collect();
-        Self {
-            otp_clusters,
-            valhalla_routers,
-        }
+    pub fn new(routers: Vec<(String, Router)>) -> Self {
+        Self { routers }
     }
 
-    pub fn otp_cluster(&self) -> &PreparedOtpCluster {
-        &self.otp_clusters[0].1
+    /// The routers to try, in order, for a trip that doesn't name one.
+    pub fn routers_suiting(
+        &self,
+        mode: TravelMode,
+        from: Point,
+        to: Point,
+    ) -> impl Iterator<Item = (&str, &Router)> {
+        self.routers
+            .iter()
+            .filter(move |(_, router)| router.suits(mode, from, to))
+            .map(|(slug, router)| (slug.as_str(), router))
     }
 
-    pub fn has_valhalla(&self) -> bool {
-        !self.valhalla_routers.is_empty()
+    pub fn router(&self, slug: &str) -> Result<&Router> {
+        self.routers
+            .iter()
+            .find(|(s, _)| s == slug)
+            .map(|(_, router)| router)
+            .ok_or_else(|| Error::user(format!("no router is called {slug}")))
+    }
+
+    pub fn otp_clusters(&self) -> impl Iterator<Item = &PreparedOtpCluster> {
+        self.routers.iter().filter_map(|(_, router)| match router {
+            Router::Otp(cluster) => Some(cluster),
+            Router::Valhalla(_) => None,
+        })
+    }
+
+    /// The first OTP instance covering both ends of the trip.
+    pub fn otp_router(&self, from: Point, to: Point) -> Option<&PreparedOTPRouter> {
+        self.otp_clusters()
+            .find_map(|cluster| cluster.find_router(from, to))
     }
 
     pub fn valhalla_router(&self) -> Result<&ValhallaRouter> {
-        self.valhalla_routers
-            .first()
-            .map(|(_, router)| router)
+        self.routers
+            .iter()
+            .find_map(|(_, router)| match router {
+                Router::Valhalla(valhalla) => Some(valhalla),
+                Router::Otp(_) => None,
+            })
             .ok_or_else(|| Error::server("no valhalla endpoint is configured"))
-    }
-
-    pub fn router(&self, slug: &str) -> Result<NamedRouter<'_>> {
-        let otp = self.otp_clusters.iter().find(|(s, _)| s == slug);
-        let valhalla = self.valhalla_routers.iter().find(|(s, _)| s == slug);
-        match (otp, valhalla) {
-            (Some((_, cluster)), _) => Ok(NamedRouter::Otp(cluster)),
-            (_, Some((_, router))) => Ok(NamedRouter::Valhalla(router)),
-            _ => Err(Error::user(format!("no router is called {slug}"))),
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::otp::{OTPRouter, OtpCluster};
+    use geo::wkt;
+
+    fn valhalla(slug: &str) -> (String, Router) {
+        let url = format!("http://{slug}:8002").parse().unwrap();
+        (slug.to_string(), Router::Valhalla(ValhallaRouter::new(url)))
+    }
+
+    fn otp(slug: &str) -> (String, Router) {
+        let mut cluster = OtpCluster::default();
+        cluster.push_router(OTPRouter::new(
+            "Zone".to_string(),
+            format!("http://{slug}:8080").parse().unwrap(),
+            wkt! { POLYGON((0.0 0.0, 10.0 0.0, 10.0 10.0, 0.0 10.0, 0.0 0.0)) },
+            None,
+        ));
+        (slug.to_string(), Router::Otp(cluster.prepare()))
+    }
 
     fn app_state() -> AppState {
-        AppState::new(
-            vec![("otp-headway".to_string(), PreparedOtpCluster::default())],
-            ["valhalla-headway", "valhalla-master"]
-                .map(|slug| {
-                    let url = format!("http://{slug}:8002").parse().unwrap();
-                    (slug.to_string(), url)
-                })
-                .to_vec(),
-        )
+        AppState::new(vec![
+            otp("otp-headway"),
+            valhalla("valhalla-headway"),
+            valhalla("valhalla-master"),
+        ])
+    }
+
+    fn slugs<'a>(routers: impl Iterator<Item = (&'a str, &'a Router)>) -> Vec<&'a str> {
+        routers.map(|(slug, _)| slug).collect()
     }
 
     #[test]
@@ -82,9 +118,9 @@ mod tests {
         let app_state = app_state();
         assert!(matches!(
             app_state.router("otp-headway"),
-            Ok(NamedRouter::Otp(_))
+            Ok(Router::Otp(_))
         ));
-        let Ok(NamedRouter::Valhalla(router)) = app_state.router("valhalla-master") else {
+        let Ok(Router::Valhalla(router)) = app_state.router("valhalla-master") else {
             panic!("expected valhalla-master");
         };
         assert_eq!(router.endpoint().host_str(), Some("valhalla-master"));
@@ -92,8 +128,24 @@ mod tests {
     }
 
     #[test]
-    fn the_first_valhalla_plans_requests_that_name_none() {
-        let router = app_state().valhalla_router().unwrap().endpoint().clone();
-        assert_eq!(router.host_str(), Some("valhalla-headway"));
+    fn unnamed_trips_try_the_routers_that_suit_them_in_order() {
+        let app_state = app_state();
+        let (inside, also_inside, outside) = (
+            Point::new(1.0, 1.0),
+            Point::new(2.0, 2.0),
+            Point::new(50.0, 50.0),
+        );
+
+        let bike = app_state.routers_suiting(TravelMode::Bicycle, inside, also_inside);
+        assert_eq!(
+            slugs(bike),
+            ["otp-headway", "valhalla-headway", "valhalla-master"]
+        );
+
+        let car = app_state.routers_suiting(TravelMode::Car, inside, also_inside);
+        assert_eq!(slugs(car), ["valhalla-headway", "valhalla-master"]);
+
+        let uncovered_transit = app_state.routers_suiting(TravelMode::Transit, inside, outside);
+        assert_eq!(uncovered_transit.count(), 0);
     }
 }

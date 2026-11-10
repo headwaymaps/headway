@@ -176,9 +176,9 @@ function generate_transit() {
       otp_endpoints+=("${zone_name}=http://${otp_endpoint_name}:8000")
   done
 
-  # travelmux takes the valhalla endpoint, then one <area name>=<url> per OTP endpoint.
+  # travelmux tries its routers in order: one <area name>=<url> per OTP endpoint, then valhalla.
   export OTP_ENDPOINTS_JSON
-  OTP_ENDPOINTS_JSON=$(jq -cn '$ARGS.positional' --args "http://valhalla:8002" "${otp_endpoints[@]}")
+  OTP_ENDPOINTS_JSON=$(jq -cn '$ARGS.positional' --args "${otp_endpoints[@]}" "http://valhalla:8002")
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
 function check_zone_tokens() {

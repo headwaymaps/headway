@@ -16,7 +16,7 @@ spec:
         - name: main
           image: ghcr.io/headwaymaps/travelmux:maps-earth-dev
           imagePullPolicy: Always
-          args: ["http://valhalla:8002","Seattle=http://opentripplanner-seattle:8000"]
+          args: ["Seattle=http://opentripplanner-seattle:8000","http://valhalla:8002"]
           ports:
             - containerPort: 8000
           resources:

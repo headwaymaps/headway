@@ -71,6 +71,14 @@ where
     Ok(Point::new(lon, lat))
 }
 
+pub fn deserialize_comma_separated<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    Ok(s.split(',').map(str::to_string).collect())
+}
+
 /// v8 writes every point as a `[lon, lat]` pair, so this is how they come back in.
 pub fn deserialize_point_from_lon_lat_pair<'de, D>(deserializer: D) -> Result<Point, D::Error>
 where

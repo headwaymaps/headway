@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use super::error::{PlanResponseErr, PlanResponseOk, TripEnd};
 use super::TravelModes;
-use crate::api::{AppState, NamedRouter};
+use crate::api::{AppState, Router};
 use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
@@ -19,9 +19,9 @@ use crate::otp::PreparedOtpCluster;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
-    deserialize_point_from_lon_lat, serialize_line_string_as_polyline6,
-    serialize_optional_line_string_as_polyline6, serialize_point_as_lon_lat_pair,
-    serialize_rect_to_lng_lat,
+    deserialize_comma_separated, deserialize_point_from_lon_lat,
+    serialize_line_string_as_polyline6, serialize_optional_line_string_as_polyline6,
+    serialize_point_as_lon_lat_pair, serialize_rect_to_lng_lat,
 };
 use crate::util::{
     bearing_at_end, bearing_at_start, closest_point_on, convert_to_meters, extend_bounds,
@@ -63,8 +63,10 @@ pub struct PlanQuery {
     #[serde(default)]
     arrive_by: bool,
 
-    /// The slug of the one router to plan with, rather than whichever suits the trip.
-    router: Option<String>,
+    /// The slugs of the routers to plan with, like `otp-headway,valhalla-master`, rather than
+    /// the first that suits the trip.
+    #[serde(default, deserialize_with = "deserialize_comma_separated")]
+    routers: Vec<String>,
 }
 
 impl PlanQuery {
@@ -114,6 +116,9 @@ pub struct Itinerary {
     /// Which cycling objectives this route is the best answer to. Empty for every other mode.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub(crate) route_preferences: Vec<BikeRoutePreference>,
+
+    /// The slug of the router that planned it.
+    pub(crate) router: String,
 }
 
 impl Itinerary {
@@ -167,6 +172,7 @@ impl Itinerary {
             bounds,
             legs,
             route_preferences: vec![],
+            router: String::new(),
         }
     }
 
@@ -212,6 +218,7 @@ impl Itinerary {
             bounds: itinerary_bounds,
             legs,
             route_preferences: vec![],
+            router: String::new(),
         })
     }
 }
@@ -1072,82 +1079,24 @@ pub async fn get_plan(
     _get_plan(query, req, app_state).await
 }
 
-/// The slugs of the routers to plan with in [`get_compare`], like `otp-headway,valhalla-master`.
-#[derive(Debug, Deserialize)]
-pub struct CompareQuery {
-    routers: String,
-}
-
-/// One router's answer in a [`CompareResponse`].
-#[derive(Debug, Serialize)]
-#[serde(untagged)]
-enum RouterOutcome {
-    Planned(PlanResponseOk),
-    Failed(PlanResponseErr),
-}
-
-#[derive(Debug, Serialize)]
-struct ComparedPlan {
-    router: String,
-    #[serde(flatten)]
-    outcome: RouterOutcome,
-}
-
-#[derive(Debug, Serialize)]
-pub struct CompareResponse {
-    plans: Vec<ComparedPlan>,
-}
-
-/// Plans the trip with each of several routers at once, so a client comparing them makes one request.
-#[get("/v8/compare")]
-pub async fn get_compare(
-    query: web::Query<PlanQuery>,
-    compare: web::Query<CompareQuery>,
-    app_state: web::Data<AppState>,
-) -> std::result::Result<web::Json<CompareResponse>, PlanResponseErr> {
-    let Some(primary_mode) = query.mode.first() else {
-        return Err(PlanResponseErr::from(Error::user("mode is required")));
-    };
-    let routers: Vec<(&str, NamedRouter)> = compare
-        .routers
-        .split(',')
-        .map(|slug| Ok((slug, app_state.router(slug)?)))
-        .collect::<crate::Result<_>>()?;
-
-    let outcomes = join_all(
-        routers
-            .iter()
-            .map(|(_, router)| plan_with(&query, router, primary_mode)),
-    )
-    .await;
-
-    let plans = routers
-        .iter()
-        .zip(outcomes)
-        .map(|((slug, _), outcome)| ComparedPlan {
-            router: slug.to_string(),
-            outcome: match outcome {
-                Ok(plan) => RouterOutcome::Planned(plan),
-                Err(e) => RouterOutcome::Failed(e),
-            },
-        })
-        .collect();
-    Ok(web::Json(CompareResponse { plans }))
-}
-
 /// Plans with `router` alone.
 async fn plan_with(
     query: &Query<PlanQuery>,
-    router: &NamedRouter<'_>,
+    slug: &str,
+    router: &Router,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
-    match router {
-        NamedRouter::Otp(otp_cluster) => otp_plan(query, otp_cluster, primary_mode).await,
-        NamedRouter::Valhalla(_) if primary_mode == &TravelMode::Transit => Err(
-            PlanResponseErr::from(Error::user("valhalla doesn't plan transit")),
-        ),
-        NamedRouter::Valhalla(valhalla) => valhalla_plan(query, valhalla, primary_mode).await,
+    let mut plan = match router {
+        Router::Otp(otp_cluster) => otp_plan(query, otp_cluster, primary_mode).await,
+        Router::Valhalla(_) if primary_mode == &TravelMode::Transit => Err(PlanResponseErr::from(
+            Error::user("valhalla doesn't plan transit"),
+        )),
+        Router::Valhalla(valhalla) => valhalla_plan(query, valhalla, primary_mode).await,
+    }?;
+    for itinerary in &mut plan.itineraries {
+        itinerary.router = slug.to_string();
     }
+    Ok(plan)
 }
 
 pub async fn _get_plan(
@@ -1159,45 +1108,88 @@ pub async fn _get_plan(
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
-    if let Some(slug) = &query.router {
-        return plan_with(&query, &app_state.router(slug)?, primary_mode).await;
+    if !query.routers.is_empty() {
+        return plan_with_each(&query, &app_state, primary_mode).await;
     }
-
-    let otp_cluster = app_state.otp_cluster();
-    if !app_state.has_valhalla() {
-        return otp_plan(&query, otp_cluster, primary_mode).await;
-    }
-    let valhalla = app_state.valhalla_router()?;
 
     // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
     // the "primary" mode appears first.
-    match primary_mode {
-        TravelMode::Transit => otp_plan(&query, otp_cluster, primary_mode).await,
-        TravelMode::Car => valhalla_plan(&query, valhalla, primary_mode).await,
-        TravelMode::Bicycle | TravelMode::Walk => {
-            match otp_plan(&query, otp_cluster, primary_mode).await {
-                Ok(otp) => Ok(otp),
-                Err(e) => {
-                    log_otp_fallback(&e, primary_mode);
-                    valhalla_plan(&query, valhalla, primary_mode).await
-                }
+    let mut last_error = None;
+    for (slug, router) in app_state.routers_suiting(*primary_mode, query.from_place, query.to_place)
+    {
+        match plan_with(&query, slug, router, primary_mode).await {
+            Ok(plan) => return Ok(plan),
+            Err(e) => {
+                log::error!("{slug} failed to plan {primary_mode:?} route: {e}");
+                last_error = Some(e);
             }
         }
     }
+    Err(last_error.unwrap_or_else(|| no_coverage(&query, &app_state, primary_mode)))
 }
 
-/// Valhalla covers everywhere, so an OTP failure falls back to it rather than reaching the user.
-fn log_otp_fallback(e: &PlanResponseErr, primary_mode: &TravelMode) {
-    match ErrorType::try_from(e.error.error_code) {
-        Ok(ErrorType::NoCoverageForArea) => {
-            log::debug!("No OTP coverage for route");
-        }
-        other => {
-            debug_assert!(other.is_ok(), "unexpected error code: {e:?}");
-            // Likely we just don't support this area.
-            log::error!("OTP failed to plan {primary_mode:?} route: {e}");
+/// Plans with every router the query names at once, offering all of their itineraries.
+async fn plan_with_each(
+    query: &Query<PlanQuery>,
+    app_state: &AppState,
+    primary_mode: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let routers: Vec<(&str, &Router)> = query
+        .routers
+        .iter()
+        .map(|slug| Ok((slug.as_str(), app_state.router(slug)?)))
+        .collect::<crate::Result<_>>()?;
+    let plans = join_all(
+        routers
+            .iter()
+            .map(|(slug, router)| plan_with(query, slug, router, primary_mode)),
+    )
+    .await;
+
+    let mut itineraries = vec![];
+    let mut first_error = None;
+    for ((slug, _), plan) in routers.iter().zip(plans) {
+        match plan {
+            Ok(plan) => itineraries.extend(plan.itineraries),
+            Err(e) => {
+                log::error!("{slug} failed to plan {primary_mode:?} route: {e}");
+                first_error.get_or_insert(e);
+            }
         }
     }
+    match first_error {
+        Some(e) if itineraries.is_empty() => Err(e),
+        _ => Ok(PlanResponseOk { itineraries }),
+    }
+}
+
+/// Why no router suits the trip.
+fn no_coverage(
+    query: &PlanQuery,
+    app_state: &AppState,
+    primary_mode: &TravelMode,
+) -> PlanResponseErr {
+    if primary_mode != &TravelMode::Transit {
+        return PlanResponseErr::from(
+            Error::user(format!("no router plans {primary_mode:?} trips"))
+                .error_type(ErrorType::NoCoverageForArea),
+        );
+    }
+    let uncovered_places = [
+        (TripEnd::From, query.from_place),
+        (TripEnd::To, query.to_place),
+    ]
+    .into_iter()
+    .filter(|(_, place)| !app_state.otp_clusters().any(|otp| otp.covers(place)))
+    .map(|(end, _)| end)
+    .collect();
+    let mut area_names: Vec<&str> = app_state
+        .otp_clusters()
+        .flat_map(|otp| otp.area_names())
+        .collect();
+    area_names.sort();
+    area_names.dedup();
+    PlanResponseErr::no_transit_coverage(area_names, uncovered_places)
 }
 
 async fn valhalla_plan(

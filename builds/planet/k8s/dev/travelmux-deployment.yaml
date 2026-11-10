@@ -16,7 +16,7 @@ spec:
         - name: main
           image: ghcr.io/headwaymaps/travelmux:maps-earth-dev
           imagePullPolicy: Always
-          args: ["http://valhalla:8002","London=http://opentripplanner-london:8000","Los Angeles=http://opentripplanner-los-angeles:8000","Portland=http://opentripplanner-portland:8000","Puget Sound (Seattle Area)=http://opentripplanner-puget-sound:8000","San Francisco Bay Area=http://opentripplanner-sf-bay-area:8000"]
+          args: ["London=http://opentripplanner-london:8000","Los Angeles=http://opentripplanner-los-angeles:8000","Portland=http://opentripplanner-portland:8000","Puget Sound (Seattle Area)=http://opentripplanner-puget-sound:8000","San Francisco Bay Area=http://opentripplanner-sf-bay-area:8000","http://valhalla:8002"]
           ports:
             - containerPort: 8000
           resources:

@@ -36,6 +36,7 @@ function trip(patternCode: string): Trip {
     durationSeconds: 1800,
     distanceMeters: 5000,
     bounds: { min: [-122.3, 47.5], max: [-122.3, 47.6] },
+    router: 'otp',
     legs: [leg],
   };
   return new Trip(itinerary, DistanceUnits.Kilometers);

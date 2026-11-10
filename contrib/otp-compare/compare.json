@@ -1,5 +1,4 @@
 {
-  "travelmux": "/travelmux",
   "routers": [
     {
       "name": "OTP@dev-2.x 7542ea8",

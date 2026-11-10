@@ -11,13 +11,6 @@ export interface TravelmuxPlanResponse {
   itineraries: TravelmuxItinerary[];
 }
 
-/// Each router's plans, or why it couldn't plan, in the order they were asked for.
-export interface TravelmuxCompareResponse {
-  plans: ({ router: string } & (
-    TravelmuxPlanResponse | { error: TravelmuxError }
-  ))[];
-}
-
 export interface TravelmuxItinerary {
   mode: TravelmuxMode;
   /// RFC 3339, in the timezone of the graph that planned the trip
@@ -30,6 +23,8 @@ export interface TravelmuxItinerary {
   legs: TravelmuxLeg[];
   /// Which cycling objectives this route is the best answer to. Absent for every other mode.
   routePreferences?: BikeRoutePreference[];
+  /// The slug of the router that planned it, like `valhalla-headway`.
+  router: string;
 }
 
 export type BikeRoutePreference = 'quieter' | 'faster';
@@ -344,92 +339,9 @@ export class TravelmuxClient {
     time?: string,
     date?: string,
     arriveBy?: boolean,
+    /// More query parameters, like which of its routers to plan with.
+    extraParams: Record<string, string> = {},
   ): Promise<Result<Trip[], TripFetchError>> {
-    const params = this.planRequest(
-      from,
-      to,
-      modes,
-      numItineraries,
-      preferredDistanceUnits,
-      time,
-      date,
-      arriveBy,
-    );
-    const query = new URLSearchParams(params).toString();
-    const response = await fetch(`/travelmux/v8/plan?${query}`);
-
-    if (response.ok) {
-      const plan: TravelmuxPlanResponse = await response.json();
-      return Ok(this.trips(plan, preferredDistanceUnits));
-    } else {
-      const errorBody = await response.json();
-      const error = errorBody['error'];
-      console.assert(error);
-      return Err(TripFetchError.fromTravelmux(error));
-    }
-  }
-
-  /// Plans the trip with each of `routers`, like `valhalla:upstream`, in one request to travelmux.
-  public static async fetchComparedPlans(
-    from: LngLat,
-    to: LngLat,
-    modes: TravelmuxMode[],
-    numItineraries: number,
-    preferredDistanceUnits: DistanceUnits,
-    routers: string[],
-    travelmuxPath: string,
-    time?: string,
-    date?: string,
-    arriveBy?: boolean,
-  ): Promise<Result<Result<Trip[], TripFetchError>[], TripFetchError>> {
-    const params = this.planRequest(
-      from,
-      to,
-      modes,
-      numItineraries,
-      preferredDistanceUnits,
-      time,
-      date,
-      arriveBy,
-    );
-    const query = new URLSearchParams({
-      ...params,
-      routers: routers.join(','),
-    }).toString();
-    const response = await fetch(`${travelmuxPath}/v8/compare?${query}`);
-    const body = await response.json();
-    if (!response.ok) {
-      return Err(TripFetchError.fromTravelmux(body['error']));
-    }
-    const compared: TravelmuxCompareResponse = body;
-    return Ok(
-      compared.plans.map((plan) =>
-        'error' in plan
-          ? Err(TripFetchError.fromTravelmux(plan.error))
-          : Ok(this.trips(plan, preferredDistanceUnits)),
-      ),
-    );
-  }
-
-  private static trips(
-    plan: TravelmuxPlanResponse,
-    preferredDistanceUnits: DistanceUnits,
-  ): Trip[] {
-    return plan.itineraries.map(
-      (itinerary) => new Trip(itinerary, preferredDistanceUnits),
-    );
-  }
-
-  private static planRequest(
-    from: LngLat,
-    to: LngLat,
-    modes: TravelmuxMode[],
-    numItineraries: number,
-    preferredDistanceUnits: DistanceUnits,
-    time?: string,
-    date?: string,
-    arriveBy?: boolean,
-  ): TravelmuxPlanRequest {
     const params: TravelmuxPlanRequest = {
       fromPlace: `${from.lng},${from.lat}`,
       toPlace: `${to.lng},${to.lat}`,
@@ -452,7 +364,25 @@ export class TravelmuxClient {
     if (arriveBy) {
       params['arriveBy'] = true.toString();
     }
-    return params;
+
+    const query = new URLSearchParams({ ...params, ...extraParams }).toString();
+
+    const response = await fetch(`/travelmux/v8/plan?${query}`);
+
+    if (response.ok) {
+      const plan: TravelmuxPlanResponse = await response.json();
+      const trips = plan.itineraries.map(
+        (itinerary: TravelmuxItinerary) =>
+          new Trip(itinerary, preferredDistanceUnits),
+      );
+      return Ok(trips);
+    } else {
+      const errorBody = await response.json();
+      const error = errorBody['error'];
+      console.assert(error);
+      const routeError = TripFetchError.fromTravelmux(error);
+      return Err(routeError);
+    }
   }
 }
 

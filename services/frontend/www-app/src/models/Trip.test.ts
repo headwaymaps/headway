@@ -44,6 +44,7 @@ function trip(legs: TravelmuxLeg[]): Trip {
     durationSeconds: 1800,
     distanceMeters: legs.reduce((total, l) => total + l.distanceMeters, 0),
     bounds: { min: [-122.3, 47.5], max: [-122.3, 47.6] },
+    router: 'otp',
     legs,
   };
   return new Trip(itinerary, DistanceUnits.Kilometers);

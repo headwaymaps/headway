@@ -2,15 +2,21 @@ use actix_web::{middleware::Logger, web, App, HttpServer};
 use url::Url;
 
 use std::env;
-use travelmux::api::{self, AppState};
+use travelmux::api::{self, AppState, Router};
 use travelmux::otp::OtpCluster;
+use travelmux::valhalla::ValhallaRouter;
 use travelmux::{Result, ERROR_CODE_HEADER};
 
-/// In place of the valhalla endpoint, has OTP plan every trip.
-const NO_VALHALLA: &str = "no-valhalla";
-/// What a request calls the router an endpoint without a `<slug>@` prefix belongs to.
+/// What a request calls a router without a `<slug>@` prefix.
 const DEFAULT_OTP_SLUG: &str = "otp";
 const DEFAULT_VALHALLA_SLUG: &str = "valhalla";
+
+/// A router as given on the command line, before each worker prepares its own.
+#[derive(Clone)]
+enum RouterArg {
+    Otp(OtpCluster),
+    Valhalla(Url),
+}
 
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -23,12 +29,11 @@ async fn main() -> Result<()> {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com'. Prefix an endpoint with <slug>@ for requests to name it. The first OTP and Valhalla plan requests that don't name one.")
+        panic!("No endpoints specified. Usage: {bin_name} 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' https://valhalla.example.com. A trip goes to the first that suits its mode and covers it. Prefix an endpoint with <slug>@ for requests to name it; OTP endpoints sharing a slug are one router.")
     }
 
-    let mut otp_clusters: Vec<(String, OtpCluster)> = vec![];
-    let mut valhalla_endpoints: Vec<(String, Url)> = vec![];
-    for endpoint in endpoints.iter().filter(|e| *e != NO_VALHALLA) {
+    let mut routers: Vec<(String, RouterArg)> = vec![];
+    for endpoint in &endpoints {
         let (slug, endpoint) = match endpoint.split_once('@') {
             Some((slug, rest)) if !slug.is_empty() && !slug.contains(['/', ':']) => {
                 (Some(slug), rest)
@@ -41,39 +46,36 @@ async fn main() -> Result<()> {
         {
             Some((area, url)) => {
                 let slug = slug.unwrap_or(DEFAULT_OTP_SLUG);
-                let index = match otp_clusters.iter().position(|(s, _)| s == slug) {
+                let index = match routers.iter().position(|(s, _)| s == slug) {
                     Some(index) => index,
                     None => {
-                        otp_clusters.push((slug.to_string(), OtpCluster::default()));
-                        otp_clusters.len() - 1
+                        routers.push((slug.to_string(), RouterArg::Otp(OtpCluster::default())));
+                        routers.len() - 1
                     }
+                };
+                let RouterArg::Otp(cluster) = &mut routers[index].1 else {
+                    panic!("{slug} names both a valhalla and an OTP endpoint");
                 };
                 // If we change this to be non-blocking, we'll
                 // want to update our readiness probe in health.rs
-                otp_clusters[index].1.insert_endpoint(area, url).await?;
+                cluster.insert_endpoint(area, url).await?;
             }
             None => {
                 let slug = slug.unwrap_or(DEFAULT_VALHALLA_SLUG);
                 assert!(
-                    valhalla_endpoints.iter().all(|(s, _)| s != slug),
-                    "two valhalla endpoints are called {slug}"
+                    routers.iter().all(|(s, _)| s != slug),
+                    "two routers are called {slug}"
                 );
                 let url = Url::parse(endpoint)
                     .unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {endpoint}"));
-                valhalla_endpoints.push((slug.to_string(), url));
+                routers.push((slug.to_string(), RouterArg::Valhalla(url)));
             }
         }
     }
-    if otp_clusters.is_empty() {
-        otp_clusters.push((DEFAULT_OTP_SLUG.to_string(), OtpCluster::default()));
-    }
 
     log::info!(
-        "setup completed - there are {} OTP routers.",
-        otp_clusters
-            .iter()
-            .map(|(_, cluster)| cluster.router_len())
-            .sum::<usize>()
+        "setup completed - routers: {:?}",
+        routers.iter().map(|(slug, _)| slug).collect::<Vec<_>>()
     );
 
     let port: u16 = std::env::var("PORT")
@@ -91,11 +93,18 @@ async fn main() -> Result<()> {
     HttpServer::new(move || {
         // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
         let app_state = AppState::new(
-            otp_clusters
+            routers
                 .iter()
-                .map(|(slug, cluster)| (slug.clone(), cluster.prepare()))
+                .map(|(slug, router)| {
+                    let router = match router {
+                        RouterArg::Otp(cluster) => Router::Otp(cluster.prepare()),
+                        RouterArg::Valhalla(url) => {
+                            Router::Valhalla(ValhallaRouter::new(url.clone()))
+                        }
+                    };
+                    (slug.clone(), router)
+                })
                 .collect(),
-            valhalla_endpoints.clone(),
         );
         App::new()
             .wrap(Logger::new(&access_log_format))
@@ -105,7 +114,6 @@ async fn main() -> Result<()> {
             .service(api::v7::plan::get_plan)
             .service(api::v7::directions::get_directions)
             .service(api::v8::plan::get_plan)
-            .service(api::v8::plan::get_compare)
             .service(api::v8::directions::get_directions)
             .service(api::v8::vehicle_positions::post_vehicle_positions)
             .service(api::health::get_ready)

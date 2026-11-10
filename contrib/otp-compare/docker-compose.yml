@@ -70,7 +70,7 @@ services:
     build: *otp-upstream-build
     image: otp-compare-otp:upstream
     volumes:
-      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
       - otp-upstream-graph:/graph
   otp-headway-graph:
     <<: *otp-graph-build
@@ -80,7 +80,7 @@ services:
       otp-upstream-graph:
         condition: service_completed_successfully
     volumes:
-      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
       - otp-headway-graph:/graph
   otp-upstream:
     <<: *otp-serve
@@ -106,14 +106,14 @@ services:
     build: *valhalla-upstream-build
     image: otp-compare-valhalla:upstream
     volumes:
-      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
       - valhalla-upstream-tiles:/data
   valhalla-headway-tiles:
     <<: *valhalla-tiles-build
     build: *valhalla-headway-build
     image: otp-compare-valhalla:headway
     volumes:
-      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
       - valhalla-headway-tiles:/data
   valhalla-upstream:
     <<: *valhalla-serve
@@ -167,7 +167,7 @@ services:
     depends_on:
       - travelmux
     ports:
-      - 127.0.0.1:${OTP_COMPARE_PORT:-8080}:8080
+      - 127.0.0.1:${ROUTE_COMPARE_PORT:-8080}:8080
 
 volumes:
   otp-upstream-graph:
