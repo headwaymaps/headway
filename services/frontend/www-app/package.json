@@ -28,7 +28,7 @@
     "@turf/line-slice-along": "^7.4.0",
     "@turf/nearest-point-on-line": "^7.4.0",
     "lodash": "^4.17.21",
-    "maplibre-gl": "~6.12.0",
+    "maplibre-gl": "~6.17.0",
     "opening_hours": "^3.8.0",
     "quasar": "^2.14.3",
     "vue": "^3.4.15",
