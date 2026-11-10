@@ -88,6 +88,7 @@ async fn main() -> Result<()> {
             .service(api::v7::plan::get_plan)
             .service(api::v7::directions::get_directions)
             .service(api::v8::plan::get_plan)
+            .service(api::v8::plan::get_compare)
             .service(api::v8::directions::get_directions)
             .service(api::v8::vehicle_positions::post_vehicle_positions)
             .service(api::health::get_ready)

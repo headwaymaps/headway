@@ -75,7 +75,8 @@ import ComparedRoutes, {
   ComparedRoute,
   ComparedRouter,
 } from 'src/models/ComparedRoutes';
-import { TripFetchError } from 'src/models/Trip';
+import Trip, { TripFetchError } from 'src/models/Trip';
+import { Err, Result } from 'src/utils/Result';
 import { TravelmuxClient, TravelmuxMode } from 'src/services/TravelmuxClient';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
@@ -260,22 +261,54 @@ export default defineComponent({
         const [from, to] = [this.fromPlace, this.toPlace];
         const params = this.transitQuery.params;
         this.isLoading = true;
-        const results = await Promise.all(
-          this.config.routers.map((router) =>
-            TravelmuxClient.fetchPlans(
+        const units = Prefs.stored.distanceUnits(from, to);
+        const routers = this.config.routers;
+        const results: Result<Trip[], TripFetchError>[] = [];
+        /// By travelmux, the routers it plans in one request, and where each goes in `results`.
+        const shared = new Map<string, { index: number; router: string }[]>();
+        routers.forEach(({ travelmux, router }, index) => {
+          if (router) {
+            shared.set(travelmux, [
+              ...(shared.get(travelmux) ?? []),
+              { index, router },
+            ]);
+          }
+        });
+        await Promise.all([
+          ...routers.map(async (router, i) => {
+            if (router.router) return;
+            results[i] = await TravelmuxClient.fetchPlans(
               from.point,
               to.point,
               this.travelmuxModes(),
               5,
-              Prefs.stored.distanceUnits(from, to),
+              units,
               params.searchTime,
               params.searchDate,
               params.arriveBy,
               router.travelmux,
-              router.params,
-            ),
-          ),
-        );
+            );
+          }),
+          ...[...shared].map(async ([travelmux, planned]) => {
+            const compared = await TravelmuxClient.fetchComparedPlans(
+              from.point,
+              to.point,
+              this.travelmuxModes(),
+              5,
+              units,
+              planned.map(({ router }) => router),
+              travelmux,
+              params.searchTime,
+              params.searchDate,
+              params.arriveBy,
+            );
+            planned.forEach(({ index }, j) => {
+              results[index] = compared.ok
+                ? compared.value[j]!
+                : Err(compared.error);
+            });
+          }),
+        ]);
         if (request !== this.latestRequest) return;
         this.isLoading = false;
 

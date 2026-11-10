@@ -8,8 +8,9 @@ export type ComparedRouter = {
   travelmux: string;
   /// Where to read about it, like its commit.
   link: string;
-  /// Query parameters for its travelmux, like `{"router": "valhalla"}` to plan with only Valhalla.
-  params?: Record<string, string>;
+  /// Which of its travelmux's routers plans, like `valhalla:upstream`. Routers that share a
+  /// travelmux are planned in one request to it.
+  router?: string;
 };
 
 /// One router's plan for a route, whose time can differ from another router's on the same streets.

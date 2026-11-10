@@ -1081,6 +1081,101 @@ pub async fn get_plan(
     _get_plan(query, req, app_state).await
 }
 
+/// Which `routers` to plan with in [`get_compare`], like `otp,valhalla,valhalla:upstream`.
+#[derive(Debug, Deserialize)]
+pub struct CompareQuery {
+    routers: String,
+}
+
+/// A router to plan with, and for Valhalla, which of travelmux's named Valhallas.
+#[derive(Debug, Clone, PartialEq)]
+struct RouterChoice {
+    router: Router,
+    valhalla: Option<String>,
+}
+
+impl std::str::FromStr for RouterChoice {
+    type Err = Error;
+
+    fn from_str(s: &str) -> crate::Result<Self> {
+        match s.split_once(':') {
+            None if s == "otp" => Ok(Self {
+                router: Router::Otp,
+                valhalla: None,
+            }),
+            None if s == "valhalla" => Ok(Self {
+                router: Router::Valhalla,
+                valhalla: None,
+            }),
+            Some(("valhalla", name)) if !name.is_empty() => Ok(Self {
+                router: Router::Valhalla,
+                valhalla: Some(name.to_string()),
+            }),
+            _ => Err(Error::user(format!(
+                "unknown router {s}, expected otp, valhalla or valhalla:<name>"
+            ))),
+        }
+    }
+}
+
+/// One router's answer in a [`CompareResponse`].
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+enum RouterOutcome {
+    Planned(PlanResponseOk),
+    Failed(PlanResponseErr),
+}
+
+#[derive(Debug, Serialize)]
+struct ComparedPlan {
+    router: String,
+    #[serde(flatten)]
+    outcome: RouterOutcome,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CompareResponse {
+    plans: Vec<ComparedPlan>,
+}
+
+/// Plans the trip with each of several routers at once, so a client comparing them makes one request.
+#[get("/v8/compare")]
+pub async fn get_compare(
+    query: web::Query<PlanQuery>,
+    compare: web::Query<CompareQuery>,
+    req: HttpRequest,
+    app_state: web::Data<AppState>,
+) -> std::result::Result<web::Json<CompareResponse>, PlanResponseErr> {
+    let choices: Vec<(&str, RouterChoice)> = compare
+        .routers
+        .split(',')
+        .map(|name| Ok((name, name.parse()?)))
+        .collect::<crate::Result<_>>()?;
+
+    let outcomes = join_all(choices.iter().map(|(_, choice)| {
+        let query = web::Query(PlanQuery {
+            router: Some(choice.router),
+            valhalla: choice.valhalla.clone(),
+            ..query.0.clone()
+        });
+        _get_plan(query, req.clone(), app_state.clone())
+    }))
+    .await;
+
+    let plans = choices
+        .into_iter()
+        .zip(outcomes)
+        .map(|((name, _), outcome)| ComparedPlan {
+            router: name.to_string(),
+            outcome: match outcome {
+                Ok(plan) => RouterOutcome::Planned(plan),
+                Err(e) => RouterOutcome::Failed(e),
+            },
+        })
+        .collect();
+    Ok(web::Json(CompareResponse { plans }))
+}
+
 pub async fn _get_plan(
     query: web::Query<PlanQuery>,
     req: HttpRequest,
@@ -1409,6 +1504,28 @@ mod tests {
         let mut quicker = itinerary.clone();
         quicker.duration_seconds -= seconds;
         quicker
+    }
+
+    #[test]
+    fn router_choices_name_a_router_and_optionally_a_valhalla() {
+        let choice = |s: &str| s.parse::<RouterChoice>().ok();
+        assert_eq!(
+            choice("otp"),
+            Some(RouterChoice {
+                router: Router::Otp,
+                valhalla: None
+            })
+        );
+        assert_eq!(
+            choice("valhalla:upstream"),
+            Some(RouterChoice {
+                router: Router::Valhalla,
+                valhalla: Some("upstream".to_string())
+            })
+        );
+        assert_eq!(choice("valhalla:"), None);
+        assert_eq!(choice("otp:upstream"), None);
+        assert_eq!(choice("osrm"), None);
     }
 
     #[test]

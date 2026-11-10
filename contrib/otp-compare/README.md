@@ -6,7 +6,7 @@ maps.earth.
 
 Each version runs its own OTP and travelmux. `compare.json` tells the frontend where to find each
 travelmux and what to call it, and which of its routers to ask. headway's travelmux also fronts
-both Valhallas.
+both Valhallas, and plans with all three of its routers in one request.
 
 `./inputs` holds the graph's inputs: an `*.osm.pbf`, an elevation `*.tif` and `*.gtfs.zip` feeds.
 Use `OTP_COMPARE_INPUTS` to look elsewhere.
