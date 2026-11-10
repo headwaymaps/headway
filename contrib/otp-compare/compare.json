@@ -3,7 +3,9 @@
     {
       "name": "OTP main@7542ea8",
       "travelmux": "/travelmux/main",
-      "router": "otp",
+      "params": {
+        "router": "otp"
+      },
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/7542ea8c98d5e742e0f97dcee2f687d71d92cda8"
     },
     {
@@ -19,8 +21,19 @@
     {
       "name": "Valhalla headway@4aa6728",
       "travelmux": "/travelmux/main",
-      "router": "valhalla",
+      "params": {
+        "router": "valhalla"
+      },
       "link": "https://github.com/headwaymaps/valhalla/commit/4aa672844d7c1d9535f33eb4a2dd067bc7fb6d82"
+    },
+    {
+      "name": "Valhalla mainline@064dfda",
+      "travelmux": "/travelmux/main",
+      "params": {
+        "router": "valhalla",
+        "valhalla": "mainline"
+      },
+      "link": "https://github.com/valhalla/valhalla/commit/064dfda3a2"
     }
   ],
   "corpus": "/corpus.json"

@@ -27,8 +27,6 @@ export interface TravelmuxItinerary {
 
 export type BikeRoutePreference = 'quieter' | 'faster';
 
-export type TravelmuxRouter = 'otp' | 'valhalla';
-
 export interface TravelmuxLeg {
   mode: TravelmuxMode;
   /// encoded polyline, 1e-6 scale
@@ -246,8 +244,6 @@ export type TravelmuxPlanRequest = {
   /// Only affects the prose of an instruction ("Continue for 2 miles.") - every distance in the
   /// response is in meters.
   preferredDistanceUnits: string;
-  /// Plan with only this router, rather than whichever suits the trip.
-  router?: TravelmuxRouter;
 };
 
 export enum TravelmuxMode {
@@ -342,7 +338,8 @@ export class TravelmuxClient {
     date?: string,
     arriveBy?: boolean,
     travelmuxPath = '/travelmux',
-    router?: TravelmuxRouter,
+    /// More query parameters, like which of its routers to plan with.
+    extraParams: Record<string, string> = {},
   ): Promise<Result<Trip[], TripFetchError>> {
     const params: TravelmuxPlanRequest = {
       fromPlace: `${from.lng},${from.lat}`,
@@ -351,9 +348,6 @@ export class TravelmuxClient {
       mode: modes.join(','),
       preferredDistanceUnits,
     };
-    if (router) {
-      params.router = router;
-    }
 
     // travelmux plans from "now" unless we name a departure (or arrival) time. The time the user
     // picked is a wall clock time where they're traveling, not necessarily where they are, so we
@@ -370,7 +364,7 @@ export class TravelmuxClient {
       params['arriveBy'] = true.toString();
     }
 
-    const query = new URLSearchParams(params).toString();
+    const query = new URLSearchParams({ ...params, ...extraParams }).toString();
 
     const response = await fetch(`${travelmuxPath}/v8/plan?${query}`);
 

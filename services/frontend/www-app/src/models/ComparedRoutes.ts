@@ -1,8 +1,5 @@
 import Trip from './Trip';
-import type {
-  BikeRoutePreference,
-  TravelmuxRouter,
-} from 'src/services/TravelmuxClient';
+import type { BikeRoutePreference } from 'src/services/TravelmuxClient';
 
 /// A router to compare, as listed in the compare stack's compare.json.
 export type ComparedRouter = {
@@ -11,8 +8,8 @@ export type ComparedRouter = {
   travelmux: string;
   /// Where to read about it, like its commit.
   link: string;
-  /// Which of its travelmux's routers to plan with, if not whichever suits the trip.
-  router?: TravelmuxRouter;
+  /// Query parameters for its travelmux, like `{"router": "valhalla"}` to plan with only Valhalla.
+  params?: Record<string, string>;
 };
 
 /// One router's plan for a route, whose time can differ from another router's on the same streets.

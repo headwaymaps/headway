@@ -63,6 +63,9 @@ pub struct PlanQuery {
 
     /// Plan with only this router, rather than whichever suits the trip.
     router: Option<Router>,
+
+    /// Which of travelmux's named Valhallas plans the trip's Valhalla routes.
+    valhalla: Option<String>,
 }
 
 /// A routing engine travelmux plans with.
@@ -1212,13 +1215,15 @@ async fn valhalla_route(
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
-    let router_url = app_state.valhalla_router()?.plan_url(
-        query.from_place,
-        query.to_place,
-        costing,
-        alternates,
-        query.instruction_units(),
-    )?;
+    let router_url = app_state
+        .named_valhalla_router(query.valhalla.as_deref())?
+        .plan_url(
+            query.from_place,
+            query.to_place,
+            costing,
+            alternates,
+            query.instruction_units(),
+        )?;
     let valhalla_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
         log::error!("error while fetching from valhalla service: {e}");
         PlanResponseErr::from(Error::server(e))

@@ -1,6 +1,7 @@
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use url::Url;
 
+use std::collections::HashMap;
 use std::env;
 use travelmux::api::{self, AppState};
 use travelmux::otp::OtpCluster;
@@ -8,6 +9,8 @@ use travelmux::{Result, ERROR_CODE_HEADER};
 
 /// In place of the valhalla endpoint, has OTP plan every trip.
 const NO_VALHALLA: &str = "no-valhalla";
+/// Prefixes another Valhalla that requests can name, like `valhalla:mainline=http://valhalla-mainline:8002`.
+const NAMED_VALHALLA_PREFIX: &str = "valhalla:";
 
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -21,7 +24,7 @@ async fn main() -> Result<()> {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com'")
+        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' ['{NAMED_VALHALLA_PREFIX}mainline=https://valhalla2.example.com']")
     };
 
     let valhalla_endpoint = (valhalla_endpoint != NO_VALHALLA).then(|| {
@@ -30,7 +33,18 @@ async fn main() -> Result<()> {
     });
 
     let mut otp_cluster = OtpCluster::default();
+    let mut named_valhalla_endpoints = HashMap::new();
     for endpoint in endpoints {
+        if let Some(named) = endpoint.strip_prefix(NAMED_VALHALLA_PREFIX) {
+            let Some((name, url)) = named.split_once('=').filter(|(name, _)| !name.is_empty())
+            else {
+                panic!("A named valhalla must be {NAMED_VALHALLA_PREFIX}<name>=<url>, but was: {endpoint}")
+            };
+            let url =
+                Url::parse(url).unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {url}"));
+            named_valhalla_endpoints.insert(name.to_string(), url);
+            continue;
+        }
         let Some((name, url)) = endpoint
             .split_once('=')
             .filter(|(name, _)| !name.is_empty())
@@ -61,7 +75,11 @@ async fn main() -> Result<()> {
 
     HttpServer::new(move || {
         // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
-        let app_state = AppState::new(valhalla_endpoint.clone(), otp_cluster.prepare());
+        let app_state = AppState::new(
+            valhalla_endpoint.clone(),
+            named_valhalla_endpoints.clone(),
+            otp_cluster.prepare(),
+        );
         App::new()
             .wrap(Logger::new(&access_log_format))
             .app_data(web::Data::new(app_state))
