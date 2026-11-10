@@ -2,16 +2,18 @@
   <div class="app-container" :class="appClass">
     <router-view />
     <base-map />
+    <favorite-markers />
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import FavoriteMarkers from 'src/components/FavoriteMarkers.vue';
 import BaseMap from 'src/components/BaseMap.vue';
 
 export default defineComponent({
   name: 'MainLayout',
-  components: { BaseMap },
+  components: { BaseMap, FavoriteMarkers },
   props: {
     appClass: {
       type: String,

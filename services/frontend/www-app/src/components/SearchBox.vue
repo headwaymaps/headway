@@ -60,6 +60,7 @@ import { throttle } from 'lodash';
 import { Marker } from 'maplibre-gl';
 import { map } from './BaseMap.vue';
 import { Platform } from 'quasar';
+import { favorites, favoritePlace } from 'src/models/Favorites';
 import Place, { PlaceId } from 'src/models/Place';
 import PeliasClient from 'src/services/PeliasClient';
 import Markers from 'src/utils/Markers';
@@ -134,7 +135,12 @@ export default defineComponent({
         focus = map.getCenter();
       }
 
-      const places: Place[] = [];
+      const matchingFavorites = favorites.value.filter((favorite) =>
+        `${favorite.name} ${favorite.address ?? ''} ${favorite.description}`
+          .toLocaleLowerCase()
+          .includes(query.text.toLocaleLowerCase()),
+      );
+      const places: Place[] = matchingFavorites.map(favoritePlace);
       try {
         const results = await PeliasClient.autocomplete(query.text, focus);
         for (const feature of results.features) {
@@ -144,7 +150,11 @@ export default defineComponent({
           }
           const gid = feature.properties.gid;
           const id = PlaceId.gid(gid);
-          places.push(Place.fromFeature(id, feature));
+          if (
+            !places.some((place) => place.serializedId() === id.serialized())
+          ) {
+            places.push(Place.fromFeature(id, feature));
+          }
         }
       } catch (e) {
         console.warn('error with autocomplete', e);

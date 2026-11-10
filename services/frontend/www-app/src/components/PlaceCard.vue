@@ -14,6 +14,7 @@
       />
     </div>
   </q-card-section>
+  <favorite-editor :place="place" />
   <q-card-section>
     <travel-mode-bar :to-place="place" />
   </q-card-section>
@@ -78,6 +79,8 @@
   </q-card-section>
 </template>
 <script lang="ts">
+import FavoriteEditor from './FavoriteEditor.vue';
+import { favoriteFor } from 'src/models/Favorites';
 import { i18n } from 'src/i18n/lang';
 import Place from 'src/models/Place';
 import OpeningHours from 'src/models/OpeningHours';
@@ -91,6 +94,7 @@ import TravelModeBar from './TravelModeBar.vue';
 export default defineComponent({
   name: 'PlaceCard',
   components: {
+    FavoriteEditor,
     OpeningHoursStatus,
     OpeningHoursTable,
     PlaceField,
@@ -124,6 +128,8 @@ export default defineComponent({
   },
   computed: {
     primaryName(): string {
+      const favorite = favoriteFor(this.place);
+      if (favorite) return favorite.name;
       if (this.place.name) {
         return this.place.name;
       }
