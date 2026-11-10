@@ -1,7 +1,6 @@
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use url::Url;
 
-use std::collections::HashMap;
 use std::env;
 use travelmux::api::{self, AppState};
 use travelmux::otp::OtpCluster;
@@ -9,8 +8,9 @@ use travelmux::{Result, ERROR_CODE_HEADER};
 
 /// In place of the valhalla endpoint, has OTP plan every trip.
 const NO_VALHALLA: &str = "no-valhalla";
-/// Prefixes another Valhalla that requests can name, like `valhalla:upstream=http://valhalla-upstream:8002`.
-const NAMED_VALHALLA_PREFIX: &str = "valhalla:";
+/// What a request calls the router an endpoint without a `<slug>@` prefix belongs to.
+const DEFAULT_OTP_SLUG: &str = "otp";
+const DEFAULT_VALHALLA_SLUG: &str = "valhalla";
 
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -18,47 +18,62 @@ async fn main() -> Result<()> {
 
     // eventually we might want something more sophisticated, like CRUD'ing endpoints,
     // but for now we require a restart.
-    let mut endpoints = env::args().skip(1);
-
-    let Some(valhalla_endpoint) = endpoints.next() else {
+    let endpoints: Vec<String> = env::args().skip(1).collect();
+    if endpoints.is_empty() {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' ['{NAMED_VALHALLA_PREFIX}upstream=https://valhalla2.example.com']")
-    };
+        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com'. Prefix an endpoint with <slug>@ for requests to name it. The first OTP and Valhalla plan requests that don't name one.")
+    }
 
-    let valhalla_endpoint = (valhalla_endpoint != NO_VALHALLA).then(|| {
-        Url::parse(&valhalla_endpoint)
-            .unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {valhalla_endpoint}"))
-    });
-
-    let mut otp_cluster = OtpCluster::default();
-    let mut named_valhalla_endpoints = HashMap::new();
-    for endpoint in endpoints {
-        if let Some(named) = endpoint.strip_prefix(NAMED_VALHALLA_PREFIX) {
-            let Some((name, url)) = named.split_once('=').filter(|(name, _)| !name.is_empty())
-            else {
-                panic!("A named valhalla must be {NAMED_VALHALLA_PREFIX}<name>=<url>, but was: {endpoint}")
-            };
-            let url =
-                Url::parse(url).unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {url}"));
-            named_valhalla_endpoints.insert(name.to_string(), url);
-            continue;
-        }
-        let Some((name, url)) = endpoint
-            .split_once('=')
-            .filter(|(name, _)| !name.is_empty())
-        else {
-            panic!("OTP endpoint must be <area name>=<url>, e.g. 'Seattle=http://opentripplanner:8000', but was: {endpoint}")
+    let mut otp_clusters: Vec<(String, OtpCluster)> = vec![];
+    let mut valhalla_endpoints: Vec<(String, Url)> = vec![];
+    for endpoint in endpoints.iter().filter(|e| *e != NO_VALHALLA) {
+        let (slug, endpoint) = match endpoint.split_once('@') {
+            Some((slug, rest)) if !slug.is_empty() && !slug.contains(['/', ':']) => {
+                (Some(slug), rest)
+            }
+            _ => (None, endpoint.as_str()),
         };
-        // If we change this to be non-blocking, we'll
-        // want to update our readiness probe in health.rs
-        otp_cluster.insert_endpoint(name, url).await?;
+        match endpoint
+            .split_once('=')
+            .filter(|(area, _)| !area.is_empty())
+        {
+            Some((area, url)) => {
+                let slug = slug.unwrap_or(DEFAULT_OTP_SLUG);
+                let index = match otp_clusters.iter().position(|(s, _)| s == slug) {
+                    Some(index) => index,
+                    None => {
+                        otp_clusters.push((slug.to_string(), OtpCluster::default()));
+                        otp_clusters.len() - 1
+                    }
+                };
+                // If we change this to be non-blocking, we'll
+                // want to update our readiness probe in health.rs
+                otp_clusters[index].1.insert_endpoint(area, url).await?;
+            }
+            None => {
+                let slug = slug.unwrap_or(DEFAULT_VALHALLA_SLUG);
+                assert!(
+                    valhalla_endpoints.iter().all(|(s, _)| s != slug),
+                    "two valhalla endpoints are called {slug}"
+                );
+                let url = Url::parse(endpoint)
+                    .unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {endpoint}"));
+                valhalla_endpoints.push((slug.to_string(), url));
+            }
+        }
+    }
+    if otp_clusters.is_empty() {
+        otp_clusters.push((DEFAULT_OTP_SLUG.to_string(), OtpCluster::default()));
     }
 
     log::info!(
-        "setup completed - there are {} routers.",
-        otp_cluster.router_len()
+        "setup completed - there are {} OTP routers.",
+        otp_clusters
+            .iter()
+            .map(|(_, cluster)| cluster.router_len())
+            .sum::<usize>()
     );
 
     let port: u16 = std::env::var("PORT")
@@ -76,9 +91,11 @@ async fn main() -> Result<()> {
     HttpServer::new(move || {
         // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
         let app_state = AppState::new(
-            valhalla_endpoint.clone(),
-            named_valhalla_endpoints.clone(),
-            otp_cluster.prepare(),
+            otp_clusters
+                .iter()
+                .map(|(slug, cluster)| (slug.clone(), cluster.prepare()))
+                .collect(),
+            valhalla_endpoints.clone(),
         );
         App::new()
             .wrap(Logger::new(&access_log_format))

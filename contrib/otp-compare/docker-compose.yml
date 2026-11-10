@@ -1,6 +1,6 @@
 # Compares routes across OTP and Valhalla builds. See README.md.
 # OTP's dev-2.x.
-x-otp-main-build: &otp-main-build
+x-otp-upstream-build: &otp-upstream-build
   context: .
   dockerfile: otp.Dockerfile
   args:
@@ -16,8 +16,12 @@ x-otp-headway-build: &otp-headway-build
 x-valhalla-upstream-build: &valhalla-upstream-build
   context: https://github.com/valhalla/valhalla.git#064dfda3a2af3590c9159a9312a099b8a2a25101
   dockerfile: docker/Dockerfile
+# Our fork's headway branch.
+x-valhalla-headway-build: &valhalla-headway-build
+  context: https://github.com/headwaymaps/valhalla.git#4aa672844d7c1d9535f33eb4a2dd067bc7fb6d82
+  dockerfile: docker/Dockerfile
 
-x-graph-build: &graph-build
+x-otp-graph-build: &otp-graph-build
   entrypoint:
     - bash
     - -c
@@ -36,130 +40,123 @@ x-otp-serve: &otp-serve
     interval: 5s
     retries: 60
 
-x-travelmux: &travelmux
-  build:
-    context: ../..
-    dockerfile: contrib/otp-compare/travelmux.Dockerfile
-  image: otp-compare-travelmux
+# Seattle's tiles. Without an admin db, each road drives on its way's side, the right unless tagged.
+x-valhalla-tiles-build: &valhalla-tiles-build
+  entrypoint:
+    - bash
+    - -c
+    - |
+      [ -f /data/valhalla.json ] && exit 0
+      set -e
+      cd /data
+      valhalla_build_elevation --from-bbox=-122.462,47.394,-122.005,47.831 --outdir elevation
+      valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-timezone /data/timezones.sqlite \
+        --additional-data-elevation /data/elevation --mjolnir-data-processing-use-admin-db False > building.json
+      valhalla_build_timezones > timezones.sqlite
+      valhalla_build_tiles -c building.json /inputs/*.osm.pbf
+      mv building.json valhalla.json
+
+x-valhalla-serve: &valhalla-serve
   restart: unless-stopped
-  environment:
-    RUST_LOG: info
+  entrypoint: [valhalla_service, /data/valhalla.json]
+  healthcheck:
+    test: [CMD, bash, -c, "</dev/tcp/localhost/8002"]
+    interval: 5s
+    retries: 60
 
 services:
-  # headway sets its roundabout factors while building the graph, so it builds its own.
-  graph-shared:
-    <<: *graph-build
-    build: *otp-main-build
-    image: otp-compare-otp:main
+  otp-upstream-graph:
+    <<: *otp-graph-build
+    build: *otp-upstream-build
+    image: otp-compare-otp:upstream
     volumes:
       - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
-      - graph-shared:/graph
-  graph-headway:
-    <<: *graph-build
+      - otp-upstream-graph:/graph
+  otp-headway-graph:
+    <<: *otp-graph-build
     build: *otp-headway-build
     image: otp-compare-otp:headway
     depends_on:
-      graph-shared:
+      otp-upstream-graph:
         condition: service_completed_successfully
     volumes:
       - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
-      - graph-headway:/graph
-
-  otp-main:
+      - otp-headway-graph:/graph
+  otp-upstream:
     <<: *otp-serve
-    build: *otp-main-build
-    image: otp-compare-otp:main
+    build: *otp-upstream-build
+    image: otp-compare-otp:upstream
     depends_on:
-      graph-headway:
+      otp-upstream-graph:
         condition: service_completed_successfully
     volumes:
-      - graph-shared:/graph:ro
+      - otp-upstream-graph:/graph:ro
   otp-headway:
     <<: *otp-serve
     build: *otp-headway-build
     image: otp-compare-otp:headway
     depends_on:
-      graph-headway:
+      otp-headway-graph:
         condition: service_completed_successfully
     volumes:
-      - graph-headway:/graph:ro
+      - otp-headway-graph:/graph:ro
 
-  valhalla-init:
-    image: ghcr.io/headwaymaps/valhalla-init:${VALHALLA_COMPARE_TAG:-latest}
-    volumes:
-      - ${VALHALLA_COMPARE_TILES:-./valhalla-tiles.tar.zst}:/bootstrap/tiles.tar.zst:ro
-      - valhalla:/data
-    environment:
-      VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/tiles.tar.zst
-  valhalla:
-    image: ghcr.io/headwaymaps/valhalla:${VALHALLA_COMPARE_TAG:-latest}
-    restart: unless-stopped
-    depends_on:
-      valhalla-init:
-        condition: service_completed_successfully
-    volumes:
-      - valhalla:/data:ro
-    healthcheck:
-      test: [CMD, bash, -c, "</dev/tcp/localhost/8002"]
-      interval: 5s
-      retries: 60
-
-  # Builds its own tiles from the OTP graph's extract, like our fork's, but without our
-  # elevation format or default driving side, so it drives on the left.
   valhalla-upstream-tiles:
+    <<: *valhalla-tiles-build
     build: *valhalla-upstream-build
     image: otp-compare-valhalla:upstream
-    entrypoint:
-      - bash
-      - -c
-      - |
-        [ -f /data/valhalla.json ] && exit 0
-        set -e
-        cd /data
-        valhalla_build_elevation --from-bbox=-122.462,47.394,-122.005,47.831 --outdir elevation
-        valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-timezone /data/timezones.sqlite \
-          --additional-data-elevation /data/elevation --mjolnir-data-processing-use-admin-db False > building.json
-        valhalla_build_timezones > timezones.sqlite
-        valhalla_build_tiles -c building.json /inputs/*.osm.pbf
-        mv building.json valhalla.json
     volumes:
       - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
-      - valhalla-upstream:/data
+      - valhalla-upstream-tiles:/data
+  valhalla-headway-tiles:
+    <<: *valhalla-tiles-build
+    build: *valhalla-headway-build
+    image: otp-compare-valhalla:headway
+    volumes:
+      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - valhalla-headway-tiles:/data
   valhalla-upstream:
+    <<: *valhalla-serve
     build: *valhalla-upstream-build
     image: otp-compare-valhalla:upstream
-    restart: unless-stopped
-    entrypoint: [valhalla_service, /data/valhalla.json]
     depends_on:
       valhalla-upstream-tiles:
         condition: service_completed_successfully
     volumes:
-      - valhalla-upstream:/data:ro
-    healthcheck:
-      test: [CMD, bash, -c, "</dev/tcp/localhost/8002"]
-      interval: 5s
-      retries: 60
+      - valhalla-upstream-tiles:/data:ro
+  valhalla-headway:
+    <<: *valhalla-serve
+    build: *valhalla-headway-build
+    image: otp-compare-valhalla:headway
+    depends_on:
+      valhalla-headway-tiles:
+        condition: service_completed_successfully
+    volumes:
+      - valhalla-headway-tiles:/data:ro
 
-  # One travelmux per OTP, so each answers as it would alone. The frontend merges their routes.
-  travelmux-main:
-    <<: *travelmux
-    command: [no-valhalla, "Seattle=http://otp-main:8080"]
-    depends_on:
-      otp-main:
-        condition: service_healthy
-  # headway's also fronts both Valhallas, as production's does, and the frontend asks for each by name.
-  travelmux-headway:
-    <<: *travelmux
+  # Fronts every router, each by the slug compare.json asks for it by. The first OTP and Valhalla
+  # plan pages that don't name one, like a trip's steps.
+  travelmux:
+    build:
+      context: ../..
+      dockerfile: contrib/otp-compare/travelmux.Dockerfile
+    image: otp-compare-travelmux
+    restart: unless-stopped
+    environment:
+      RUST_LOG: info
     command:
-      - http://valhalla:8002
-      - Seattle=http://otp-headway:8080
-      - valhalla:upstream=http://valhalla-upstream:8002
+      - otp-headway@Seattle=http://otp-headway:8080
+      - otp-upstream@Seattle=http://otp-upstream:8080
+      - valhalla-headway@http://valhalla-headway:8002
+      - valhalla-upstream@http://valhalla-upstream:8002
     depends_on:
+      otp-upstream:
+        condition: service_healthy
       otp-headway:
         condition: service_healthy
-      valhalla:
-        condition: service_healthy
       valhalla-upstream:
+        condition: service_healthy
+      valhalla-headway:
         condition: service_healthy
 
   frontend:
@@ -168,13 +165,12 @@ services:
       dockerfile: contrib/otp-compare/frontend.Dockerfile
     restart: unless-stopped
     depends_on:
-      - travelmux-main
-      - travelmux-headway
+      - travelmux
     ports:
       - 127.0.0.1:${OTP_COMPARE_PORT:-8080}:8080
 
 volumes:
-  graph-shared:
-  graph-headway:
-  valhalla:
-  valhalla-upstream:
+  otp-upstream-graph:
+  otp-headway-graph:
+  valhalla-upstream-tiles:
+  valhalla-headway-tiles:

@@ -1,4 +1,4 @@
-use actix_web::web::{Data, Query};
+use actix_web::web::Query;
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::algorithm::{BoundingRect, Haversine, Length};
@@ -11,10 +11,11 @@ use std::collections::HashMap;
 
 use super::error::{PlanResponseErr, PlanResponseOk, TripEnd};
 use super::TravelModes;
-use crate::api::AppState;
+use crate::api::{AppState, NamedRouter};
 use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
+use crate::otp::PreparedOtpCluster;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
@@ -28,6 +29,7 @@ use crate::util::{
 };
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
+use crate::valhalla::ValhallaRouter;
 use crate::{DistanceUnit, Error, TravelMode};
 use futures::future::join_all;
 use url::Url;
@@ -61,19 +63,8 @@ pub struct PlanQuery {
     #[serde(default)]
     arrive_by: bool,
 
-    /// Plan with only this router, rather than whichever suits the trip.
-    router: Option<Router>,
-
-    /// Which of travelmux's named Valhallas plans the trip's Valhalla routes.
-    valhalla: Option<String>,
-}
-
-/// A routing engine travelmux plans with.
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum Router {
-    Otp,
-    Valhalla,
+    /// The slug of the one router to plan with, rather than whichever suits the trip.
+    router: Option<String>,
 }
 
 impl PlanQuery {
@@ -1081,41 +1072,10 @@ pub async fn get_plan(
     _get_plan(query, req, app_state).await
 }
 
-/// Which `routers` to plan with in [`get_compare`], like `otp,valhalla,valhalla:upstream`.
+/// The slugs of the routers to plan with in [`get_compare`], like `otp-headway,valhalla-master`.
 #[derive(Debug, Deserialize)]
 pub struct CompareQuery {
     routers: String,
-}
-
-/// A router to plan with, and for Valhalla, which of travelmux's named Valhallas.
-#[derive(Debug, Clone, PartialEq)]
-struct RouterChoice {
-    router: Router,
-    valhalla: Option<String>,
-}
-
-impl std::str::FromStr for RouterChoice {
-    type Err = Error;
-
-    fn from_str(s: &str) -> crate::Result<Self> {
-        match s.split_once(':') {
-            None if s == "otp" => Ok(Self {
-                router: Router::Otp,
-                valhalla: None,
-            }),
-            None if s == "valhalla" => Ok(Self {
-                router: Router::Valhalla,
-                valhalla: None,
-            }),
-            Some(("valhalla", name)) if !name.is_empty() => Ok(Self {
-                router: Router::Valhalla,
-                valhalla: Some(name.to_string()),
-            }),
-            _ => Err(Error::user(format!(
-                "unknown router {s}, expected otp, valhalla or valhalla:<name>"
-            ))),
-        }
-    }
 }
 
 /// One router's answer in a [`CompareResponse`].
@@ -1143,30 +1103,29 @@ pub struct CompareResponse {
 pub async fn get_compare(
     query: web::Query<PlanQuery>,
     compare: web::Query<CompareQuery>,
-    req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<web::Json<CompareResponse>, PlanResponseErr> {
-    let choices: Vec<(&str, RouterChoice)> = compare
+    let Some(primary_mode) = query.mode.first() else {
+        return Err(PlanResponseErr::from(Error::user("mode is required")));
+    };
+    let routers: Vec<(&str, NamedRouter)> = compare
         .routers
         .split(',')
-        .map(|name| Ok((name, name.parse()?)))
+        .map(|slug| Ok((slug, app_state.router(slug)?)))
         .collect::<crate::Result<_>>()?;
 
-    let outcomes = join_all(choices.iter().map(|(_, choice)| {
-        let query = web::Query(PlanQuery {
-            router: Some(choice.router),
-            valhalla: choice.valhalla.clone(),
-            ..query.0.clone()
-        });
-        _get_plan(query, req.clone(), app_state.clone())
-    }))
+    let outcomes = join_all(
+        routers
+            .iter()
+            .map(|(_, router)| plan_with(&query, router, primary_mode)),
+    )
     .await;
 
-    let plans = choices
-        .into_iter()
+    let plans = routers
+        .iter()
         .zip(outcomes)
-        .map(|((name, _), outcome)| ComparedPlan {
-            router: name.to_string(),
+        .map(|((slug, _), outcome)| ComparedPlan {
+            router: slug.to_string(),
             outcome: match outcome {
                 Ok(plan) => RouterOutcome::Planned(plan),
                 Err(e) => RouterOutcome::Failed(e),
@@ -1176,41 +1135,51 @@ pub async fn get_compare(
     Ok(web::Json(CompareResponse { plans }))
 }
 
+/// Plans with `router` alone.
+async fn plan_with(
+    query: &Query<PlanQuery>,
+    router: &NamedRouter<'_>,
+    primary_mode: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    match router {
+        NamedRouter::Otp(otp_cluster) => otp_plan(query, otp_cluster, primary_mode).await,
+        NamedRouter::Valhalla(_) if primary_mode == &TravelMode::Transit => Err(
+            PlanResponseErr::from(Error::user("valhalla doesn't plan transit")),
+        ),
+        NamedRouter::Valhalla(valhalla) => valhalla_plan(query, valhalla, primary_mode).await,
+    }
+}
+
 pub async fn _get_plan(
     query: web::Query<PlanQuery>,
-    req: HttpRequest,
+    _req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
     let Some(primary_mode) = query.mode.first() else {
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
-    match query.router {
-        Some(Router::Otp) => return otp_plan(&query, req, &app_state, primary_mode).await,
-        Some(Router::Valhalla) if primary_mode == &TravelMode::Transit => {
-            return Err(PlanResponseErr::from(Error::user(
-                "valhalla doesn't plan transit",
-            )));
-        }
-        Some(Router::Valhalla) => return valhalla_plan(&query, &app_state, primary_mode).await,
-        None => {}
+    if let Some(slug) = &query.router {
+        return plan_with(&query, &app_state.router(slug)?, primary_mode).await;
     }
 
+    let otp_cluster = app_state.otp_cluster();
     if !app_state.has_valhalla() {
-        return otp_plan(&query, req, &app_state, primary_mode).await;
+        return otp_plan(&query, otp_cluster, primary_mode).await;
     }
+    let valhalla = app_state.valhalla_router()?;
 
     // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
     // the "primary" mode appears first.
     match primary_mode {
-        TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
-        TravelMode::Car => valhalla_plan(&query, &app_state, primary_mode).await,
+        TravelMode::Transit => otp_plan(&query, otp_cluster, primary_mode).await,
+        TravelMode::Car => valhalla_plan(&query, valhalla, primary_mode).await,
         TravelMode::Bicycle | TravelMode::Walk => {
-            match otp_plan(&query, req, &app_state, primary_mode).await {
+            match otp_plan(&query, otp_cluster, primary_mode).await {
                 Ok(otp) => Ok(otp),
                 Err(e) => {
                     log_otp_fallback(&e, primary_mode);
-                    valhalla_plan(&query, &app_state, primary_mode).await
+                    valhalla_plan(&query, valhalla, primary_mode).await
                 }
             }
         }
@@ -1233,20 +1202,20 @@ fn log_otp_fallback(e: &PlanResponseErr, primary_mode: &TravelMode) {
 
 async fn valhalla_plan(
     query: &Query<PlanQuery>,
-    app_state: &Data<AppState>,
+    valhalla: &ValhallaRouter,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
 
     let costing = match primary_mode {
         TravelMode::Transit => unreachable!("handled above"),
-        TravelMode::Bicycle => return valhalla_bike_plans(query, app_state).await,
+        TravelMode::Bicycle => return valhalla_bike_plans(query, valhalla).await,
         TravelMode::Car => valhalla_api::Costing::Auto,
         TravelMode::Walk => valhalla_api::Costing::Pedestrian,
     };
     valhalla_route(
         query,
-        app_state,
+        valhalla,
         primary_mode,
         costing,
         query.num_itineraries,
@@ -1258,7 +1227,7 @@ async fn valhalla_plan(
 /// [`bike_plans`] does with OTP.
 async fn valhalla_bike_plans(
     query: &Query<PlanQuery>,
-    app_state: &Data<AppState>,
+    valhalla: &ValhallaRouter,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     let plans = join_all(BikeRoutePreference::ALL.map(|preference| async move {
         let options = match preference {
@@ -1268,7 +1237,7 @@ async fn valhalla_bike_plans(
         // Each preference gives its own best route, as OTP's do, rather than alternates.
         let plan = valhalla_route(
             query,
-            app_state,
+            valhalla,
             &TravelMode::Bicycle,
             valhalla_api::Costing::Bicycle(options),
             0,
@@ -1303,22 +1272,20 @@ async fn valhalla_bike_plans(
 
 async fn valhalla_route(
     query: &Query<PlanQuery>,
-    app_state: &Data<AppState>,
+    valhalla: &ValhallaRouter,
     primary_mode: &TravelMode,
     costing: valhalla_api::Costing,
     alternates: u32,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
-    let router_url = app_state
-        .named_valhalla_router(query.valhalla.as_deref())?
-        .plan_url(
-            query.from_place,
-            query.to_place,
-            costing,
-            alternates,
-            query.instruction_units(),
-        )?;
+    let router_url = valhalla.plan_url(
+        query.from_place,
+        query.to_place,
+        costing,
+        alternates,
+        query.instruction_units(),
+    )?;
     let valhalla_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
         log::error!("error while fetching from valhalla service: {e}");
         PlanResponseErr::from(Error::server(e))
@@ -1348,12 +1315,10 @@ async fn valhalla_route(
 
 async fn otp_plan(
     query: &web::Query<PlanQuery>,
-    _req: HttpRequest,
-    app_state: &web::Data<AppState>,
+    otp_cluster: &PreparedOtpCluster,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     let (endpoint, timezone) = {
-        let otp_cluster = app_state.otp_cluster();
         let Some(router) = otp_cluster.find_router(query.from_place, query.to_place) else {
             let uncovered_places = [
                 (TripEnd::From, query.from_place),
@@ -1504,28 +1469,6 @@ mod tests {
         let mut quicker = itinerary.clone();
         quicker.duration_seconds -= seconds;
         quicker
-    }
-
-    #[test]
-    fn router_choices_name_a_router_and_optionally_a_valhalla() {
-        let choice = |s: &str| s.parse::<RouterChoice>().ok();
-        assert_eq!(
-            choice("otp"),
-            Some(RouterChoice {
-                router: Router::Otp,
-                valhalla: None
-            })
-        );
-        assert_eq!(
-            choice("valhalla:upstream"),
-            Some(RouterChoice {
-                router: Router::Valhalla,
-                valhalla: Some("upstream".to_string())
-            })
-        );
-        assert_eq!(choice("valhalla:"), None);
-        assert_eq!(choice("otp:upstream"), None);
-        assert_eq!(choice("osrm"), None);
     }
 
     #[test]

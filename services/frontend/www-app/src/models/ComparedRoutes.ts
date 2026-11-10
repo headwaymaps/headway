@@ -4,13 +4,10 @@ import type { BikeRoutePreference } from 'src/services/TravelmuxClient';
 /// A router to compare, as listed in the compare stack's compare.json.
 export type ComparedRouter = {
   name: string;
-  /// Where its travelmux is served, like `/travelmux/main`.
-  travelmux: string;
+  /// What travelmux calls it, like `valhalla-headway`.
+  router: string;
   /// Where to read about it, like its commit.
   link: string;
-  /// Which of its travelmux's routers plans, like `valhalla:upstream`. Routers that share a
-  /// travelmux are planned in one request to it.
-  router?: string;
 };
 
 /// One router's plan for a route, whose time can differ from another router's on the same streets.

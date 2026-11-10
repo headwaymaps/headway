@@ -1,5 +1,5 @@
 mod app_state;
-pub use app_state::AppState;
+pub use app_state::{AppState, NamedRouter};
 
 pub mod health;
 pub mod v6;

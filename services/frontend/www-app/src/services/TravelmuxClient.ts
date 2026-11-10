@@ -344,7 +344,6 @@ export class TravelmuxClient {
     time?: string,
     date?: string,
     arriveBy?: boolean,
-    travelmuxPath = '/travelmux',
   ): Promise<Result<Trip[], TripFetchError>> {
     const params = this.planRequest(
       from,
@@ -357,7 +356,7 @@ export class TravelmuxClient {
       arriveBy,
     );
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${travelmuxPath}/v8/plan?${query}`);
+    const response = await fetch(`/travelmux/v8/plan?${query}`);
 
     if (response.ok) {
       const plan: TravelmuxPlanResponse = await response.json();

@@ -75,8 +75,7 @@ import ComparedRoutes, {
   ComparedRoute,
   ComparedRouter,
 } from 'src/models/ComparedRoutes';
-import Trip, { TripFetchError } from 'src/models/Trip';
-import { Err, Result } from 'src/utils/Result';
+import { TripFetchError } from 'src/models/Trip';
 import { TravelmuxClient, TravelmuxMode } from 'src/services/TravelmuxClient';
 import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
@@ -84,12 +83,14 @@ import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 
 /// contrib/otp-compare's compare.json.
 type CompareConfig = {
+  /// Where the travelmux fronting every router is served.
+  travelmux: string;
   routers: ComparedRouter[];
   /// Where the trip corpus is served.
   corpus: string;
 };
 
-/// Compares the routes several OTP builds plan for a trip.
+/// Compares the routes several router builds plan for a trip.
 export default defineComponent({
   name: 'ComparePage',
   components: { TripListItem, TripSearch, RouteComparisonCard, TripCorpus },
@@ -261,60 +262,29 @@ export default defineComponent({
         const [from, to] = [this.fromPlace, this.toPlace];
         const params = this.transitQuery.params;
         this.isLoading = true;
-        const units = Prefs.stored.distanceUnits(from, to);
         const routers = this.config.routers;
-        const results: Result<Trip[], TripFetchError>[] = [];
-        /// By travelmux, the routers it plans in one request, and where each goes in `results`.
-        const shared = new Map<string, { index: number; router: string }[]>();
-        routers.forEach(({ travelmux, router }, index) => {
-          if (router) {
-            shared.set(travelmux, [
-              ...(shared.get(travelmux) ?? []),
-              { index, router },
-            ]);
-          }
-        });
-        await Promise.all([
-          ...routers.map(async (router, i) => {
-            if (router.router) return;
-            results[i] = await TravelmuxClient.fetchPlans(
-              from.point,
-              to.point,
-              this.travelmuxModes(),
-              5,
-              units,
-              params.searchTime,
-              params.searchDate,
-              params.arriveBy,
-              router.travelmux,
-            );
-          }),
-          ...[...shared].map(async ([travelmux, planned]) => {
-            const compared = await TravelmuxClient.fetchComparedPlans(
-              from.point,
-              to.point,
-              this.travelmuxModes(),
-              5,
-              units,
-              planned.map(({ router }) => router),
-              travelmux,
-              params.searchTime,
-              params.searchDate,
-              params.arriveBy,
-            );
-            planned.forEach(({ index }, j) => {
-              results[index] = compared.ok
-                ? compared.value[j]!
-                : Err(compared.error);
-            });
-          }),
-        ]);
+        const plans = await TravelmuxClient.fetchComparedPlans(
+          from.point,
+          to.point,
+          this.travelmuxModes(),
+          5,
+          Prefs.stored.distanceUnits(from, to),
+          routers.map(({ router }) => router),
+          this.config.travelmux,
+          params.searchTime,
+          params.searchDate,
+          params.arriveBy,
+        );
         if (request !== this.latestRequest) return;
         this.isLoading = false;
+        if (!plans.ok) {
+          this.error = plans.error;
+          return;
+        }
 
         const compared = new ComparedRoutes();
-        results.forEach((result, i) => {
-          const router = this.config!.routers[i]!.name;
+        plans.value.forEach((result, i) => {
+          const router = routers[i]!.name;
           if (result.ok) {
             compared.add(router, result.value);
           } else {

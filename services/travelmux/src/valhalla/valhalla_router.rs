@@ -16,6 +16,11 @@ impl ValhallaRouter {
         Self { endpoint }
     }
 
+    #[cfg(test)]
+    pub(crate) fn endpoint(&self) -> &Url {
+        &self.endpoint
+    }
+
     pub fn plan_url(
         &self,
         source: Point,
