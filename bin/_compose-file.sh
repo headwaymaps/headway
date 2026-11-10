@@ -41,7 +41,6 @@ fi
 # Artifact names carry a content hash, so the compose file can't spell them out.
 # Optional so a partial build, and stopping services, still work.
 export HEADWAY_OTP_GRAPH_FILE=$(bin/artifacts --optional otp-graphs "$CONFIG_DIR" | head -1)
-export HEADWAY_ELEVATION_FILE=$(bin/artifacts --optional elevation "$CONFIG_DIR")
 export HEADWAY_PMTILES_FILE=$(bin/artifacts --optional pmtiles "$CONFIG_DIR")
 export HEADWAY_VALHALLA_FILE=$(bin/artifacts --optional valhalla "$CONFIG_DIR")
 export HEADWAY_ELASTICSEARCH_FILE=$(bin/artifacts --optional elasticsearch "$CONFIG_DIR")

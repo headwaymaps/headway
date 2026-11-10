@@ -1,5 +1,4 @@
 pub mod directions;
-pub mod elevation;
 mod error;
 mod osrm_api;
 pub mod plan;

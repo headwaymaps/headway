@@ -9,7 +9,6 @@
 //! - transit legs are our own type rather than a passthrough of OTP's, so there's no `_otp` to
 //!   fall back on for anything
 pub mod directions;
-pub mod elevation;
 mod error;
 mod osrm_api;
 pub mod plan;

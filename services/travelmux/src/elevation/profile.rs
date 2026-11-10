@@ -39,6 +39,17 @@ impl ElevationProfile {
     /// are reported as one section.
     const MERGE_GAP_METERS: f64 = 30.0;
 
+    /// `(meters along the route, elevation)` pairs, ignoring any that don't advance.
+    pub fn from_points(points: impl IntoIterator<Item = (f64, f64)>) -> Option<Self> {
+        let mut advancing: Vec<(f64, f64)> = vec![];
+        for point in points {
+            if advancing.last().is_none_or(|(last, _)| point.0 > *last) {
+                advancing.push(point);
+            }
+        }
+        Self::resample(&advancing)
+    }
+
     /// OTP measures each step's profile from the start of that step. Steps without a profile,
     /// like bridges OTP flattens, are interpolated across.
     pub fn from_otp_steps<'a>(

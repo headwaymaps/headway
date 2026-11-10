@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+# Downloads the whole planet's elevation tiles into data/elevation, ready for
+# bin/build and bin/publish-elevation. A one-off: the source data doesn't change.
+
+cd "$(git rev-parse --show-toplevel)"
+
+OUTPUT_DIR="data/elevation"
+ARCHIVE="${OUTPUT_DIR}.tar"
+
+echo "==> Downloading elevation tiles into ${ARCHIVE}" >&2
+dagger --progress=plain -c "planet-elevation | export '${ARCHIVE}'"
+
+echo "==> Unpacking into ${OUTPUT_DIR}" >&2
+mkdir -p "$OUTPUT_DIR"
+tar -C "$OUTPUT_DIR" -xf "$ARCHIVE"
+rm "$ARCHIVE"
