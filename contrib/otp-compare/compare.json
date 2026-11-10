@@ -1,26 +1,26 @@
 {
   "routers": [
     {
-      "name": "main@7542ea8",
+      "name": "OTP main@7542ea8",
       "travelmux": "/travelmux/main",
       "router": "otp",
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/7542ea8c98d5e742e0f97dcee2f687d71d92cda8"
     },
     {
-      "name": "roundabout duration fix",
+      "name": "OTP roundabout duration fix",
       "travelmux": "/travelmux/duration",
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/e9c709adbba495ba1b41e2f293c2a7338852b194"
     },
     {
-      "name": "roundabout safety fix",
+      "name": "OTP roundabout safety fix",
       "travelmux": "/travelmux/safety",
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/3c3f0d45b8b9f8b55544a7942bfff35b7fa30fd7"
     },
     {
-      "name": "Valhalla",
+      "name": "Valhalla headway@4aa6728",
       "travelmux": "/travelmux/main",
       "router": "valhalla",
-      "link": "https://github.com/headwaymaps/valhalla"
+      "link": "https://github.com/headwaymaps/valhalla/commit/4aa672844d7c1d9535f33eb4a2dd067bc7fb6d82"
     }
   ],
   "corpus": "/corpus.json"

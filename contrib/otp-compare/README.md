@@ -14,6 +14,8 @@ Use `OTP_COMPARE_INPUTS` to look elsewhere.
 Valhalla serves the routing tiles `bin/build builds/Seattle valhalla` writes to `data/Seattle`.
 Link or copy one to `./valhalla-tiles.tar.zst`, or point `VALHALLA_COMPARE_TILES` at it.
 `VALHALLA_COMPARE_TAG` picks the `ghcr.io/headwaymaps/valhalla` images to run, `latest` by default.
+Mainline Valhalla builds its own tiles from the `*.osm.pbf` in `./inputs`, at the upstream commit our fork
+branches from.
 
     bin/rebuild-and-restart
 

@@ -10,6 +10,11 @@ x-otp-safety-build: &otp-safety-build
   args:
     OTP_COMMIT: 3c3f0d45b8b9f8b55544a7942bfff35b7fa30fd7
 
+# The upstream commit our fork branches from.
+x-valhalla-mainline-build: &valhalla-mainline-build
+  context: https://github.com/valhalla/valhalla.git#064dfda3a2af3590c9159a9312a099b8a2a25101
+  dockerfile: docker/Dockerfile
+
 x-graph-build: &graph-build
   entrypoint:
     - bash
@@ -111,6 +116,42 @@ services:
       interval: 5s
       retries: 60
 
+  # Builds its own tiles from the OTP graph's extract, like our fork's, but without our
+  # elevation format or default driving side, so it drives on the left.
+  valhalla-mainline-tiles:
+    build: *valhalla-mainline-build
+    image: otp-compare-valhalla:mainline
+    entrypoint:
+      - bash
+      - -c
+      - |
+        [ -f /data/valhalla.json ] && exit 0
+        set -e
+        cd /data
+        valhalla_build_elevation --from-bbox=-122.462,47.394,-122.005,47.831 --outdir elevation
+        valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-timezone /data/timezones.sqlite \
+          --additional-data-elevation /data/elevation --mjolnir-data-processing-use-admin-db False > building.json
+        valhalla_build_timezones > timezones.sqlite
+        valhalla_build_tiles -c building.json /inputs/*.osm.pbf
+        mv building.json valhalla.json
+    volumes:
+      - ${OTP_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - valhalla-mainline:/data
+  valhalla-mainline:
+    build: *valhalla-mainline-build
+    image: otp-compare-valhalla:mainline
+    restart: unless-stopped
+    entrypoint: [valhalla_service, /data/valhalla.json]
+    depends_on:
+      valhalla-mainline-tiles:
+        condition: service_completed_successfully
+    volumes:
+      - valhalla-mainline:/data:ro
+    healthcheck:
+      test: [CMD, bash, -c, "</dev/tcp/localhost/8002"]
+      interval: 5s
+      retries: 60
+
   # One travelmux per OTP, so each answers as it would alone. The frontend merges their routes.
   # main's also fronts Valhalla, which the frontend asks for by name.
   travelmux-main:
@@ -150,3 +191,4 @@ volumes:
   graph-shared:
   graph-safety:
   valhalla:
+  valhalla-mainline:
