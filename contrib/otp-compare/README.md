@@ -10,6 +10,10 @@ travelmux and what to call it.
 `./inputs` holds the graph's inputs: an `*.osm.pbf`, an elevation `*.tif` and `*.gtfs.zip` feeds.
 Use `OTP_COMPARE_INPUTS` to look elsewhere.
 
+Valhalla serves the routing tiles `bin/build builds/Seattle valhalla` writes to `data/Seattle`.
+Link or copy one to `./valhalla-tiles.tar.zst`, or point `VALHALLA_COMPARE_TILES` at it.
+`VALHALLA_COMPARE_TAG` picks the `ghcr.io/headwaymaps/valhalla` images to run, `latest` by default.
+
     bin/rebuild-and-restart
 
 builds what changed, restarts it, and serves on `127.0.0.1:8080`, or `OTP_COMPARE_PORT`. Graphs persist in volumes, so after changing an

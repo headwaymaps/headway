@@ -91,6 +91,26 @@ services:
     volumes:
       - graph-safety:/graph:ro
 
+  valhalla-init:
+    image: ghcr.io/headwaymaps/valhalla-init:${VALHALLA_COMPARE_TAG:-latest}
+    volumes:
+      - ${VALHALLA_COMPARE_TILES:-./valhalla-tiles.tar.zst}:/bootstrap/tiles.tar.zst:ro
+      - valhalla:/data
+    environment:
+      VALHALLA_ARTIFACT_SOURCE_PATH: /bootstrap/tiles.tar.zst
+  valhalla:
+    image: ghcr.io/headwaymaps/valhalla:${VALHALLA_COMPARE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      valhalla-init:
+        condition: service_completed_successfully
+    volumes:
+      - valhalla:/data:ro
+    healthcheck:
+      test: [CMD, bash, -c, "</dev/tcp/localhost/8002"]
+      interval: 5s
+      retries: 60
+
   # One travelmux per OTP, so each answers as it would alone. The frontend merges their routes.
   travelmux-main:
     <<: *travelmux
@@ -126,3 +146,4 @@ services:
 volumes:
   graph-shared:
   graph-safety:
+  valhalla:
