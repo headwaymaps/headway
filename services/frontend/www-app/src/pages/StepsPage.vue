@@ -89,11 +89,10 @@ export default defineComponent({
     };
   },
   mounted: async function () {
-    this.toPlace = await PlaceStorage.fetchFromSerializedId(
-      this.$props.to as string,
-    );
-    this.fromPlace = await PlaceStorage.fetchFromSerializedId(
-      this.$props.from as string,
+    [this.fromPlace, this.toPlace] = await Promise.all(
+      [this.$props.from, this.$props.to].map((id) =>
+        PlaceStorage.fetchFromSerializedId(id as string),
+      ),
     );
     await this.rewriteUrl();
 

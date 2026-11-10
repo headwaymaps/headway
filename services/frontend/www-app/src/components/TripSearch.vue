@@ -41,6 +41,7 @@
       :current-mode="currentMode"
       :to-place="toPlace"
       :from-place="fromPlace"
+      :directions-path="directionsPath"
     />
     <div v-if="isTransit()" style="margin-top: 8px; margin-bottom: -8px">
       <div v-if="searchTime || searchDate">
@@ -119,6 +120,10 @@ export default defineComponent({
       default: undefined,
     },
     currentMode: { type: String as () => TravelMode, required: true },
+    directionsPath: {
+      type: String,
+      default: '/directions',
+    },
     didSelectFromPlace: {
       type: Function as PropType<(newValue?: Place) => void>,
       required: true,

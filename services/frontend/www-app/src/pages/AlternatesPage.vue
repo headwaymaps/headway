@@ -151,16 +151,11 @@ export default defineComponent({
     showSteepClimbBadges([]);
   },
   mounted: async function () {
-    if (this.to != '_') {
-      this.toPlace = await PlaceStorage.fetchFromSerializedId(
-        this.to as string,
-      );
-    }
-    if (this.from != '_') {
-      this.fromPlace = await PlaceStorage.fetchFromSerializedId(
-        this.from as string,
-      );
-    }
+    [this.fromPlace, this.toPlace] = await Promise.all(
+      [this.from, this.to].map((id) =>
+        id == '_' ? undefined : PlaceStorage.fetchFromSerializedId(id),
+      ),
+    );
     await this.rewriteUrl();
   },
   methods: {

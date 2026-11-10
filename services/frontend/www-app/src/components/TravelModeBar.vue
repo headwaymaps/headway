@@ -40,6 +40,10 @@ export default defineComponent({
       type: Place,
       default: undefined,
     },
+    directionsPath: {
+      type: String,
+      default: '/directions',
+    },
   },
   computed: {
     options(): { mode: TravelMode; icon: string; label: string }[] {
@@ -64,7 +68,7 @@ export default defineComponent({
     linkPath(mode: TravelMode): string {
       const f = (place?: Place): string => place?.urlEncodedId() ?? '_';
 
-      return `/directions/${mode}/${f(this.toPlace)}/${f(this.fromPlace)}`;
+      return `${this.directionsPath}/${mode}/${f(this.toPlace)}/${f(this.fromPlace)}`;
     },
   },
 });

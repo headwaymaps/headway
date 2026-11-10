@@ -119,6 +119,33 @@ const routes: RouteRecordRaw[] = [
       ]
     : []),
 
+  ...(process.env.HEADWAY_OTP_COMPARE === '1'
+    ? [
+        {
+          path: '/compare-directions/:mode/:to',
+          component: () => import('layouts/MainLayout.vue'),
+          children: [
+            {
+              path: '/compare-directions/:mode/:to',
+              props: true,
+              component: () => import('pages/ComparePage.vue'),
+            },
+          ],
+        },
+        {
+          path: '/compare-directions/:mode/:to/:from',
+          component: () => import('layouts/MainLayout.vue'),
+          children: [
+            {
+              path: '/compare-directions/:mode/:to/:from',
+              props: true,
+              component: () => import('pages/ComparePage.vue'),
+            },
+          ],
+        },
+      ]
+    : []),
+
   // Always leave this as last one,
   // but you can also remove it
   {

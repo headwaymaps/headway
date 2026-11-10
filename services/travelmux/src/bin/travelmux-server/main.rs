@@ -6,6 +6,9 @@ use travelmux::api::{self, AppState};
 use travelmux::otp::OtpCluster;
 use travelmux::{Result, ERROR_CODE_HEADER};
 
+/// In place of the valhalla endpoint, has OTP plan every trip.
+const NO_VALHALLA: &str = "no-valhalla";
+
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init();
@@ -18,12 +21,13 @@ async fn main() -> Result<()> {
         let bin_name = env::args()
             .next()
             .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} https://valhalla.example.com 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com'")
+        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com'")
     };
 
-    let Ok(valhalla_endpoint) = Url::parse(&valhalla_endpoint) else {
-        panic!("Invalid valhalla endpoint: {valhalla_endpoint}")
-    };
+    let valhalla_endpoint = (valhalla_endpoint != NO_VALHALLA).then(|| {
+        Url::parse(&valhalla_endpoint)
+            .unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {valhalla_endpoint}"))
+    });
 
     let mut otp_cluster = OtpCluster::default();
     for endpoint in endpoints {

@@ -385,7 +385,7 @@ func (t *TransitZone) MergedElevation(ctx context.Context) *dagger.File {
 // Our fork of OTP: upstream dev-2.x plus our routing fixes that haven't been released yet.
 const (
 	otpRepo   = "https://github.com/headwaymaps/OpenTripPlanner.git"
-	otpCommit = "fe7d08e1e7e2b74b92f7b3e29ed1c84d6aade1eb"
+	otpCommit = "3c3f0d45b8b9f8b55544a7942bfff35b7fa30fd7"
 )
 
 func otpJar() *dagger.File {
