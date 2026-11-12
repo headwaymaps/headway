@@ -3,12 +3,16 @@
 set -xe
 set -o pipefail
 
+# Regenerated every start, so existing volumes pick up config changes.
+# travelmux learns what the tiles cover from the verbose status.
+mkdir -p /data/valhalla/
+valhalla_build_config --mjolnir-timezone /data/timezones.sqlite --mjolnir-admin /data/admins.sqlite --service-limits-status-allow-verbose True > /data/valhalla.json
+chown valhalla /data/valhalla.json
+
 if [ -f /data/valhalla/tiles.tar ]; then
     echo "Nothing to do, already have artifact."
     exit 0
 fi
-
-mkdir -p /data/valhalla/
 
 if [ -f "${VALHALLA_ARTIFACT_SOURCE_PATH}" ]; then
     echo "Copying artifact."
@@ -21,9 +25,6 @@ else
     echo "No valhalla artifact available."
     exit 1
 fi
-
-# travelmux learns what the tiles cover from the verbose status.
-valhalla_build_config --mjolnir-timezone /data/timezones.sqlite --mjolnir-admin /data/admins.sqlite --service-limits-status-allow-verbose True > /data/valhalla.json
 
 chown -R valhalla /data
 
