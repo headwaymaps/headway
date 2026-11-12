@@ -247,7 +247,7 @@ export type TravelmuxPlanRequest = {
   /// response is in meters.
   preferredDistanceUnits: string;
   /// Comma separated ids of the routers to plan with, rather than the first that suits the trip.
-  routerIds?: string;
+  routerIds: string;
 };
 
 export enum TravelmuxMode {
@@ -350,6 +350,7 @@ export class TravelmuxClient {
       numItineraries: `${numItineraries}`,
       mode: modes.join(','),
       preferredDistanceUnits,
+      routerIds: routerIds.join(','),
     };
 
     // travelmux plans from "now" unless we name a departure (or arrival) time. The time the user
@@ -365,9 +366,6 @@ export class TravelmuxClient {
     }
     if (arriveBy) {
       params['arriveBy'] = true.toString();
-    }
-    if (routerIds.length > 0) {
-      params.routerIds = routerIds.join(',');
     }
 
     const query = new URLSearchParams(params).toString();

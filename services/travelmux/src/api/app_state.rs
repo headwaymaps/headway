@@ -1,10 +1,8 @@
-use crate::otp::PreparedOTPRouter;
-use crate::valhalla::PreparedValhallaRouter;
+use crate::otp::OtpRouter;
+use crate::valhalla::ValhallaRouter;
 use crate::{Error, Result, TravelMode};
 use geo::Point;
 
-/// Note this is *not* `Send`: the coverage areas it holds are `Rc`-backed, so each server
-/// worker builds its own.
 #[derive(Debug, Clone)]
 pub struct AppState {
     /// In the order to try them for a trip that names none.
@@ -13,14 +11,14 @@ pub struct AppState {
 
 #[derive(Debug, Clone)]
 pub enum Router {
-    Otp(Box<PreparedOTPRouter>),
-    Valhalla(Box<PreparedValhallaRouter>),
+    Otp(OtpRouter),
+    Valhalla(ValhallaRouter),
 }
 
 impl Router {
     pub fn id(&self) -> &str {
         match self {
-            Router::Otp(otp) => otp.name(),
+            Router::Otp(otp) => otp.id(),
             Router::Valhalla(valhalla) => valhalla.id(),
         }
     }
@@ -73,25 +71,25 @@ impl AppState {
             .ok_or_else(|| Error::user(format!("no router is called {router_id}")))
     }
 
-    pub fn otp_routers(&self) -> impl Iterator<Item = &PreparedOTPRouter> {
+    pub fn otp_routers(&self) -> impl Iterator<Item = &OtpRouter> {
         self.routers.iter().filter_map(|router| match router {
-            Router::Otp(otp) => Some(otp.as_ref()),
+            Router::Otp(otp) => Some(otp),
             Router::Valhalla(_) => None,
         })
     }
 
     /// The first OTP instance covering both ends of the trip.
-    pub fn otp_router(&self, from: Point, to: Point) -> Option<&PreparedOTPRouter> {
+    pub fn otp_router(&self, from: Point, to: Point) -> Option<&OtpRouter> {
         self.otp_routers()
             .find(|otp| otp.contains(&from) && otp.contains(&to))
     }
 
     /// The first Valhalla instance covering both ends of the trip.
-    pub fn valhalla_router(&self, from: Point, to: Point) -> Result<&PreparedValhallaRouter> {
+    pub fn valhalla_router(&self, from: Point, to: Point) -> Result<&ValhallaRouter> {
         self.routers
             .iter()
             .find_map(|router| match router {
-                Router::Valhalla(valhalla) if router.covers(from, to) => Some(valhalla.as_ref()),
+                Router::Valhalla(valhalla) if router.covers(from, to) => Some(valhalla),
                 _ => None,
             })
             .ok_or_else(|| Error::user("no valhalla covers this trip"))
@@ -101,7 +99,7 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::otp::OTPRouter;
+    use crate::otp::OtpRouter;
     use crate::valhalla::ValhallaRouter;
     use geo::{coord, MultiPolygon, Polygon, Rect};
 
@@ -112,13 +110,13 @@ mod tests {
     fn valhalla(id: &str, coverage: Polygon) -> Router {
         let url = format!("http://{id}:8002").parse().unwrap();
         let valhalla = ValhallaRouter::new(id.to_string(), url, MultiPolygon::new(vec![coverage]));
-        Router::Valhalla(Box::new(valhalla.prepare()))
+        Router::Valhalla(valhalla)
     }
 
     fn otp(id: &str, coverage: Polygon) -> Router {
         let url = format!("http://{id}:8080").parse().unwrap();
-        let otp = OTPRouter::new(id.to_string(), url, coverage, None);
-        Router::Otp(Box::new(otp.prepare()))
+        let otp = OtpRouter::new(id.to_string(), url, coverage, None);
+        Router::Otp(otp)
     }
 
     fn app_state() -> AppState {

@@ -15,7 +15,7 @@ use crate::api::{AppState, Router};
 use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
-use crate::otp::PreparedOTPRouter;
+use crate::otp::OtpRouter;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
@@ -29,7 +29,7 @@ use crate::util::{
 };
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
-use crate::valhalla::PreparedValhallaRouter;
+use crate::valhalla::ValhallaRouter;
 use crate::{DistanceUnit, Error, TravelMode};
 use futures::future::join_all;
 
@@ -1086,10 +1086,10 @@ async fn plan_with(
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     if !router.covers(query.from_place, query.to_place) {
         return Err(match router {
-            Router::Otp(otp) => no_transit_coverage(query, &[otp]),
-            Router::Valhalla(valhalla) => {
-                no_coverage(format!("{} doesn't cover this trip", valhalla.id()))
+            Router::Otp(otp) if primary_mode == &TravelMode::Transit => {
+                no_transit_coverage(query, &[otp])
             }
+            _ => no_coverage(format!("{} doesn't cover this trip", router.id())),
         });
     }
     match router {
@@ -1173,7 +1173,7 @@ fn no_coverage(message: String) -> PlanResponseErr {
     PlanResponseErr::from(Error::user(message).error_type(ErrorType::NoCoverageForArea))
 }
 
-fn no_transit_coverage(query: &PlanQuery, otp_zones: &[&PreparedOTPRouter]) -> PlanResponseErr {
+fn no_transit_coverage(query: &PlanQuery, otp_zones: &[&OtpRouter]) -> PlanResponseErr {
     let uncovered_places = [
         (TripEnd::From, query.from_place),
         (TripEnd::To, query.to_place),
@@ -1182,7 +1182,7 @@ fn no_transit_coverage(query: &PlanQuery, otp_zones: &[&PreparedOTPRouter]) -> P
     .filter(|(_, place)| !otp_zones.iter().any(|otp| otp.contains(place)))
     .map(|(end, _)| end)
     .collect();
-    let mut area_names: Vec<&str> = otp_zones.iter().map(|otp| otp.name()).collect();
+    let mut area_names: Vec<&str> = otp_zones.iter().map(|otp| otp.id()).collect();
     area_names.sort();
     area_names.dedup();
     PlanResponseErr::no_transit_coverage(area_names, uncovered_places)
@@ -1190,7 +1190,7 @@ fn no_transit_coverage(query: &PlanQuery, otp_zones: &[&PreparedOTPRouter]) -> P
 
 async fn valhalla_plan(
     query: &Query<PlanQuery>,
-    valhalla: &PreparedValhallaRouter,
+    valhalla: &ValhallaRouter,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
@@ -1215,7 +1215,7 @@ async fn valhalla_plan(
 /// [`bike_plans`] does with OTP.
 async fn valhalla_bike_plans(
     query: &Query<PlanQuery>,
-    valhalla: &PreparedValhallaRouter,
+    valhalla: &ValhallaRouter,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     let plans = join_all(BikeRoutePreference::ALL.map(|preference| async move {
         let options = match preference {
@@ -1260,7 +1260,7 @@ async fn valhalla_bike_plans(
 
 async fn valhalla_route(
     query: &Query<PlanQuery>,
-    valhalla: &PreparedValhallaRouter,
+    valhalla: &ValhallaRouter,
     primary_mode: &TravelMode,
     costing: valhalla_api::Costing,
     alternates: u32,
@@ -1303,7 +1303,7 @@ async fn valhalla_route(
 
 async fn otp_plan(
     query: &web::Query<PlanQuery>,
-    otp: &PreparedOTPRouter,
+    otp: &OtpRouter,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     let (endpoint, timezone) = (otp.endpoint(), otp.timezone());
@@ -1323,13 +1323,13 @@ async fn otp_plan(
             PlanResponseErr::from(e)
         })?;
 
-    PlanResponseOk::from_otp(otp.name(), *primary_mode, plan, query.instruction_units())
+    PlanResponseOk::from_otp(otp.id(), *primary_mode, plan, query.instruction_units())
 }
 
 /// Plan a bike trip once per [`BikeRoutePreference`], and offer the results that differ.
 async fn bike_plans(
     client: &reqwest::Client,
-    otp: &PreparedOTPRouter,
+    otp: &OtpRouter,
     params: &gtfs_graphql::PlanParams<'_>,
     instruction_units: DistanceUnit,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
@@ -1350,7 +1350,7 @@ async fn bike_plans(
     let mut last_error = None;
     for (preference, plan) in plans {
         let response = plan.map_err(PlanResponseErr::from).and_then(|plan| {
-            PlanResponseOk::from_otp(otp.name(), TravelMode::Bicycle, plan, instruction_units)
+            PlanResponseOk::from_otp(otp.id(), TravelMode::Bicycle, plan, instruction_units)
         });
         match response {
             Ok(response) => planned.extend(
@@ -1795,9 +1795,8 @@ mod tests {
             let router = ValhallaRouter::new(
                 "valhalla".to_string(),
                 "http://valhalla:8002".parse().unwrap(),
-                geo::MultiPolygon::new(vec![]),
-            )
-            .prepare();
+                geo::MultiPolygon::empty(),
+            );
             let url = router
                 .plan_url(
                     query.from_place,

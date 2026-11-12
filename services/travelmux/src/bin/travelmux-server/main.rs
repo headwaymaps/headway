@@ -3,7 +3,7 @@ use url::Url;
 
 use std::env;
 use travelmux::api::{self, AppState, Router};
-use travelmux::otp::{OTPRouter, OTPRouterClient};
+use travelmux::otp::OtpRouterClient;
 use travelmux::valhalla::ValhallaRouter;
 use travelmux::{Result, ERROR_CODE_HEADER};
 
@@ -46,31 +46,15 @@ impl std::str::FromStr for RouterArg {
     }
 }
 
-/// A router fetched at startup, before each worker prepares its own.
-#[derive(Clone)]
-enum FetchedRouter {
-    Otp(OTPRouter),
-    Valhalla(ValhallaRouter),
-}
-
-impl FetchedRouter {
-    async fn fetch(arg: RouterArg) -> Result<Self> {
-        log::info!("adding router {}: {}", arg.id, arg.url);
-        Ok(match arg.kind {
-            RouterKind::Otp => {
-                FetchedRouter::Otp(OTPRouterClient::new(arg.url)?.fetch(&arg.id).await?)
-            }
+impl RouterArg {
+    async fn fetch(self) -> Result<Router> {
+        log::info!("adding router {}: {}", self.id, self.url);
+        Ok(match self.kind {
+            RouterKind::Otp => Router::Otp(OtpRouterClient::new(self.url)?.fetch(&self.id).await?),
             RouterKind::Valhalla => {
-                FetchedRouter::Valhalla(ValhallaRouter::fetch(arg.id, arg.url).await?)
+                Router::Valhalla(ValhallaRouter::fetch(self.id, self.url).await?)
             }
         })
-    }
-
-    fn prepare(&self) -> Router {
-        match self {
-            FetchedRouter::Otp(otp) => Router::Otp(Box::new(otp.prepare())),
-            FetchedRouter::Valhalla(valhalla) => Router::Valhalla(Box::new(valhalla.prepare())),
-        }
     }
 }
 
@@ -98,9 +82,10 @@ async fn main() -> Result<()> {
     // want to update our readiness probe in health.rs
     let mut routers = vec![];
     for arg in args {
-        routers.push(FetchedRouter::fetch(arg).await?);
+        routers.push(arg.fetch().await?);
     }
     log::info!("setup completed with {} routers", routers.len());
+    let app_state = web::Data::new(AppState::new(routers));
 
     let port: u16 = std::env::var("PORT")
         .map(|s| {
@@ -115,11 +100,9 @@ async fn main() -> Result<()> {
     );
 
     HttpServer::new(move || {
-        // Coverage areas can't be shared across threads, so each worker prepares its own.
-        let app_state = AppState::new(routers.iter().map(FetchedRouter::prepare).collect());
         App::new()
             .wrap(Logger::new(&access_log_format))
-            .app_data(web::Data::new(app_state))
+            .app_data(app_state.clone())
             .service(api::v6::plan::get_plan)
             .service(api::v6::directions::get_directions)
             .service(api::v7::plan::get_plan)

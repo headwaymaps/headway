@@ -1,4 +1,4 @@
 pub mod valhalla_api;
 mod valhalla_router;
 
-pub use valhalla_router::{PreparedValhallaRouter, ValhallaRouter};
+pub use valhalla_router::ValhallaRouter;

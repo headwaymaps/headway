@@ -1,6 +1,5 @@
-use geo::algorithm::Relate;
+use geo::algorithm::Contains;
 use geo::geometry::{MultiPolygon, Point, Polygon};
-use geo::PreparedGeometry;
 use serde::Deserialize;
 use url::Url;
 
@@ -10,34 +9,18 @@ use super::valhalla_api::{
 use crate::{DistanceUnit, Error, Result};
 
 /// A Valhalla instance, and the area its tiles cover.
-///
-/// Like [`crate::otp::OTPRouter`], its coverage becomes a [`PreparedGeometry`] once
-/// [`prepare`](ValhallaRouter::prepare)d for serving requests.
 #[derive(Debug, Clone)]
-pub struct ValhallaRouter<Coverage = MultiPolygon> {
+pub struct ValhallaRouter {
     id: String,
     endpoint: Url,
-    coverage: Coverage,
+    coverage: MultiPolygon,
 }
-
-pub type PreparedValhallaRouter = ValhallaRouter<PreparedGeometry<'static, MultiPolygon>>;
 
 /// The part of Valhalla's verbose `/status` we read.
 #[derive(Deserialize)]
 struct Status {
     /// The outline of the tiles loaded, absent unless the service allows verbose status.
     bbox: Option<geojson::FeatureCollection>,
-}
-
-impl<Coverage> ValhallaRouter<Coverage> {
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
-    #[cfg(test)]
-    pub(crate) fn endpoint(&self) -> &Url {
-        &self.endpoint
-    }
 }
 
 impl ValhallaRouter {
@@ -81,20 +64,17 @@ impl ValhallaRouter {
         Ok(Self::new(id, endpoint, MultiPolygon::new(polygons)))
     }
 
-    /// Index the coverage area. Like [`crate::otp::OTPRouter::prepare`], each server worker
-    /// prepares its own copy.
-    pub fn prepare(&self) -> PreparedValhallaRouter {
-        ValhallaRouter {
-            id: self.id.clone(),
-            endpoint: self.endpoint.clone(),
-            coverage: PreparedGeometry::from(self.coverage.clone()),
-        }
+    pub fn id(&self) -> &str {
+        &self.id
     }
-}
 
-impl PreparedValhallaRouter {
+    #[cfg(test)]
+    pub(crate) fn endpoint(&self) -> &Url {
+        &self.endpoint
+    }
+
     pub fn contains(&self, point: &Point) -> bool {
-        self.coverage.relate(point).is_contains()
+        self.coverage.contains(point)
     }
 
     pub fn plan_url(
@@ -160,9 +140,8 @@ mod tests {
         let router = ValhallaRouter::new(
             "valhalla".to_string(),
             "http://valhalla:8002".parse().unwrap(),
-            MultiPolygon::new(vec![]),
-        )
-        .prepare();
+            MultiPolygon::empty(),
+        );
         let url = router
             .plan_url(
                 Point::new(-122.3, 47.6),

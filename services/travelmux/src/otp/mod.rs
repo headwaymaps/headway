@@ -5,7 +5,7 @@ pub mod schema;
 use crate::TravelMode;
 
 mod otp_router;
-pub use otp_router::{OTPRouter, OTPRouterClient, PreparedOTPRouter};
+pub use otp_router::{OtpRouter, OtpRouterClient};
 
 impl From<otp_api::TransitMode> for TravelMode {
     fn from(mode: otp_api::TransitMode) -> Self {

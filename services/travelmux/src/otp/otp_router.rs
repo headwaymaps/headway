@@ -4,34 +4,35 @@ use crate::otp::schema;
 
 use chrono_tz::Tz;
 use cynic::QueryBuilder;
-use geo::algorithm::{ConvexHull, Relate};
+use geo::algorithm::{Contains, ConvexHull};
 use geo::geometry::{MultiPoint, Point, Polygon};
-use geo::PreparedGeometry;
 use url::Url;
 
 /// An OTP instance, and the area its graph covers.
-///
-/// Coverage starts out as the plain [`Polygon`] we compute from the instance's stops, and becomes
-/// a [`PreparedGeometry`] once [`prepare`](OTPRouter::prepare)d for serving requests.
 #[derive(Debug, Clone)]
-pub struct OTPRouter<Coverage = Polygon> {
+pub struct OtpRouter {
     /// What people call the area this instance covers, e.g. "San Francisco Bay Area", and what
     /// requests call the router.
-    name: String,
+    id: String,
     /// The instance's GTFS GraphQL endpoint (e.g. `http://opentripplanner:8000/otp/gtfs/v1`).
     endpoint: Url,
-    /// The area this instance covers, used to route trips to the correct zone.
-    coverage: Coverage,
+    coverage: Polygon,
     /// The graph's timezone, used to resolve naive plan date/times into absolute instants.
     timezone: Option<Tz>,
 }
 
-/// An [`OTPRouter`] whose coverage area has been indexed for repeated containment checks.
-pub type PreparedOTPRouter = OTPRouter<PreparedGeometry<'static, Polygon>>;
+impl OtpRouter {
+    pub fn new(id: String, endpoint: Url, coverage: Polygon, timezone: Option<Tz>) -> Self {
+        Self {
+            id,
+            endpoint,
+            coverage,
+            timezone,
+        }
+    }
 
-impl<Coverage> OTPRouter<Coverage> {
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     pub fn endpoint(&self) -> &Url {
@@ -41,48 +42,17 @@ impl<Coverage> OTPRouter<Coverage> {
     pub fn timezone(&self) -> Option<Tz> {
         self.timezone
     }
-}
 
-impl OTPRouter {
-    pub fn new(name: String, endpoint: Url, coverage: Polygon, timezone: Option<Tz>) -> Self {
-        Self {
-            name,
-            endpoint,
-            coverage,
-            timezone,
-        }
-    }
-
-    /// Index the coverage area, so that the containment checks we do for every trip are much
-    /// cheaper than re-walking the hull's edges each time.
-    ///
-    /// [`PreparedGeometry`] is `Rc`-backed, so it can't be shared across threads - each server
-    /// worker prepares its own copy.
-    pub fn prepare(&self) -> PreparedOTPRouter {
-        OTPRouter {
-            name: self.name.clone(),
-            endpoint: self.endpoint.clone(),
-            coverage: PreparedGeometry::from(self.coverage.clone()),
-            timezone: self.timezone,
-        }
-    }
-}
-
-impl PreparedOTPRouter {
     /// Whether this instance's coverage area contains `point`.
     ///
     /// As with [`geo::algorithm::Contains`], points on the boundary are not contained.
     pub fn contains(&self, point: &Point) -> bool {
-        self.coverage.relate(point).is_contains()
-    }
-
-    pub fn polygon(&self) -> &Polygon {
-        self.coverage.geometry()
+        self.coverage.contains(point)
     }
 }
 
 #[derive(Debug)]
-pub struct OTPRouterClient {
+pub struct OtpRouterClient {
     endpoint: Url,
     http_client: reqwest::Client,
 }
@@ -112,7 +82,7 @@ struct Agency {
     timezone: String,
 }
 
-impl OTPRouterClient {
+impl OtpRouterClient {
     /// `base_url` is the root of an OTP instance, e.g. `http://opentripplanner:8000`.
     pub fn new(base_url: Url) -> crate::Result<Self> {
         let http_client = reqwest::Client::new();
@@ -123,7 +93,7 @@ impl OTPRouterClient {
     }
 
     /// `name` is what people call the area the instance covers.
-    pub async fn fetch(&self, name: &str) -> crate::Result<OTPRouter> {
+    pub async fn fetch(&self, name: &str) -> crate::Result<OtpRouter> {
         let data: CoverageQuery =
             gtfs_graphql::post_graphql(&self.http_client, &self.endpoint, CoverageQuery::build(()))
                 .await?;
@@ -160,7 +130,7 @@ impl OTPRouterClient {
                 }
             });
 
-        Ok(OTPRouter::new(
+        Ok(OtpRouter::new(
             name.to_owned(),
             self.endpoint.clone(),
             polygon,

@@ -76,7 +76,10 @@ where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    Ok(s.split(',').map(str::to_string).collect())
+    Ok(s.split(',')
+        .filter(|item| !item.is_empty())
+        .map(str::to_string)
+        .collect())
 }
 
 /// v8 writes every point as a `[lon, lat]` pair, so this is how they come back in.

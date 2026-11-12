@@ -1080,9 +1080,8 @@ mod tests {
             let router = ValhallaRouter::new(
                 "valhalla".to_string(),
                 "http://valhalla:8002".parse().unwrap(),
-                geo::MultiPolygon::new(vec![]),
-            )
-            .prepare();
+                geo::MultiPolygon::empty(),
+            );
             let url = router
                 .plan_url(
                     query.from_place,
