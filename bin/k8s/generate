@@ -173,12 +173,12 @@ function generate_transit() {
   for i in "${!zones[@]}"; do
       otp_endpoint_name=$(generate_otp "${zones[$i]}" "${graphs[$i]}")
       zone_name=$(jq -r .name "$(zone_file_for "$CONFIG_DIR" "${zones[$i]}")")
-      otp_endpoints+=("${zone_name}=http://${otp_endpoint_name}:8000")
+      otp_endpoints+=("--otp=${zone_name}=http://${otp_endpoint_name}:8000")
   done
 
-  # travelmux tries its routers in order: one <area name>=<url> per OTP endpoint, then valhalla.
+  # travelmux tries its routers in order: each OTP zone, then valhalla.
   export OTP_ENDPOINTS_JSON
-  OTP_ENDPOINTS_JSON=$(jq -cn '$ARGS.positional' --args "${otp_endpoints[@]}" "http://valhalla:8002")
+  OTP_ENDPOINTS_JSON=$(jq -cn '$ARGS.positional' --args "${otp_endpoints[@]}" "--valhalla=valhalla=http://valhalla:8002")
   render_template "k8s/_template/travelmux-deployment.yaml.tpl"
 }
 function check_zone_tokens() {

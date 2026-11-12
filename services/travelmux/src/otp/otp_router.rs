@@ -15,7 +15,8 @@ use url::Url;
 /// a [`PreparedGeometry`] once [`prepare`](OTPRouter::prepare)d for serving requests.
 #[derive(Debug, Clone)]
 pub struct OTPRouter<Coverage = Polygon> {
-    /// What people call the area this instance covers, e.g. "San Francisco Bay Area".
+    /// What people call the area this instance covers, e.g. "San Francisco Bay Area", and what
+    /// requests call the router.
     name: String,
     /// The instance's GTFS GraphQL endpoint (e.g. `http://opentripplanner:8000/otp/gtfs/v1`).
     endpoint: Url,
@@ -122,7 +123,7 @@ impl OTPRouterClient {
     }
 
     /// `name` is what people call the area the instance covers.
-    pub async fn fetch_all(&self, name: &str) -> crate::Result<Vec<OTPRouter>> {
+    pub async fn fetch(&self, name: &str) -> crate::Result<OTPRouter> {
         let data: CoverageQuery =
             gtfs_graphql::post_graphql(&self.http_client, &self.endpoint, CoverageQuery::build(()))
                 .await?;
@@ -159,11 +160,11 @@ impl OTPRouterClient {
                 }
             });
 
-        Ok(vec![OTPRouter::new(
+        Ok(OTPRouter::new(
             name.to_owned(),
             self.endpoint.clone(),
             polygon,
             timezone,
-        )])
+        ))
     }
 }

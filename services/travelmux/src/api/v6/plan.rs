@@ -750,13 +750,15 @@ async fn valhalla_plan(
     };
 
     // route?json={%22locations%22:[{%22lat%22:47.575837,%22lon%22:-122.339414},{%22lat%22:47.651048,%22lon%22:-122.347234}],%22costing%22:%22auto%22,%22alternates%22:3,%22units%22:%22miles%22}
-    let router_url = app_state.valhalla_router()?.plan_url(
-        query.from_place,
-        query.to_place,
-        mode.into(),
-        query.num_itineraries,
-        distance_units,
-    )?;
+    let router_url = app_state
+        .valhalla_router(query.from_place, query.to_place)?
+        .plan_url(
+            query.from_place,
+            query.to_place,
+            mode.into(),
+            query.num_itineraries,
+            distance_units,
+        )?;
     let valhalla_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
         log::error!("error while fetching from valhalla service: {e}");
         PlanResponseErr::from(Error::server(e))

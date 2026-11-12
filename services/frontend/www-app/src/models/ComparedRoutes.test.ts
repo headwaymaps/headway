@@ -13,7 +13,7 @@ function trip(geometry: string, durationSeconds: number): Trip {
       durationSeconds,
       distanceMeters: 1000,
       bounds: { min: [-122.3, 47.5], max: [-122.3, 47.6] },
-      router: 'otp',
+      routerId: 'otp',
       legs: [
         {
           mode: TravelmuxMode.Walk,

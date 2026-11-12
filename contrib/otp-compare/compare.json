@@ -2,22 +2,22 @@
   "routers": [
     {
       "name": "OTP@dev-2.x 7542ea8",
-      "router": "otp-upstream",
+      "routerId": "otp-upstream",
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/7542ea8c98d5e742e0f97dcee2f687d71d92cda8"
     },
     {
       "name": "OTP@headway 3c3f0d4",
-      "router": "otp-headway",
+      "routerId": "otp-headway",
       "link": "https://github.com/headwaymaps/OpenTripPlanner/commit/3c3f0d45b8b9f8b55544a7942bfff35b7fa30fd7"
     },
     {
       "name": "Valhalla@master 064dfda",
-      "router": "valhalla-upstream",
+      "routerId": "valhalla-upstream",
       "link": "https://github.com/valhalla/valhalla/commit/064dfda3a2af3590c9159a9312a099b8a2a25101"
     },
     {
       "name": "Valhalla@headway 4aa6728",
-      "router": "valhalla-headway",
+      "routerId": "valhalla-headway",
       "link": "https://github.com/headwaymaps/valhalla/commit/4aa672844d7c1d9535f33eb4a2dd067bc7fb6d82"
     }
   ],

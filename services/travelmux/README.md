@@ -101,10 +101,10 @@ docker compose -f docker-compose-with-transit.yaml up
 start travelmux
 ```
 cd services/travelmux
-RUST_LOG=debug cargo run http://localhost:9001 'Seattle=http://localhost:9002'
+RUST_LOG=debug cargo run -- '--otp=Seattle=http://localhost:9002' --valhalla=valhalla=http://localhost:9001
 
 # or to rebuild on changes
-RUST_LOG=debug cargo watch -- cargo run http://localhost:9001 'Seattle=http://localhost:9002'
+RUST_LOG=debug cargo watch -- cargo run -- '--otp=Seattle=http://localhost:9002' --valhalla=valhalla=http://localhost:9001
 ```
 
 Edit quasar.config so that travelmux points at your local travelmux instance

@@ -838,13 +838,15 @@ async fn valhalla_plan(
 
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
-    let router_url = app_state.valhalla_router()?.plan_url(
-        query.from_place,
-        query.to_place,
-        mode.into(),
-        query.num_itineraries,
-        query.instruction_units(),
-    )?;
+    let router_url = app_state
+        .valhalla_router(query.from_place, query.to_place)?
+        .plan_url(
+            query.from_place,
+            query.to_place,
+            mode.into(),
+            query.num_itineraries,
+            query.instruction_units(),
+        )?;
     let valhalla_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
         log::error!("error while fetching from valhalla service: {e}");
         PlanResponseErr::from(Error::server(e))
@@ -1075,7 +1077,12 @@ mod tests {
     fn valhalla_instructions_use_preferred_distance_units() {
         fn requested_units(query_string: &str) -> String {
             let query = Query::<PlanQuery>::from_query(query_string).unwrap();
-            let router = ValhallaRouter::new("http://valhalla:8002".parse().unwrap());
+            let router = ValhallaRouter::new(
+                "valhalla".to_string(),
+                "http://valhalla:8002".parse().unwrap(),
+                geo::MultiPolygon::new(vec![]),
+            )
+            .prepare();
             let url = router
                 .plan_url(
                     query.from_place,

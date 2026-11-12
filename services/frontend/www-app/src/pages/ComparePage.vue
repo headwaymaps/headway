@@ -270,7 +270,7 @@ export default defineComponent({
           params.searchTime,
           params.searchDate,
           params.arriveBy,
-          { routers: routers.map(({ router }) => router).join(',') },
+          routers.map(({ routerId }) => routerId),
         );
         if (request !== this.latestRequest) return;
         this.isLoading = false;
@@ -280,10 +280,10 @@ export default defineComponent({
         }
 
         const compared = new ComparedRoutes();
-        for (const { name, router } of routers) {
+        for (const { name, routerId } of routers) {
           compared.add(
             name,
-            result.value.filter((trip) => trip.raw.router === router),
+            result.value.filter((trip) => trip.raw.routerId === routerId),
           );
         }
         this.routes = markRaw(compared.routes);

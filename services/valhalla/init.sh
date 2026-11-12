@@ -22,7 +22,8 @@ else
     exit 1
 fi
 
-valhalla_build_config --mjolnir-timezone /data/timezones.sqlite --mjolnir-admin /data/admins.sqlite > /data/valhalla.json
+# travelmux learns what the tiles cover from the verbose status.
+valhalla_build_config --mjolnir-timezone /data/timezones.sqlite --mjolnir-admin /data/admins.sqlite --service-limits-status-allow-verbose True > /data/valhalla.json
 
 chown -R valhalla /data
 

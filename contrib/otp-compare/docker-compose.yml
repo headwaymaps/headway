@@ -51,7 +51,8 @@ x-valhalla-tiles-build: &valhalla-tiles-build
       cd /data
       valhalla_build_elevation --from-bbox=-122.462,47.394,-122.005,47.831 --outdir elevation
       valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-timezone /data/timezones.sqlite \
-        --additional-data-elevation /data/elevation --mjolnir-data-processing-use-admin-db False > building.json
+        --additional-data-elevation /data/elevation --mjolnir-data-processing-use-admin-db False \
+        --service-limits-status-allow-verbose True > building.json
       valhalla_build_timezones > timezones.sqlite
       valhalla_build_tiles -c building.json /inputs/*.osm.pbf
       mv building.json valhalla.json
@@ -145,10 +146,10 @@ services:
     environment:
       RUST_LOG: info
     command:
-      - otp-headway@Seattle=http://otp-headway:8080
-      - otp-upstream@Seattle=http://otp-upstream:8080
-      - valhalla-headway@http://valhalla-headway:8002
-      - valhalla-upstream@http://valhalla-upstream:8002
+      - --otp=otp-headway=http://otp-headway:8080
+      - --otp=otp-upstream=http://otp-upstream:8080
+      - --valhalla=valhalla-headway=http://valhalla-headway:8002
+      - --valhalla=valhalla-upstream=http://valhalla-upstream:8002
     depends_on:
       otp-upstream:
         condition: service_healthy

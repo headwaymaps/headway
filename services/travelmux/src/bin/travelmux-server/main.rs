@@ -7,75 +7,100 @@ use travelmux::otp::{OTPRouter, OTPRouterClient};
 use travelmux::valhalla::ValhallaRouter;
 use travelmux::{Result, ERROR_CODE_HEADER};
 
-/// What a request calls a router without a `<slug>@` prefix.
-const DEFAULT_OTP_SLUG: &str = "otp";
-const DEFAULT_VALHALLA_SLUG: &str = "valhalla";
+#[derive(Debug, PartialEq)]
+enum RouterKind {
+    Otp,
+    Valhalla,
+}
 
-/// A router as given on the command line, before each worker prepares its own.
+/// A router as given on the command line: `--otp=<id>=<url>` or `--valhalla=<id>=<url>`.
+#[derive(Debug, PartialEq)]
+struct RouterArg {
+    kind: RouterKind,
+    id: String,
+    url: Url,
+}
+
+impl std::str::FromStr for RouterArg {
+    type Err = String;
+
+    fn from_str(arg: &str) -> std::result::Result<Self, String> {
+        let (kind, rest) = if let Some(rest) = arg.strip_prefix("--otp=") {
+            (RouterKind::Otp, rest)
+        } else if let Some(rest) = arg.strip_prefix("--valhalla=") {
+            (RouterKind::Valhalla, rest)
+        } else {
+            return Err(format!(
+                "expected --otp=<id>=<url> or --valhalla=<id>=<url>, not {arg}"
+            ));
+        };
+        let Some((id, url)) = rest.split_once('=').filter(|(id, _)| !id.is_empty()) else {
+            return Err(format!("{arg} has no <id>="));
+        };
+        let url = Url::parse(url).map_err(|e| format!("{arg} has an invalid url: {e}"))?;
+        Ok(Self {
+            kind,
+            id: id.to_string(),
+            url,
+        })
+    }
+}
+
+/// A router fetched at startup, before each worker prepares its own.
 #[derive(Clone)]
-enum RouterArg {
+enum FetchedRouter {
     Otp(OTPRouter),
-    Valhalla(Url),
+    Valhalla(ValhallaRouter),
+}
+
+impl FetchedRouter {
+    async fn fetch(arg: RouterArg) -> Result<Self> {
+        log::info!("adding router {}: {}", arg.id, arg.url);
+        Ok(match arg.kind {
+            RouterKind::Otp => {
+                FetchedRouter::Otp(OTPRouterClient::new(arg.url)?.fetch(&arg.id).await?)
+            }
+            RouterKind::Valhalla => {
+                FetchedRouter::Valhalla(ValhallaRouter::fetch(arg.id, arg.url).await?)
+            }
+        })
+    }
+
+    fn prepare(&self) -> Router {
+        match self {
+            FetchedRouter::Otp(otp) => Router::Otp(Box::new(otp.prepare())),
+            FetchedRouter::Valhalla(valhalla) => Router::Valhalla(Box::new(valhalla.prepare())),
+        }
+    }
 }
 
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init();
 
-    // eventually we might want something more sophisticated, like CRUD'ing endpoints,
-    // but for now we require a restart.
-    let endpoints: Vec<String> = env::args().skip(1).collect();
-    if endpoints.is_empty() {
-        let bin_name = env::args()
-            .next()
-            .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com' https://valhalla.example.com. A trip goes to the first that suits its mode and covers it. Prefix an endpoint with <slug>@ for requests to name it; OTP endpoints can share a slug.")
+    let args: Vec<RouterArg> = env::args()
+        .skip(1)
+        .map(|arg| arg.parse())
+        .collect::<std::result::Result<_, _>>()
+        .unwrap_or_else(|e| panic!("{e}"));
+    if args.is_empty() {
+        panic!("No routers specified. Usage: travelmux-server --otp='Seattle=https://otp.example.com' --valhalla='planet=https://valhalla.example.com'. A trip goes to the first router that plans its mode and covers it.");
+    }
+    for (i, arg) in args.iter().enumerate() {
+        assert!(
+            args[..i].iter().all(|other| other.id != arg.id),
+            "two routers are called {}",
+            arg.id
+        );
     }
 
-    let mut routers: Vec<(String, RouterArg)> = vec![];
-    for endpoint in &endpoints {
-        let (slug, endpoint) = match endpoint.split_once('@') {
-            Some((slug, rest)) if !slug.is_empty() && !slug.contains(['/', ':']) => {
-                (Some(slug), rest)
-            }
-            _ => (None, endpoint.as_str()),
-        };
-        match endpoint
-            .split_once('=')
-            .filter(|(area, _)| !area.is_empty())
-        {
-            Some((area, url)) => {
-                let slug = slug.unwrap_or(DEFAULT_OTP_SLUG);
-                assert!(
-                    routers
-                        .iter()
-                        .all(|(s, router)| s != slug || matches!(router, RouterArg::Otp(_))),
-                    "{slug} names both a valhalla and an OTP endpoint"
-                );
-                let url = Url::parse(url).unwrap_or_else(|_| panic!("Invalid OTP endpoint: {url}"));
-                // If we change this to be non-blocking, we'll
-                // want to update our readiness probe in health.rs
-                for zone in OTPRouterClient::new(url)?.fetch_all(area).await? {
-                    routers.push((slug.to_string(), RouterArg::Otp(zone)));
-                }
-            }
-            None => {
-                let slug = slug.unwrap_or(DEFAULT_VALHALLA_SLUG);
-                assert!(
-                    routers.iter().all(|(s, _)| s != slug),
-                    "two routers are called {slug}"
-                );
-                let url = Url::parse(endpoint)
-                    .unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {endpoint}"));
-                routers.push((slug.to_string(), RouterArg::Valhalla(url)));
-            }
-        }
+    // If we change this to be non-blocking, we'll
+    // want to update our readiness probe in health.rs
+    let mut routers = vec![];
+    for arg in args {
+        routers.push(FetchedRouter::fetch(arg).await?);
     }
-
-    log::info!(
-        "setup completed - routers: {:?}",
-        routers.iter().map(|(slug, _)| slug).collect::<Vec<_>>()
-    );
+    log::info!("setup completed with {} routers", routers.len());
 
     let port: u16 = std::env::var("PORT")
         .map(|s| {
@@ -90,21 +115,8 @@ async fn main() -> Result<()> {
     );
 
     HttpServer::new(move || {
-        // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
-        let app_state = AppState::new(
-            routers
-                .iter()
-                .map(|(slug, router)| {
-                    let router = match router {
-                        RouterArg::Otp(otp) => Router::Otp(Box::new(otp.prepare())),
-                        RouterArg::Valhalla(url) => {
-                            Router::Valhalla(ValhallaRouter::new(url.clone()))
-                        }
-                    };
-                    (slug.clone(), router)
-                })
-                .collect(),
-        );
+        // Coverage areas can't be shared across threads, so each worker prepares its own.
+        let app_state = AppState::new(routers.iter().map(FetchedRouter::prepare).collect());
         App::new()
             .wrap(Logger::new(&access_log_format))
             .app_data(web::Data::new(app_state))
@@ -123,4 +135,25 @@ async fn main() -> Result<()> {
     .await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn router_args_name_their_kind_and_id() {
+        let arg: RouterArg = "--otp=Puget Sound (Seattle Area)=http://otp:8000"
+            .parse()
+            .unwrap();
+        assert_eq!(arg.kind, RouterKind::Otp);
+        assert_eq!(arg.id, "Puget Sound (Seattle Area)");
+        assert_eq!(arg.url.as_str(), "http://otp:8000/");
+
+        let arg: RouterArg = "--valhalla=valhalla=http://valhalla:8002".parse().unwrap();
+        assert_eq!(arg.kind, RouterKind::Valhalla);
+
+        assert!("http://valhalla:8002".parse::<RouterArg>().is_err());
+        assert!("--otp=http://otp:8000".parse::<RouterArg>().is_err());
+    }
 }

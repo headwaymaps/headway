@@ -23,8 +23,8 @@ export interface TravelmuxItinerary {
   legs: TravelmuxLeg[];
   /// Which cycling objectives this route is the best answer to. Absent for every other mode.
   routePreferences?: BikeRoutePreference[];
-  /// The slug of the router that planned it, like `valhalla-headway`.
-  router: string;
+  /// The id of the router that planned it, like `valhalla-headway`.
+  routerId: string;
 }
 
 export type BikeRoutePreference = 'quieter' | 'faster';
@@ -246,6 +246,8 @@ export type TravelmuxPlanRequest = {
   /// Only affects the prose of an instruction ("Continue for 2 miles.") - every distance in the
   /// response is in meters.
   preferredDistanceUnits: string;
+  /// Comma separated ids of the routers to plan with, rather than the first that suits the trip.
+  routerIds?: string;
 };
 
 export enum TravelmuxMode {
@@ -339,8 +341,8 @@ export class TravelmuxClient {
     time?: string,
     date?: string,
     arriveBy?: boolean,
-    /// More query parameters, like which of its routers to plan with.
-    extraParams: Record<string, string> = {},
+    /// Plans with each of these routers, rather than the first that suits the trip.
+    routerIds: string[] = [],
   ): Promise<Result<Trip[], TripFetchError>> {
     const params: TravelmuxPlanRequest = {
       fromPlace: `${from.lng},${from.lat}`,
@@ -364,8 +366,11 @@ export class TravelmuxClient {
     if (arriveBy) {
       params['arriveBy'] = true.toString();
     }
+    if (routerIds.length > 0) {
+      params.routerIds = routerIds.join(',');
+    }
 
-    const query = new URLSearchParams({ ...params, ...extraParams }).toString();
+    const query = new URLSearchParams(params).toString();
 
     const response = await fetch(`/travelmux/v8/plan?${query}`);
 

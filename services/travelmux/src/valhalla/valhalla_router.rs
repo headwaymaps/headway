@@ -1,24 +1,100 @@
-use geo::Point;
+use geo::algorithm::Relate;
+use geo::geometry::{MultiPolygon, Point, Polygon};
+use geo::PreparedGeometry;
+use serde::Deserialize;
 use url::Url;
 
 use super::valhalla_api::{
     Costing, CostingOptions, RouteLocation, SnapToAnyRoad, ValhallaRouteQuery,
 };
-use crate::{DistanceUnit, Result};
+use crate::{DistanceUnit, Error, Result};
 
+/// A Valhalla instance, and the area its tiles cover.
+///
+/// Like [`crate::otp::OTPRouter`], its coverage becomes a [`PreparedGeometry`] once
+/// [`prepare`](ValhallaRouter::prepare)d for serving requests.
 #[derive(Debug, Clone)]
-pub struct ValhallaRouter {
+pub struct ValhallaRouter<Coverage = MultiPolygon> {
+    id: String,
     endpoint: Url,
+    coverage: Coverage,
 }
 
-impl ValhallaRouter {
-    pub fn new(endpoint: Url) -> Self {
-        Self { endpoint }
+pub type PreparedValhallaRouter = ValhallaRouter<PreparedGeometry<'static, MultiPolygon>>;
+
+/// The part of Valhalla's verbose `/status` we read.
+#[derive(Deserialize)]
+struct Status {
+    /// The outline of the tiles loaded, absent unless the service allows verbose status.
+    bbox: Option<geojson::FeatureCollection>,
+}
+
+impl<Coverage> ValhallaRouter<Coverage> {
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     #[cfg(test)]
     pub(crate) fn endpoint(&self) -> &Url {
         &self.endpoint
+    }
+}
+
+impl ValhallaRouter {
+    pub fn new(id: String, endpoint: Url, coverage: MultiPolygon) -> Self {
+        Self {
+            id,
+            endpoint,
+            coverage,
+        }
+    }
+
+    /// Learns the area `endpoint`'s tiles cover from its status.
+    pub async fn fetch(id: String, endpoint: Url) -> Result<Self> {
+        let mut status_url = endpoint.clone();
+        status_url.set_path("/status");
+        status_url
+            .query_pairs_mut()
+            .append_pair("json", r#"{"verbose":true}"#);
+        let status: Status = reqwest::get(status_url)
+            .await
+            .and_then(reqwest::Response::error_for_status)
+            .map_err(|e| Error::server(format!("fetching valhalla {endpoint} status: {e}")))?
+            .json()
+            .await
+            .map_err(|e| Error::server(format!("reading valhalla {endpoint} status: {e}")))?;
+        let Some(bbox) = status.bbox else {
+            return Err(Error::server(format!(
+                "valhalla {endpoint} doesn't report its coverage; set service_limits.status.allow_verbose"
+            )));
+        };
+        let polygons = bbox
+            .features
+            .into_iter()
+            .filter_map(|feature| feature.geometry)
+            .map(|geometry| {
+                Polygon::try_from(geometry).map_err(|e| {
+                    Error::server(format!("valhalla {endpoint} coverage isn't polygons: {e}"))
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(Self::new(id, endpoint, MultiPolygon::new(polygons)))
+    }
+
+    /// Index the coverage area. Like [`crate::otp::OTPRouter::prepare`], each server worker
+    /// prepares its own copy.
+    pub fn prepare(&self) -> PreparedValhallaRouter {
+        ValhallaRouter {
+            id: self.id.clone(),
+            endpoint: self.endpoint.clone(),
+            coverage: PreparedGeometry::from(self.coverage.clone()),
+        }
+    }
+}
+
+impl PreparedValhallaRouter {
+    pub fn contains(&self, point: &Point) -> bool {
+        self.coverage.relate(point).is_contains()
     }
 
     pub fn plan_url(
@@ -81,7 +157,12 @@ mod tests {
     }
 
     fn requested_costing(costing: Costing) -> Value {
-        let router = ValhallaRouter::new("http://valhalla:8002".parse().unwrap());
+        let router = ValhallaRouter::new(
+            "valhalla".to_string(),
+            "http://valhalla:8002".parse().unwrap(),
+            MultiPolygon::new(vec![]),
+        )
+        .prepare();
         let url = router
             .plan_url(
                 Point::new(-122.3, 47.6),

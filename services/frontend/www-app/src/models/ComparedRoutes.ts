@@ -5,7 +5,7 @@ import type { BikeRoutePreference } from 'src/services/TravelmuxClient';
 export type ComparedRouter = {
   name: string;
   /// What travelmux calls it, like `valhalla-headway`.
-  router: string;
+  routerId: string;
   /// Where to read about it, like its commit.
   link: string;
 };
