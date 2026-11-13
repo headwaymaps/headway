@@ -23,14 +23,9 @@ export interface TravelmuxItinerary {
   legs: TravelmuxLeg[];
   /// Which cycling objectives this route is the best answer to. Absent for every other mode.
   routePreferences?: BikeRoutePreference[];
-  /// Every router that planned this route, the one whose directions these are first. Absent from
-  /// travelmux servers that predate it.
-  routers?: TravelmuxRouter[];
 }
 
 export type BikeRoutePreference = 'quieter' | 'faster';
-
-export type TravelmuxRouter = 'otp' | 'valhalla';
 
 export interface TravelmuxLeg {
   mode: TravelmuxMode;
@@ -249,8 +244,6 @@ export type TravelmuxPlanRequest = {
   /// Only affects the prose of an instruction ("Continue for 2 miles.") - every distance in the
   /// response is in meters.
   preferredDistanceUnits: string;
-  /// "true" to also get Valhalla's bike and walk routes where OTP plans them.
-  compareRouters?: string;
 };
 
 export enum TravelmuxMode {
@@ -341,7 +334,6 @@ export class TravelmuxClient {
     modes: TravelmuxMode[],
     numItineraries: number,
     preferredDistanceUnits: DistanceUnits,
-    compareRouters: boolean,
     time?: string,
     date?: string,
     arriveBy?: boolean,
@@ -354,9 +346,6 @@ export class TravelmuxClient {
       mode: modes.join(','),
       preferredDistanceUnits,
     };
-    if (compareRouters) {
-      params.compareRouters = 'true';
-    }
 
     // travelmux plans from "now" unless we name a departure (or arrival) time. The time the user
     // picked is a wall clock time where they're traveling, not necessarily where they are, so we

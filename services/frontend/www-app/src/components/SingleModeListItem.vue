@@ -3,9 +3,6 @@
     <q-item-label v-if="trip.viaRoadsFormatted">
       {{ $t('via_$place', { place: trip.viaRoadsFormatted }) }}
     </q-item-label>
-    <q-item-label v-if="debugEnabled && routersFormatted" caption>
-      {{ routersFormatted }}
-    </q-item-label>
     <div v-if="trip.raw.routePreferences?.length" class="route-preferences">
       <q-badge
         v-for="preference in trip.raw.routePreferences"
@@ -45,13 +42,6 @@ import Trip from 'src/models/Trip';
 import ElevationChart from './ElevationChart.vue';
 import ElevationTotals from './ElevationTotals.vue';
 import { useLegElevation } from 'src/composables/useLegElevation';
-import { debugEnabled } from 'src/utils/debug';
-import { TravelmuxRouter } from 'src/services/TravelmuxClient';
-
-const ROUTER_NAMES: Record<TravelmuxRouter, string> = {
-  otp: 'OTP',
-  valhalla: 'Valhalla',
-};
 
 export default defineComponent({
   name: 'SingleModeListItem',
@@ -68,14 +58,6 @@ export default defineComponent({
   },
   setup(props) {
     return useLegElevation(props.trip.legs[0]!);
-  },
-  computed: {
-    debugEnabled: () => debugEnabled.value,
-    routersFormatted(): string {
-      return (this.trip.raw.routers ?? [])
-        .map((router) => ROUTER_NAMES[router])
-        .join(', ');
-    },
   },
   watch: {
     active(isActive: boolean) {

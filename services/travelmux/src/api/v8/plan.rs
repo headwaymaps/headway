@@ -1,7 +1,7 @@
 use actix_web::web::{Data, Query};
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
-use geo::algorithm::{BoundingRect, Densify, Distance, Haversine, Length};
+use geo::algorithm::{BoundingRect, Haversine, Length};
 use geo::geometry::{LineString, Point, Rect};
 use polyline::decode_polyline;
 use polyline::errors::PolylineError;
@@ -29,7 +29,7 @@ use crate::util::{
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
 use crate::{DistanceUnit, Error, TravelMode};
-use futures::future::{join, join_all};
+use futures::future::join_all;
 use url::Url;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
@@ -60,10 +60,6 @@ pub struct PlanQuery {
     /// When true, `date_time` describes the desired arrival time rather than departure time.
     #[serde(default)]
     arrive_by: bool,
-
-    /// Also offer Valhalla's bike and walk routes where OTP plans them, to compare the two.
-    #[serde(default)]
-    compare_routers: bool,
 }
 
 impl PlanQuery {
@@ -113,23 +109,7 @@ pub struct Itinerary {
     /// Which cycling objectives this route is the best answer to. Empty for every other mode.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub(crate) route_preferences: Vec<BikeRoutePreference>,
-
-    /// Every router that planned this route, the one whose directions these are first.
-    pub(crate) routers: Vec<Router>,
 }
-
-/// A routing engine travelmux plans with.
-#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum Router {
-    Otp,
-    Valhalla,
-}
-
-/// How far apart, in meters, two routes can run and still be on the same streets.
-const SAME_ROUTE_TOLERANCE_METERS: f64 = 20.0;
-/// How much of each route has to run along the other for them to be the same route.
-const SAME_ROUTE_SHARED_FRACTION: f64 = 0.9;
 
 impl Itinerary {
     pub fn combined_geometry(&self) -> LineString {
@@ -182,7 +162,6 @@ impl Itinerary {
             bounds,
             legs,
             route_preferences: vec![],
-            routers: vec![Router::Valhalla],
         }
     }
 
@@ -228,28 +207,7 @@ impl Itinerary {
             bounds: itinerary_bounds,
             legs,
             route_preferences: vec![],
-            routers: vec![Router::Otp],
         })
-    }
-
-    fn is_same_route(&self, other: &Itinerary) -> bool {
-        let (geometry, other_geometry) = (self.combined_geometry(), other.combined_geometry());
-        Self::shared_fraction(&geometry, &other_geometry) >= SAME_ROUTE_SHARED_FRACTION
-            && Self::shared_fraction(&other_geometry, &geometry) >= SAME_ROUTE_SHARED_FRACTION
-    }
-
-    /// The fraction of `geometry` within [`SAME_ROUTE_TOLERANCE_METERS`] of `other`.
-    fn shared_fraction(geometry: &LineString, other: &LineString) -> f64 {
-        let points = Haversine.densify(geometry, SAME_ROUTE_TOLERANCE_METERS / 2.0);
-        let shared = points
-            .points()
-            .filter(|&point| {
-                closest_point_on(other, point).is_some_and(|closest| {
-                    Haversine.distance(closest, point) <= SAME_ROUTE_TOLERANCE_METERS
-                })
-            })
-            .count();
-        shared as f64 / points.0.len().max(1) as f64
     }
 }
 
@@ -1127,27 +1085,6 @@ pub async fn _get_plan(
     match primary_mode {
         TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
         TravelMode::Car => valhalla_plan(&query, &app_state, primary_mode).await,
-        TravelMode::Bicycle | TravelMode::Walk if query.compare_routers => {
-            let (otp, valhalla) = join(
-                otp_plan(&query, req, &app_state, primary_mode),
-                valhalla_plan(&query, &app_state, primary_mode),
-            )
-            .await;
-            let otp = match otp {
-                Ok(otp) => otp,
-                Err(e) => {
-                    log_otp_fallback(&e, primary_mode);
-                    return valhalla;
-                }
-            };
-            match valhalla {
-                Ok(valhalla) => Ok(otp.merging(valhalla)),
-                Err(e) => {
-                    log::error!("Valhalla failed to plan {primary_mode:?} route: {e}");
-                    Ok(otp)
-                }
-            }
-        }
         TravelMode::Bicycle | TravelMode::Walk => {
             match otp_plan(&query, req, &app_state, primary_mode).await {
                 Ok(otp) => Ok(otp),
@@ -1401,27 +1338,6 @@ impl PlanResponseOk {
         }
         PlanResponseOk { itineraries: kept }
     }
-
-    /// These routes, then `other`'s, with any of `other`'s that repeat one of these credited to it.
-    fn merging(mut self, other: PlanResponseOk) -> Self {
-        for itinerary in other.itineraries {
-            match self
-                .itineraries
-                .iter_mut()
-                .find(|kept| kept.is_same_route(&itinerary))
-            {
-                Some(kept) => {
-                    for router in itinerary.routers {
-                        if !kept.routers.contains(&router) {
-                            kept.routers.push(router);
-                        }
-                    }
-                }
-                None => self.itineraries.push(itinerary),
-            }
-        }
-        self
-    }
 }
 
 #[cfg(test)]
@@ -1459,46 +1375,6 @@ mod tests {
         )
         .unwrap();
         response.itineraries.into_iter().next().unwrap()
-    }
-
-    fn walk_plans() -> (PlanResponseOk, PlanResponseOk) {
-        let otp =
-            PlanResponseOk::from_otp(TravelMode::Walk, otp_plan("walk"), DistanceUnit::Meters)
-                .unwrap();
-        let valhalla =
-            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response("pedestrian"))
-                .unwrap();
-        (otp, valhalla)
-    }
-
-    #[test]
-    fn a_route_both_routers_plan_is_offered_once_crediting_both() {
-        let (otp, _) = walk_plans();
-        let mut valhalla = otp.clone();
-        valhalla.itineraries[0].routers = vec![Router::Valhalla];
-
-        let merged = otp.merging(valhalla);
-        assert_eq!(merged.itineraries.len(), 1);
-        assert_eq!(
-            merged.itineraries[0].routers,
-            vec![Router::Otp, Router::Valhalla]
-        );
-    }
-
-    #[test]
-    fn distinct_routes_from_another_router_follow_ours() {
-        let (otp, valhalla) = walk_plans();
-        let valhalla_count = valhalla.itineraries.len();
-
-        let merged = otp.merging(valhalla);
-        let routers: Vec<_> = merged
-            .itineraries
-            .iter()
-            .map(|itinerary| itinerary.routers.clone())
-            .collect();
-        let mut expected = vec![vec![Router::Otp]];
-        expected.extend(vec![vec![Router::Valhalla]; valhalla_count]);
-        assert_eq!(routers, expected);
     }
 
     /// The same route, planned to take `seconds` less.

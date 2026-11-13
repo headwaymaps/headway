@@ -268,7 +268,6 @@ export default defineComponent({
               this.travelmuxModes(),
               5,
               Prefs.stored.distanceUnits(from, to),
-              false,
               params.searchTime,
               params.searchDate,
               params.arriveBy,
