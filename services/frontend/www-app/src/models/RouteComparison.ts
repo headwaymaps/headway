@@ -2,6 +2,8 @@ import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import type { LineLayerSpecification, Map as MaplibreMap } from 'maplibre-gl';
 import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import TripLayerId from './TripLayerId';
+import polyline from '@mapbox/polyline';
+import type { TravelmuxComparison } from 'src/services/TravelmuxClient';
 
 type Position = GeoJSON.Position;
 
@@ -26,6 +28,16 @@ const COLORS = [
   '#56B4E9',
 ];
 
+/// Pixels between routes drawn side by side along a stretch they share.
+const SIDE_BY_SIDE_SPACING = 5;
+
+/// A stretch this route shares with some of the others.
+export type SharedStretch = {
+  coordinates: Position[];
+  /// How far, in pixels, this route sits to the side of the stretch, beside the others on it.
+  offset: number;
+};
+
 /// One route's stretches that aren't on every route, and where to label them.
 export type RouteDifference = {
   letter: string;
@@ -33,39 +45,38 @@ export type RouteDifference = {
   /// On this route alone.
   solo: GeoJSON.MultiLineString;
   /// On some of the other routes too.
-  partlyShared: GeoJSON.MultiLineString;
+  partlyShared: SharedStretch[];
   /// The middle of each of those stretches.
   labels: LngLat[];
   /// Where this route's labels sit from their anchors, in pixels, clear of other routes' labels.
   labelOffset: [number, number];
 };
 
-/// Where a set of routes, each a line of coordinates, agree and diverge.
+/// Where the routes several routers planned for one trip agree and diverge.
 export default class RouteComparison {
   /// On every route.
   readonly common: GeoJSON.MultiLineString;
   readonly routes: RouteDifference[];
 
-  constructor(lines: Position[][]) {
-    const counts = new Map<string, number>();
-    for (const line of lines) {
-      for (const key of new Set(edgeKeys(line))) {
-        counts.set(key, (counts.get(key) ?? 0) + 1);
-      }
-    }
-    const everyRoute = (key: string) => counts.get(key) === lines.length;
-    const alone = (key: string) => !everyRoute(key) && counts.get(key) === 1;
-
-    this.common = multiLine(runs(lines[0] ?? [], everyRoute));
-    this.routes = lines.map((line, i) => {
-      const solo = runs(line, alone);
-      const partlyShared = runs(line, (k) => !everyRoute(k) && !alone(k));
+  constructor(comparison: TravelmuxComparison) {
+    this.common = decodeLines(comparison.common);
+    this.routes = comparison.routes.map((route, i) => {
+      const solo = decodeLines(route.solo);
+      const partlyShared = route.partlyShared.map((stretch) => ({
+        coordinates: decodeLine(stretch.geometry),
+        offset:
+          (stretch.routes.indexOf(i) - (stretch.routes.length - 1) / 2) *
+          SIDE_BY_SIDE_SPACING,
+      }));
       return {
         letter: String.fromCharCode('A'.charCodeAt(0) + i),
         color: COLORS[i % COLORS.length]!,
-        solo: multiLine(solo),
-        partlyShared: multiLine(partlyShared),
-        labels: [...solo, ...partlyShared].map(midpoint),
+        solo,
+        partlyShared,
+        labels: [
+          ...solo.coordinates,
+          ...partlyShared.map((stretch) => stretch.coordinates),
+        ].map(midpoint),
         labelOffset: LABEL_OFFSETS[i % LABEL_OFFSETS.length]!,
       };
     });
@@ -92,11 +103,12 @@ export default class RouteComparison {
         'line-color': route.color,
         'line-width': width,
       });
-      push(TripLayerId.comparedPartlyShared(i), route.partlyShared, {
-        'line-color': route.color,
-        'line-width': width,
-        'line-offset': this.lineOffset(i),
-      });
+      pushOffsetLines(
+        baseMap,
+        TripLayerId.comparedPartlyShared(i),
+        route.partlyShared,
+        { 'line-color': route.color, 'line-width': width },
+      );
       route.labels.forEach((label, j) => {
         const element = document.createElement('div');
         element.className = 'route-letter route-letter-marker';
@@ -115,32 +127,26 @@ export default class RouteComparison {
     pushChevrons(
       baseMap,
       TripLayerId.comparedChevrons(),
-      multiLine([
+      [
         ...this.common.coordinates,
         ...routes.flatMap((route) => route.solo.coordinates),
-      ]),
-      0,
+      ].map((coordinates) => ({ coordinates, offset: 0 })),
     );
     routes.forEach((route, i) =>
       pushChevrons(
         baseMap,
         TripLayerId.comparedPartlySharedChevrons(i),
         route.partlyShared,
-        this.lineOffset(i),
       ),
     );
   }
 
-  /// How far, in pixels, route `i` sits to the side of a stretch it shares with others.
-  private lineOffset(i: number): number {
-    return (i - (this.routes.length - 1) / 2) * 5;
-  }
-
   /// Around everything that isn't common to all the routes, if anything is.
   get differenceBounds(): LngLatBounds | undefined {
-    const positions = this.routes.flatMap((route) =>
-      [route.solo, route.partlyShared].flatMap((m) => m.coordinates.flat()),
-    );
+    const positions = this.routes.flatMap((route) => [
+      ...route.solo.coordinates.flat(),
+      ...route.partlyShared.flatMap((stretch) => stretch.coordinates),
+    ]);
     if (positions.length === 0) return undefined;
     const bounds = new LngLatBounds();
     for (const [lng, lat] of positions) bounds.extend([lng!, lat!]);
@@ -148,20 +154,49 @@ export default class RouteComparison {
   }
 }
 
-/// Fine chevrons along `geometry`, pointing the way it runs, `offset` pixels to its right.
-function pushChevrons(
+/// Each stretch as a line, its offset pixels to the right of where it runs.
+function offsetFeatures(stretches: SharedStretch[]): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: stretches.map(({ coordinates, offset }) => ({
+      type: 'Feature',
+      properties: { offset, iconOffset: [0, offset] },
+      geometry: { type: 'LineString', coordinates },
+    })),
+  };
+}
+
+function pushOffsetLines(
   baseMap: BaseMapInterface,
   id: TripLayerId,
-  geometry: GeoJSON.MultiLineString,
-  offset: number,
+  stretches: SharedStretch[],
+  paint: LineLayerSpecification['paint'],
 ) {
   baseMap.removeLayer(id);
   baseMap.pushLayer(
     id,
+    { type: 'geojson', data: offsetFeatures(stretches) },
     {
-      type: 'geojson',
-      data: { type: 'Feature', properties: {}, geometry },
+      id: id.toString(),
+      type: 'line',
+      source: id.toString(),
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { ...paint, 'line-offset': ['get', 'offset'] },
     },
+    'symbol',
+  );
+}
+
+/// Fine chevrons along each stretch, pointing the way it runs, beside it by its offset.
+function pushChevrons(
+  baseMap: BaseMapInterface,
+  id: TripLayerId,
+  stretches: SharedStretch[],
+) {
+  baseMap.removeLayer(id);
+  baseMap.pushLayer(
+    id,
+    { type: 'geojson', data: offsetFeatures(stretches) },
     {
       id: id.toString(),
       type: 'symbol',
@@ -173,7 +208,7 @@ function pushChevrons(
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
         'icon-rotation-alignment': 'map',
-        'icon-offset': [0, offset],
+        'icon-offset': ['get', 'iconOffset'],
       },
       paint: { 'icon-opacity': 0.8 },
     },
@@ -199,36 +234,12 @@ function chevronImage(): ImageData {
   return context.getImageData(0, 0, size, size);
 }
 
-function edgeKey(a: Position, b: Position): string {
-  return [a, b]
-    .map(([lng, lat]) => `${lng!.toFixed(6)},${lat!.toFixed(6)}`)
-    .sort()
-    .join('|');
+function decodeLine(line: string): Position[] {
+  return polyline.toGeoJSON(line, 6).coordinates;
 }
 
-function edgeKeys(line: Position[]): string[] {
-  return line.slice(1).map((position, i) => edgeKey(line[i]!, position));
-}
-
-/// The contiguous stretches of `line` whose edges all satisfy `include`.
-function runs(
-  line: Position[],
-  include: (key: string) => boolean,
-): Position[][] {
-  const result: Position[][] = [];
-  let run: Position[] | undefined;
-  edgeKeys(line).forEach((key, i) => {
-    if (!include(key)) {
-      run = undefined;
-      return;
-    }
-    if (!run) {
-      run = [line[i]!];
-      result.push(run);
-    }
-    run.push(line[i + 1]!);
-  });
-  return result;
+function decodeLines(polylines: string[]): GeoJSON.MultiLineString {
+  return multiLine(polylines.map(decodeLine));
 }
 
 function multiLine(coordinates: Position[][]): GeoJSON.MultiLineString {

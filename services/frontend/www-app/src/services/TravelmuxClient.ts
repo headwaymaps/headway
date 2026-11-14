@@ -9,6 +9,32 @@ import { ValhallaErrorCode } from './ValhallaAPI';
 
 export interface TravelmuxPlanResponse {
   itineraries: TravelmuxItinerary[];
+  /// How the routes compare, when the request names routers to compare.
+  comparison?: TravelmuxComparison;
+}
+
+/// Where the routes several routers planned for one trip agree and diverge. Each geometry is an
+/// encoded polyline, 1e-6 scale.
+export interface TravelmuxComparison {
+  /// On every route.
+  common: string[];
+  routes: TravelmuxComparedRoute[];
+}
+
+export interface TravelmuxComparedRoute {
+  /// The indices of the itineraries that took this route, each from a different router.
+  itineraries: number[];
+  /// On this route alone.
+  solo: string[];
+  /// On some of the other routes too.
+  partlyShared: TravelmuxSharedStretch[];
+}
+
+/// A stretch of road some of the routes share.
+export interface TravelmuxSharedStretch {
+  geometry: string;
+  /// The indices of the routes on it, in order.
+  routes: number[];
 }
 
 export interface TravelmuxItinerary {
@@ -246,6 +272,8 @@ export type TravelmuxPlanRequest = {
   /// Only affects the prose of an instruction ("Continue for 2 miles.") - every distance in the
   /// response is in meters.
   preferredDistanceUnits: string;
+  /// Comma separated ids of the routers to plan with, rather than the first that suits the trip.
+  routerIds?: string;
 };
 
 export enum TravelmuxMode {
@@ -339,8 +367,72 @@ export class TravelmuxClient {
     time?: string,
     date?: string,
     arriveBy?: boolean,
-    travelmuxPath = '/travelmux',
   ): Promise<Result<Trip[], TripFetchError>> {
+    const params = this.planParams(
+      from,
+      to,
+      modes,
+      numItineraries,
+      preferredDistanceUnits,
+      time,
+      date,
+      arriveBy,
+    );
+    const result = await this.fetchPlanResponse(params);
+    if (!result.ok) return result;
+    return Ok(this.trips(result.value, preferredDistanceUnits));
+  }
+
+  /// Plans with each of `routerIds`, comparing their routes.
+  public static async fetchComparedPlans(
+    from: LngLat,
+    to: LngLat,
+    modes: TravelmuxMode[],
+    numItineraries: number,
+    preferredDistanceUnits: DistanceUnits,
+    routerIds: string[],
+    time?: string,
+    date?: string,
+    arriveBy?: boolean,
+  ): Promise<
+    Result<
+      { trips: Trip[]; comparison: TravelmuxComparison },
+      TripFetchError | Error
+    >
+  > {
+    const params = this.planParams(
+      from,
+      to,
+      modes,
+      numItineraries,
+      preferredDistanceUnits,
+      time,
+      date,
+      arriveBy,
+    );
+    params.routerIds = routerIds.join(',');
+    const result = await this.fetchPlanResponse(params);
+    if (!result.ok) return result;
+    const { comparison } = result.value;
+    if (!comparison) {
+      return Err(new Error('travelmux sent no comparison of the routers'));
+    }
+    return Ok({
+      trips: this.trips(result.value, preferredDistanceUnits),
+      comparison,
+    });
+  }
+
+  private static planParams(
+    from: LngLat,
+    to: LngLat,
+    modes: TravelmuxMode[],
+    numItineraries: number,
+    preferredDistanceUnits: DistanceUnits,
+    time?: string,
+    date?: string,
+    arriveBy?: boolean,
+  ): TravelmuxPlanRequest {
     const params: TravelmuxPlanRequest = {
       fromPlace: `${from.lng},${from.lat}`,
       toPlace: `${to.lng},${to.lat}`,
@@ -363,25 +455,31 @@ export class TravelmuxClient {
     if (arriveBy) {
       params['arriveBy'] = true.toString();
     }
+    return params;
+  }
 
+  private static async fetchPlanResponse(
+    params: TravelmuxPlanRequest,
+  ): Promise<Result<TravelmuxPlanResponse, TripFetchError>> {
     const query = new URLSearchParams(params).toString();
-
-    const response = await fetch(`${travelmuxPath}/v8/plan?${query}`);
-
+    const response = await fetch(`/travelmux/v8/plan?${query}`);
     if (response.ok) {
-      const plan: TravelmuxPlanResponse = await response.json();
-      const trips = plan.itineraries.map(
-        (itinerary: TravelmuxItinerary) =>
-          new Trip(itinerary, preferredDistanceUnits),
-      );
-      return Ok(trips);
-    } else {
-      const errorBody = await response.json();
-      const error = errorBody['error'];
-      console.assert(error);
-      const routeError = TripFetchError.fromTravelmux(error);
-      return Err(routeError);
+      return Ok(await response.json());
     }
+    const errorBody = await response.json();
+    const error = errorBody['error'];
+    console.assert(error);
+    return Err(TripFetchError.fromTravelmux(error));
+  }
+
+  private static trips(
+    plan: TravelmuxPlanResponse,
+    preferredDistanceUnits: DistanceUnits,
+  ): Trip[] {
+    return plan.itineraries.map(
+      (itinerary: TravelmuxItinerary) =>
+        new Trip(itinerary, preferredDistanceUnits),
+    );
   }
 }
 

@@ -9,6 +9,7 @@ use reqwest::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use super::comparison::Comparison;
 use super::error::{PlanResponseErr, PlanResponseOk, TripEnd};
 use super::TravelModes;
 use crate::api::{AppState, Router};
@@ -19,9 +20,9 @@ use crate::otp::OtpRouter;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
-    deserialize_point_from_lon_lat, serialize_line_string_as_polyline6,
-    serialize_optional_line_string_as_polyline6, serialize_point_as_lon_lat_pair,
-    serialize_rect_to_lng_lat,
+    deserialize_comma_separated, deserialize_point_from_lon_lat,
+    serialize_line_string_as_polyline6, serialize_optional_line_string_as_polyline6,
+    serialize_point_as_lon_lat_pair, serialize_rect_to_lng_lat,
 };
 use crate::util::{
     bearing_at_end, bearing_at_start, closest_point_on, convert_to_meters, extend_bounds,
@@ -61,6 +62,11 @@ pub struct PlanQuery {
     /// When true, `date_time` describes the desired arrival time rather than departure time.
     #[serde(default)]
     arrive_by: bool,
+
+    /// The ids of the routers to plan with, like `otp-headway,valhalla-master`, rather than the
+    /// first that suits the trip.
+    #[serde(default, deserialize_with = "deserialize_comma_separated")]
+    router_ids: Vec<String>,
 }
 
 impl PlanQuery {
@@ -1105,6 +1111,10 @@ pub async fn _get_plan(
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
+    if !query.router_ids.is_empty() {
+        return plan_with_each(&query, &app_state, primary_mode).await;
+    }
+
     // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
     // the "primary" mode appears first.
     let mut last_error = None;
@@ -1123,6 +1133,44 @@ pub async fn _get_plan(
         }
         _ => no_coverage("no router covers this trip".to_string()),
     }))
+}
+
+/// Plans with every router the query names at once, offering all of their itineraries.
+async fn plan_with_each(
+    query: &Query<PlanQuery>,
+    app_state: &AppState,
+    primary_mode: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let routers: Vec<&Router> = query
+        .router_ids
+        .iter()
+        .map(|router_id| app_state.router(router_id))
+        .collect::<crate::Result<_>>()?;
+    let plans = join_all(
+        routers
+            .iter()
+            .map(|router| plan_with(query, router, primary_mode)),
+    )
+    .await;
+
+    let mut itineraries = vec![];
+    let mut first_error = None;
+    for (router, plan) in routers.iter().zip(plans) {
+        match plan {
+            Ok(plan) => itineraries.extend(plan.itineraries),
+            Err(e) => {
+                log::error!("{} failed to plan {primary_mode:?} route: {e}", router.id());
+                first_error.get_or_insert(e);
+            }
+        }
+    }
+    match first_error {
+        Some(e) if itineraries.is_empty() => Err(e),
+        _ => Ok(PlanResponseOk {
+            comparison: Some(Comparison::new(&itineraries)),
+            itineraries,
+        }),
+    }
 }
 
 fn no_coverage(message: String) -> PlanResponseErr {
@@ -1351,7 +1399,10 @@ impl PlanResponseOk {
                 }
             }
         }
-        PlanResponseOk { itineraries: kept }
+        PlanResponseOk {
+            itineraries: kept,
+            comparison: None,
+        }
     }
 }
 

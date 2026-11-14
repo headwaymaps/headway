@@ -1,5 +1,14 @@
 import { expect, test } from 'vitest';
+import polyline from '@mapbox/polyline';
 import RouteComparison from './RouteComparison';
+
+/// Encodes `[lng, lat]` positions as travelmux does.
+function encode(...positions: number[][]): string {
+  return polyline.encode(
+    positions.map(([lng, lat]) => [lat!, lng!]),
+    6,
+  );
+}
 
 const start = [0, 0];
 const a = [1, 0];
@@ -9,15 +18,21 @@ const b = [2, 0];
 const end = [3, 0];
 
 test('a shared route with one detour', () => {
-  const comparison = new RouteComparison([
-    [start, a, b, end],
-    [start, a, detourX, detourY, b, end],
-  ]);
+  const comparison = new RouteComparison({
+    common: [encode(start, a), encode(b, end)],
+    routes: [
+      { itineraries: [0], solo: [encode(a, b)], partlyShared: [] },
+      {
+        itineraries: [1],
+        solo: [encode(a, detourX, detourY, b)],
+        partlyShared: [],
+      },
+    ],
+  });
   expect(comparison.common.coordinates).toEqual([
     [start, a],
     [b, end],
   ]);
-  expect(comparison.routes[0]!.solo.coordinates).toEqual([[a, b]]);
   expect(comparison.routes[1]!.solo.coordinates).toEqual([
     [a, detourX, detourY, b],
   ]);
@@ -28,37 +43,22 @@ test('a shared route with one detour', () => {
   ]);
 });
 
-test('a stretch on some but not all routes', () => {
-  const comparison = new RouteComparison([
-    [start, a, b, end],
-    [start, a, b, detourY, end],
-    [start, detourX, detourY, end],
-  ]);
-  expect(comparison.common.coordinates).toEqual([]);
-  expect(comparison.routes[0]!.partlyShared.coordinates).toEqual([
-    [start, a, b],
-  ]);
-  expect(comparison.routes[1]!.solo.coordinates).toEqual([[b, detourY]]);
-  expect(comparison.routes[2]!.partlyShared.coordinates).toEqual([
-    [detourY, end],
-  ]);
-});
-
-test('edges match in either direction', () => {
-  const comparison = new RouteComparison([
-    [start, a],
-    [a, start],
-  ]);
-  expect(comparison.routes[0]!.solo.coordinates).toEqual([]);
-  expect(comparison.differenceBounds).toBeUndefined();
-});
-
 test('every diverging stretch is labeled at its middle', () => {
-  const comparison = new RouteComparison([
-    [start, a, b, end],
-    [start, detourX, a, b, detourY, end],
-  ]);
-  expect(comparison.routes[1]!.labels.length).toBe(2);
+  const comparison = new RouteComparison({
+    common: [],
+    routes: [
+      {
+        itineraries: [0],
+        solo: [encode(start, a)],
+        partlyShared: [{ geometry: encode(b, end), routes: [0, 1] }],
+      },
+      {
+        itineraries: [1],
+        solo: [],
+        partlyShared: [{ geometry: encode(b, end), routes: [0, 1] }],
+      },
+    ],
+  });
   expect(comparison.routes[0]!.labels.map((l) => l.toArray())).toEqual([
     [0.5, 0],
     [2.5, 0],
@@ -69,9 +69,27 @@ test('every diverging stretch is labeled at its middle', () => {
 });
 
 test('a lone route has no differences', () => {
-  const comparison = new RouteComparison([[start, a, end]]);
-  expect(comparison.common.coordinates).toEqual([[start, a, end]]);
-  expect(comparison.routes[0]!.solo.coordinates).toEqual([]);
+  const comparison = new RouteComparison({
+    common: [encode(start, a, end)],
+    routes: [{ itineraries: [0], solo: [], partlyShared: [] }],
+  });
   expect(comparison.routes[0]!.labels).toEqual([]);
   expect(comparison.differenceBounds).toBeUndefined();
+});
+
+test('routes sharing a stretch sit side by side, whatever their letters', () => {
+  const shared = { geometry: encode(a, b), routes: [0, 3] };
+  const alone = { itineraries: [1], solo: [encode(a, b)], partlyShared: [] };
+  const comparison = new RouteComparison({
+    common: [],
+    routes: [
+      { itineraries: [0], solo: [], partlyShared: [shared] },
+      alone,
+      { ...alone, itineraries: [2] },
+      { itineraries: [3], solo: [], partlyShared: [shared] },
+    ],
+  });
+  const offset = (route: number) =>
+    comparison.routes[route]!.partlyShared[0]!.offset;
+  expect([offset(0), offset(3)]).toEqual([-2.5, 2.5]);
 });

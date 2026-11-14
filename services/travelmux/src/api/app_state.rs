@@ -64,6 +64,13 @@ impl AppState {
             .filter(move |router| router.suits(mode, from, to))
     }
 
+    pub fn router(&self, router_id: &str) -> Result<&Router> {
+        self.routers
+            .iter()
+            .find(|router| router.id() == router_id)
+            .ok_or_else(|| Error::user(format!("no router is called {router_id}")))
+    }
+
     pub fn otp_routers(&self) -> impl Iterator<Item = &OtpRouter> {
         self.routers.iter().filter_map(|router| match router {
             Router::Otp(otp) => Some(otp),
@@ -123,6 +130,17 @@ mod tests {
 
     fn ids<'a>(routers: impl Iterator<Item = &'a Router>) -> Vec<&'a str> {
         routers.map(Router::id).collect()
+    }
+
+    #[test]
+    fn requests_name_any_router_by_id() {
+        let app_state = app_state();
+        assert!(matches!(app_state.router("Portland"), Ok(Router::Otp(_))));
+        let Ok(Router::Valhalla(router)) = app_state.router("valhalla-master") else {
+            panic!("expected valhalla-master");
+        };
+        assert_eq!(router.endpoint().host_str(), Some("valhalla-master"));
+        assert!(app_state.router("osrm").is_err());
     }
 
     #[test]

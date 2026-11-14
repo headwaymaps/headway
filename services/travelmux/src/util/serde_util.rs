@@ -71,6 +71,17 @@ where
     Ok(Point::new(lon, lat))
 }
 
+pub fn deserialize_comma_separated<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    Ok(s.split(',')
+        .filter(|item| !item.is_empty())
+        .map(str::to_string)
+        .collect())
+}
+
 /// v8 writes every point as a `[lon, lat]` pair, so this is how they come back in.
 pub fn deserialize_point_from_lon_lat_pair<'de, D>(deserializer: D) -> Result<Point, D::Error>
 where
@@ -119,6 +130,21 @@ where
     let string =
         polyline::encode_coordinates(line_string.0.iter().copied(), 6).map_err(S::Error::custom)?;
     serializer.serialize_str(&string)
+}
+
+pub fn serialize_line_strings_as_polyline6<S>(
+    line_strings: &[geo::LineString<f64>],
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let strings = line_strings
+        .iter()
+        .map(|line_string| polyline::encode_coordinates(line_string.0.iter().copied(), 6))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(S::Error::custom)?;
+    serializer.collect_seq(strings)
 }
 
 /// Same, for a geometry we might not have.

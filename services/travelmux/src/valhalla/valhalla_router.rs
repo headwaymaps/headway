@@ -68,6 +68,11 @@ impl ValhallaRouter {
         &self.id
     }
 
+    #[cfg(test)]
+    pub(crate) fn endpoint(&self) -> &Url {
+        &self.endpoint
+    }
+
     pub fn contains(&self, point: &Point) -> bool {
         self.coverage.contains(point)
     }

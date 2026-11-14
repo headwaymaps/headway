@@ -1,0 +1,175 @@
+# Compares routes across OTP and Valhalla builds. See README.md.
+# OTP's dev-2.x.
+x-otp-upstream-build: &otp-upstream-build
+  context: .
+  dockerfile: otp.Dockerfile
+  args:
+    OTP_COMMIT: 7542ea8c98d5e742e0f97dcee2f687d71d92cda8
+# Our fork's headway branch.
+x-otp-headway-build: &otp-headway-build
+  context: .
+  dockerfile: otp.Dockerfile
+  args:
+    OTP_COMMIT: 3c3f0d45b8b9f8b55544a7942bfff35b7fa30fd7
+
+# Valhalla's master, at the commit our fork branches from.
+x-valhalla-upstream-build: &valhalla-upstream-build
+  context: https://github.com/valhalla/valhalla.git#064dfda3a2af3590c9159a9312a099b8a2a25101
+  dockerfile: docker/Dockerfile
+# Our fork's headway branch.
+x-valhalla-headway-build: &valhalla-headway-build
+  context: https://github.com/headwaymaps/valhalla.git#632a4e51563ccd7a6a6b92481ec51c13e3fbaed8
+  dockerfile: docker/Dockerfile
+
+x-otp-graph-build: &otp-graph-build
+  entrypoint:
+    - bash
+    - -c
+    - |
+      [ -f /graph/graph.obj ] && exit 0
+      cp /inputs/* /graph/ && java -Xmx8G -jar /otp.jar --build --save /graph
+
+# Matches k8s/_template/opentripplanner-ZONE-deployment.yaml.tpl.
+x-otp-serve: &otp-serve
+  restart: unless-stopped
+  entrypoint: [java, -Xmx7G, -jar, /otp.jar, --load, /graph]
+  mem_limit: 7.25g
+  mem_reservation: 500m
+  healthcheck:
+    test: [CMD, bash, -c, "</dev/tcp/localhost/8080"]
+    interval: 5s
+    retries: 60
+
+# Seattle's tiles. Without an admin db, each road drives on its way's side, the right unless tagged.
+x-valhalla-tiles-build: &valhalla-tiles-build
+  entrypoint:
+    - bash
+    - -c
+    - |
+      [ -f /data/valhalla.json ] && exit 0
+      set -e
+      cd /data
+      valhalla_build_elevation --from-bbox=-122.462,47.394,-122.005,47.831 --outdir elevation
+      valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-timezone /data/timezones.sqlite \
+        --additional-data-elevation /data/elevation --mjolnir-data-processing-use-admin-db False \
+        --service-limits-status-allow-verbose True > building.json
+      valhalla_build_timezones > timezones.sqlite
+      valhalla_build_tiles -c building.json /inputs/*.osm.pbf
+      mv building.json valhalla.json
+
+x-valhalla-serve: &valhalla-serve
+  restart: unless-stopped
+  entrypoint: [valhalla_service, /data/valhalla.json]
+  healthcheck:
+    test: [CMD, bash, -c, "</dev/tcp/localhost/8002"]
+    interval: 5s
+    retries: 60
+
+services:
+  otp-upstream-graph:
+    <<: *otp-graph-build
+    build: *otp-upstream-build
+    image: compare-routes-otp:upstream
+    volumes:
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - otp-upstream-graph:/graph
+  otp-headway-graph:
+    <<: *otp-graph-build
+    build: *otp-headway-build
+    image: compare-routes-otp:headway
+    depends_on:
+      otp-upstream-graph:
+        condition: service_completed_successfully
+    volumes:
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - otp-headway-graph:/graph
+  otp-upstream:
+    <<: *otp-serve
+    build: *otp-upstream-build
+    image: compare-routes-otp:upstream
+    depends_on:
+      otp-upstream-graph:
+        condition: service_completed_successfully
+    volumes:
+      - otp-upstream-graph:/graph:ro
+  otp-headway:
+    <<: *otp-serve
+    build: *otp-headway-build
+    image: compare-routes-otp:headway
+    depends_on:
+      otp-headway-graph:
+        condition: service_completed_successfully
+    volumes:
+      - otp-headway-graph:/graph:ro
+
+  valhalla-upstream-tiles:
+    <<: *valhalla-tiles-build
+    build: *valhalla-upstream-build
+    image: compare-routes-valhalla:upstream
+    volumes:
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - valhalla-upstream-tiles:/data
+  valhalla-headway-tiles:
+    <<: *valhalla-tiles-build
+    build: *valhalla-headway-build
+    image: compare-routes-valhalla:headway
+    volumes:
+      - ${ROUTE_COMPARE_INPUTS:-./inputs}:/inputs:ro
+      - valhalla-headway-tiles:/data
+  valhalla-upstream:
+    <<: *valhalla-serve
+    build: *valhalla-upstream-build
+    image: compare-routes-valhalla:upstream
+    depends_on:
+      valhalla-upstream-tiles:
+        condition: service_completed_successfully
+    volumes:
+      - valhalla-upstream-tiles:/data:ro
+  valhalla-headway:
+    <<: *valhalla-serve
+    build: *valhalla-headway-build
+    image: compare-routes-valhalla:headway
+    depends_on:
+      valhalla-headway-tiles:
+        condition: service_completed_successfully
+    volumes:
+      - valhalla-headway-tiles:/data:ro
+
+  travelmux:
+    build:
+      context: ../..
+      dockerfile: contrib/compare-routes/travelmux.Dockerfile
+    image: compare-routes-travelmux
+    restart: unless-stopped
+    environment:
+      RUST_LOG: info
+    command:
+      - --otp=otp-headway=http://otp-headway:8080
+      - --otp=otp-upstream=http://otp-upstream:8080
+      - --valhalla=valhalla-headway=http://valhalla-headway:8002
+      - --valhalla=valhalla-upstream=http://valhalla-upstream:8002
+    depends_on:
+      otp-upstream:
+        condition: service_healthy
+      otp-headway:
+        condition: service_healthy
+      valhalla-upstream:
+        condition: service_healthy
+      valhalla-headway:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: contrib/compare-routes/frontend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - travelmux
+    ports:
+      - 127.0.0.1:${ROUTE_COMPARE_PORT:-8080}:8080
+
+volumes:
+  otp-upstream-graph:
+  otp-headway-graph:
+  valhalla-upstream-tiles:
+  valhalla-headway-tiles:
