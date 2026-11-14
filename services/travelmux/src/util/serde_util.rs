@@ -132,6 +132,21 @@ where
     serializer.serialize_str(&string)
 }
 
+pub fn serialize_line_strings_as_polyline6<S>(
+    line_strings: &[geo::LineString<f64>],
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let strings = line_strings
+        .iter()
+        .map(|line_string| polyline::encode_coordinates(line_string.0.iter().copied(), 6))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(S::Error::custom)?;
+    serializer.collect_seq(strings)
+}
+
 /// Same, for a geometry we might not have.
 pub fn serialize_optional_line_string_as_polyline6<S>(
     line_string: &Option<geo::LineString<f64>>,

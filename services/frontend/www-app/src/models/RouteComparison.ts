@@ -2,6 +2,8 @@ import { LngLat, LngLatBounds, Marker } from 'maplibre-gl';
 import type { LineLayerSpecification, Map as MaplibreMap } from 'maplibre-gl';
 import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import TripLayerId from './TripLayerId';
+import polyline from '@mapbox/polyline';
+import type { TravelmuxComparison } from 'src/services/TravelmuxClient';
 
 type Position = GeoJSON.Position;
 
@@ -40,32 +42,25 @@ export type RouteDifference = {
   labelOffset: [number, number];
 };
 
-/// Where a set of routes, each a line of coordinates, agree and diverge.
+/// Where the routes several routers planned for one trip agree and diverge.
 export default class RouteComparison {
   /// On every route.
   readonly common: GeoJSON.MultiLineString;
   readonly routes: RouteDifference[];
 
-  constructor(lines: Position[][]) {
-    const counts = new Map<string, number>();
-    for (const line of lines) {
-      for (const key of new Set(edgeKeys(line))) {
-        counts.set(key, (counts.get(key) ?? 0) + 1);
-      }
-    }
-    const everyRoute = (key: string) => counts.get(key) === lines.length;
-    const alone = (key: string) => !everyRoute(key) && counts.get(key) === 1;
-
-    this.common = multiLine(runs(lines[0] ?? [], everyRoute));
-    this.routes = lines.map((line, i) => {
-      const solo = runs(line, alone);
-      const partlyShared = runs(line, (k) => !everyRoute(k) && !alone(k));
+  constructor(comparison: TravelmuxComparison) {
+    this.common = decodeLines(comparison.common);
+    this.routes = comparison.routes.map((route, i) => {
+      const solo = decodeLines(route.solo);
+      const partlyShared = decodeLines(route.partlyShared);
       return {
         letter: String.fromCharCode('A'.charCodeAt(0) + i),
         color: COLORS[i % COLORS.length]!,
-        solo: multiLine(solo),
-        partlyShared: multiLine(partlyShared),
-        labels: [...solo, ...partlyShared].map(midpoint),
+        solo,
+        partlyShared,
+        labels: [...solo.coordinates, ...partlyShared.coordinates].map(
+          midpoint,
+        ),
         labelOffset: LABEL_OFFSETS[i % LABEL_OFFSETS.length]!,
       };
     });
@@ -199,36 +194,10 @@ function chevronImage(): ImageData {
   return context.getImageData(0, 0, size, size);
 }
 
-function edgeKey(a: Position, b: Position): string {
-  return [a, b]
-    .map(([lng, lat]) => `${lng!.toFixed(6)},${lat!.toFixed(6)}`)
-    .sort()
-    .join('|');
-}
-
-function edgeKeys(line: Position[]): string[] {
-  return line.slice(1).map((position, i) => edgeKey(line[i]!, position));
-}
-
-/// The contiguous stretches of `line` whose edges all satisfy `include`.
-function runs(
-  line: Position[],
-  include: (key: string) => boolean,
-): Position[][] {
-  const result: Position[][] = [];
-  let run: Position[] | undefined;
-  edgeKeys(line).forEach((key, i) => {
-    if (!include(key)) {
-      run = undefined;
-      return;
-    }
-    if (!run) {
-      run = [line[i]!];
-      result.push(run);
-    }
-    run.push(line[i + 1]!);
-  });
-  return result;
+function decodeLines(polylines: string[]): GeoJSON.MultiLineString {
+  return multiLine(
+    polylines.map((line) => polyline.toGeoJSON(line, 6).coordinates),
+  );
 }
 
 function multiLine(coordinates: Position[][]): GeoJSON.MultiLineString {

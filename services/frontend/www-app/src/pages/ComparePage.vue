@@ -24,7 +24,7 @@
       v-if="config && comparison"
       :routers="config.routers"
       :routes="routes as ComparedRoute[]"
-      :comparison="comparison"
+      :comparison="comparison as RouteComparison"
       :fitting-differences="fittingDifferences"
       @select="renderRoutes"
       @toggle-fit="toggleFit"
@@ -117,8 +117,9 @@ export default defineComponent({
   data(): {
     config?: CompareConfig;
     routes: ComparedRoute[];
+    comparison?: RouteComparison;
     selectedIdx: number;
-    error?: TripFetchError;
+    error?: TripFetchError | Error;
     isLoading: boolean;
     /// Keeps stepping through routes on their differences rather than the whole trips.
     fittingDifferences: boolean;
@@ -128,24 +129,13 @@ export default defineComponent({
     return {
       config: undefined,
       routes: [],
+      comparison: undefined,
       selectedIdx: 0,
       error: undefined,
       isLoading: false,
       fittingDifferences: true,
       latestRequest: 0,
     };
-  },
-  computed: {
-    comparison(): RouteComparison | undefined {
-      if (this.routes.length === 0) return undefined;
-      return markRaw(
-        new RouteComparison(
-          this.routes.map((route) =>
-            route.trip.legs.flatMap((leg) => leg.geometry.coordinates),
-          ),
-        ),
-      );
-    },
   },
   watch: {
     mode: async function (): Promise<void> {
@@ -261,16 +251,16 @@ export default defineComponent({
         const params = this.transitQuery.params;
         this.isLoading = true;
         const routers = this.config.routers;
-        const result = await TravelmuxClient.fetchPlans(
+        const result = await TravelmuxClient.fetchComparedPlans(
           from.point,
           to.point,
           this.travelmuxModes(),
           5,
           Prefs.stored.distanceUnits(from, to),
+          routers.map(({ routerId }) => routerId),
           params.searchTime,
           params.searchDate,
           params.arriveBy,
-          routers.map(({ routerId }) => routerId),
         );
         if (request !== this.latestRequest) return;
         this.isLoading = false;
@@ -279,14 +269,13 @@ export default defineComponent({
           return;
         }
 
-        const compared = new ComparedRoutes();
-        for (const { name, routerId } of routers) {
-          compared.add(
-            name,
-            result.value.filter((trip) => trip.raw.routerId === routerId),
-          );
-        }
-        this.routes = markRaw(compared.routes);
+        const { trips, comparison } = result.value;
+        const routerName = (routerId: string) =>
+          routers.find((router) => router.routerId === routerId)!.name;
+        this.routes = markRaw(
+          new ComparedRoutes(trips, comparison, routerName).routes,
+        );
+        this.comparison = markRaw(new RouteComparison(comparison));
         if (this.routes.length > 0) {
           this.error = undefined;
           this.renderRoutes(0);

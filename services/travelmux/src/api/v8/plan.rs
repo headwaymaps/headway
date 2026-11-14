@@ -9,6 +9,7 @@ use reqwest::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use super::comparison::Comparison;
 use super::error::{PlanResponseErr, PlanResponseOk, TripEnd};
 use super::TravelModes;
 use crate::api::{AppState, Router};
@@ -1165,7 +1166,10 @@ async fn plan_with_each(
     }
     match first_error {
         Some(e) if itineraries.is_empty() => Err(e),
-        _ => Ok(PlanResponseOk { itineraries }),
+        _ => Ok(PlanResponseOk {
+            comparison: Some(Comparison::new(&itineraries)),
+            itineraries,
+        }),
     }
 }
 
@@ -1395,7 +1399,10 @@ impl PlanResponseOk {
                 }
             }
         }
-        PlanResponseOk { itineraries: kept }
+        PlanResponseOk {
+            itineraries: kept,
+            comparison: None,
+        }
     }
 }
 

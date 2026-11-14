@@ -3,6 +3,7 @@ use actix_web::{HttpResponse, HttpResponseBuilder};
 use serde::Serialize;
 use std::fmt;
 
+use super::comparison::Comparison;
 use super::Itinerary;
 use crate::error::{ErrorType, ERROR_CODE_HEADER};
 use crate::otp::gtfs_graphql;
@@ -14,6 +15,9 @@ use crate::{DistanceUnit, Error, TravelMode};
 #[serde(rename_all = "camelCase")]
 pub struct PlanResponseOk {
     pub(crate) itineraries: Vec<Itinerary>,
+    /// How the routes compare, when the request names routers to compare.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) comparison: Option<Comparison>,
 }
 
 #[derive(Debug, Serialize)]
@@ -178,7 +182,10 @@ impl PlanResponseOk {
             .collect::<crate::Result<Vec<_>>>()?;
         itineraries.sort_by_key(|itinerary| itinerary.end_time);
 
-        Ok(PlanResponseOk { itineraries })
+        Ok(PlanResponseOk {
+            itineraries,
+            comparison: None,
+        })
     }
 
     pub fn from_valhalla(
@@ -198,7 +205,10 @@ impl PlanResponseOk {
             }
         }
 
-        Ok(PlanResponseOk { itineraries })
+        Ok(PlanResponseOk {
+            itineraries,
+            comparison: None,
+        })
     }
 }
 

@@ -1,4 +1,5 @@
 //! v8 uses `[lon, lat]` for every point and adds live vehicle positions.
+mod comparison;
 pub mod directions;
 mod error;
 mod osrm_api;

@@ -4,7 +4,11 @@ import Trip from './Trip';
 import { DistanceUnits } from 'src/utils/models';
 import { TravelmuxMode } from 'src/services/TravelmuxClient';
 
-function trip(geometry: string, durationSeconds: number): Trip {
+function trip(
+  geometry: string,
+  durationSeconds: number,
+  routerId: string,
+): Trip {
   return new Trip(
     {
       mode: TravelmuxMode.Walk,
@@ -13,7 +17,7 @@ function trip(geometry: string, durationSeconds: number): Trip {
       durationSeconds,
       distanceMeters: 1000,
       bounds: { min: [-122.3, 47.5], max: [-122.3, 47.6] },
-      routerId: 'otp',
+      routerId,
       legs: [
         {
           mode: TravelmuxMode.Walk,
@@ -32,25 +36,28 @@ function trip(geometry: string, durationSeconds: number): Trip {
   );
 }
 
-test('routers share only identical routes', () => {
-  const compared = new ComparedRoutes();
-  compared.add('before', [trip('abc', 600)]);
-  compared.add('quicker', [trip('abc', 540)]);
-  compared.add('elsewhere', [trip('xyz', 600)]);
+test('each route credits every router that took it', () => {
+  const trips = [
+    trip('abc', 600, 'otp'),
+    trip('xyz', 600, 'otp'),
+    trip('abd', 540, 'valhalla'),
+  ];
+  const { routes } = new ComparedRoutes(
+    trips,
+    {
+      common: [],
+      routes: [
+        { itineraries: [0, 2], solo: [], partlyShared: [] },
+        { itineraries: [1], solo: [], partlyShared: [] },
+      ],
+    },
+    (routerId) => routerId.toUpperCase(),
+  );
 
-  const [shared, elsewhere] = compared.routes;
-  expect(shared!.plans.map((plan) => plan.router)).toEqual([
-    'before',
-    'quicker',
-  ]);
+  const [shared, alone] = routes;
+  expect(shared!.plans.map((plan) => plan.router)).toEqual(['OTP', 'VALHALLA']);
   expect(shared!.plans[1]!.durationSeconds).toEqual(540);
-  expect(elsewhere!.plans.map((plan) => plan.router)).toEqual(['elsewhere']);
+  expect(shared!.plans[1]!.routePreferences).toEqual(['quieter']);
   expect(shared!.trip.raw.routePreferences).toBeUndefined();
-});
-
-test('one router keeps its own routes along the same streets', () => {
-  const compared = new ComparedRoutes();
-  compared.add('only', [trip('abc', 600), trip('abc', 660)]);
-
-  expect(compared.routes).toHaveLength(2);
+  expect(alone!.plans.map((plan) => plan.router)).toEqual(['OTP']);
 });

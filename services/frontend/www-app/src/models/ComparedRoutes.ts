@@ -1,5 +1,8 @@
 import Trip from './Trip';
-import type { BikeRoutePreference } from 'src/services/TravelmuxClient';
+import type {
+  BikeRoutePreference,
+  TravelmuxComparison,
+} from 'src/services/TravelmuxClient';
 
 /// A router to compare, as listed in the compare stack's compare.json.
 export type ComparedRouter = {
@@ -23,39 +26,30 @@ export type ComparedRoute = {
   plans: RouterPlan[];
 };
 
-/// The routes several routers planned for one trip, merged where they took exactly the same streets.
+/// The routes several routers planned for one trip, as travelmux merged them.
 export default class ComparedRoutes {
-  readonly routes: ComparedRoute[] = [];
+  readonly routes: ComparedRoute[];
 
-  /// Adds `trips`, crediting `router` on any route it shares with another router.
-  add(router: string, trips: Trip[]) {
-    for (const trip of trips) {
-      const plan: RouterPlan = {
-        router,
-        durationSeconds: trip.raw.durationSeconds,
-        routePreferences: trip.raw.routePreferences ?? [],
+  /// `routerName` labels a router by its id.
+  constructor(
+    trips: Trip[],
+    comparison: TravelmuxComparison,
+    routerName: (routerId: string) => string,
+  ) {
+    this.routes = comparison.routes.map(({ itineraries }) => {
+      const routeTrips = itineraries.map((i) => trips[i]!);
+      const first = routeTrips[0]!;
+      return {
+        trip: new Trip(
+          { ...first.raw, routePreferences: undefined },
+          first.preferredDistanceUnits,
+        ),
+        plans: routeTrips.map((trip) => ({
+          router: routerName(trip.raw.routerId),
+          durationSeconds: trip.raw.durationSeconds,
+          routePreferences: trip.raw.routePreferences ?? [],
+        })),
       };
-      const geometry = geometryKey(trip);
-      const shared = this.routes.find(
-        (route) =>
-          !route.plans.some((plan) => plan.router === router) &&
-          geometryKey(route.trip) === geometry,
-      );
-      if (shared) {
-        shared.plans.push(plan);
-      } else {
-        this.routes.push({
-          trip: new Trip(
-            { ...trip.raw, routePreferences: undefined },
-            trip.preferredDistanceUnits,
-          ),
-          plans: [plan],
-        });
-      }
-    }
+    });
   }
-}
-
-function geometryKey(trip: Trip): string {
-  return trip.raw.legs.map((leg) => leg.geometry).join('|');
 }
