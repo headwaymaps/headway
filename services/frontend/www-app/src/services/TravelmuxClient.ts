@@ -170,7 +170,7 @@ export interface TravelmuxTrack {
 export interface NonTransitLeg {
   maneuvers: [TravelmuxManeuver];
   substantialStreetNames?: string[];
-  /// Only for legs OTP planned.
+  /// Absent where travelmux has no elevation data.
   elevation?: LegElevation;
 }
 

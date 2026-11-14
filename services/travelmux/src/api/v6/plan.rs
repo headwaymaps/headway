@@ -753,7 +753,7 @@ async fn valhalla_plan(
     let router_url = app_state.valhalla_router()?.plan_url(
         query.from_place,
         query.to_place,
-        mode,
+        mode.into(),
         query.num_itineraries,
         distance_units,
     )?;
