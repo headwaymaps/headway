@@ -704,7 +704,7 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 // hasn't merged yet.
 const (
 	valhallaRepo   = "https://github.com/headwaymaps/valhalla.git"
-	valhallaCommit = "4aa672844d7c1d9535f33eb4a2dd067bc7fb6d82"
+	valhallaCommit = "632a4e51563ccd7a6a6b92481ec51c13e3fbaed8"
 )
 
 func valhallaBaseContainer() *dagger.Container {
