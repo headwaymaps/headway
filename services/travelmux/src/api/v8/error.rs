@@ -162,6 +162,7 @@ impl actix_web::ResponseError for PlanResponseErr {
 
 impl PlanResponseOk {
     pub fn from_otp(
+        router_id: &str,
         mode: TravelMode,
         plan: gtfs_graphql::PlanResult,
         instruction_units: DistanceUnit,
@@ -173,7 +174,7 @@ impl PlanResponseOk {
         let mut itineraries = plan
             .itineraries
             .into_iter()
-            .map(|itinerary| Itinerary::from_otp(itinerary, mode, instruction_units))
+            .map(|itinerary| Itinerary::from_otp(router_id, itinerary, mode, instruction_units))
             .collect::<crate::Result<Vec<_>>>()?;
         itineraries.sort_by_key(|itinerary| itinerary.end_time);
 
@@ -181,6 +182,7 @@ impl PlanResponseOk {
     }
 
     pub fn from_valhalla(
+        router_id: &str,
         mode: TravelMode,
         valhalla: valhalla_api::ValhallaRouteResponseResult,
     ) -> Result<PlanResponseOk, PlanResponseErr> {
@@ -189,10 +191,10 @@ impl PlanResponseOk {
             valhalla_api::ValhallaRouteResponseResult::Err(err) => return Err(err.into()),
         };
 
-        let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
+        let mut itineraries = vec![Itinerary::from_valhalla(router_id, &valhalla.trip, mode)];
         if let Some(alternates) = &valhalla.alternates {
             for alternate in alternates {
-                itineraries.push(Itinerary::from_valhalla(&alternate.trip, mode));
+                itineraries.push(Itinerary::from_valhalla(router_id, &alternate.trip, mode));
             }
         }
 

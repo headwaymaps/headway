@@ -94,19 +94,19 @@ services:
   # One travelmux per OTP, so each answers as it would alone. The frontend merges their routes.
   travelmux-main:
     <<: *travelmux
-    command: [no-valhalla, "Seattle=http://otp-main:8080"]
+    command: ["--otp=Seattle=http://otp-main:8080"]
     depends_on:
       otp-main:
         condition: service_healthy
   travelmux-duration:
     <<: *travelmux
-    command: [no-valhalla, "Seattle=http://otp-duration:8080"]
+    command: ["--otp=Seattle=http://otp-duration:8080"]
     depends_on:
       otp-duration:
         condition: service_healthy
   travelmux-safety:
     <<: *travelmux
-    command: [no-valhalla, "Seattle=http://otp-safety:8080"]
+    command: ["--otp=Seattle=http://otp-safety:8080"]
     depends_on:
       otp-safety:
         condition: service_healthy

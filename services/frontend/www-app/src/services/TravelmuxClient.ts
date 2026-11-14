@@ -23,6 +23,8 @@ export interface TravelmuxItinerary {
   legs: TravelmuxLeg[];
   /// Which cycling objectives this route is the best answer to. Absent for every other mode.
   routePreferences?: BikeRoutePreference[];
+  /// The id of the router that planned it, like `valhalla-headway`.
+  routerId: string;
 }
 
 export type BikeRoutePreference = 'quieter' | 'faster';

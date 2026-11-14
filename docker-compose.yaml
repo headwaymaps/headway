@@ -34,7 +34,7 @@ services:
     networks:
       - travel_frontend
       - valhalla_backend
-    command: ["http://valhalla:8002"]
+    command: ["--valhalla=valhalla=http://valhalla:8002"]
   valhalla-init:
     image: ghcr.io/headwaymaps/valhalla-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env

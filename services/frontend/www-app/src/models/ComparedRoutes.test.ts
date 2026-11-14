@@ -26,6 +26,7 @@ function trip(geometry: string, durationSeconds: number): Trip {
         },
       ],
       routePreferences: ['quieter'],
+      routerId: 'otp',
     },
     DistanceUnits.Kilometers,
   );
