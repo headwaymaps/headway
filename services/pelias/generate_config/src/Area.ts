@@ -15,6 +15,7 @@ type WhosOnFirstConfig = {
 
 type OpenAddressesConfig = {
   datapath: string;
+  dataHost?: string;
   // omit files to import ALL
   files?: string[];
 };
@@ -23,6 +24,8 @@ export default class Area {
   name: string;
   countryCodes: string[];
   openaddressesFiles: string[];
+  // Where a planet build downloads OpenAddresses from.
+  openaddressesDataHost?: string;
   constructor(
     name: string,
     countryCodes: string[],
@@ -75,7 +78,7 @@ export default class Area {
     if (this.isPlanetBuild) {
       const openaddresses = {
         datapath: "/data/openaddresses",
-        dataHost: "https://data.example.com/openaddresses",
+        dataHost: this.openaddressesDataHost,
       };
       importsConfig["openaddresses"] = openaddresses;
     } else if (this.openaddressesFiles.length > 0) {

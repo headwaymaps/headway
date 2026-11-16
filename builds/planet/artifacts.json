@@ -15,6 +15,7 @@
     "puget-sound": "transit/maps-earth-planet-v1.261109-puget-sound-graph-2026-11-15-98be338e.obj.zst",
     "sf-bay-area": "transit/maps-earth-planet-v1.261109-sf-bay-area-graph-2026-11-15-96984808.obj.zst"
   },
+  "pelias-config": "maps-earth-planet-v1.261109-pelias-2026-11-17-ebc83554.json",
   "placeholder": "maps-earth-planet-v1.261109-placeholder-2026-11-17-53e57553.tar.zst",
   "pmtiles": "maps-earth-planet-v1.261109-2026-11-15-c47cca18.pmtiles",
   "shared": {

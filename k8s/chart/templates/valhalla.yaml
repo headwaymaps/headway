@@ -1,0 +1,57 @@
+{{- $artifact := include "headway.artifact" (list $ "valhalla") -}}
+{{- $claim := include "headway.claim" (list $ "valhalla" $artifact) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valhalla
+spec:
+  selector:
+    matchLabels:
+      app: valhalla
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: valhalla
+      {{- with $.Values.restartedAt }}
+      annotations:
+        kubectl.kubernetes.io/restartedAt: {{ . | quote }}
+      {{- end }}
+    spec:
+      initContainers:
+        - name: init
+          image: {{ include "headway.image" (list $ "valhalla-init") }}
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: valhalla-volume
+              mountPath: /data
+          env:
+            - name: VALHALLA_ARTIFACT_URL
+              value: {{ $artifact | quote }}
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 100Mi
+      containers:
+        - name: main
+          image: {{ include "headway.image" (list $ "valhalla") }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8002
+          volumeMounts:
+            - name: valhalla-volume
+              mountPath: /data
+          resources:
+            limits:
+              memory: 8Gi
+            requests:
+              memory: {{ .Values.memoryRequests.valhalla }}
+      volumes:
+        - name: valhalla-volume
+          persistentVolumeClaim:
+            claimName: {{ $claim }}
+---
+{{ include "headway.pvc" (list $claim "200Gi") }}
+---
+{{ include "headway.service" (list "valhalla" 8002) }}

@@ -7,11 +7,12 @@ cd "$APP_ROOT"
 
 function usage() {
   cat << EOF
-Pin and look up build artifacts. This runs on the build machine: --pin reads
-data/<Area>, and the lookups serve both the local docker compose stack and
-bin/k8s/generate, so the manifest's shape is only known here.
+Pin and look up build artifacts. --pin runs on the build machine: it reads
+data/<Area> and writes artifacts.json beside the build config.
+The lookups serve both the local docker compose stack and bin/k8s/deploy, so the
+manifest's shape is only known here.
 
-usage: $0 [--optional] <otp-graphs|otp-zones|pmtiles|valhalla|elasticsearch|placeholder|osm> <build-config-dir>
+usage: $0 [--optional] <otp-graphs|otp-zones|pmtiles|valhalla|elasticsearch|placeholder|pelias-config|osm> <build-config-dir>
        $0 [--optional] <terrain|landcover> <build-config-dir>
        $0 <files|shared-files> <build-config-dir>
        $0 --pin <build-config-dir>
@@ -111,6 +112,7 @@ case "$COMMAND" in
         add_latest valhalla      "${HEADWAY_AREA}-valhalla"      .tar.zst
         add_latest elasticsearch "${HEADWAY_AREA}-elasticsearch" .erofs.zst
         add_latest placeholder   "${HEADWAY_AREA}-placeholder"   .tar.zst
+        add_latest pelias-config "${HEADWAY_AREA}-pelias"        .json
         add_latest pmtiles       "${HEADWAY_AREA}"               .pmtiles
         add_latest osm           "${HEADWAY_AREA}"               .osm.pbf
 
@@ -203,7 +205,7 @@ case "$COMMAND" in
         [ -f "$MANIFEST" ] || exit 0
         jq -r '."otp-graphs" // {} | to_entries[] | .value' "$MANIFEST"
         ;;
-    pmtiles|valhalla|elasticsearch|placeholder|osm|terrain|landcover)
+    pmtiles|valhalla|elasticsearch|placeholder|pelias-config|osm|terrain|landcover)
         path=""
         if [ -f "$MANIFEST" ]; then
             case "$COMMAND" in

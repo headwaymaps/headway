@@ -8,6 +8,7 @@ export function generate(
   areasDBInput: string,
   areaName: string,
   countries: string[],
+  openaddressesDataHost?: string,
 ): PeliasConfig {
   const area = (() => {
     for (const record of parse(areasDBInput, { columns: true })) {
@@ -26,5 +27,6 @@ export function generate(
     return new Area(areaName, countries, []);
   })();
 
+  area.openaddressesDataHost = openaddressesDataHost;
   return area.peliasConfig();
 }

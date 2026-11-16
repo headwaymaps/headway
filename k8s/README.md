@@ -2,12 +2,20 @@
 
 These configs are experimental, and pretty specific to my own needs at this point - expect to edit them for your own cluster.
 
-- `_template/` — the manifests, as `envsubst` templates. This is what you edit.
-- `builds/<build>/k8s/<latest|dev>/` — rendered output variants, checked in next to the build they were rendered from. Regenerate them rather than editing them by hand.
+`chart/` is a Helm chart of every service. `bin/k8s/deploy <build-dir>` renders it
+from the build's committed inputs (`.env`, `artifacts.json`, and
+each zone's `zone.json`) and deploys it to the lowercased build directory name as
+the namespace, e.g. `bin/k8s/deploy builds/Seattle --dev` deploys to `seattle`.
 
-`bin/k8s/generate <build-dir> <variant>` renders one `latest` or `dev` variant into `<build-dir>/k8s/<variant>`. `bin/k8s/regenerate-all` re-renders all checked-in variants, which is usually what you want after editing a template.
+- `--dev` uses the `maps-earth-dev` containers instead of `maps-earth-latest`.
+- `--diff` previews against the cluster instead of applying (`helm plugin install https://github.com/databus23/helm-diff`).
+- `--restart` rolls every pod, to pick up containers republished to the same tag.
 
-`bin/k8s/apply` takes a build directory and use its lowercased basename as the Kubernetes namespace. It selects the `latest` rendered variant by default; `--dev` selects `dev`. It rolls only the pods whose manifests changed; `--restart` rolls everything else too, to pick up containers republished to the same tag. For example: `bin/k8s/apply builds/Seattle --dev` deploys `builds/Seattle/k8s/dev` to the `seattle` namespace.
+To render without a cluster, as CI does:
+
+```
+bin/k8s/values builds/planet | helm template headway k8s/chart --values -
+```
 
 ## Data volumes
 
@@ -20,8 +28,7 @@ encodes the version of the data it holds in order to speed up redeployment.
 bin/update-planet-version                        # bumps builds/planet/.env
 bin/build builds/planet
 bin/publish-data builds/planet --host <asset-host>
-bin/k8s/generate builds/planet latest
-bin/k8s/apply builds/planet
+bin/k8s/deploy builds/planet
 ```
 
 ## Deploying a transit rebuild
@@ -29,8 +36,7 @@ bin/k8s/apply builds/planet
 ```sh
 bin/build builds/planet otp-graphs
 bin/publish-data builds/planet --host <asset-host>
-bin/k8s/generate builds/planet latest
-bin/k8s/apply builds/planet
+bin/k8s/deploy builds/planet
 ```
 
 ### Reclaiming old volumes

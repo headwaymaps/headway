@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pelias-api
+spec:
+  replicas: 1
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: pelias-api
+  template:
+    metadata:
+      labels:
+        app: pelias-api
+        app-group: pelias-api
+      annotations:
+        image: pelias/api:master
+        {{- with $.Values.restartedAt }}
+        kubectl.kubernetes.io/restartedAt: {{ . | quote }}
+        {{- end }}
+    spec:
+      initContainers:
+        - name: init
+          image: {{ include "headway.image" (list $ "pelias-init") }}
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+          env:
+            - name: PELIAS_CONFIG_ARTIFACT_URL
+              value: {{ include "headway.artifact" (list $ "pelias-config") | quote }}
+          command: ["/bin/bash", "-c", "/app/init_config.sh" ]
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              memory: 100Mi
+      containers:
+        - name: main
+          image: pelias/api:master
+          ports:
+            - containerPort: 4000
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+          env:
+            - name: PELIAS_CONFIG
+              value: "/config/pelias.json"
+            - name: PORT
+              value: "4000"
+          resources:
+            limits:
+              memory: 500Mi
+            requests:
+              memory: 100Mi
+          livenessProbe:
+            httpGet:
+              path: /v1/
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
+      volumes:
+        {{- include "headway.configVolume" . | nindent 8 }}
+---
+{{ include "headway.service" (list "pelias-api" 4000) }}

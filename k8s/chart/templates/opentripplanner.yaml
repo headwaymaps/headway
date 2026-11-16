@@ -1,0 +1,115 @@
+{{- range $id, $graph := index .Values.artifacts "otp-graphs" }}
+{{- $name := printf "opentripplanner-%s" $id }}
+{{- $graph = printf "%s/%s/%s/%s" (required "artifactRoot must be set" $.Values.artifactRoot) $.Values.dataTag $.Values.areaTag $graph }}
+{{- $claim := include "headway.claim" (list $ $name $graph) }}
+{{- $zoneFile := required (printf "zoneFiles.%s must be set" $id) (index $.Values.zoneFiles $id) }}
+{{- $secrets := index ($.Values.gtfsSecrets | default dict) $id | default "" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otp-{{ $id }}-zone
+data:
+  zone.json: {{ $zoneFile | quote }}
+{{- if $secrets }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: otp-{{ $id }}-gtfs-secrets
+type: Opaque
+data:
+  gtfs-secrets.json: {{ $secrets | b64enc }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+      annotations:
+        checksum/zone: {{ $zoneFile | sha256sum | trunc 12 }}
+        checksum/gtfs-secrets: {{ $secrets | sha256sum | trunc 12 }}
+        {{- with $.Values.restartedAt }}
+        kubectl.kubernetes.io/restartedAt: {{ . | quote }}
+        {{- end }}
+    spec:
+      initContainers:
+        - name: init
+          image: {{ include "headway.image" (list $ "opentripplanner-init") }}
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: opentripplanner-volume
+              mountPath: /data
+            - name: zone
+              mountPath: /run/config
+              readOnly: true
+            - name: gtfs-secrets
+              mountPath: /var/run/secrets/maps.earth
+              readOnly: true
+          env:
+            - name: OTP_ARTIFACT_URL
+              value: {{ $graph | quote }}
+          resources:
+            limits:
+              memory: 128Mi
+            requests:
+              memory: 128Mi
+      containers:
+        - name: main
+          image: {{ include "headway.image" (list $ "opentripplanner") }}
+          env:
+            - name: "JAVA_OPTS"
+              # keep this in sync to be just under the resources.limits.memory
+              value: "-Xmx7G"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: opentripplanner-volume
+              mountPath: /var/opentripplanner
+          resources:
+            limits:
+              # keep this in sync to be just above env.JAVA_OPTS.-Xmx
+              memory: 7.25Gi
+            requests:
+              memory: 500Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 20
+      volumes:
+        - name: zone
+          configMap:
+            name: otp-{{ $id }}-zone
+        - name: gtfs-secrets
+          secret:
+            secretName: otp-{{ $id }}-gtfs-secrets
+            # The init container refuses to render a zone short of credentials it needs.
+            optional: true
+        - name: opentripplanner-volume
+          persistentVolumeClaim:
+            claimName: {{ $claim }}
+---
+{{ include "headway.pvc" (list $claim "1Gi") }}
+---
+{{ include "headway.service" (list $name 8000) }}
+{{- end }}

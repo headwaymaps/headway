@@ -1,0 +1,53 @@
+{{- $zones := index .Values.artifacts "otp-graphs" | default dict }}
+{{- $endpoints := list }}
+{{- range $id, $_ := $zones }}
+{{- $name := (index $.Values.zoneFiles $id | fromJson).name }}
+{{- $endpoints = append $endpoints (printf "--otp=%s=http://opentripplanner-%s:8000" $name $id) }}
+{{- end }}
+{{- $endpoints = append $endpoints "--valhalla=valhalla=http://valhalla:8002" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: travelmux
+spec:
+  selector:
+    matchLabels:
+      app: travelmux
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: travelmux
+      {{- with $.Values.restartedAt }}
+      annotations:
+        kubectl.kubernetes.io/restartedAt: {{ . | quote }}
+      {{- end }}
+    spec:
+      containers:
+        - name: main
+          image: {{ include "headway.image" (list $ "travelmux") }}
+          imagePullPolicy: Always
+          args: {{ $endpoints | toJson }}
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health/alive
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 10
+---
+{{ include "headway.service" (list "travelmux" 8000) }}

@@ -221,16 +221,13 @@ jobs:
           persist-credentials: false
       - name: Copy .bin-env
         run: cp .bin-env-example .bin-env
-      - name: Regenerate k8s config
-        run: bin/k8s/regenerate-all
-      - name: Check k8s config is up to date
+      - name: Lint and render the chart for each deployment
         run: |
-          if [ -n "$(git status --porcelain -- builds)" ]; then
-            git status --short -- builds
-            git diff -- builds
-            echo "::error::k8s config out of date. Run bin/k8s/regenerate-all"
-            exit 1
-          fi
+          for build in builds/planet builds/Seattle; do
+            bin/k8s/values "$build" > values.json
+            helm lint --strict k8s/chart --values values.json
+            helm template headway k8s/chart --values values.json > /dev/null
+          done
   integration_tests:
     name: Integration Tests
     runs-on: ubuntu-latest

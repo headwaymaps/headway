@@ -36,6 +36,7 @@ func (h *Headway) Pelias(ctx context.Context) *Pelias {
 		WithFile("areas.csv", h.ServicesDir().File("areas.csv")).
 		WithExec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts"}).
 		WithExec([]string{"yarn", "build"}).
+		WithEnvVariable("OPENADDRESSES_DATA_HOST", h.OpenaddressesUrl).
 		WithExec([]string{"sh", "-c", fmt.Sprintf("bin/generate-pelias-config areas.csv '%s' '%s' > pelias.json", h.Area, countriesStr)}).
 		// Strip devDependencies from final image
 		WithExec([]string{"yarn", "install", "--prod", "--frozen-lockfile", "--ignore-scripts"}).

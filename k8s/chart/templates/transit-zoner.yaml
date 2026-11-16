@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transit-zoner
+spec:
+  selector:
+    matchLabels:
+      app: transit-zoner
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: transit-zoner
+      {{- with $.Values.restartedAt }}
+      annotations:
+        kubectl.kubernetes.io/restartedAt: {{ . | quote }}
+      {{- end }}
+    spec:
+      containers:
+        - name: main
+          image: {{ include "headway.image" (list $ "transit-zoner") }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8420
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8420
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+{{ include "headway.service" (list "transit-zoner" 8420) }}

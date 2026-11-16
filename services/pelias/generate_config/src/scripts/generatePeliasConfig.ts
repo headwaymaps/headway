@@ -24,5 +24,10 @@ export function parseArgs(args: string[]): [string, string, string[]] {
 const args = process.argv.slice(2);
 const [inputPath, area, countries] = parseArgs(args);
 const input = readFileSync(inputPath, "utf-8");
-const config = generate(input, area, countries);
+const config = generate(
+  input,
+  area,
+  countries,
+  process.env.OPENADDRESSES_DATA_HOST,
+);
 console.log(JSON.stringify(config, undefined, 2));
