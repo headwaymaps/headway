@@ -62,7 +62,7 @@ mod tests {
         );
 
         let plan_response =
-            PlanResponseOk::from_otp(TravelMode::Walk, otp, DistanceUnit::Miles).unwrap();
+            PlanResponseOk::from_otp("otp", TravelMode::Walk, otp, DistanceUnit::Miles).unwrap();
 
         let directions_response = DirectionsResponseOk::from(plan_response);
         assert_eq!(directions_response.routes.len(), 1);
@@ -133,7 +133,8 @@ mod tests {
 
         let valhalla_response_result = valhalla_api::ValhallaRouteResponseResult::Ok(valhalla);
         let plan_response =
-            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response_result).unwrap();
+            PlanResponseOk::from_valhalla("valhalla", TravelMode::Walk, valhalla_response_result)
+                .unwrap();
 
         let directions_response = DirectionsResponseOk::from(plan_response);
         assert_eq!(directions_response.routes.len(), 3);

@@ -119,7 +119,7 @@ const routes: RouteRecordRaw[] = [
       ]
     : []),
 
-  ...(process.env.HEADWAY_OTP_COMPARE === '1'
+  ...(process.env.HEADWAY_COMPARE_ROUTES === '1'
     ? [
         {
           path: '/compare-directions/:mode/:to',

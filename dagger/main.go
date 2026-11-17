@@ -704,7 +704,7 @@ func (h *Headway) Pmtiles(ctx context.Context, tileFormat string) (*dagger.File,
 // hasn't merged yet.
 const (
 	valhallaRepo   = "https://github.com/headwaymaps/valhalla.git"
-	valhallaCommit = "a6276e65f7eedeb591f20a76215858146b816e73"
+	valhallaCommit = "632a4e51563ccd7a6a6b92481ec51c13e3fbaed8"
 )
 
 func valhallaBaseContainer() *dagger.Container {
@@ -908,7 +908,7 @@ func (h *Headway) TravelmuxServeContainer(ctx context.Context) *dagger.Container
 		WithExposedPort(8000).
 		WithEnvVariable("RUST_LOG", "info").
 		WithEntrypoint([]string{"/home/travelmux/travelmux-server"}).
-		WithDefaultArgs([]string{"http://valhalla:8002"})
+		WithDefaultArgs([]string{"--valhalla=valhalla=http://valhalla:8002"})
 
 	return container
 }

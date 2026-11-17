@@ -24,7 +24,7 @@
       v-if="config && comparison"
       :routers="config.routers"
       :routes="routes as ComparedRoute[]"
-      :comparison="comparison"
+      :comparison="comparison as RouteComparison"
       :fitting-differences="fittingDifferences"
       @select="renderRoutes"
       @toggle-fit="toggleFit"
@@ -81,14 +81,14 @@ import Prefs from 'src/utils/Prefs';
 import Markers from 'src/utils/Markers';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 
-/// contrib/otp-compare's compare.json.
+/// The routers to compare, from contrib/compare-routes/compare.json.
 type CompareConfig = {
   routers: ComparedRouter[];
   /// Where the trip corpus is served.
   corpus: string;
 };
 
-/// Compares the routes several OTP builds plan for a trip.
+/// Compares the routes several router builds plan for a trip.
 export default defineComponent({
   name: 'ComparePage',
   components: { TripListItem, TripSearch, RouteComparisonCard, TripCorpus },
@@ -117,8 +117,9 @@ export default defineComponent({
   data(): {
     config?: CompareConfig;
     routes: ComparedRoute[];
+    comparison?: RouteComparison;
     selectedIdx: number;
-    error?: TripFetchError;
+    error?: TripFetchError | Error;
     isLoading: boolean;
     /// Keeps stepping through routes on their differences rather than the whole trips.
     fittingDifferences: boolean;
@@ -128,24 +129,13 @@ export default defineComponent({
     return {
       config: undefined,
       routes: [],
+      comparison: undefined,
       selectedIdx: 0,
       error: undefined,
       isLoading: false,
       fittingDifferences: true,
       latestRequest: 0,
     };
-  },
-  computed: {
-    comparison(): RouteComparison | undefined {
-      if (this.routes.length === 0) return undefined;
-      return markRaw(
-        new RouteComparison(
-          this.routes.map((route) =>
-            route.trip.legs.flatMap((leg) => leg.geometry.coordinates),
-          ),
-        ),
-      );
-    },
   },
   watch: {
     mode: async function (): Promise<void> {
@@ -260,35 +250,32 @@ export default defineComponent({
         const [from, to] = [this.fromPlace, this.toPlace];
         const params = this.transitQuery.params;
         this.isLoading = true;
-        const results = await Promise.all(
-          this.config.routers.map((router) =>
-            TravelmuxClient.fetchPlans(
-              from.point,
-              to.point,
-              this.travelmuxModes(),
-              5,
-              Prefs.stored.distanceUnits(from, to),
-              params.searchTime,
-              params.searchDate,
-              params.arriveBy,
-              router.travelmux,
-            ),
-          ),
+        const routers = this.config.routers;
+        const result = await TravelmuxClient.fetchComparedPlans(
+          from.point,
+          to.point,
+          this.travelmuxModes(),
+          5,
+          Prefs.stored.distanceUnits(from, to),
+          routers.map(({ routerId }) => routerId),
+          params.searchTime,
+          params.searchDate,
+          params.arriveBy,
         );
         if (request !== this.latestRequest) return;
         this.isLoading = false;
+        if (!result.ok) {
+          this.error = result.error;
+          return;
+        }
 
-        const compared = new ComparedRoutes();
-        results.forEach((result, i) => {
-          const router = this.config!.routers[i]!.name;
-          if (result.ok) {
-            compared.add(router, result.value);
-          } else {
-            console.error(`${router} failed to plan`, result.error);
-            this.error = result.error;
-          }
-        });
-        this.routes = markRaw(compared.routes);
+        const { trips, comparison } = result.value;
+        const routerName = (routerId: string) =>
+          routers.find((router) => router.routerId === routerId)!.name;
+        this.routes = markRaw(
+          new ComparedRoutes(trips, comparison, routerName).routes,
+        );
+        this.comparison = markRaw(new RouteComparison(comparison));
         if (this.routes.length > 0) {
           this.error = undefined;
           this.renderRoutes(0);

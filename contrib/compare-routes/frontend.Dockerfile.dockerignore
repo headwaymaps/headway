@@ -4,6 +4,6 @@
 services/frontend/www-app/node_modules
 services/frontend/www-app/dist
 services/frontend/www-app/.quasar
-!contrib/otp-compare/corpus.json
-!contrib/otp-compare/nginx.conf
-!contrib/otp-compare/compare.json
+!contrib/compare-routes/corpus.json
+!contrib/compare-routes/nginx.conf
+!contrib/compare-routes/compare.json

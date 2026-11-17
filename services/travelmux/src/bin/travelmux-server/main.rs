@@ -2,50 +2,90 @@ use actix_web::{middleware::Logger, web, App, HttpServer};
 use url::Url;
 
 use std::env;
-use travelmux::api::{self, AppState};
-use travelmux::otp::OtpCluster;
+use travelmux::api::{self, AppState, Router};
+use travelmux::otp::OtpRouterClient;
+use travelmux::valhalla::ValhallaRouter;
 use travelmux::{Result, ERROR_CODE_HEADER};
 
-/// In place of the valhalla endpoint, has OTP plan every trip.
-const NO_VALHALLA: &str = "no-valhalla";
+#[derive(Debug, PartialEq)]
+enum RouterKind {
+    Otp,
+    Valhalla,
+}
+
+/// A router as given on the command line: `--otp=<id>=<url>` or `--valhalla=<id>=<url>`.
+#[derive(Debug, PartialEq)]
+struct RouterArg {
+    kind: RouterKind,
+    id: String,
+    url: Url,
+}
+
+impl std::str::FromStr for RouterArg {
+    type Err = String;
+
+    fn from_str(arg: &str) -> std::result::Result<Self, String> {
+        let (kind, rest) = if let Some(rest) = arg.strip_prefix("--otp=") {
+            (RouterKind::Otp, rest)
+        } else if let Some(rest) = arg.strip_prefix("--valhalla=") {
+            (RouterKind::Valhalla, rest)
+        } else {
+            return Err(format!(
+                "expected --otp=<id>=<url> or --valhalla=<id>=<url>, not {arg}"
+            ));
+        };
+        let Some((id, url)) = rest.split_once('=').filter(|(id, _)| !id.is_empty()) else {
+            return Err(format!("{arg} has no <id>="));
+        };
+        let url = Url::parse(url).map_err(|e| format!("{arg} has an invalid url: {e}"))?;
+        Ok(Self {
+            kind,
+            id: id.to_string(),
+            url,
+        })
+    }
+}
+
+impl RouterArg {
+    async fn fetch(self) -> Result<Router> {
+        log::info!("adding router {}: {}", self.id, self.url);
+        Ok(match self.kind {
+            RouterKind::Otp => Router::Otp(OtpRouterClient::new(self.url)?.fetch(&self.id).await?),
+            RouterKind::Valhalla => {
+                Router::Valhalla(ValhallaRouter::fetch(self.id, self.url).await?)
+            }
+        })
+    }
+}
 
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init();
 
-    // eventually we might want something more sophisticated, like CRUD'ing endpoints,
-    // but for now we require a restart.
-    let mut endpoints = env::args().skip(1);
-
-    let Some(valhalla_endpoint) = endpoints.next() else {
-        let bin_name = env::args()
-            .next()
-            .unwrap_or_else(|| "<bin name>".to_string());
-        panic!("No endpoints specified. Usage: {bin_name} <https://valhalla.example.com|{NO_VALHALLA}> 'Area One=https://otp1.example.com' 'Area Two=https://otp2.example.com'")
-    };
-
-    let valhalla_endpoint = (valhalla_endpoint != NO_VALHALLA).then(|| {
-        Url::parse(&valhalla_endpoint)
-            .unwrap_or_else(|_| panic!("Invalid valhalla endpoint: {valhalla_endpoint}"))
-    });
-
-    let mut otp_cluster = OtpCluster::default();
-    for endpoint in endpoints {
-        let Some((name, url)) = endpoint
-            .split_once('=')
-            .filter(|(name, _)| !name.is_empty())
-        else {
-            panic!("OTP endpoint must be <area name>=<url>, e.g. 'Seattle=http://opentripplanner:8000', but was: {endpoint}")
-        };
-        // If we change this to be non-blocking, we'll
-        // want to update our readiness probe in health.rs
-        otp_cluster.insert_endpoint(name, url).await?;
+    let args: Vec<RouterArg> = env::args()
+        .skip(1)
+        .map(|arg| arg.parse())
+        .collect::<std::result::Result<_, _>>()
+        .unwrap_or_else(|e| panic!("{e}"));
+    if args.is_empty() {
+        panic!("No routers specified. Usage: travelmux-server --otp='Seattle=https://otp.example.com' --valhalla='planet=https://valhalla.example.com'. A trip goes to the first router that plans its mode and covers it.");
+    }
+    for (i, arg) in args.iter().enumerate() {
+        assert!(
+            args[..i].iter().all(|other| other.id != arg.id),
+            "two routers are called {}",
+            arg.id
+        );
     }
 
-    log::info!(
-        "setup completed - there are {} routers.",
-        otp_cluster.router_len()
-    );
+    // If we change this to be non-blocking, we'll
+    // want to update our readiness probe in health.rs
+    let mut routers = vec![];
+    for arg in args {
+        routers.push(arg.fetch().await?);
+    }
+    log::info!("setup completed with {} routers", routers.len());
+    let app_state = web::Data::new(AppState::new(routers));
 
     let port: u16 = std::env::var("PORT")
         .map(|s| {
@@ -60,11 +100,9 @@ async fn main() -> Result<()> {
     );
 
     HttpServer::new(move || {
-        // The OTP coverage areas can't be shared across threads, so each worker prepares its own.
-        let app_state = AppState::new(valhalla_endpoint.clone(), otp_cluster.prepare());
         App::new()
             .wrap(Logger::new(&access_log_format))
-            .app_data(web::Data::new(app_state))
+            .app_data(app_state.clone())
             .service(api::v6::plan::get_plan)
             .service(api::v6::directions::get_directions)
             .service(api::v7::plan::get_plan)
@@ -80,4 +118,25 @@ async fn main() -> Result<()> {
     .await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn router_args_name_their_kind_and_id() {
+        let arg: RouterArg = "--otp=Puget Sound (Seattle Area)=http://otp:8000"
+            .parse()
+            .unwrap();
+        assert_eq!(arg.kind, RouterKind::Otp);
+        assert_eq!(arg.id, "Puget Sound (Seattle Area)");
+        assert_eq!(arg.url.as_str(), "http://otp:8000/");
+
+        let arg: RouterArg = "--valhalla=valhalla=http://valhalla:8002".parse().unwrap();
+        assert_eq!(arg.kind, RouterKind::Valhalla);
+
+        assert!("http://valhalla:8002".parse::<RouterArg>().is_err());
+        assert!("--otp=http://otp:8000".parse::<RouterArg>().is_err());
+    }
 }

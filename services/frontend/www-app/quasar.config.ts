@@ -28,6 +28,19 @@ const travelmuxProxy = HEADWAY_TRAVELMUX_HOST
     }
   : { target: HEADWAY_HOST };
 
+//   HEADWAY_VALHALLA_HOST=http://localhost:8002 yarn dev
+const HEADWAY_VALHALLA_HOST = process.env.HEADWAY_VALHALLA_HOST;
+const valhallaProxy = HEADWAY_VALHALLA_HOST
+  ? {
+      target: HEADWAY_VALHALLA_HOST,
+      rewrite: (path: string) => path.replace(/^\/valhalla/, ''),
+    }
+  : { target: HEADWAY_HOST };
+
+// contrib/compare-routes, which serves the trip corpus for the directions page's debug tools.
+const HEADWAY_COMPARE_ROUTES_HOST =
+  process.env.HEADWAY_COMPARE_ROUTES_HOST ?? 'http://127.0.0.1:8431';
+
 // Render the Rust style locally, while its tiles, sprites, and fonts continue through the
 // /tileserver proxy. This makes it possible to iterate on a style against upstream world data:
 // changing maplibre-style/src recompiles the style and redraws the map.
@@ -176,8 +189,8 @@ export default defineConfig((/* ctx */) => {
     build: {
       env: {
         HEADWAY_LOCAL_STYLE: String(LOCAL_STYLE_ENABLED),
-        // Set by contrib/otp-compare, for its page comparing several OTP builds.
-        HEADWAY_OTP_COMPARE: process.env.HEADWAY_OTP_COMPARE ?? '',
+        // Set by contrib/compare-routes, for its page comparing several routers.
+        HEADWAY_COMPARE_ROUTES: process.env.HEADWAY_COMPARE_ROUTES ?? '',
       },
       target: {
         browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],
@@ -272,6 +285,15 @@ export default defineConfig((/* ctx */) => {
         '/travelmux': {
           changeOrigin: true,
           ...travelmuxProxy,
+        },
+        '/valhalla': {
+          changeOrigin: true,
+          ...valhallaProxy,
+        },
+        '/compare-routes': {
+          changeOrigin: true,
+          target: HEADWAY_COMPARE_ROUTES_HOST,
+          rewrite: (path: string) => path.replace(/^\/compare-routes/, ''),
         },
         '/transit-zoner': {
           changeOrigin: true,

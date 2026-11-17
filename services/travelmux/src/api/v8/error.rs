@@ -3,6 +3,7 @@ use actix_web::{HttpResponse, HttpResponseBuilder};
 use serde::Serialize;
 use std::fmt;
 
+use super::comparison::Comparison;
 use super::Itinerary;
 use crate::error::{ErrorType, ERROR_CODE_HEADER};
 use crate::otp::gtfs_graphql;
@@ -14,6 +15,9 @@ use crate::{DistanceUnit, Error, TravelMode};
 #[serde(rename_all = "camelCase")]
 pub struct PlanResponseOk {
     pub(crate) itineraries: Vec<Itinerary>,
+    /// How the routes compare, when the request names routers to compare.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) comparison: Option<Comparison>,
 }
 
 #[derive(Debug, Serialize)]
@@ -162,6 +166,7 @@ impl actix_web::ResponseError for PlanResponseErr {
 
 impl PlanResponseOk {
     pub fn from_otp(
+        router_id: &str,
         mode: TravelMode,
         plan: gtfs_graphql::PlanResult,
         instruction_units: DistanceUnit,
@@ -173,14 +178,18 @@ impl PlanResponseOk {
         let mut itineraries = plan
             .itineraries
             .into_iter()
-            .map(|itinerary| Itinerary::from_otp(itinerary, mode, instruction_units))
+            .map(|itinerary| Itinerary::from_otp(router_id, itinerary, mode, instruction_units))
             .collect::<crate::Result<Vec<_>>>()?;
         itineraries.sort_by_key(|itinerary| itinerary.end_time);
 
-        Ok(PlanResponseOk { itineraries })
+        Ok(PlanResponseOk {
+            itineraries,
+            comparison: None,
+        })
     }
 
     pub fn from_valhalla(
+        router_id: &str,
         mode: TravelMode,
         valhalla: valhalla_api::ValhallaRouteResponseResult,
     ) -> Result<PlanResponseOk, PlanResponseErr> {
@@ -189,14 +198,17 @@ impl PlanResponseOk {
             valhalla_api::ValhallaRouteResponseResult::Err(err) => return Err(err.into()),
         };
 
-        let mut itineraries = vec![Itinerary::from_valhalla(&valhalla.trip, mode)];
+        let mut itineraries = vec![Itinerary::from_valhalla(router_id, &valhalla.trip, mode)];
         if let Some(alternates) = &valhalla.alternates {
             for alternate in alternates {
-                itineraries.push(Itinerary::from_valhalla(&alternate.trip, mode));
+                itineraries.push(Itinerary::from_valhalla(router_id, &alternate.trip, mode));
             }
         }
 
-        Ok(PlanResponseOk { itineraries })
+        Ok(PlanResponseOk {
+            itineraries,
+            comparison: None,
+        })
     }
 }
 

@@ -1,4 +1,4 @@
-use actix_web::web::{Data, Query};
+use actix_web::web::Query;
 use actix_web::{get, web, HttpRequest, HttpResponseBuilder};
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use geo::algorithm::{BoundingRect, Haversine, Length};
@@ -9,18 +9,20 @@ use reqwest::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use super::comparison::Comparison;
 use super::error::{PlanResponseErr, PlanResponseOk, TripEnd};
 use super::TravelModes;
-use crate::api::AppState;
+use crate::api::{AppState, Router};
 use crate::elevation::{ElevationProfile, SteepSection};
 use crate::error::ErrorType;
 use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
+use crate::otp::OtpRouter;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
 use crate::util::serde_util::{
-    deserialize_point_from_lon_lat, serialize_line_string_as_polyline6,
-    serialize_optional_line_string_as_polyline6, serialize_point_as_lon_lat_pair,
-    serialize_rect_to_lng_lat,
+    deserialize_comma_separated, deserialize_point_from_lon_lat,
+    serialize_line_string_as_polyline6, serialize_optional_line_string_as_polyline6,
+    serialize_point_as_lon_lat_pair, serialize_rect_to_lng_lat,
 };
 use crate::util::{
     bearing_at_end, bearing_at_start, closest_point_on, convert_to_meters, extend_bounds,
@@ -28,9 +30,9 @@ use crate::util::{
 };
 use crate::valhalla::valhalla_api;
 use crate::valhalla::valhalla_api::{LonLat, ManeuverType};
+use crate::valhalla::ValhallaRouter;
 use crate::{DistanceUnit, Error, TravelMode};
 use futures::future::join_all;
-use url::Url;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +62,11 @@ pub struct PlanQuery {
     /// When true, `date_time` describes the desired arrival time rather than departure time.
     #[serde(default)]
     arrive_by: bool,
+
+    /// The ids of the routers to plan with, like `otp-headway,valhalla-master`, rather than the
+    /// first that suits the trip.
+    #[serde(default, deserialize_with = "deserialize_comma_separated")]
+    router_ids: Vec<String>,
 }
 
 impl PlanQuery {
@@ -109,6 +116,8 @@ pub struct Itinerary {
     /// Which cycling objectives this route is the best answer to. Empty for every other mode.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub(crate) route_preferences: Vec<BikeRoutePreference>,
+
+    pub(crate) router_id: String,
 }
 
 impl Itinerary {
@@ -122,7 +131,7 @@ impl Itinerary {
 
     /// Valhalla has no notion of a departure time - it plans a trip of a given *length*, so we
     /// treat it as leaving now.
-    pub fn from_valhalla(valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
+    pub fn from_valhalla(router_id: &str, valhalla: &valhalla_api::Trip, mode: TravelMode) -> Self {
         let bounds = Rect::new(
             geo::coord!(x: valhalla.summary.min_lon, y: valhalla.summary.min_lat),
             geo::coord!(x: valhalla.summary.max_lon, y: valhalla.summary.max_lat),
@@ -162,10 +171,12 @@ impl Itinerary {
             bounds,
             legs,
             route_preferences: vec![],
+            router_id: router_id.to_string(),
         }
     }
 
     pub fn from_otp(
+        router_id: &str,
         itinerary: gtfs_graphql::Itinerary,
         mode: TravelMode,
         instruction_units: DistanceUnit,
@@ -207,6 +218,7 @@ impl Itinerary {
             bounds: itinerary_bounds,
             legs,
             route_preferences: vec![],
+            router_id: router_id.to_string(),
         })
     }
 }
@@ -1067,79 +1079,203 @@ pub async fn get_plan(
     _get_plan(query, req, app_state).await
 }
 
+/// Plans with `router` alone.
+async fn plan_with(
+    query: &Query<PlanQuery>,
+    router: &Router,
+    primary_mode: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    if !router.covers(query.from_place, query.to_place) {
+        return Err(match router {
+            Router::Otp(otp) if primary_mode == &TravelMode::Transit => {
+                no_transit_coverage(query, &[otp])
+            }
+            _ => no_coverage(format!("{} doesn't cover this trip", router.id())),
+        });
+    }
+    match router {
+        Router::Otp(otp) => otp_plan(query, otp, primary_mode).await,
+        Router::Valhalla(_) if primary_mode == &TravelMode::Transit => Err(PlanResponseErr::from(
+            Error::user("valhalla doesn't plan transit"),
+        )),
+        Router::Valhalla(valhalla) => valhalla_plan(query, valhalla, primary_mode).await,
+    }
+}
+
 pub async fn _get_plan(
     query: web::Query<PlanQuery>,
-    req: HttpRequest,
+    _req: HttpRequest,
     app_state: web::Data<AppState>,
 ) -> std::result::Result<PlanResponseOk, PlanResponseErr> {
     let Some(primary_mode) = query.mode.first() else {
         return Err(PlanResponseErr::from(Error::user("mode is required")));
     };
 
-    if !app_state.has_valhalla() {
-        return otp_plan(&query, req, &app_state, primary_mode).await;
+    if !query.router_ids.is_empty() {
+        return plan_with_each(&query, &app_state, primary_mode).await;
     }
 
     // TODO: Handle bus+bike if bike is first, for now all our clients are responsible for enforcing that
     // the "primary" mode appears first.
-    match primary_mode {
-        TravelMode::Transit => otp_plan(&query, req, &app_state, primary_mode).await,
-        other => {
-            if primary_mode == &TravelMode::Bicycle || primary_mode == &TravelMode::Walk {
-                match otp_plan(&query, req, &app_state, primary_mode).await {
-                    Ok(otp_response) => {
-                        // Prefer OTP response when available - anecdotally, it tends to be higher quality than Valhalla routes for
-                        // walking and cycling.
-                        //
-                        // We could combine the results and return them all, but I seemingly never want the valhalla directions when OTP are available.
-                        //
-                        // Plus, when re-routing, the navigation SDK tries to do route-matching so that the "most similar" route
-                        // will be applied. The end result is that you sometimes end up on the valhalla route, which IME is typically worse.
-                        return Ok(otp_response);
-                    }
-                    Err(e) => {
-                        // match error_code to raw value of ErrorType enum
-                        match ErrorType::try_from(e.error.error_code) {
-                            Ok(ErrorType::NoCoverageForArea) => {
-                                log::debug!("No OTP coverage for route");
-                            }
-                            other => {
-                                debug_assert!(other.is_ok(), "unexpected error code: {e:?}");
-                                // We're mixing with results from Valhalla anyway, so don't surface this error
-                                // to the user. Likely we just don't support this area.
-                                log::error!("OTP failed to plan {primary_mode:?} route: {e}");
-                            }
-                        }
-                    }
-                }
+    let mut last_error = None;
+    for router in app_state.routers_suiting(*primary_mode, query.from_place, query.to_place) {
+        match plan_with(&query, router, primary_mode).await {
+            Ok(plan) => return Ok(plan),
+            Err(e) => {
+                log::error!("{} failed to plan {primary_mode:?} route: {e}", router.id());
+                last_error = Some(e);
             }
-            valhalla_plan(&query, &app_state, primary_mode, other).await
         }
     }
+    Err(last_error.unwrap_or_else(|| match primary_mode {
+        TravelMode::Transit => {
+            no_transit_coverage(&query, &app_state.otp_routers().collect::<Vec<_>>())
+        }
+        _ => no_coverage("no router covers this trip".to_string()),
+    }))
+}
+
+/// Plans with every router the query names at once, offering all of their itineraries.
+async fn plan_with_each(
+    query: &Query<PlanQuery>,
+    app_state: &AppState,
+    primary_mode: &TravelMode,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let routers: Vec<&Router> = query
+        .router_ids
+        .iter()
+        .map(|router_id| app_state.router(router_id))
+        .collect::<crate::Result<_>>()?;
+    let plans = join_all(
+        routers
+            .iter()
+            .map(|router| plan_with(query, router, primary_mode)),
+    )
+    .await;
+
+    let mut itineraries = vec![];
+    let mut first_error = None;
+    for (router, plan) in routers.iter().zip(plans) {
+        match plan {
+            Ok(plan) => itineraries.extend(plan.itineraries),
+            Err(e) => {
+                log::error!("{} failed to plan {primary_mode:?} route: {e}", router.id());
+                first_error.get_or_insert(e);
+            }
+        }
+    }
+    match first_error {
+        Some(e) if itineraries.is_empty() => Err(e),
+        _ => Ok(PlanResponseOk {
+            comparison: Some(Comparison::new(&itineraries)),
+            itineraries,
+        }),
+    }
+}
+
+fn no_coverage(message: String) -> PlanResponseErr {
+    PlanResponseErr::from(Error::user(message).error_type(ErrorType::NoCoverageForArea))
+}
+
+fn no_transit_coverage(query: &PlanQuery, otp_zones: &[&OtpRouter]) -> PlanResponseErr {
+    let uncovered_places = [
+        (TripEnd::From, query.from_place),
+        (TripEnd::To, query.to_place),
+    ]
+    .into_iter()
+    .filter(|(_, place)| !otp_zones.iter().any(|otp| otp.contains(place)))
+    .map(|(end, _)| end)
+    .collect();
+    let mut area_names: Vec<&str> = otp_zones.iter().map(|otp| otp.id()).collect();
+    area_names.sort();
+    area_names.dedup();
+    PlanResponseErr::no_transit_coverage(area_names, uncovered_places)
 }
 
 async fn valhalla_plan(
     query: &Query<PlanQuery>,
-    app_state: &Data<AppState>,
+    valhalla: &ValhallaRouter,
     primary_mode: &TravelMode,
-    other: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
     debug_assert!(query.mode.len() == 1, "valhalla only supports one mode");
 
-    let mode = match other {
+    let costing = match primary_mode {
         TravelMode::Transit => unreachable!("handled above"),
-        TravelMode::Bicycle => valhalla_api::ModeCosting::Bicycle,
-        TravelMode::Car => valhalla_api::ModeCosting::Auto,
-        TravelMode::Walk => valhalla_api::ModeCosting::Pedestrian,
+        TravelMode::Bicycle => return valhalla_bike_plans(query, valhalla).await,
+        TravelMode::Car => valhalla_api::Costing::Auto,
+        TravelMode::Walk => valhalla_api::Costing::Pedestrian,
     };
+    valhalla_route(
+        query,
+        valhalla,
+        primary_mode,
+        costing,
+        query.num_itineraries,
+    )
+    .await
+}
 
+/// Plan a bike trip once per [`BikeRoutePreference`], and offer the results that differ, like
+/// [`bike_plans`] does with OTP.
+async fn valhalla_bike_plans(
+    query: &Query<PlanQuery>,
+    valhalla: &ValhallaRouter,
+) -> Result<PlanResponseOk, PlanResponseErr> {
+    let plans = join_all(BikeRoutePreference::ALL.map(|preference| async move {
+        let options = match preference {
+            BikeRoutePreference::Quieter => valhalla_api::BicycleCostingOptions::COMFIER,
+            BikeRoutePreference::Faster => valhalla_api::BicycleCostingOptions::FASTER,
+        };
+        // Each preference gives its own best route, as OTP's do, rather than alternates.
+        let plan = valhalla_route(
+            query,
+            valhalla,
+            &TravelMode::Bicycle,
+            valhalla_api::Costing::Bicycle(options),
+            0,
+        )
+        .await;
+        (preference, plan)
+    }))
+    .await;
+
+    let mut planned = vec![];
+    let mut last_error = None;
+    for (preference, plan) in plans {
+        match plan {
+            Ok(response) => planned.extend(
+                response
+                    .itineraries
+                    .into_iter()
+                    .map(|itinerary| (preference, itinerary)),
+            ),
+            Err(e) => {
+                log::warn!("Valhalla failed to plan a {preference:?} bike route: {e}");
+                last_error = Some(e);
+            }
+        }
+    }
+
+    match last_error {
+        Some(e) if planned.is_empty() => Err(e),
+        _ => Ok(PlanResponseOk::from_bike_routes(planned)),
+    }
+}
+
+async fn valhalla_route(
+    query: &Query<PlanQuery>,
+    valhalla: &ValhallaRouter,
+    primary_mode: &TravelMode,
+    costing: valhalla_api::Costing,
+    alternates: u32,
+) -> Result<PlanResponseOk, PlanResponseErr> {
     // Valhalla writes its own instruction prose, so it's the one place the client's preferred
     // units matter to the request. We convert its distances to meters on the way out.
-    let router_url = app_state.valhalla_router()?.plan_url(
+    let router_url = valhalla.plan_url(
         query.from_place,
         query.to_place,
-        mode,
-        query.num_itineraries,
+        costing,
+        alternates,
         query.instruction_units(),
     )?;
     let valhalla_response: reqwest::Response = reqwest::get(router_url).await.map_err(|e| {
@@ -1166,56 +1302,38 @@ async fn valhalla_plan(
             PlanResponseErr::from(Error::server(e))
         })?;
 
-    PlanResponseOk::from_valhalla(*primary_mode, valhalla_route_response)
+    PlanResponseOk::from_valhalla(valhalla.id(), *primary_mode, valhalla_route_response)
 }
 
 async fn otp_plan(
     query: &web::Query<PlanQuery>,
-    _req: HttpRequest,
-    app_state: &web::Data<AppState>,
+    otp: &OtpRouter,
     primary_mode: &TravelMode,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
-    let (endpoint, timezone) = {
-        let otp_cluster = app_state.otp_cluster();
-        let Some(router) = otp_cluster.find_router(query.from_place, query.to_place) else {
-            let uncovered_places = [
-                (TripEnd::From, query.from_place),
-                (TripEnd::To, query.to_place),
-            ]
-            .into_iter()
-            .filter(|(_, place)| !otp_cluster.covers(place))
-            .map(|(end, _)| end)
-            .collect();
-            return Err(PlanResponseErr::no_transit_coverage(
-                otp_cluster.area_names(),
-                uncovered_places,
-            ));
-        };
-        (router.endpoint().clone(), router.timezone())
-    };
+    let (endpoint, timezone) = (otp.endpoint(), otp.timezone());
     log::debug!("found matching router. Querying OTP GraphQL at: {endpoint}");
 
     let params = gtfs_graphql::PlanParams::from((&**query, timezone));
     let client = reqwest::Client::new();
 
     if primary_mode == &TravelMode::Bicycle && query.num_itineraries > 1 {
-        return bike_plans(&client, &endpoint, &params, query.instruction_units()).await;
+        return bike_plans(&client, otp, &params, query.instruction_units()).await;
     }
 
-    let plan = gtfs_graphql::plan_connection(&client, &endpoint, &params)
+    let plan = gtfs_graphql::plan_connection(&client, endpoint, &params)
         .await
         .map_err(|e| {
             log::error!("error while fetching plan from otp service: {e}");
             PlanResponseErr::from(e)
         })?;
 
-    PlanResponseOk::from_otp(*primary_mode, plan, query.instruction_units())
+    PlanResponseOk::from_otp(otp.id(), *primary_mode, plan, query.instruction_units())
 }
 
 /// Plan a bike trip once per [`BikeRoutePreference`], and offer the results that differ.
 async fn bike_plans(
     client: &reqwest::Client,
-    endpoint: &Url,
+    otp: &OtpRouter,
     params: &gtfs_graphql::PlanParams<'_>,
     instruction_units: DistanceUnit,
 ) -> Result<PlanResponseOk, PlanResponseErr> {
@@ -1226,7 +1344,7 @@ async fn bike_plans(
         };
         let client = client.clone();
         async move {
-            let plan = gtfs_graphql::plan_connection(&client, endpoint, &params).await;
+            let plan = gtfs_graphql::plan_connection(&client, otp.endpoint(), &params).await;
             (preference, plan)
         }
     }))
@@ -1236,7 +1354,7 @@ async fn bike_plans(
     let mut last_error = None;
     for (preference, plan) in plans {
         let response = plan.map_err(PlanResponseErr::from).and_then(|plan| {
-            PlanResponseOk::from_otp(TravelMode::Bicycle, plan, instruction_units)
+            PlanResponseOk::from_otp(otp.id(), TravelMode::Bicycle, plan, instruction_units)
         });
         match response {
             Ok(response) => planned.extend(
@@ -1281,7 +1399,10 @@ impl PlanResponseOk {
                 }
             }
         }
-        PlanResponseOk { itineraries: kept }
+        PlanResponseOk {
+            itineraries: kept,
+            comparison: None,
+        }
     }
 }
 
@@ -1314,6 +1435,7 @@ mod tests {
 
     fn bike_itinerary() -> Itinerary {
         let response = PlanResponseOk::from_otp(
+            "otp",
             TravelMode::Bicycle,
             otp_plan("bicycle"),
             DistanceUnit::Miles,
@@ -1515,8 +1637,12 @@ mod tests {
 
     #[test]
     fn valhalla_leg_without_elevation_has_no_profile() {
-        let plan = PlanResponseOk::from_valhalla(TravelMode::Car, valhalla_response("pedestrian"))
-            .unwrap();
+        let plan = PlanResponseOk::from_valhalla(
+            "valhalla",
+            TravelMode::Car,
+            valhalla_response("pedestrian"),
+        )
+        .unwrap();
         let ModeLeg::NonTransit(leg) = &plan.itineraries[0].legs[0].mode_leg else {
             panic!("expected a non-transit leg");
         };
@@ -1525,9 +1651,12 @@ mod tests {
 
     #[test]
     fn parse_from_valhalla() {
-        let plan_response =
-            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response("pedestrian"))
-                .unwrap();
+        let plan_response = PlanResponseOk::from_valhalla(
+            "valhalla",
+            TravelMode::Walk,
+            valhalla_response("pedestrian"),
+        )
+        .unwrap();
         assert_eq!(plan_response.itineraries.len(), 3);
 
         // itineraries
@@ -1583,6 +1712,7 @@ mod tests {
         fn first_maneuver(query_string: &str) -> Maneuver {
             let query = Query::<PlanQuery>::from_query(query_string).unwrap();
             let plan_response = PlanResponseOk::from_otp(
+                "otp",
                 TravelMode::Walk,
                 otp_plan("walk"),
                 query.instruction_units(),
@@ -1669,12 +1799,16 @@ mod tests {
     fn valhalla_instructions_use_preferred_distance_units() {
         fn requested_units(query_string: &str) -> String {
             let query = Query::<PlanQuery>::from_query(query_string).unwrap();
-            let router = ValhallaRouter::new("http://valhalla:8002".parse().unwrap());
+            let router = ValhallaRouter::new(
+                "valhalla".to_string(),
+                "http://valhalla:8002".parse().unwrap(),
+                geo::MultiPolygon::empty(),
+            );
             let url = router
                 .plan_url(
                     query.from_place,
                     query.to_place,
-                    valhalla_api::ModeCosting::Pedestrian,
+                    valhalla_api::Costing::Pedestrian,
                     query.num_itineraries,
                     query.instruction_units(),
                 )
@@ -1702,9 +1836,12 @@ mod tests {
 
         // The prose valhalla wrote in those units comes back verbatim - this fixture was requested
         // in miles - while its numbers are converted to meters.
-        let plan_response =
-            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response("pedestrian"))
-                .unwrap();
+        let plan_response = PlanResponseOk::from_valhalla(
+            "valhalla",
+            TravelMode::Walk,
+            valhalla_response("pedestrian"),
+        )
+        .unwrap();
         let first_leg = &plan_response.itineraries[0].legs[0];
         let ModeLeg::NonTransit(non_transit_leg) = &first_leg.mode_leg else {
             panic!("expected non-transit leg")
@@ -1725,6 +1862,7 @@ mod tests {
     #[test]
     fn parse_from_otp() {
         let plan_response = PlanResponseOk::from_otp(
+            "otp",
             TravelMode::Transit,
             otp_plan("transit"),
             DistanceUnit::Miles,
@@ -1799,6 +1937,7 @@ mod tests {
     #[test]
     fn serialize_response_from_otp() {
         let plan_response = PlanResponseOk::from_otp(
+            "otp",
             TravelMode::Transit,
             otp_plan("transit"),
             DistanceUnit::Miles,
@@ -1911,9 +2050,12 @@ mod tests {
 
     #[test]
     fn serialize_response_from_valhalla() {
-        let plan_response =
-            PlanResponseOk::from_valhalla(TravelMode::Walk, valhalla_response("pedestrian"))
-                .unwrap();
+        let plan_response = PlanResponseOk::from_valhalla(
+            "valhalla",
+            TravelMode::Walk,
+            valhalla_response("pedestrian"),
+        )
+        .unwrap();
 
         let response = serde_json::to_string(&plan_response).unwrap();
         let parsed_response: Value = serde_json::from_str(&response).unwrap();
@@ -2047,7 +2189,7 @@ mod tests {
         });
         let plan = crate::otp::gtfs_graphql::plan_result_from_json(body);
 
-        let error = PlanResponseOk::from_otp(TravelMode::Transit, plan, DistanceUnit::Miles)
+        let error = PlanResponseOk::from_otp("otp", TravelMode::Transit, plan, DistanceUnit::Miles)
             .expect_err("expected an error");
         assert_eq!(error.error.status_code, 400);
         // Out-of-bounds is how a caller knows to try another router

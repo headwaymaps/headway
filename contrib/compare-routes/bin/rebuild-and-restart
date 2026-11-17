@@ -3,5 +3,5 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-docker compose -p otp-compare up -d --build --remove-orphans --wait
-curl -sSI "localhost:${OTP_COMPARE_PORT:-8080}/" | head -3
+docker compose -p compare-routes up -d --build --remove-orphans --wait
+curl -sSI "localhost:${ROUTE_COMPARE_PORT:-8080}/" | head -3
