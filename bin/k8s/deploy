@@ -1,0 +1,157 @@
+#!/bin/bash -e
+# Deploy a build to its k8s namespace.
+
+set -o pipefail
+
+NAMESPACE=""
+BUILD_DIR=""
+DIFF=false
+RESTART=false
+
+function usage() {
+    cat << EOF
+usage: $0 <build-dir> [--dev] [--diff] [--restart]
+
+Renders k8s/chart from the build's .env, artifacts.json and zone files, and
+deploys it to the namespace named after the build directory. Only pods whose
+manifests changed roll.
+
+options:
+    --dev       Use the maps-earth-dev containers instead of maps-earth-latest.
+    --diff      Show what would change in the cluster, and stop without
+                changing it. Needs the helm-diff plugin:
+                    helm plugin install https://github.com/databus23/helm-diff
+    --restart   Roll every pod, to pick up containers republished under
+                the same tag, which helm can't see.
+    -h, --help  Show this help.
+
+HEADWAY_DATA_TAG overrides the data version from bin/_headway_version.sh.
+
+examples:
+    $0 builds/planet
+    $0 builds/planet --diff
+    $0 builds/planet --restart
+    HEADWAY_DATA_TAG=dev $0 builds/Seattle --dev
+EOF
+}
+
+function parse_args() {
+    local variant=latest
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --dev) variant=dev ;;
+            --diff) DIFF=true ;;
+            --restart) RESTART=true ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1" >&2
+                usage >&2
+                exit 1
+                ;;
+            *)
+                if [ -n "$BUILD_DIR" ]; then
+                    echo "Unknown argument: $1" >&2
+                    exit 1
+                fi
+                BUILD_DIR="${1%/}"
+                ;;
+        esac
+        shift
+    done
+
+    if [ -z "$BUILD_DIR" ]; then
+        usage >&2
+        exit 1
+    fi
+
+    cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+
+    NAMESPACE=$(basename "$BUILD_DIR" | tr '[:upper:]' '[:lower:]')
+    export HEADWAY_CONTAINER_TAG="${HEADWAY_CONTAINER_TAG:-maps-earth-${variant}}"
+}
+
+function require_deps() {
+    if ! command -v helm > /dev/null; then
+        echo "helm is required (brew install helm)" >&2
+        exit 1
+    fi
+}
+
+# --set-file arguments carrying each zone's credentials, failing before anything
+# reaches the cluster on a zone this host can't supply.
+#
+# gtfs-secrets.json is gitignored, so a host holding the whole source tree still
+# need not have it, and one that has it can still be short a feed's entry.
+SECRET_FILE_ARGS=()
+function collect_secret_files() {
+    local zone zone_file secrets_file
+    local no_secrets=() unusable_secrets=()
+
+    source bin/_zone-file.sh
+    while IFS= read -r zone; do
+        zone_file=$(zone_file_for "$BUILD_DIR" "$zone")
+        [ -n "$zone_file" ] || continue
+
+        secrets_file=$(zone_secrets_file_for "$zone_file")
+        if [ -n "$(zone_required_feeds "$zone_file" runtime)" ]; then
+            if [ ! -s "$secrets_file" ]; then
+                no_secrets+=("$secrets_file")
+                continue
+            elif ! zone_credentials_usable "$zone_file" "$secrets_file"; then
+                unusable_secrets+=("$secrets_file")
+                continue
+            fi
+        fi
+        if [ -f "$secrets_file" ]; then
+            SECRET_FILE_ARGS+=(--set-file "gtfsSecrets.${zone}=${secrets_file}")
+        fi
+    done < <(bin/artifacts --optional otp-zones "$BUILD_DIR")
+
+    if [ ${#no_secrets[@]} -gt 0 ]; then
+        printf '%s\n' "${no_secrets[@]}" >&2
+        echo "👆 These zones use token-gated feeds and their credentials are" >&2
+        echo "missing. gtfs-secrets.json is gitignored, so it lives only where" >&2
+        echo "it was written: copy it to this host, or write it here with" >&2
+        echo "" >&2
+        echo "    bin/transit-credentials ${BUILD_DIR}" >&2
+    fi
+    if [ ${#unusable_secrets[@]} -gt 0 ]; then
+        printf '%s\n' "${unusable_secrets[@]}" >&2
+        echo "👆 These zones have a credentials file that does not cover the" >&2
+        echo "feeds they run on - see the feeds named above. Fill them into the" >&2
+        echo "root gtfs-secrets.json on this host and fan it back out with" >&2
+        echo "" >&2
+        echo "    bin/transit-credentials ${BUILD_DIR}" >&2
+    fi
+    [ ${#no_secrets[@]} -eq 0 ] && [ ${#unusable_secrets[@]} -eq 0 ] || exit 1
+}
+
+function deploy() {
+    local values helm_command=(upgrade --install) restart_args=()
+    values=$(bin/k8s/values "$BUILD_DIR")
+    if [ "$DIFF" = true ]; then
+        helm_command=(diff "${helm_command[@]}")
+    fi
+    if [ "$RESTART" = true ]; then
+        restart_args=(--set "restartedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+    fi
+
+    helm "${helm_command[@]}" headway k8s/chart \
+        --namespace "$NAMESPACE" \
+        --values - \
+        "${SECRET_FILE_ARGS[@]}" \
+        "${restart_args[@]}" \
+        <<< "$values"
+}
+
+parse_args "$@"
+require_deps
+collect_secret_files
+deploy
+[ "$DIFF" = false ] || exit 0
+
+watch kubectl get pods -n "$NAMESPACE"

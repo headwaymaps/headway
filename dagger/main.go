@@ -43,6 +43,8 @@ type Headway struct {
 	Elevation *dagger.Directory
 	// Where bin/refresh-hosted-fixtures and bin/publish-elevation publish to.
 	BuildFixturesUrl string
+	// Where a planet build downloads OpenAddresses from.
+	OpenaddressesUrl string
 }
 
 type DrivingSide string
@@ -273,6 +275,10 @@ func (h *Headway) WithArea(
 	// Where bin/refresh-hosted-fixtures and bin/publish-elevation publish to.
 	// +default="https://data.maps.earth/build_fixtures"
 	buildFixturesUrl string,
+
+	// Where a planet build downloads OpenAddresses from.
+	// +optional
+	openaddressesUrl string,
 ) *Headway {
 	h.IsPlanetBuild = countries == "ALL"
 	h.Countries = countries
@@ -283,6 +289,7 @@ func (h *Headway) WithArea(
 	h.MaxConcurrentTransitZones = maxConcurrentTransitZones
 	h.Elevation = elevation
 	h.BuildFixturesUrl = buildFixturesUrl
+	h.OpenaddressesUrl = openaddressesUrl
 	if localPbf == nil {
 		h.OSMExport = h.DownloadPBF(area)
 	} else {
@@ -409,8 +416,8 @@ func (h *Headway) parseBuildSelection(only []string) (*buildSelection, error) {
 }
 
 // buildMapArtifacts builds the selected non-transit artifacts. Artifacts that
-// come out of the same step - terrain and landcover, elasticsearch and
-// placeholder - are built together.
+// come out of the same step - terrain and landcover, elasticsearch, placeholder
+// and the pelias config - are built together.
 func (h *Headway) buildMapArtifacts(ctx context.Context, keys []string) (*dagger.Directory, error) {
 	if h.Area == "" {
 		return nil, fmt.Errorf("Area is required")
@@ -456,10 +463,9 @@ func (h *Headway) buildMapArtifacts(ctx context.Context, keys []string) (*dagger
 		span.End()
 	}
 
-	var pelias *Pelias
 	if selected("elasticsearch", "placeholder") {
 		stepCtx, span := startStep(ctx, "pelias-config")
-		pelias = h.Pelias(stepCtx)
+		pelias := h.Pelias(stepCtx)
 		span.End()
 
 		stepCtx, span = startStep(ctx, "elasticsearch-prepare")
@@ -469,6 +475,8 @@ func (h *Headway) buildMapArtifacts(ctx context.Context, keys []string) (*dagger
 		stepCtx, span = startStep(ctx, "placeholder-prepare")
 		artifacts = append(artifacts, pelias.PreparePlaceholder(stepCtx).Compress())
 		span.End()
+
+		artifacts = append(artifacts, FileArtifact(h.Area+"-pelias", "json", pelias.Config))
 	}
 
 	if err := buildAll(ctx, artifacts); err != nil {
@@ -484,11 +492,6 @@ func (h *Headway) buildMapArtifacts(ctx context.Context, keys []string) (*dagger
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if pelias != nil {
-		// Not content addressed: the deploy scripts read this back by name.
-		output = output.WithFile(h.Area+".pelias.json", pelias.Config)
 	}
 
 	return output, nil

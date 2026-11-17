@@ -146,7 +146,7 @@ services:
     image: ghcr.io/headwaymaps/pelias-init:latest
     env_file: builds/${HEADWAY_AREA:?}/.env
     environment:
-      PELIAS_CONFIG_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_AREA}.pelias.json
+      PELIAS_CONFIG_ARTIFACT_SOURCE_PATH: /bootstrap/${HEADWAY_PELIAS_CONFIG_FILE}
     command: [ "/bin/bash", "/app/init_config.sh" ]
     volumes:
       - "./data/${HEADWAY_AREA}/:/bootstrap/:ro"

@@ -1,0 +1,86 @@
+{{- $terrain := include "headway.sharedArtifact" (list $ "terrain") -}}
+{{- $landcover := include "headway.sharedArtifact" (list $ "landcover") -}}
+{{- $areamap := include "headway.artifact" (list $ "pmtiles") -}}
+{{- $claim := include "headway.claim" (list $ "tileserver" $areamap $terrain $landcover) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tileserver
+spec:
+  selector:
+    matchLabels:
+      app: tileserver
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tileserver
+      {{- with $.Values.restartedAt }}
+      annotations:
+        kubectl.kubernetes.io/restartedAt: {{ . | quote }}
+      {{- end }}
+    spec:
+      initContainers:
+        - name: init
+          image: {{ include "headway.image" (list $ "tileserver-init") }}
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: tileserver-volume
+              mountPath: /data
+          env:
+            - name: TERRAIN_ARTIFACT_SOURCE
+              value: {{ $terrain | quote }}
+            - name: TERRAIN_ARTIFACT_DEST
+              value: /data/tiles/terrain.mbtiles
+            - name: LANDCOVER_ARTIFACT_SOURCE
+              value: {{ $landcover | quote }}
+            - name: LANDCOVER_ARTIFACT_DEST
+              value: /data/tiles/landcover.mbtiles
+            - name: AREAMAP_ARTIFACT_SOURCE
+              value: {{ $areamap | quote }}
+            - name: AREAMAP_ARTIFACT_DEST
+              value: /data/tiles/areamap.pmtiles
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 100Mi
+      containers:
+        - name: tileserver
+          image: {{ include "headway.image" (list $ "tileserver") }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: tileserver-volume
+              mountPath: /data
+          env:
+            - name: PORT
+              value: "8000"
+          resources:
+            limits:
+              memory: 1500Mi
+            requests:
+              memory: 250Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 10
+      volumes:
+        - name: tileserver-volume
+          persistentVolumeClaim:
+            claimName: {{ $claim }}
+---
+{{ include "headway.pvc" (list $claim "200Gi") }}
+---
+{{ include "headway.service" (list "tileserver" 8000) }}

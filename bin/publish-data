@@ -60,7 +60,7 @@ function plan_upload() {
   fi
 
   # The asset host mirrors data/<Area>, so a manifest value is the path here,
-  # under /bootstrap in compose, and in the URLs bin/k8s/generate renders.
+  # under /bootstrap in compose, and in the URLs bin/k8s/deploy deploys.
   printf '%s\0%s\0' "$input_path" "${OUTPUT_DIR}/${output_prefix}/${file}"
 }
 
@@ -130,4 +130,4 @@ panes_run || {
 }
 
 echo "Publishing complete."
-echo "Next, deploy with bin/k8s/apply ${CONFIG_DIR}"
+echo "Next, deploy with bin/k8s/deploy ${CONFIG_DIR}"

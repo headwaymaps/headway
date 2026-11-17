@@ -1,0 +1,78 @@
+#!/bin/bash -e
+# Print the k8s/chart values for a build: its .env, pinned artifacts and zones.
+
+set -o pipefail
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <build-dir>" >&2
+    exit 1
+fi
+BUILD_DIR="${1%/}"
+
+cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+
+set -a
+source .bin-env
+set +a
+if [ -z "${DEPLOYMENT_ARTIFACT_ROOT:-}" ]; then
+    echo "set DEPLOYMENT_ARTIFACT_ROOT in .bin-env" >&2
+    exit 1
+fi
+
+if [ -z "${HEADWAY_DATA_TAG:-}" ]; then
+    source bin/_headway_version.sh
+fi
+source bin/_source-env.sh "$BUILD_DIR"
+source bin/_zone-file.sh
+
+manifest="${BUILD_DIR}/artifacts.json"
+if [ ! -f "$manifest" ]; then
+    echo "missing ${manifest}; run \`bin/artifacts --pin ${BUILD_DIR}\` on the build machine" >&2
+    exit 1
+fi
+
+zone_files="{}"
+while IFS= read -r zone; do
+    [ -n "$zone" ] || continue
+    zone_file=$(zone_file_for "$BUILD_DIR" "$zone")
+    if [ -z "$zone_file" ]; then
+        echo "missing ${BUILD_DIR}/transit/${zone}/zone.json; it's committed, so this checkout is stale" >&2
+        exit 1
+    fi
+    zone_files=$(jq --arg zone "$zone" --rawfile file "$zone_file" '.[$zone] = $file' <<< "$zone_files")
+done < <(bin/artifacts --optional otp-zones "$BUILD_DIR")
+
+jq -n \
+    --arg artifactRoot "$DEPLOYMENT_ARTIFACT_ROOT" \
+    --arg containerTag "${HEADWAY_CONTAINER_TAG:-maps-earth-latest}" \
+    --arg dataTag "$HEADWAY_DATA_TAG" \
+    --arg areaTag "$HEADWAY_AREA_TAG" \
+    --arg publicUrl "$HEADWAY_PUBLIC_URL" \
+    --argjson servicePort "$HEADWAY_SERVICE_PORT" \
+    --arg bbox "${HEADWAY_BBOX:-}" \
+    --arg aboutUrl "$HEADWAY_ABOUT_URL" \
+    --arg aboutLinkText "$HEADWAY_ABOUT_LINK_TEXT" \
+    --arg contactUrl "$HEADWAY_CONTACT_URL" \
+    --arg contactLinkText "$HEADWAY_CONTACT_LINK_TEXT" \
+    --arg elasticsearchMemory "$PELIAS_ELASTICSEARCH_MEMORY_REQUEST" \
+    --arg valhallaMemory "$VALHALLA_MEMORY_REQUEST" \
+    --slurpfile artifacts "$manifest" \
+    --argjson zoneFiles "$zone_files" \
+    '{
+        artifactRoot: $artifactRoot,
+        containerTag: $containerTag,
+        dataTag: $dataTag,
+        areaTag: $areaTag,
+        frontend: {
+            publicUrl: $publicUrl,
+            servicePort: $servicePort,
+            bbox: $bbox,
+            aboutUrl: $aboutUrl,
+            aboutLinkText: $aboutLinkText,
+            contactUrl: $contactUrl,
+            contactLinkText: $contactLinkText
+        },
+        memoryRequests: {elasticsearch: $elasticsearchMemory, valhalla: $valhallaMemory},
+        artifacts: $artifacts[0],
+        zoneFiles: $zoneFiles
+    }'

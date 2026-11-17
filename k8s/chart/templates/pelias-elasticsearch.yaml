@@ -1,0 +1,92 @@
+{{- $artifact := include "headway.artifact" (list $ "elasticsearch") -}}
+{{- $claim := include "headway.claim" (list $ "elasticsearch" $artifact) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pelias-elasticsearch
+spec:
+  replicas: 1
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: pelias-elasticsearch
+  template:
+    metadata:
+      labels:
+        app: pelias-elasticsearch
+      {{- with $.Values.restartedAt }}
+      annotations:
+        kubectl.kubernetes.io/restartedAt: {{ . | quote }}
+      {{- end }}
+    spec:
+      volumes:
+        - name: elasticsearch-volume
+          persistentVolumeClaim:
+            claimName: {{ $claim }}
+        # Elasticsearch's writes, layered over the read-only index image.
+        - name: elasticsearch-scratch
+          emptyDir: {}
+        {{- include "headway.configVolume" . | nindent 8 }}
+      initContainers:
+        - name: init
+          image: {{ include "headway.image" (list $ "pelias-init") }}
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: elasticsearch-volume
+              mountPath: /index
+            - name: config-volume
+              mountPath: /config
+          env:
+            - name: PELIAS_CONFIG_ARTIFACT_URL
+              value: {{ include "headway.artifact" (list $ "pelias-config") | quote }}
+            - name: ELASTICSEARCH_ARTIFACT_URL
+              value: {{ $artifact | quote }}
+          command: ["/bin/bash", "-c", "/app/init_config.sh && /app/init_elastic.sh" ]
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 200Mi
+      containers:
+        - name: main
+          image: {{ include "headway.image" (list $ "pelias-elasticsearch") }}
+          imagePullPolicy: Always
+          # to mount the index image
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: elasticsearch-volume
+              mountPath: /index
+              readOnly: true
+            - name: elasticsearch-scratch
+              mountPath: /scratch
+            - name: config-volume
+              mountPath: /config
+          ports:
+            - containerPort: 9200
+          env:
+            - name: ES_JAVA_OPTS
+              value: "-Xmx8g"
+          resources:
+            limits:
+              memory: 16Gi
+            requests:
+              memory: {{ .Values.memoryRequests.elasticsearch }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9200
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 50
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?wait_for_status=yellow
+              port: 9200
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 50
+---
+{{ include "headway.pvc" (list $claim "90Gi") }}
+---
+{{ include "headway.service" (list "pelias-elasticsearch" 9200) }}

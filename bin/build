@@ -64,19 +64,17 @@ source bin/_trace.sh
 function next_steps() {
     cat <<EOS
 
-Artifacts pinned in ${CONFIG_DIR}/artifacts.json. The k8s manifests still point at the
-previous artifacts until you regenerate and commit them:
+Artifacts pinned in ${CONFIG_DIR}/artifacts.json. Publish and deploy them with:
 
-    bin/k8s/regenerate-all
     bin/publish-data ${CONFIG_DIR} [--host remote.host.com]
+    bin/k8s/deploy ${CONFIG_DIR}
 EOS
 }
 
 status "Building ${HEADWAY_AREA} from ${CONFIG_DIR}"
 
 trace_start "$HEADWAY_AREA"
-trap 'exit_code=$?; bin/revert-fetch-urls; trace_finish; [ $exit_code -ne 0 ] || next_steps' EXIT
-bin/update-fetch-urls
+trap 'exit_code=$?; trace_finish; [ $exit_code -ne 0 ] || next_steps' EXIT
 
 if [ "$NEEDS_PBF" -eq 1 ] && [ -f "${CONFIG_DIR}/prebuild.sh" ]; then
     status "Running ${CONFIG_DIR}/prebuild.sh"
@@ -118,12 +116,24 @@ if [ -n "${HEADWAY_BUILD_FIXTURES_URL:-}" ]; then
     USE_BUILD_FIXTURES_FLAG="--build-fixtures-url=${HEADWAY_BUILD_FIXTURES_URL}"
 fi
 
+USE_OPENADDRESSES_FLAG=""
+if [ "$HEADWAY_COUNTRIES" = ALL ]; then
+    set -a
+    source .bin-env
+    set +a
+    if [ -z "${DEPLOYMENT_ARTIFACT_ROOT:-}" ]; then
+        echo "set DEPLOYMENT_ARTIFACT_ROOT in .bin-env to download OpenAddresses" >&2
+        exit 1
+    fi
+    USE_OPENADDRESSES_FLAG="--openaddresses-url=${DEPLOYMENT_ARTIFACT_ROOT}/openaddresses"
+fi
+
 USE_ONLY_FLAG=""
 if [ ${#ONLY[@]} -gt 0 ]; then
     USE_ONLY_FLAG="--only=$(IFS=,; echo "${ONLY[*]}")"
 fi
 status "Building ${ONLY[*]:-all artifacts} into data/${HEADWAY_AREA}"
-traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_DRIVING_SIDE_FLAG} ${USE_ELEVATION_FLAG} ${USE_BUILD_FIXTURES_FLAG} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
+traced dagger dagger -c "with-area ${HEADWAY_AREA} --countries=${HEADWAY_COUNTRIES} ${USE_LOCAL_PBF} ${USE_TRANSIT_FLAGS} ${USE_DRIVING_SIDE_FLAG} ${USE_ELEVATION_FLAG} ${USE_BUILD_FIXTURES_FLAG} ${USE_OPENADDRESSES_FLAG} | build ${USE_ONLY_FLAG} | export 'data/${HEADWAY_AREA}'"
 
 status "Pinning artifacts"
 bin/artifacts --pin "$CONFIG_DIR"
