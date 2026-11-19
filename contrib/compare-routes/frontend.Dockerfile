@@ -8,7 +8,7 @@ RUN mkdir -p dist/spa/static && \
     HEADWAY_BBOX="-122.462 47.394 -122.005 47.831" \
     bash /generate_config.sh > dist/spa/static/headway-config.json
 
-FROM nginx:1.29
+FROM nginx:stable
 COPY --from=build /www-app/dist/spa /usr/share/nginx/html
 COPY contrib/compare-routes/corpus.json /usr/share/nginx/html/corpus.json
 COPY contrib/compare-routes/compare.json /usr/share/nginx/html/compare.json

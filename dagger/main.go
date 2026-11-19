@@ -972,7 +972,7 @@ func (h *Headway) WebServeContainer(ctx context.Context,
 	webBuild := h.WebBuild(ctx, branding)
 
 	return dag.Container().
-		From("nginx").
+		From("nginx:stable").
 		WithDirectory("/usr/share/nginx/html/", webBuild).
 		WithFile("/etc/nginx/templates/nginx.conf.template", h.ServiceDir("frontend").File("nginx.conf.template")).
 		WithEnvVariable("HEADWAY_PUBLIC_URL", "http://127.0.0.1:8080").
