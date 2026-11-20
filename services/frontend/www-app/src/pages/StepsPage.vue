@@ -21,7 +21,18 @@
     </div>
   </div>
   <div class="bottom-card steps-page-bottom-card">
-    <component :is="componentForMode(trip.mode)" v-if="trip" :trip="trip" />
+    <multi-modal-steps
+      v-if="
+        shownTrip &&
+        shownTrip.mode == TravelMode.Transit &&
+        fromPlace &&
+        toPlace
+      "
+      :trip="shownTrip"
+      :from="fromPlace"
+      :to="toPlace"
+    />
+    <single-mode-steps v-else-if="shownTrip" :trip="shownTrip" />
   </div>
 </template>
 
@@ -30,7 +41,7 @@ import { getBaseMap } from 'src/components/BaseMap.vue';
 import type { BaseMapInterface } from 'src/components/BaseMap.vue';
 import { TravelMode, DistanceUnits } from 'src/utils/models';
 import Place, { PlaceStorage } from 'src/models/Place';
-import { defineComponent, Component, markRaw, Ref, ref } from 'vue';
+import { defineComponent, markRaw, Ref, ref } from 'vue';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
 import SingleModeSteps from 'src/components/SingleModeSteps.vue';
 import MultiModalSteps from 'src/components/MultiModalSteps.vue';
@@ -43,7 +54,7 @@ import TransitQuery from 'src/models/TransitQuery';
 
 export default defineComponent({
   name: 'StepsPage',
-  components: { SearchBox },
+  components: { SearchBox, SingleModeSteps, MultiModalSteps },
   props: {
     mode: {
       type: String as () => TravelMode,
@@ -81,12 +92,20 @@ export default defineComponent({
     trip?: Trip | undefined;
     tripMarkers: string[];
     vehicleOverlay?: VehicleOverlay;
+    TravelMode: typeof TravelMode;
   } {
     return {
+      TravelMode,
       trip: undefined,
       tripMarkers: [],
       vehicleOverlay: undefined,
     };
+  },
+  computed: {
+    // Reactive unwrapping loses the class's private members, so the template can't pass it as is.
+    shownTrip(): Trip | undefined {
+      return this.trip as Trip | undefined;
+    },
   },
   mounted: async function () {
     [this.fromPlace, this.toPlace] = await Promise.all(
@@ -135,17 +154,6 @@ export default defineComponent({
     showSteepClimbBadges([]);
   },
   methods: {
-    componentForMode(mode: TravelMode): Component {
-      switch (mode) {
-        case TravelMode.Walk:
-        case TravelMode.Bike:
-        case TravelMode.Drive:
-          return SingleModeSteps;
-        case TravelMode.Transit:
-          return MultiModalSteps;
-      }
-    },
-
     goToAlternates() {
       const fromEncoded = this.fromPlace?.urlEncodedId() ?? '_';
       const toEncoded = this.toPlace?.urlEncodedId() ?? '_';

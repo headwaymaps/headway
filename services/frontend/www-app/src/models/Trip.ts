@@ -17,6 +17,7 @@ import {
   TravelmuxError,
   TravelmuxErrorCode,
   TripEnd,
+  TransitRoute,
 } from 'src/services/TravelmuxClient';
 import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { GradeShade, gradeShade, gradeShadeColor } from 'src/utils/grade';
@@ -120,33 +121,6 @@ export default class Trip {
     });
   }
 
-  // How far the rider travels under their own power. Usually walking, but will be biking if mode
-  // is transit+bike.
-  get nonTransitDistanceMeters(): number {
-    return this.legs
-      .filter((leg) => !leg.transitLeg)
-      .reduce((total, leg) => total + leg.distanceMeters, 0);
-  }
-
-  /// Whether the rider brings a bicycle along on their transit trip
-  get withBicycle(): boolean {
-    return this.legs.some((leg) => leg.raw.mode == TravelmuxMode.Bike);
-  }
-
-  get walkingDistanceFormatted(): string {
-    const preformattedDistance = formatDistance(
-      this.nonTransitDistanceMeters,
-      DistanceUnits.Meters,
-      this.preferredDistanceUnits,
-    );
-
-    if (this.withBicycle) {
-      return i18n.global.t('bike_distance', { preformattedDistance });
-    } else {
-      return i18n.global.t('walk_distance', { preformattedDistance });
-    }
-  }
-
   get alerts(): TransitAlert[] {
     return this.legs.flatMap((leg) => leg.alerts);
   }
@@ -155,40 +129,8 @@ export default class Trip {
     return this.alerts.length > 0;
   }
 
-  /// Agencies often publish several unrelated alerts under one boilerplate header (BART sends
-  /// everything as "BART.gov Alert"), and a trip can ride the same route twice, so we group by
-  /// header and drop exact repeats. The details live in each alert's descriptionText.
   get alertGroups(): TransitAlertGroup[] {
-    const groups: TransitAlertGroup[] = [];
-    const groupsByHeader: Map<string, TransitAlertGroup> = new Map();
-
-    for (const alert of this.alerts) {
-      let group;
-      if (alert.headerText === undefined) {
-        // An alert with no header has nothing to group on, so it stands alone.
-        group = { headerText: undefined, alerts: [] as TransitAlert[] };
-        groups.push(group);
-      } else {
-        group = groupsByHeader.get(alert.headerText);
-        if (!group) {
-          group = {
-            headerText: alert.headerText,
-            alerts: [] as TransitAlert[],
-          };
-          groupsByHeader.set(alert.headerText, group);
-          groups.push(group);
-        }
-      }
-
-      const isRepeat = group.alerts.some(
-        (existing) => existing.descriptionText === alert.descriptionText,
-      );
-      if (!isRepeat) {
-        group.alerts.push(alert);
-      }
-    }
-
-    return groups;
+    return groupTransitAlerts(this.alerts);
   }
 
   /// Whether the change into `legIdx` happens at a transit stop, which the map already marks
@@ -207,6 +149,77 @@ export default class Trip {
   get firstTransitLeg(): TripLeg | undefined {
     return this.legs.slice(0, 2).find((leg) => leg.transitLeg);
   }
+
+  /// When the first vehicle leaves - which is what tells apart repeats of one trip.
+  get departureTime(): Date {
+    return this.legs.find((leg) => leg.transitLeg)?.startTime ?? this.startTime;
+  }
+
+  get departureTimeFormatted(): string {
+    return formatTime(this.departureTime);
+  }
+}
+
+/// A route as it's badged on a trip or a vehicle.
+export interface RouteBadge {
+  label: string;
+  /// `#RRGGBB`
+  color: string;
+  /// `#RRGGBB`, legible on `color`.
+  textColor: string;
+}
+
+/// Badges a route in the agency's colors, else those of an active trip line.
+export function routeBadge(
+  label: string,
+  route: TransitRoute | undefined,
+): RouteBadge {
+  if (route?.color && route.textColor) {
+    return {
+      label,
+      color: `#${route.color}`,
+      textColor: `#${route.textColor}`,
+    };
+  }
+  return { label, color: Palette.activeRoute, textColor: '#000000' };
+}
+
+/// Agencies often publish several unrelated alerts under one boilerplate header (BART sends
+/// everything as "BART.gov Alert"), and a trip can ride the same route twice, so we group by
+/// header and drop exact repeats. The details live in each alert's descriptionText.
+export function groupTransitAlerts(
+  alerts: TransitAlert[],
+): TransitAlertGroup[] {
+  const groups: TransitAlertGroup[] = [];
+  const groupsByHeader: Map<string, TransitAlertGroup> = new Map();
+
+  for (const alert of alerts) {
+    let group;
+    if (alert.headerText === undefined) {
+      // An alert with no header has nothing to group on, so it stands alone.
+      group = { headerText: undefined, alerts: [] as TransitAlert[] };
+      groups.push(group);
+    } else {
+      group = groupsByHeader.get(alert.headerText);
+      if (!group) {
+        group = {
+          headerText: alert.headerText,
+          alerts: [] as TransitAlert[],
+        };
+        groupsByHeader.set(alert.headerText, group);
+        groups.push(group);
+      }
+    }
+
+    const isRepeat = group.alerts.some(
+      (existing) => existing.descriptionText === alert.descriptionText,
+    );
+    if (!isRepeat) {
+      group.alerts.push(alert);
+    }
+  }
+
+  return groups;
 }
 
 /// Alerts sharing a header, presented as one collapsible row.
@@ -339,6 +352,15 @@ export class TripLeg {
     return this.raw.transitLeg?.alerts ?? [];
   }
 
+  get alertGroups(): TransitAlertGroup[] {
+    return groupTransitAlerts(this.alerts);
+  }
+
+  /// How many stops a ride goes before the rider gets off, counting that one.
+  get stopsRidden(): number | undefined {
+    return this.raw.transitLeg?.stopCount;
+  }
+
   get emoji(): string {
     const vehicleMode = this.raw.transitLeg?.vehicleMode;
     if (vehicleMode) {
@@ -355,10 +377,38 @@ export class TripLeg {
     }
   }
 
-  get shortName(): string {
+  get routeName(): string {
     const route = this.raw.transitLeg?.route;
-    const shortName = route?.shortName ?? route?.longName ?? '';
-    return `${this.emoji} ${shortName}`.trim();
+    return route?.shortName ?? route?.longName ?? '';
+  }
+
+  get shortName(): string {
+    return `${this.emoji} ${this.routeName}`.trim();
+  }
+
+  /// Whole minutes, and never none: a moment's walk still reads as a step.
+  get durationMinutes(): number {
+    return Math.max(1, Math.round(this.durationSeconds / 60));
+  }
+
+  /// The step this leg is, e.g. "Board the E Line at Aurora Ave N & N 46th St".
+  get stepDescription(): string {
+    const t = i18n.global.t;
+    if (!this.transitLeg) {
+      const minutes = this.durationMinutes;
+      return this.mode == TravelMode.Bike
+        ? t('leg_step_$minutes_bike', { minutes }, minutes)
+        : t('leg_step_$minutes_walk', { minutes }, minutes);
+    }
+    const route = this.routeName;
+    const stop = this.sourceName;
+    return stop
+      ? t('leg_step_board_$route_at_$stop', { route, stop })
+      : t('leg_step_board_$route', { route });
+  }
+
+  get routeBadge(): RouteBadge {
+    return routeBadge(this.routeName, this.raw.transitLeg?.route);
   }
 
   get sourceName(): string {
@@ -579,7 +629,9 @@ export async function fetchBestTrips(
     from,
     to,
     travelmuxModes,
-    5,
+    // Repeat departures of the same trip are collapsed into one row, so ask for enough that
+    // several genuinely different trips survive.
+    mode == TravelMode.Transit ? 10 : 5,
     distanceUnits,
     departureTime,
     departureDate,

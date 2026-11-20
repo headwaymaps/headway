@@ -12,4 +12,13 @@ export default {
   transit_unsupported_notify_btn: 'Avísanos',
   transit_unsupported_email_subject: 'Transporte público en mi zona',
   transit_unsupported_email_subject_$area: 'Transporte público en {area}',
+  leg_step_$minutes_walk: '{minutes} minuto a pie | {minutes} minutos a pie',
+  leg_step_$minutes_bike:
+    '{minutes} minuto en bici | {minutes} minutos en bici',
+  leg_step_board_$route_at_$stop: 'Sube al {route} en {stop}',
+  leg_step_board_$route: 'Sube al {route}',
+  leg_step_arrive: 'Llega a tu destino',
+  transit_timeline_toward_$headsign: 'hacia {headsign}',
+  transit_timeline_$n_stops: '{n} parada | {n} paradas',
+  departures_$first_$second: '{first} y {second}',
 };

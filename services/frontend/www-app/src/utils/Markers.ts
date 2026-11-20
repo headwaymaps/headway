@@ -1,11 +1,12 @@
 import polyline from '@mapbox/polyline';
 import bbox from '@turf/bbox';
-import { Marker, Popup } from 'maplibre-gl';
+import { LngLat, Marker, Popup } from 'maplibre-gl';
 import { getBaseMap } from 'src/components/BaseMap.vue';
 import type { TripLeg } from 'src/models/Trip';
 import type { SteepSection } from 'src/services/TravelmuxClient';
 import { describeGrade, gradeColor } from 'src/utils/grade';
 import './SteepClimbBadge.scss';
+import './LegCallout.scss';
 
 const Markers = {
   active: (): Marker => {
@@ -52,6 +53,13 @@ const Markers = {
     return new Marker({ element, anchor: 'bottom', offset: [0, -2] }).setPopup(
       popup,
     );
+  },
+  /// A label pointing at where a step of the trip begins.
+  legCallout: (text: string): Marker => {
+    const element = document.createElement('div');
+    element.className = 'leg-callout';
+    element.textContent = text;
+    return new Marker({ element, anchor: 'bottom', offset: [0, -10] });
   },
   tripEnd: (): Marker => {
     return new Marker({ color: '#111111' });
@@ -124,6 +132,22 @@ export function showElevationScrubber(
   if (keepInView) {
     map.slideUnder(lngLat, previous);
   }
+}
+
+const TRIP_STEP_CALLOUT_KEY = 'trip-step-callout';
+
+/// Zooms to where a step of the trip happens, and labels it with what the rider does there.
+export function focusTripStep(position: LngLat, description: string) {
+  const map = getBaseMap();
+  map?.pushMarker(
+    TRIP_STEP_CALLOUT_KEY,
+    Markers.legCallout(description).setLngLat(position),
+  );
+  map?.flyTo(position, { zoom: 16 });
+}
+
+export function hideTripStepCallout() {
+  getBaseMap()?.removeMarker(TRIP_STEP_CALLOUT_KEY);
 }
 
 export function hideElevationScrubber() {

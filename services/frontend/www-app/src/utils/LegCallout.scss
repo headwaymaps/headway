@@ -1,0 +1,22 @@
+.leg-callout {
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
+
+  // The point, aimed at where the step begins.
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    margin-left: -6px;
+    border: 6px solid transparent;
+    border-bottom: 0;
+    border-top-color: #ffffff;
+  }
+}

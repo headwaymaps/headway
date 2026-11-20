@@ -126,6 +126,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -192,6 +193,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },
@@ -522,6 +524,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "132"
                 },
@@ -588,6 +591,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "28"
                 },
@@ -852,6 +856,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -918,6 +923,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },
@@ -1182,6 +1188,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -1248,6 +1255,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },
@@ -1578,6 +1586,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "132"
                 },
@@ -1644,6 +1653,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "28"
                 },
@@ -1908,6 +1918,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -1974,6 +1985,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },

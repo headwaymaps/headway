@@ -29,6 +29,7 @@ import { defineComponent } from 'vue';
 import ScaleControl from 'src/ui/ScaleControl';
 import {
   AttributionControl,
+  GeoJSONSource,
   Map as MaplibreMap,
   NavigationControl,
   setWorkerUrl,
@@ -594,6 +595,27 @@ export default defineComponent({
         (newLayer as any).id = sourceKey;
       }
       this.ensureMapLoaded((map: MaplibreMap) => {
+        // Updated in place, the old drawing stays up until the new data is ready, rather than
+        // the map drawing a frame with neither.
+        const existing = map.getSource(sourceKey);
+        if (
+          existing instanceof GeoJSONSource &&
+          source.type === 'geojson' &&
+          map.getLayer(sourceKey)
+        ) {
+          existing.setData(source.data);
+          type SetPaint = Parameters<MaplibreMap['setPaintProperty']>;
+          const paint =
+            ('paint' in newLayer ? newLayer.paint : undefined) ?? {};
+          for (const [property, value] of Object.entries(paint)) {
+            map.setPaintProperty(
+              sourceKey,
+              property as SetPaint[1],
+              value as SetPaint[2],
+            );
+          }
+          return;
+        }
         if (map.getLayer(sourceKey)) {
           map.removeLayer(sourceKey);
         }

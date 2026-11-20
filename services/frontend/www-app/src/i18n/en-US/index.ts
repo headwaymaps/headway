@@ -79,8 +79,6 @@ export default {
     meters: 'm',
     feet: 'ft',
   },
-  walk_distance: '{preformattedDistance} walk total',
-  bike_distance: '{preformattedDistance} bike total',
   route_picker_show_route_details_btn: 'Details',
   trip_search_depart_at: 'Leave at',
   trip_search_arrive_by: 'Arrive by',
@@ -120,4 +118,12 @@ export default {
   search_results_not_found_header: 'No results found. 😢',
   search_results_not_found_subheader:
     'Something missing? Consider adding it to {osmLink} so it can eventually appear here.',
+  leg_step_$minutes_walk: '{minutes} minute walk',
+  leg_step_$minutes_bike: '{minutes} minute bike ride',
+  leg_step_board_$route_at_$stop: 'Board the {route} at {stop}',
+  leg_step_board_$route: 'Board the {route}',
+  leg_step_arrive: 'Arrive at your destination',
+  transit_timeline_toward_$headsign: 'toward {headsign}',
+  transit_timeline_$n_stops: '{n} stop | {n} stops',
+  departures_$first_$second: '{first} & {second}',
 };

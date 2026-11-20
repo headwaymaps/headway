@@ -663,6 +663,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -729,6 +730,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },
@@ -1072,6 +1074,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "132"
                 },
@@ -1138,6 +1141,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "28"
                 },
@@ -1441,6 +1445,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -1507,6 +1512,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },
@@ -1993,6 +1999,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": "E-Line Rapid Ride",
                   "shortName": "E Line"
                 },
@@ -2466,6 +2473,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": "C-Line Rapid Ride",
                   "shortName": "C Line"
                 },
@@ -2990,6 +2998,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -3056,6 +3065,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },
@@ -3399,6 +3409,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "132"
                 },
@@ -3465,6 +3476,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "28"
                 },
@@ -3768,6 +3780,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "21"
                 },
@@ -3834,6 +3847,7 @@
                 "mode": "BUS",
                 "route": {
                   "color": null,
+                  "textColor": null,
                   "longName": null,
                   "shortName": "5"
                 },
