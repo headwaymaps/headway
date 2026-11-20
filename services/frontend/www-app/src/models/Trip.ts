@@ -114,13 +114,6 @@ export default class Trip {
     return new Date(this.raw.endTime);
   }
 
-  get startStopTimesFormatted(): string {
-    return i18n.global.t('time_range$startTime$endTime', {
-      startTime: formatTime(this.startTime),
-      endTime: formatTime(this.endTime),
-    });
-  }
-
   get alerts(): TransitAlert[] {
     return this.legs.flatMap((leg) => leg.alerts);
   }

@@ -2,15 +2,20 @@
   <trip-list-item
     :click-handler="() => $emit('select', shownTrip)"
     :active="active === shownTrip"
-    :duration-formatted="shownTrip.durationFormatted"
-    :distance-formatted="shownTrip.distanceFormatted"
+    :trip="shownTrip"
   >
+    <template v-if="isTransit" #lead>
+      <transit-departure
+        :trip="shownTrip"
+        :departures="group.trips"
+        @focus-leg="(legIdx: number) => $emit('focusLeg', shownTrip, legIdx)"
+      />
+    </template>
     <multi-modal-list-item
-      v-if="shownTrip.mode == TravelMode.Transit"
+      v-if="isTransit"
       :trip="shownTrip"
       :active="active === shownTrip"
       :leg-badges="group.legBadges"
-      :departures="group.trips"
       @focus-leg="(legIdx: number) => $emit('focusLeg', shownTrip, legIdx)"
     />
     <single-mode-list-item
@@ -33,17 +38,17 @@
         @click.stop="$emit('select', trip)"
       />
     </div>
-    <q-item-label>
+    <template #action>
       <q-btn
-        style="margin-left: -6px"
-        padding="6px"
-        flat
-        icon="directions"
-        :label="$t('route_picker_show_route_details_btn')"
-        size="sm"
+        class="trip-list-item-action"
+        :class="{ 'trip-list-item-action--unselected': active !== shownTrip }"
+        unelevated
+        no-caps
+        padding="3px 10px"
+        :label="$t('route_picker_steps_btn')"
         @click.stop="$emit('steps', shownTrip)"
       />
-    </q-item-label>
+    </template>
   </trip-list-item>
 </template>
 
@@ -52,6 +57,7 @@ import { defineComponent, PropType } from 'vue';
 import TripListItem from 'src/components/TripListItem.vue';
 import SingleModeListItem from 'src/components/SingleModeListItem.vue';
 import MultiModalListItem from 'src/components/MultiModalListItem.vue';
+import TransitDeparture from 'src/components/TransitDeparture.vue';
 import Trip from 'src/models/Trip';
 import TripGroup from 'src/models/TripGroup';
 import { TravelMode } from 'src/utils/models';
@@ -59,7 +65,12 @@ import { useNow } from 'src/utils/useNow';
 
 export default defineComponent({
   name: 'TripGroupListItem',
-  components: { TripListItem, MultiModalListItem, SingleModeListItem },
+  components: {
+    TripListItem,
+    MultiModalListItem,
+    SingleModeListItem,
+    TransitDeparture,
+  },
   props: {
     group: {
       type: Object as PropType<TripGroup>,
@@ -79,10 +90,10 @@ export default defineComponent({
   setup() {
     return { now: useNow() };
   },
-  data(): { TravelMode: typeof TravelMode } {
-    return { TravelMode };
-  },
   computed: {
+    isTransit(): boolean {
+      return this.group.first.mode == TravelMode.Transit;
+    },
     /// The row becomes whichever departure is picked, else the next one yet to leave.
     shownTrip(): Trip {
       const active = this.active as Trip | undefined;

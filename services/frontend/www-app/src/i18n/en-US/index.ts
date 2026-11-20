@@ -23,7 +23,6 @@ export default {
   location_permission_denied_banner:
     'Location permission was denied. Check your privacy settings.',
   dropped_pin: 'Dropped Pin',
-  via_$place: 'via {place}',
   via$transit_route: 'via route {transitRoute}',
   times: {
     $n_seconds: '{n} seconds',
@@ -49,7 +48,7 @@ export default {
     $n_hour: '{n} hr',
     $n_hours: '{n} hr',
   },
-  time_range$startTime$endTime: '{startTime} - {endTime}',
+  trip_eta_$time: '{time} ETA',
   go_home: 'Go Home',
   oops_nothing_here: 'Oops. Nothing here...',
   search: {
@@ -79,13 +78,13 @@ export default {
     meters: 'm',
     feet: 'ft',
   },
-  route_picker_show_route_details_btn: 'Details',
+  route_picker_steps_btn: 'Steps',
   trip_search_depart_at: 'Leave at',
   trip_search_arrive_by: 'Arrive by',
   trip_search_depart_now: 'Leave now',
   trip_search_transit_with_bike: '🚲 Transit with a bike',
-  departs_$timeDuration_from_now: 'in {timeDuration}',
-  departs_$timeDuration_since_now: '{timeDuration} ago',
+  departs_$timeDuration_from_now: 'Departs in {timeDuration}',
+  departs_$timeDuration_since_now: 'Departed {timeDuration} ago',
   departs_at_$location: 'from {location}',
   transit_timeline_wait_for_transit_$timeDuration: 'wait up to {timeDuration}',
   edit_poi_button: 'Edit Details',
@@ -126,4 +125,5 @@ export default {
   transit_timeline_toward_$headsign: 'toward {headsign}',
   transit_timeline_$n_stops: '{n} stop | {n} stops',
   departures_$first_$second: '{first} & {second}',
+  departures_$first_$second_minutes: '{first} & {second} min',
 };
