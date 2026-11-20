@@ -5,7 +5,7 @@ import {
   LngLatBounds,
 } from 'maplibre-gl';
 import { DistanceUnits, TravelMode } from 'src/utils/models';
-import { Result } from 'src/utils/Result';
+import { Ok, Result } from 'src/utils/Result';
 import {
   TravelmuxMode,
   TravelmuxClient,
@@ -598,7 +598,57 @@ export class TripFetchError {
   }
 }
 
+/// How long a search is answered with the trips it last found, so the steps of a trip picked from
+/// a list are of that same trip, and going back finds the same list. Short enough that the times
+/// are still current.
+const RECENT_TRIPS_MAX_AGE_MS = 3 * 60 * 1000;
+
+let lastTrips: { search: string; fetchedAt: number; trips: Trip[] } | undefined;
+
 export async function fetchBestTrips(
+  from: LngLat,
+  to: LngLat,
+  mode: TravelMode,
+  distanceUnits: DistanceUnits,
+  departureTime?: string,
+  departureDate?: string,
+  arriveBy?: boolean,
+  transitWithBicycle?: boolean,
+): Promise<Result<Trip[], TripFetchError>> {
+  const search = JSON.stringify([
+    from.toArray(),
+    to.toArray(),
+    mode,
+    distanceUnits,
+    departureTime,
+    departureDate,
+    arriveBy,
+    transitWithBicycle,
+  ]);
+  if (
+    lastTrips?.search == search &&
+    Date.now() - lastTrips.fetchedAt < RECENT_TRIPS_MAX_AGE_MS
+  ) {
+    return Ok(lastTrips.trips);
+  }
+
+  const result = await fetchTrips(
+    from,
+    to,
+    mode,
+    distanceUnits,
+    departureTime,
+    departureDate,
+    arriveBy,
+    transitWithBicycle,
+  );
+  if (result.ok) {
+    lastTrips = { search, fetchedAt: Date.now(), trips: result.value };
+  }
+  return result;
+}
+
+async function fetchTrips(
   from: LngLat,
   to: LngLat,
   mode: TravelMode,

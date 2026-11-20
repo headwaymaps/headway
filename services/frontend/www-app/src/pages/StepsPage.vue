@@ -39,7 +39,8 @@
 <script lang="ts">
 import { getBaseMap } from 'src/components/BaseMap.vue';
 import type { BaseMapInterface } from 'src/components/BaseMap.vue';
-import { TravelMode, DistanceUnits } from 'src/utils/models';
+import { TravelMode } from 'src/utils/models';
+import Prefs from 'src/utils/Prefs';
 import Place, { PlaceStorage } from 'src/models/Place';
 import { defineComponent, markRaw, Ref, ref } from 'vue';
 import Trip, { fetchBestTrips } from 'src/models/Trip';
@@ -180,7 +181,7 @@ export default defineComponent({
           this.fromPlace.point,
           this.toPlace.point,
           this.mode,
-          this.fromPlace.preferredDistanceUnits() ?? DistanceUnits.Kilometers,
+          Prefs.stored.distanceUnits(this.fromPlace, this.toPlace),
           this.transitQuery.params.searchTime,
           this.transitQuery.params.searchDate,
           this.transitQuery.params.arriveBy,
