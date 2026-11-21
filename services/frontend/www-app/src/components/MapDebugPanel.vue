@@ -1,11 +1,10 @@
 <template>
   <teleport to="#map .maplibregl-ctrl-bottom-left">
     <div class="headway-map-debug-panel maplibregl-ctrl">
-      <label v-if="showToggle" class="headway-map-debug-panel__title">
+      <label class="headway-map-debug-panel__title">
         <input v-model="debugEnabled" type="checkbox" />
         Debug
       </label>
-      <div v-else class="headway-map-debug-panel__title">Debug</div>
       <div class="headway-map-debug-panel__row">
         <span>zoom</span>
         <span class="headway-map-debug-panel__value">{{
@@ -32,8 +31,6 @@ import { debugEnabled } from 'src/utils/debug';
 
 const props = defineProps<{ map: unknown }>();
 const map = props.map as MaplibreMap;
-const showToggle = process.env.DEV;
-
 const showRoadTagsKey = 'debug.showRoadTags';
 const showBuildingTagsKey = 'debug.showBuildingTags';
 const oldShowRoadDesignationKey = 'debug.showRoadDesignation';
