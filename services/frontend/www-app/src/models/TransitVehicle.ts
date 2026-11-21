@@ -1,6 +1,6 @@
 import { LngLat } from 'maplibre-gl';
 import { i18n } from 'src/i18n/lang';
-import { transitVehicleEmoji } from 'src/models/Trip';
+import { RouteBadge, routeBadge, transitVehicleEmoji } from 'src/models/Trip';
 import {
   TransitVehicleMode,
   TravelmuxVehicle,
@@ -94,7 +94,7 @@ export default class TransitVehicle {
         : [];
   }
 
-  /// The color of the chip's ring and the badge's border.
+  /// The color of the chip's ring and the badge behind its route.
   get color(): string {
     const color = this.raw.route.color;
     return color ? `#${color}` : Palette.activeRoute;
@@ -115,8 +115,9 @@ export default class TransitVehicle {
 
   /// Only the short name is badged: a long one ("Downtown - Ballard") doesn't fit beside a 22px
   /// dot, so a route without one goes unbadged.
-  get badge(): string | undefined {
-    return this.raw.route.shortName;
+  get badge(): RouteBadge | undefined {
+    const compactName = this.raw.route.compactName;
+    return compactName ? routeBadge(compactName, this.raw.route) : undefined;
   }
 
   /// Where we reckon the vehicle is at `now`, walking the predicted track.

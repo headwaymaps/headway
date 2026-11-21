@@ -19,6 +19,7 @@ use crate::otp::gtfs_graphql::{self, BikeRoutePreference, PlanDateTime};
 use crate::otp::OtpRouter;
 use crate::util::format::format_meters;
 use crate::util::haversine_segmenter::HaversineSegmenter;
+use crate::util::rgb_color::RgbColor;
 use crate::util::serde_util::{
     deserialize_comma_separated, deserialize_point_from_lon_lat,
     serialize_line_string_as_polyline6, serialize_optional_line_string_as_polyline6,
@@ -113,6 +114,12 @@ pub struct Itinerary {
 
     pub(crate) legs: Vec<Leg>,
 
+    /// Equal for itineraries that ride between the same stops in the same order, whatever the
+    /// line or departure time - Seattle's 1 Line and 2 Line, say. Opaque. Absent from an itinerary
+    /// with no transit leg, like an all-walking one a transit search returns.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    trip_key: Option<String>,
+
     /// Which cycling objectives this route is the best answer to. Empty for every other mode.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub(crate) route_preferences: Vec<BikeRoutePreference>,
@@ -121,6 +128,30 @@ pub struct Itinerary {
 }
 
 impl Itinerary {
+    /// None without a transit leg. A transit leg is keyed by where it boards and alights; a walking
+    /// or cycling leg by its mode alone, so biking to the station isn't merged with walking there.
+    fn trip_key(legs: &[Leg]) -> Option<String> {
+        if !legs
+            .iter()
+            .any(|leg| matches!(leg.mode_leg, ModeLeg::Transit(_)))
+        {
+            return None;
+        }
+        let key = legs
+            .iter()
+            .map(|leg| match &leg.mode_leg {
+                ModeLeg::Transit(_) => {
+                    let stop =
+                        |place: &Place| format!("{},{}", place.location.x(), place.location.y());
+                    format!("{}>{}", stop(&leg.from_place), stop(&leg.to_place))
+                }
+                ModeLeg::NonTransit(_) => format!("{:?}", leg.mode),
+            })
+            .collect::<Vec<_>>()
+            .join("|");
+        Some(key)
+    }
+
     pub fn combined_geometry(&self) -> LineString {
         let mut combined_geometry = LineString::new(vec![]);
         for leg in &self.legs {
@@ -160,10 +191,11 @@ impl Itinerary {
                 leg_start_time = leg.end_time;
                 leg
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         Self {
             mode,
+            trip_key: None,
             start_time: itinerary_start_time,
             end_time: itinerary_start_time + seconds(valhalla.summary.time),
             duration_seconds: valhalla.summary.time,
@@ -207,6 +239,7 @@ impl Itinerary {
 
         Ok(Self {
             mode,
+            trip_key: Self::trip_key(&legs),
             // OTP reports the itinerary's own start/end, but it's optional in the schema - the
             // legs, which aren't, say the same thing.
             start_time: itinerary.start.unwrap_or(first_leg.start_time),
@@ -343,6 +376,9 @@ pub struct TransitLeg {
         skip_serializing_if = "Option::is_none"
     )]
     ridden_stops: Option<LineString>,
+    /// How many stops the ride goes before the rider gets off, counting that one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stop_count: Option<usize>,
 
     /// The pattern's stops beyond the ridden portion, which the map draws faded like the line
     /// under them.
@@ -450,6 +486,10 @@ impl From<&gtfs_graphql::Leg> for TransitLeg {
                 .is_some_and(|state| state.updated),
             pattern_code: pattern.map(|pattern| pattern.code.clone()),
             pattern_geometry: shape.clone(),
+            stop_count: stops
+                .ridden
+                .as_ref()
+                .map(|stops| stops.0.len().saturating_sub(1)),
             ridden_stops: stops.ridden,
             context_stops: stops.context,
             on_off_stops,
@@ -471,17 +511,55 @@ pub struct Route {
     pub(crate) short_name: Option<String>,
     /// e.g. "Downtown - Ballard"
     pub(crate) long_name: Option<String>,
-    /// An RRGGBB hex color, without a leading "#"
-    pub(crate) color: Option<String>,
+    /// The short name where there's little room, as riders say it: "D" for "Metro D Line".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) compact_name: Option<String>,
+    pub(crate) color: Option<RgbColor>,
+    /// Legible on `color`: the agency's, else black or white, whichever reads better. Present
+    /// whenever `color` is.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) text_color: Option<RgbColor>,
+}
+
+impl Route {
+    /// From OTP's hex strings, dropping a color that doesn't parse.
+    pub(crate) fn new(
+        short_name: Option<String>,
+        long_name: Option<String>,
+        color: Option<&str>,
+        text_color: Option<&str>,
+    ) -> Self {
+        let color = color.and_then(RgbColor::parse);
+        // Only the agency's pairing: its text color was picked against its own route color.
+        let text_color = color.map(|color| {
+            text_color
+                .and_then(RgbColor::parse)
+                .unwrap_or_else(|| color.readable_text_color())
+        });
+        Self {
+            compact_name: short_name.as_deref().map(Self::compact_name),
+            short_name,
+            long_name,
+            color,
+            text_color,
+        }
+    }
+
+    /// "1" for Seattle's "1 Line", "D" for LA's "Metro D Line".
+    fn compact_name(short_name: &str) -> String {
+        let name = short_name.strip_suffix(" Line").unwrap_or(short_name);
+        name.strip_prefix("Metro ").unwrap_or(name).to_owned()
+    }
 }
 
 impl From<&gtfs_graphql::Route> for Route {
     fn from(route: &gtfs_graphql::Route) -> Self {
-        Self {
-            short_name: route.short_name.clone(),
-            long_name: route.long_name.clone(),
-            color: route.color.clone(),
-        }
+        Self::new(
+            route.short_name.clone(),
+            route.long_name.clone(),
+            route.color.as_deref(),
+            route.text_color.as_deref(),
+        )
     }
 }
 
@@ -1932,6 +2010,71 @@ mod tests {
         assert!(pattern.0.len() > ridden.0.len());
         assert!(pattern.0.contains(&ridden.0[0]));
         assert!(pattern.0.contains(ridden.0.last().unwrap()));
+
+        let ridden_stops = transit_leg.ridden_stops.as_ref().unwrap();
+        assert_eq!(transit_leg.stop_count, Some(ridden_stops.0.len() - 1));
+        assert_eq!(route.compact_name.as_deref(), Some("21"));
+    }
+
+    #[test]
+    fn trip_key_is_the_stops_ridden_between() {
+        let itineraries = PlanResponseOk::from_otp(
+            "otp",
+            TravelMode::Transit,
+            otp_plan("transit"),
+            DistanceUnit::Miles,
+        )
+        .unwrap()
+        .itineraries;
+        assert_eq!(
+            itineraries[0].trip_key.as_deref().unwrap(),
+            "Walk|-122.334106,47.575924>-122.328957,47.593342|-122.328957,47.593342>-122.346619,47.652473|Walk"
+        );
+    }
+
+    #[test]
+    fn no_trip_key_without_a_ride() {
+        let itinerary = PlanResponseOk::from_otp(
+            "otp",
+            TravelMode::Transit,
+            otp_plan("transit"),
+            DistanceUnit::Miles,
+        )
+        .unwrap()
+        .itineraries
+        .remove(0);
+        let walks: Vec<Leg> = itinerary
+            .legs
+            .into_iter()
+            .filter(|leg| matches!(leg.mode_leg, ModeLeg::NonTransit(_)))
+            .collect();
+        assert_eq!(Itinerary::trip_key(&walks), None);
+    }
+
+    #[test]
+    fn route_text_color_is_the_agencys_else_legible() {
+        let route = |color, text_color| {
+            Route::new(Some("40".to_owned()), None, color, text_color).text_color
+        };
+        assert_eq!(
+            route(Some("FDB71A"), Some("FFFFFF")),
+            RgbColor::parse("FFFFFF")
+        );
+        assert_eq!(route(Some("FDB71A"), None), Some(RgbColor::BLACK));
+        // Without the agency's route color, its text color was picked for a background we won't
+        // draw.
+        assert_eq!(route(None, Some("FFFFFF")), None);
+    }
+
+    #[test]
+    fn compact_route_name() {
+        assert_eq!(Route::compact_name("1 Line"), "1");
+        assert_eq!(Route::compact_name("Metro D Line"), "D");
+        assert_eq!(Route::compact_name("FineLine Express"), "FineLine Express");
+        assert_eq!(
+            Route::compact_name("Metropolitan Express"),
+            "Metropolitan Express"
+        );
     }
 
     #[test]

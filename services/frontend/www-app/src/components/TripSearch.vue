@@ -5,6 +5,7 @@
         :hint="$t('search.from')"
         :style="{ flex: 1 }"
         :initial-place="fromPlace"
+        :loading="fromLoading"
         :tabindex="1"
         @did-select-place="didSelectFromPlace"
       />
@@ -23,6 +24,7 @@
         :hint="$t('search.to')"
         :style="{ flex: 1 }"
         :initial-place="toPlace"
+        :loading="toLoading"
         :tabindex="2"
         @did-select-place="didSelectToPlace"
       />
@@ -119,6 +121,8 @@ export default defineComponent({
       type: Place,
       default: undefined,
     },
+    fromLoading: Boolean,
+    toLoading: Boolean,
     currentMode: { type: String as () => TravelMode, required: true },
     directionsPath: {
       type: String,

@@ -3,6 +3,8 @@
     <trip-search
       :from-place="fromPlace"
       :to-place="toPlace"
+      :from-loading="isLoadingFromPlace"
+      :to-loading="isLoadingToPlace"
       :current-mode="mode"
       :initial-search="transitQuery.params"
       :did-select-from-place="searchBoxDidSelectFromPlace"
@@ -39,60 +41,43 @@
     </div>
     <q-linear-progress v-if="isLoading" indeterminate />
     <q-list v-if="trips.length > 0">
-      <trip-list-item
-        v-for="trip in trips"
-        :key="JSON.stringify(trip)"
-        :click-handler="
-          /* why is this cast necessary? */ () => clickTrip(trip as Trip)
-        "
-        :active="$data.activeTrip === trip"
-        :duration-formatted="trip.durationFormatted"
-        :distance-formatted="trip.distanceFormatted"
-      >
-        <component
-          :is="componentForMode(trip.mode)"
-          :trip="trip"
-          :active="trip === activeTrip"
-        />
-        <q-item-label>
-          <q-btn
-            style="margin-left: -6px"
-            padding="6px"
-            flat
-            icon="directions"
-            :label="$t('route_picker_show_route_details_btn')"
-            size="sm"
-            @click="
-              /* why is this cast necessary? */ showTripSteps(trip as Trip)
-            "
-          />
-        </q-item-label>
-      </trip-list-item>
+      <trip-group-list-item
+        v-for="(group, idx) in tripGroups"
+        :key="group.first.raw.startTime + (group.first.raw.tripKey ?? idx)"
+        :group="group"
+        :active="selectedTrip"
+        @select="clickTrip"
+        @steps="showTripSteps"
+        @focus-leg="focusLeg"
+      />
     </q-list>
   </div>
 </template>
 <script lang="ts">
 import { getBaseMap, type BaseMapInterface } from 'src/components/BaseMap.vue';
-import { Component, defineComponent, markRaw, Ref, ref } from 'vue';
+import { defineComponent, markRaw, Ref, ref } from 'vue';
 import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
-import TripListItem from 'src/components/TripListItem.vue';
+import TripGroupListItem from 'src/components/TripGroupListItem.vue';
 import TripSearch from 'src/components/TripSearch.vue';
 import TripCorpus from 'src/components/TripCorpus.vue';
 import { debugEnabled } from 'src/utils/debug';
 import TransitUnsupportedNotice from 'src/components/TransitUnsupportedNotice.vue';
-import SingleModeListItem from 'src/components/SingleModeListItem.vue';
-import MultiModalListItem from 'src/components/MultiModalListItem.vue';
 import Trip, {
   fetchBestTrips,
   TripFetchError,
   TripFetchErrorCode,
 } from 'src/models/Trip';
+import TripGroup from 'src/models/TripGroup';
 import TripLayerId from 'src/models/TripLayerId';
 import VehicleOverlay from 'src/models/VehicleOverlay';
 import Prefs from 'src/utils/Prefs';
 import { GradeShades } from 'src/utils/grade';
-import Markers, { showSteepClimbBadges } from 'src/utils/Markers';
+import Markers, {
+  focusTripStep,
+  hideTripStepCallout,
+  showSteepClimbBadges,
+} from 'src/utils/Markers';
 import { useRoute, type LocationQueryRaw } from 'vue-router';
 import TransitQuery, { TransitQueryParams } from 'src/models/TransitQuery';
 import { LngLat } from 'maplibre-gl';
@@ -100,7 +85,7 @@ import { LngLat } from 'maplibre-gl';
 export default defineComponent({
   name: 'AlternatesPage',
   components: {
-    TripListItem,
+    TripGroupListItem,
     TripSearch,
     TripCorpus,
     TransitUnsupportedNotice,
@@ -140,6 +125,8 @@ export default defineComponent({
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
+    isLoadingFromPlace: boolean;
+    isLoadingToPlace: boolean;
     vehicleOverlay?: VehicleOverlay;
     TravelMode: typeof TravelMode;
     TripFetchErrorCode: typeof TripFetchErrorCode;
@@ -150,6 +137,8 @@ export default defineComponent({
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
+      isLoadingFromPlace: false,
+      isLoadingToPlace: false,
       vehicleOverlay: undefined,
       TravelMode: TravelMode,
       TripFetchErrorCode: TripFetchErrorCode,
@@ -157,6 +146,13 @@ export default defineComponent({
   },
   computed: {
     debugEnabled: () => debugEnabled.value,
+    // Reactive unwrapping loses the class's private members, so the template can't pass it as is.
+    selectedTrip(): Trip | undefined {
+      return this.activeTrip as Trip | undefined;
+    },
+    tripGroups(): TripGroup[] {
+      return TripGroup.group(this.trips as Trip[]);
+    },
   },
   watch: {
     mode: async function (): Promise<void> {
@@ -166,13 +162,17 @@ export default defineComponent({
   unmounted: function () {
     this.stopVehicleOverlay();
     showSteepClimbBadges([]);
+    hideTripStepCallout();
   },
   mounted: async function () {
-    [this.fromPlace, this.toPlace] = await Promise.all(
-      [this.from, this.to].map((id) =>
-        id == '_' ? undefined : PlaceStorage.fetchFromSerializedId(id),
-      ),
-    );
+    this.isLoadingFromPlace = this.from != '_';
+    this.isLoadingToPlace = this.to != '_';
+    const fetchPlace = async (id: string) =>
+      id == '_' ? undefined : PlaceStorage.fetchFromSerializedId(id);
+    [this.fromPlace, this.toPlace] = await Promise.all([
+      fetchPlace(this.from).finally(() => (this.isLoadingFromPlace = false)),
+      fetchPlace(this.to).finally(() => (this.isLoadingToPlace = false)),
+    ]);
     await this.rewriteUrl();
   },
   methods: {
@@ -185,18 +185,6 @@ export default defineComponent({
         });
       } else {
         return this.$t('routing_error_unknown');
-      }
-    },
-    componentForMode(mode: TravelMode): Component {
-      switch (mode) {
-        case TravelMode.Walk:
-        case TravelMode.Bike:
-        case TravelMode.Drive:
-          return SingleModeListItem;
-        case TravelMode.Transit:
-          return MultiModalListItem;
-        default:
-          throw new Error(`unexpected mode: ${mode ?? 'none'}`);
       }
     },
     stopVehicleOverlay() {
@@ -219,12 +207,20 @@ export default defineComponent({
       overlay.start();
       overlay.selectTrip(selected);
     },
-    clickTrip(trip: Trip) {
-      this.$data.activeTrip = trip;
-      const index = this.$data.trips.indexOf(trip);
-      if (index !== -1) {
-        this.renderTrips(index);
+    /// Zooms to where a step of `trip` begins, and says what the step is - once the trip is
+    /// selected. Until then, picking a step just picks its trip, like the rest of the row.
+    focusLeg(trip: Trip, legIdx: number) {
+      if (this.activeTrip !== trip) {
+        this.clickTrip(trip);
+        return;
       }
+      const leg = trip.legs[legIdx]!;
+      focusTripStep(leg.sourceLngLat, leg.stepDescription);
+    },
+    clickTrip(trip: Trip) {
+      hideTripStepCallout();
+      this.$data.activeTrip = trip;
+      this.renderTrips(trip);
     },
     searchBoxDidSelectFromPlace(place?: Place) {
       this.fromPlace = place;
@@ -310,7 +306,8 @@ export default defineComponent({
         if (result.ok) {
           const trips = result.value;
           this.trips = trips;
-          this.renderTrips(0);
+          // The reactive copy, which is what the rows and their groups hold.
+          this.renderTrips(this.trips[0] as Trip);
           this.startVehicleOverlay(
             map,
             this.fromPlace.point,
@@ -343,69 +340,59 @@ export default defineComponent({
         );
       }
     },
-    renderTrips(selectedIdx: number) {
-      console.assert(this.trips.length > 0);
+    /// Draws one line per group of departures, the selected trip's on top. Layers are keyed by
+    /// group, so picking another departure of the same group redraws its line in place.
+    renderTrips(selectedTrip: Trip) {
       const map = getBaseMap();
       if (!map) {
         console.error('basemap was unexpectedly empty');
         return;
       }
-      const trips: Trip[] = this.trips as Trip[];
-      const selectedTrip = trips[selectedIdx]!;
-      if (!selectedTrip) {
-        console.error('selected trip was unexpectedly undefined');
+      const groups = this.tripGroups as TripGroup[];
+      const selectedIdx = groups.findIndex((group) =>
+        group.includes(selectedTrip),
+      );
+      if (selectedIdx === -1) {
+        console.error('selected trip is not among the trips');
         return;
       }
-      this.$data.trips = trips;
       this.activeTrip = selectedTrip;
       showSteepClimbBadges(selectedTrip.legs);
 
-      for (let tripIdx = 0; tripIdx < trips.length; tripIdx++) {
-        const trip = trips[tripIdx]!;
+      for (let groupIdx = 0; groupIdx < groups.length; groupIdx++) {
+        const trip = groups[groupIdx]!.first;
         for (let legIdx = 0; legIdx < trip.legs.length; legIdx++) {
           const leg = trip.legs[legIdx]!;
-          if (tripIdx == selectedIdx) {
-            if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
-              map.removeLayer(TripLayerId.unselectedLeg(tripIdx, legIdx));
+          if (groupIdx == selectedIdx) {
+            if (map.hasLayer(TripLayerId.unselectedLeg(groupIdx, legIdx))) {
+              map.removeLayer(TripLayerId.unselectedLeg(groupIdx, legIdx));
             }
             continue;
           }
 
-          if (map.hasLayer(TripLayerId.selectedLeg(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.selectedLeg(tripIdx, legIdx));
-          }
-
-          if (map.hasLayer(TripLayerId.legContext(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.legContext(tripIdx, legIdx));
-          }
-
-          for (const shade of GradeShades) {
-            const steepLayerId = TripLayerId.legSteep(tripIdx, legIdx, shade);
-            if (map.hasLayer(steepLayerId)) {
-              map.removeLayer(steepLayerId);
+          for (const layerId of [
+            TripLayerId.selectedLeg(groupIdx, legIdx),
+            TripLayerId.legContext(groupIdx, legIdx),
+            ...GradeShades.map((shade) =>
+              TripLayerId.legSteep(groupIdx, legIdx, shade),
+            ),
+            TripLayerId.legRiddenStops(groupIdx, legIdx),
+            TripLayerId.legContextStops(groupIdx, legIdx),
+            TripLayerId.legOnOffStops(groupIdx, legIdx),
+          ]) {
+            if (map.hasLayer(layerId)) {
+              map.removeLayer(layerId);
             }
           }
 
-          if (map.hasLayer(TripLayerId.legRiddenStops(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.legRiddenStops(tripIdx, legIdx));
-          }
-
-          if (map.hasLayer(TripLayerId.legContextStops(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.legContextStops(tripIdx, legIdx));
-          }
-
-          if (map.hasLayer(TripLayerId.legOnOffStops(tripIdx, legIdx))) {
-            map.removeLayer(TripLayerId.legOnOffStops(tripIdx, legIdx));
-          }
-
-          if (map.hasLayer(TripLayerId.unselectedLeg(tripIdx, legIdx))) {
+          if (map.hasLayer(TripLayerId.unselectedLeg(groupIdx, legIdx))) {
             continue;
           }
 
-          const layerId = TripLayerId.unselectedLeg(tripIdx, legIdx);
+          const layerId = TripLayerId.unselectedLeg(groupIdx, legIdx);
           map.pushTripLayer(layerId, leg.geometry, leg.paintStyle(false));
           if (legIdx > 0 && !trip.transfersAtStop(legIdx)) {
-            const transferLayerId = TripLayerId.legStart(tripIdx, legIdx);
+            const transferLayerId = TripLayerId.legStart(groupIdx, legIdx);
             map.pushMarker(
               transferLayerId.toString(),
               Markers.transfer().setLngLat(leg.start),
@@ -420,80 +407,70 @@ export default defineComponent({
           // Resolved when the line is clicked rather than when it was drawn: a later search
           // replaces the trips, and selecting one looks them up by identity.
           map.on('click', layerId.toString(), () => {
-            // Cast for the same reason the list item's handler does: reactive unwrapping loses
-            // the class's private members.
-            const clicked = this.trips[tripIdx] as Trip | undefined;
+            // Cast since reactive unwrapping loses the class's private members.
+            const clicked = (this.tripGroups as TripGroup[])[groupIdx];
             if (clicked) {
-              this.clickTrip(clicked);
+              this.clickTrip(clicked.nextDeparture(new Date()));
             }
           });
         }
       }
 
-      // Add selected trip last to be sure it's on top of the unselected trips
+      // Added last to be sure it's on top of the unselected trips. A layer already drawn for
+      // another departure of the group is updated rather than replaced.
       for (let legIdx = 0; legIdx < selectedTrip.legs.length; legIdx++) {
         const leg = selectedTrip.legs[legIdx]!;
+        const pushOrRemove = (
+          layerId: TripLayerId,
+          layer: { geometry: GeoJSON.Geometry } | undefined,
+          push: (layerId: TripLayerId) => void,
+        ) => {
+          if (layer) {
+            push(layerId);
+          } else if (map.hasLayer(layerId)) {
+            map.removeLayer(layerId);
+          }
+        };
         // Pushed before the leg's own layer so the ridden portion draws over it.
         const context = leg.contextLayer();
-        if (
-          context &&
-          !map.hasLayer(TripLayerId.legContext(selectedIdx, legIdx))
-        ) {
-          map.pushTripLayer(
-            TripLayerId.legContext(selectedIdx, legIdx),
-            context.geometry,
-            context.paint,
+        pushOrRemove(
+          TripLayerId.legContext(selectedIdx, legIdx),
+          context,
+          (layerId) =>
+            map.pushTripLayer(layerId, context!.geometry, context!.paint),
+        );
+        map.pushTripLayer(
+          TripLayerId.selectedLeg(selectedIdx, legIdx),
+          leg.selectedGeometry(),
+          leg.paintStyle(true),
+        );
+        const steepSections = leg.steepSectionLayers();
+        for (const shade of GradeShades) {
+          const steep = steepSections.find((steep) => steep.shade === shade);
+          pushOrRemove(
+            TripLayerId.legSteep(selectedIdx, legIdx, shade),
+            steep,
+            (layerId) =>
+              map.pushTripLayer(layerId, steep!.geometry, steep!.paint),
           );
-        }
-        if (!map.hasLayer(TripLayerId.selectedLeg(selectedIdx, legIdx))) {
-          map.pushTripLayer(
-            TripLayerId.selectedLeg(selectedIdx, legIdx),
-            leg.selectedGeometry(),
-            leg.paintStyle(true),
-          );
-        }
-        for (const steep of leg.steepSectionLayers()) {
-          const steepLayerId = TripLayerId.legSteep(
-            selectedIdx,
-            legIdx,
-            steep.shade,
-          );
-          if (!map.hasLayer(steepLayerId)) {
-            map.pushTripLayer(steepLayerId, steep.geometry, steep.paint);
-          }
         }
         // Pushed after both lines, so the dots sit on top of them.
-        const contextStops = leg.contextStopsLayer();
-        if (
-          contextStops &&
-          !map.hasLayer(TripLayerId.legContextStops(selectedIdx, legIdx))
-        ) {
-          map.pushTripStopsLayer(
+        for (const [layerId, stops] of [
+          [
             TripLayerId.legContextStops(selectedIdx, legIdx),
-            contextStops.geometry,
-            contextStops.paint,
-          );
-        }
-        const riddenStops = leg.riddenStopsLayer();
-        if (
-          riddenStops &&
-          !map.hasLayer(TripLayerId.legRiddenStops(selectedIdx, legIdx))
-        ) {
-          map.pushTripStopsLayer(
+            leg.contextStopsLayer(),
+          ],
+          [
             TripLayerId.legRiddenStops(selectedIdx, legIdx),
-            riddenStops.geometry,
-            riddenStops.paint,
-          );
-        }
-        const onOffStops = leg.onOffStopsLayer();
-        if (
-          onOffStops &&
-          !map.hasLayer(TripLayerId.legOnOffStops(selectedIdx, legIdx))
-        ) {
-          map.pushTripStopsLayer(
+            leg.riddenStopsLayer(),
+          ],
+          [
             TripLayerId.legOnOffStops(selectedIdx, legIdx),
-            onOffStops.geometry,
-            onOffStops.paint,
+            leg.onOffStopsLayer(),
+          ],
+        ] as const) {
+          pushOrRemove(layerId, stops, (layerId) =>
+            map.pushTripStopsLayer(layerId, stops!.geometry, stops!.paint),
           );
         }
       }

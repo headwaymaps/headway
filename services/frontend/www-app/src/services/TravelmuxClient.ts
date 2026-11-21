@@ -51,6 +51,9 @@ export interface TravelmuxItinerary {
   routePreferences?: BikeRoutePreference[];
   /// The id of the router that planned it, like `valhalla-headway`.
   routerId: string;
+  /// Equal for itineraries riding transit between the same stops in the same order. Opaque.
+  /// Absent from an itinerary with no transit leg, like an all-walking one.
+  tripKey?: string;
 }
 
 export type BikeRoutePreference = 'quieter' | 'faster';
@@ -95,6 +98,8 @@ export interface TransitLeg {
   patternGeometry?: string;
   /// Every ordinary stop on the portion of the pattern the rider travels, in order.
   riddenStops?: string;
+  /// How many stops the ride goes before the rider gets off, counting that one.
+  stopCount?: number;
   /// The stops beyond the ridden portion, packed the same way.
   contextStops?: string;
   /// Where the rider boards and alights, packed the same way.
@@ -105,8 +110,13 @@ export interface TransitLeg {
 export interface TransitRoute {
   shortName?: string;
   longName?: string;
+  /// The short name where there's little room: "D" for "Metro D Line". Present whenever
+  /// `shortName` is.
+  compactName?: string;
   /// An RRGGBB hex color, without a leading "#"
   color?: string;
+  /// An RRGGBB hex color, without a leading "#", legible on `color`. Present whenever `color` is.
+  textColor?: string;
 }
 
 export interface TransitAlert {

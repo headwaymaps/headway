@@ -260,3 +260,28 @@ describe('markerKey', () => {
     );
   });
 });
+
+describe('badge', () => {
+  test('the compact name in the route colors', () => {
+    const badge = vehicle({
+      route: {
+        shortName: 'Metro D Line',
+        compactName: 'D',
+        color: 'EB131B',
+        textColor: 'FFFFFF',
+      },
+    }).badge;
+    expect(badge).toEqual({
+      label: 'D',
+      color: '#EB131B',
+      textColor: '#FFFFFF',
+    });
+  });
+
+  test('none for a route with no short name, which travelmux sends as null', () => {
+    const route = { shortName: null, longName: 'Downtown - Ballard' };
+    expect(
+      vehicle({ route: route as unknown as TravelmuxVehicle['route'] }).badge,
+    ).toBeUndefined();
+  });
+});
