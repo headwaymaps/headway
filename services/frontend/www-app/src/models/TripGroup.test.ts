@@ -137,6 +137,17 @@ describe('TripGroup.group', () => {
     expect(TripGroup.group([drive(), drive()])).toHaveLength(2);
   });
 
+  test('only the next few departures are kept', () => {
+    const trips = ['15:01', '15:06', '15:11', '15:16', '15:21', '15:26'].map(
+      (time) => lightRail('1 Line', time),
+    );
+    const [group] = TripGroup.group(
+      trips,
+      new Date('2026-11-19T15:05:00-08:00'),
+    );
+    expect(group!.trips).toEqual(trips.slice(1, 5));
+  });
+
   test('a different key is a different trip', () => {
     expect(
       TripGroup.group([

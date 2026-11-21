@@ -9,9 +9,11 @@ export default class TripGroup {
     this.trips = trips;
   }
 
+  static readonly maxDepartures = 4;
+
   /// Groups keep the order their first trip arrived in. A trip without a key, like an all-walking
-  /// one, is always its own group.
-  static group(trips: Trip[]): TripGroup[] {
+  /// one, is always its own group. Each keeps only its next few departures after `now`.
+  static group(trips: Trip[], now = new Date()): TripGroup[] {
     const byKey = new Map<string, Trip[]>();
     trips.forEach((trip, idx) => {
       const key = trip.raw.tripKey ?? `${idx}`;
@@ -19,14 +21,15 @@ export default class TripGroup {
       members.push(trip);
       byKey.set(key, members);
     });
-    return [...byKey.values()].map(
-      (members) =>
-        new TripGroup(
-          [...members].sort(
-            (a, b) => a.departureTime.getTime() - b.departureTime.getTime(),
-          ),
-        ),
-    );
+    return [...byKey.values()].map((members) => {
+      const sorted = [...members].sort(
+        (a, b) => a.departureTime.getTime() - b.departureTime.getTime(),
+      );
+      const next = sorted.findIndex((trip) => trip.departureTime >= now);
+      const start =
+        next == -1 ? Math.max(0, sorted.length - this.maxDepartures) : next;
+      return new TripGroup(sorted.slice(start, start + this.maxDepartures));
+    });
   }
 
   get first(): Trip {
