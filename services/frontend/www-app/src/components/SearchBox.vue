@@ -4,7 +4,7 @@
       <input
         ref="autoCompleteInput"
         :tabindex="tabindex ?? 0"
-        :placeholder="$props.hint || $t('where_to_question')"
+        :placeholder="loading ? '' : $props.hint || $t('where_to_question')"
         :value="inputText"
         :readonly="readonly"
         @blur="onBlur"
@@ -22,6 +22,12 @@
         color="transparent"
         text-color="grey"
         @click="clear()"
+      />
+      <q-spinner
+        v-if="loading"
+        size="20px"
+        color="grey"
+        class="loading-spinner"
       />
       <slot></slot>
     </div>
@@ -86,6 +92,8 @@ export default defineComponent({
       default: undefined,
     },
     readonly: Boolean,
+    /// While the place is being looked up, e.g. from an id in the URL.
+    loading: Boolean,
   },
   emits: ['didSelectPlace', 'didSubmitSearch'],
   setup: function (props, ctx) {
@@ -438,6 +446,10 @@ export default defineComponent({
     input,
     .clear-button {
       padding: 4px 8px;
+    }
+
+    .loading-spinner {
+      margin-right: 10px;
     }
 
     // only show clear-button when input has content

@@ -3,6 +3,8 @@
     <trip-search
       :from-place="fromPlace"
       :to-place="toPlace"
+      :from-loading="isLoadingFromPlace"
+      :to-loading="isLoadingToPlace"
       :current-mode="mode"
       :initial-search="transitQuery.params"
       :did-select-from-place="searchBoxDidSelectFromPlace"
@@ -123,6 +125,8 @@ export default defineComponent({
     error?: TripFetchError;
     activeTrip?: Trip;
     isLoading: boolean;
+    isLoadingFromPlace: boolean;
+    isLoadingToPlace: boolean;
     vehicleOverlay?: VehicleOverlay;
     TravelMode: typeof TravelMode;
     TripFetchErrorCode: typeof TripFetchErrorCode;
@@ -133,6 +137,8 @@ export default defineComponent({
       error: undefined,
       activeTrip: undefined,
       isLoading: false,
+      isLoadingFromPlace: false,
+      isLoadingToPlace: false,
       vehicleOverlay: undefined,
       TravelMode: TravelMode,
       TripFetchErrorCode: TripFetchErrorCode,
@@ -159,11 +165,14 @@ export default defineComponent({
     hideTripStepCallout();
   },
   mounted: async function () {
-    [this.fromPlace, this.toPlace] = await Promise.all(
-      [this.from, this.to].map((id) =>
-        id == '_' ? undefined : PlaceStorage.fetchFromSerializedId(id),
-      ),
-    );
+    this.isLoadingFromPlace = this.from != '_';
+    this.isLoadingToPlace = this.to != '_';
+    const fetchPlace = async (id: string) =>
+      id == '_' ? undefined : PlaceStorage.fetchFromSerializedId(id);
+    [this.fromPlace, this.toPlace] = await Promise.all([
+      fetchPlace(this.from).finally(() => (this.isLoadingFromPlace = false)),
+      fetchPlace(this.to).finally(() => (this.isLoadingToPlace = false)),
+    ]);
     await this.rewriteUrl();
   },
   methods: {
