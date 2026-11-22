@@ -215,7 +215,7 @@ export default defineComponent({
         return;
       }
       const leg = trip.legs[legIdx]!;
-      focusTripStep(leg.sourceLngLat, leg.stepDescription);
+      focusTripStep(leg.sourceLngLat, leg.stepCallout);
     },
     clickTrip(trip: Trip) {
       hideTripStepCallout();

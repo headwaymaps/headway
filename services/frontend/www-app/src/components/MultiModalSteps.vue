@@ -91,7 +91,7 @@ import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { LngLat } from 'maplibre-gl';
 import { focusTripStep, hideTripStepCallout } from 'src/utils/Markers';
 import { i18n } from 'src/i18n/lang';
-import Trip, { TransitAlertGroup, TripLeg } from 'src/models/Trip';
+import Trip, { StepCallout, TransitAlertGroup, TripLeg } from 'src/models/Trip';
 import Place from 'src/models/Place';
 import { placeDisplayName } from 'src/i18n/utils';
 import { DistanceUnits } from 'src/utils/models';
@@ -142,7 +142,7 @@ type Step = {
   /// A quieter second line under the description.
   detail?: string;
   /// What the rider does here, labelled on the map when the step is picked.
-  callout: string;
+  callout: StepCallout;
   isMovement: boolean;
   /// For a leg, how the trip list badges it.
   badge?: LegBadge;
@@ -221,7 +221,7 @@ function buildSteps(trip: Trip, from: Place, to: Place): Step[] {
     timeline: '',
     timelineClasses: ['timeline-node', 'timeline-origin'],
     description: placeDisplayName(from),
-    callout: firstLeg.stepDescription,
+    callout: firstLeg.stepCallout,
     isMovement: false,
     alertGroups: [],
     isDestination: false,
@@ -245,7 +245,7 @@ function buildSteps(trip: Trip, from: Place, to: Place): Step[] {
       timelineClasses: ['timeline-edge', `timeline-edge-${prevLeg.mode}`],
       timelineColor: prevLeg.transitLeg ? prevLeg.routeColor : undefined,
       ...movementDescription(prevLeg, trip.preferredDistanceUnits),
-      callout: prevLeg.stepDescription,
+      callout: prevLeg.stepCallout,
       position: prevLeg.sourceLngLat,
       isMovement: true,
       badge: badges[trip.legs.indexOf(prevLeg)]!,
@@ -261,7 +261,7 @@ function buildSteps(trip: Trip, from: Place, to: Place): Step[] {
         timeline: '',
         timelineClasses: ['timeline-node'],
         description: currentLeg.sourceName,
-        callout: currentLeg.stepDescription,
+        callout: currentLeg.stepCallout,
         position: currentLeg.sourceLngLat,
         isMovement: false,
         alertGroups: [],
@@ -275,7 +275,7 @@ function buildSteps(trip: Trip, from: Place, to: Place): Step[] {
         timeline: '',
         timelineClasses: ['timeline-node', 'timeline-destination'],
         description: placeDisplayName(to),
-        callout: i18n.global.t('leg_step_arrive'),
+        callout: [i18n.global.t('leg_step_arrive')],
         position: prevLeg.destinationLngLat,
         isMovement: false,
         alertGroups: [],

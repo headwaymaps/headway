@@ -243,15 +243,18 @@ describe('TripLeg.selectedGeometry', () => {
   });
 });
 
-describe('stepDescription', () => {
+describe('stepCallout', () => {
   test('a ride says what to board and where', () => {
     const t = trip([leg(TravelmuxMode.Transit, 5000)]);
-    expect(t.legs[0]!.stepDescription).toEqual('Board the 40 at from');
+    const [before, badge, after] = t.legs[0]!.stepCallout;
+    expect(before).toEqual('Board the ');
+    expect(badge).toMatchObject({ kind: 'ride', routes: [{ label: '40' }] });
+    expect(after).toEqual(' at from');
   });
 
   test('a walk says how many minutes it takes', () => {
     const t = trip([leg(TravelmuxMode.Walk, 700)]);
-    expect(t.legs[0]!.stepDescription).toEqual('10 minute walk');
+    expect(t.legs[0]!.stepCallout).toEqual(['10 minute walk']);
   });
 });
 

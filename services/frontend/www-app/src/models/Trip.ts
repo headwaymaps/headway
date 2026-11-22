@@ -22,6 +22,7 @@ import {
 import { formatDistance, formatDuration, formatTime } from 'src/utils/format';
 import { GradeShade, gradeShade, gradeShadeColor } from 'src/utils/grade';
 import { i18n } from 'src/i18n/lang';
+import type { LegBadge } from 'src/models/TripGroup';
 import { Palette } from 'src/utils/palette';
 import polyline from '@mapbox/polyline';
 import along from '@turf/along';
@@ -163,6 +164,9 @@ export interface RouteBadge {
 }
 
 /// Badges a route in the agency's colors, else those of an active trip line.
+/// What a step's map callout says, with any route boarded drawn as a pill.
+export type StepCallout = (string | LegBadge)[];
+
 export function routeBadge(
   label: string,
   route: TransitRoute | undefined,
@@ -384,20 +388,30 @@ export class TripLeg {
     return Math.max(1, Math.round(this.durationSeconds / 60));
   }
 
-  /// The step this leg is, e.g. "Board the E Line at Aurora Ave N & N 46th St".
-  get stepDescription(): string {
+  /// The step this leg is, e.g. "Board the [E Line] at Aurora Ave N & N 46th St", with the route
+  /// drawn as its pill.
+  get stepCallout(): StepCallout {
     const t = i18n.global.t;
     if (!this.transitLeg) {
       const minutes = this.durationMinutes;
-      return this.mode == TravelMode.Bike
-        ? t('leg_step_$minutes_bike', { minutes }, minutes)
-        : t('leg_step_$minutes_walk', { minutes }, minutes);
+      return [
+        this.mode == TravelMode.Bike
+          ? t('leg_step_$minutes_bike', { minutes }, minutes)
+          : t('leg_step_$minutes_walk', { minutes }, minutes),
+      ];
     }
-    const route = this.routeName;
+    const route = '\uE000';
     const stop = this.sourceName;
-    return stop
+    const text = stop
       ? t('leg_step_board_$route_at_$stop', { route, stop })
       : t('leg_step_board_$route', { route });
+    const [before, after] = text.split(route);
+    const badge: LegBadge = {
+      kind: 'ride',
+      emoji: this.emoji,
+      routes: [this.routeBadge],
+    };
+    return [before!, badge, after!];
   }
 
   get routeBadge(): RouteBadge {
