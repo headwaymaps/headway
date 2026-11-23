@@ -1,5 +1,6 @@
 pub mod format;
 pub mod haversine_segmenter;
+pub mod rgb_color;
 pub(crate) mod serde_util;
 
 use crate::util::haversine_segmenter::HaversineSegmenter;

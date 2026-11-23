@@ -461,11 +461,12 @@ impl Vehicle {
         Some(Self {
             id: format!("{pattern_code}/{identifier}"),
             pattern_code: pattern_code.to_owned(),
-            route: Route {
-                short_name: pattern.route.short_name.clone(),
-                long_name: pattern.route.long_name.clone(),
-                color: pattern.route.color.clone(),
-            },
+            route: Route::new(
+                pattern.route.short_name.clone(),
+                pattern.route.long_name.clone(),
+                pattern.route.color.as_deref(),
+                pattern.route.text_color.as_deref(),
+            ),
             vehicle_mode: pattern.route.mode.clone(),
             headsign: pattern.headsign.clone(),
             vehicle_id: position.vehicle_id,
@@ -649,6 +650,7 @@ mod tests {
     use crate::otp::gtfs_graphql::{
         StopRelationship, StoptimeStop, VehiclePosition, VehicleStoptime, VehicleTrip,
     };
+    use crate::util::rgb_color::RgbColor;
     use approx::assert_relative_eq;
     use geo::wkt;
 
@@ -693,6 +695,7 @@ mod tests {
                 short_name: Some("40".to_owned()),
                 long_name: Some("Downtown - Ballard".to_owned()),
                 color: Some("0080FF".to_owned()),
+                text_color: Some("FFFFFF".to_owned()),
                 mode: Some(gtfs_graphql::TransitMode::Bus),
             },
             headsign: Some("Downtown Seattle".to_owned()),
@@ -821,7 +824,8 @@ mod tests {
 
         let route = vehicle.route;
         assert_eq!(route.short_name.as_deref(), Some("40"));
-        assert_eq!(route.color.as_deref(), Some("0080FF"));
+        assert_eq!(route.color, RgbColor::parse("0080FF"));
+        assert_eq!(route.text_color, RgbColor::parse("FFFFFF"));
         assert_eq!(vehicle.vehicle_mode, Some(gtfs_graphql::TransitMode::Bus));
         assert_eq!(vehicle.headsign.as_deref(), Some("Downtown Seattle"));
     }

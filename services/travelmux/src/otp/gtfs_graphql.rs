@@ -607,6 +607,8 @@ pub struct Route {
     pub short_name: Option<String>,
     pub long_name: Option<String>,
     pub color: Option<String>,
+    /// An RRGGBB hex color, without a leading "#", legible on `color`.
+    pub text_color: Option<String>,
 }
 
 #[derive(cynic::QueryFragment, Debug)]
@@ -734,6 +736,8 @@ pub struct VehicleRoute {
     pub long_name: Option<String>,
     /// An RRGGBB hex color, without a leading "#".
     pub color: Option<String>,
+    /// An RRGGBB hex color, without a leading "#", legible on `color`.
+    pub text_color: Option<String>,
     pub mode: Option<TransitMode>,
 }
 
@@ -1140,6 +1144,7 @@ impl Leg {
             short_name: None,
             long_name: None,
             color: None,
+            text_color: None,
         });
 
         let leg_geometry = self
@@ -1310,7 +1315,7 @@ mod tests {
               "from": { "name": "1st Ave S & S Hanford St", "lat": 47.5759, "lon": -122.3341, "arrival": null, "departure": { "scheduledTime": "2024-05-17T10:07:00-07:00", "estimated": null } },
               "to": { "name": "3rd Ave & Pine St", "lat": 47.6106, "lon": -122.3376, "arrival": { "scheduledTime": "2024-05-17T10:35:00-07:00", "estimated": null }, "departure": null },
               "legGeometry": { "points": "wxyz", "length": 10 },
-              "route": { "shortName": "40", "longName": "Downtown - Ballard", "color": "0080FF" },
+              "route": { "shortName": "40", "longName": "Downtown - Ballard", "color": "0080FF", "textColor": null },
               "agency": { "name": "Metro Transit" },
               "steps": [],
               "alerts": [ {
@@ -1390,7 +1395,7 @@ mod tests {
               "code": "1:40:0:01",
               "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": { "points": "abcd", "length": 2 },
               "route": { "shortName": "40", "longName": "Downtown - Ballard",
-                         "color": "0080FF", "mode": "BUS" },
+                         "color": "0080FF", "textColor": null, "mode": "BUS" },
               "headsign": "Downtown Seattle",
               "vehiclePositions": [
                 {
@@ -1418,7 +1423,7 @@ mod tests {
             // A pattern OTP knows but has no realtime for and no shape, and one it has
             // forgotten entirely.
             { "code": "1:21:0:01", "stops": [ { "lat": 47.598, "lon": -122.3288 }, { "lat": 47.5955, "lon": -122.3289 }, { "lat": 47.593342, "lon": -122.328957 }, { "lat": 47.5905, "lon": -122.3291 } ], "patternGeometry": null, "headsign": null,
-              "route": { "shortName": "21", "longName": null, "color": null, "mode": null },
+              "route": { "shortName": "21", "longName": null, "color": null, "textColor": null, "mode": null },
               "vehiclePositions": [] },
             null
           ] }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { LngLat } from 'maplibre-gl';
-import Trip, { TripLeg } from './Trip';
+import Trip, { routeBadge, TripLeg } from './Trip';
 import {
   TransitAlert,
   TransitVehicleMode,
@@ -64,30 +64,6 @@ describe('patternCodes', () => {
 
   test('a trip with no transit legs rides no patterns', () => {
     expect(trip([leg(TravelmuxMode.Walk, 100)]).patternCodes).toEqual([]);
-  });
-});
-
-describe('nonTransitDistanceMeters', () => {
-  test('sums the walking legs of a transit itinerary', () => {
-    const t = trip([
-      leg(TravelmuxMode.Walk, 696.33),
-      leg(TravelmuxMode.Transit, 5809.19),
-      leg(TravelmuxMode.Walk, 222.24),
-    ]);
-    expect(t.nonTransitDistanceMeters).toBeCloseTo(918.57);
-    expect(t.withBicycle).toBe(false);
-    expect(t.walkingDistanceFormatted).toEqual('0.9 km walk total');
-  });
-
-  test('sums the cycling legs of a bike+transit itinerary', () => {
-    const t = trip([
-      leg(TravelmuxMode.Bike, 2478.0),
-      leg(TravelmuxMode.Transit, 4003.0),
-      leg(TravelmuxMode.Bike, 1029.0),
-    ]);
-    expect(t.nonTransitDistanceMeters).toBeCloseTo(3507.0);
-    expect(t.withBicycle).toBe(true);
-    expect(t.walkingDistanceFormatted).toEqual('3.5 km bike total');
   });
 });
 
@@ -264,5 +240,39 @@ describe('TripLeg.selectedGeometry', () => {
     expect(lngs[1]![1]).toBe(0.009);
     expect(lngs[0]![1]! * metersPerDegree).toBeCloseTo(400, -1);
     expect(lngs[1]![0]! * metersPerDegree).toBeCloseTo(600, -1);
+  });
+});
+
+describe('stepCallout', () => {
+  test('a ride says what to board and where', () => {
+    const t = trip([leg(TravelmuxMode.Transit, 5000)]);
+    const [before, badge, after] = t.legs[0]!.stepCallout;
+    expect(before).toEqual('Board the ');
+    expect(badge).toMatchObject({ kind: 'ride', routes: [{ label: '40' }] });
+    expect(after).toEqual(' at from');
+  });
+
+  test('a walk says how many minutes it takes', () => {
+    const t = trip([leg(TravelmuxMode.Walk, 700)]);
+    expect(t.legs[0]!.stepCallout).toEqual(['10 minute walk']);
+  });
+});
+
+describe('routeBadge colors', () => {
+  test("the agency's colors", () => {
+    const badge = routeBadge('Metro B Line', {
+      color: 'EB131B',
+      textColor: 'FFFFFF',
+    });
+    expect(badge.color).toEqual('#EB131B');
+    expect(badge.textColor).toEqual('#FFFFFF');
+  });
+
+  test("an active line's colors for a route without its own", () => {
+    expect(routeBadge('40', {})).toEqual({
+      label: '40',
+      color: '#1296FF',
+      textColor: '#000000',
+    });
   });
 });

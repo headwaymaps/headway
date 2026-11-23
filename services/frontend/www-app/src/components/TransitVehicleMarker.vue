@@ -18,9 +18,12 @@
       <div
         v-if="vehicle.badge"
         class="badge"
-        :style="{ borderColor: vehicle.color }"
+        :style="{
+          backgroundColor: vehicle.badge.color,
+          color: vehicle.badge.textColor,
+        }"
       >
-        {{ vehicle.badge }}
+        {{ vehicle.badge.label }}
       </div>
     </div>
     <div v-if="popover.isOpen" class="tooltip">
@@ -203,18 +206,15 @@ export default defineComponent({
   }
 }
 
-// Hangs off the lower right of the chip. White with a colored border rather than
-// colored with white text: GTFS route colors run light (King County Metro's is
-// yellow), so white-on-color can't be relied on to stay readable.
+// Hangs off the lower right of the chip, in the route's colors like the trip list's pills, edged
+// in white to stand off a route line of the same color.
 .badge {
   position: absolute;
   top: 13px;
   left: 14px;
   padding: 0 3px;
-  border: 1px solid;
+  border: 1px solid white;
   border-radius: 6px;
-  background: white;
-  color: #111;
   font-size: 9px;
   font-weight: 700;
   line-height: 11px;

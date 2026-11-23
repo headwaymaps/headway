@@ -17,7 +17,8 @@ export function formatDuration(
       n: Math.round(durationSeconds),
     });
   } else if (totalMinutes < 60) {
-    timeString = i18n.global.t(`times${formatModifier}.$n_minutes`, {
+    const key = totalMinutes == 1 ? '$n_minute' : '$n_minutes';
+    timeString = i18n.global.t(`times${formatModifier}.${key}`, {
       n: totalMinutes,
     });
   } else {

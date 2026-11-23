@@ -39,8 +39,7 @@
         :key="i"
         :click-handler="() => renderRoutes(i)"
         :active="i === selectedIdx"
-        :duration-formatted="route.trip.durationFormatted"
-        :distance-formatted="route.trip.distanceFormatted"
+        :trip="routeTrips[i]!"
       >
         <span
           class="route-letter"
@@ -65,6 +64,7 @@ import { LngLat } from 'maplibre-gl';
 import Place, { PlaceId, PlaceStorage } from 'src/models/Place';
 import { TravelMode } from 'src/utils/models';
 import TripListItem from 'src/components/TripListItem.vue';
+import Trip from 'src/models/Trip';
 import TripSearch from 'src/components/TripSearch.vue';
 import RouteComparisonCard from 'src/components/RouteComparisonCard.vue';
 import TripCorpus from 'src/components/TripCorpus.vue';
@@ -136,6 +136,12 @@ export default defineComponent({
       fittingDifferences: true,
       latestRequest: 0,
     };
+  },
+  computed: {
+    /// Reactive unwrapping loses the class's private members, so the template can't pass it as is.
+    routeTrips(): Trip[] {
+      return this.routes.map((route) => route.trip as Trip);
+    },
   },
   watch: {
     mode: async function (): Promise<void> {
